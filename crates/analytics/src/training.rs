@@ -190,7 +190,7 @@ impl Agent for DataValidationAgent {
         &[ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.has(ContextKey::Signals)
             && match read_latest_split_from_ctx(ctx) {
                 Ok(split) => !has_data_quality_for_iteration(ctx, split.iteration),
@@ -198,7 +198,7 @@ impl Agent for DataValidationAgent {
             }
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
@@ -285,7 +285,7 @@ impl Agent for FeatureEngineeringAgent {
         &[ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.has(ContextKey::Signals)
             && match read_latest_split_from_ctx(ctx) {
                 Ok(split) => !has_feature_spec_for_iteration(ctx, split.iteration),
@@ -293,7 +293,7 @@ impl Agent for FeatureEngineeringAgent {
             }
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
@@ -379,7 +379,7 @@ impl Agent for HyperparameterSearchAgent {
         &[ContextKey::Constraints, ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.has(ContextKey::Signals)
             && match read_latest_split_from_ctx(ctx) {
                 Ok(split) => !has_hyperparam_result_for_iteration(ctx, split.iteration),
@@ -387,7 +387,7 @@ impl Agent for HyperparameterSearchAgent {
             }
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
@@ -460,7 +460,7 @@ impl Agent for DatasetAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         if !ctx.has(ContextKey::Seeds) {
             return false;
         }
@@ -473,7 +473,7 @@ impl Agent for DatasetAgent {
         !ctx.has(ContextKey::Signals)
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         if let Err(err) = create_dir_all(&self.data_dir) {
             return AgentEffect::with_fact(Fact::new(
                 ContextKey::Diagnostic,
@@ -597,7 +597,7 @@ impl Agent for ModelTrainingAgent {
         &[ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         if !ctx.has(ContextKey::Signals) {
             return false;
         }
@@ -608,7 +608,7 @@ impl Agent for ModelTrainingAgent {
         !has_model_for_iteration(ctx, split.iteration)
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
@@ -734,7 +734,7 @@ impl Agent for ModelRegistryAgent {
         &[ContextKey::Strategies, ContextKey::Evaluations]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.has(ContextKey::Strategies)
             && ctx.has(ContextKey::Evaluations)
             && match read_latest_model_meta_from_ctx(ctx) {
@@ -743,7 +743,7 @@ impl Agent for ModelRegistryAgent {
             }
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let meta = match read_latest_model_meta_from_ctx(ctx) {
             Ok(meta) => meta,
             Err(err) => {
@@ -797,7 +797,7 @@ impl Agent for MonitoringAgent {
         &[ContextKey::Evaluations]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.has(ContextKey::Evaluations)
             && match latest_evaluation_report(ctx, 0) {
                 Some(report) => !has_monitoring_report_for_iteration(ctx, report.iteration),
@@ -805,7 +805,7 @@ impl Agent for MonitoringAgent {
             }
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let report = match latest_evaluation_report(ctx, 0) {
             Some(report) => report,
             None => return AgentEffect::empty(),
@@ -853,7 +853,7 @@ impl Agent for DeploymentAgent {
         &[ContextKey::Evaluations, ContextKey::Strategies]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.has(ContextKey::Evaluations)
             && ctx.has(ContextKey::Strategies)
             && match latest_evaluation_report(ctx, 0) {
@@ -862,7 +862,7 @@ impl Agent for DeploymentAgent {
             }
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let report = match latest_evaluation_report(ctx, 0) {
             Some(report) => report,
             None => return AgentEffect::empty(),
@@ -904,7 +904,7 @@ impl Agent for ModelEvaluationAgent {
         &[ContextKey::Signals, ContextKey::Strategies]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.has(ContextKey::Signals)
             && ctx.has(ContextKey::Strategies)
             && match read_latest_split_from_ctx(ctx) {
@@ -913,7 +913,7 @@ impl Agent for ModelEvaluationAgent {
             }
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
@@ -1031,7 +1031,7 @@ impl Agent for SampleInferenceAgent {
         &[ContextKey::Signals, ContextKey::Strategies]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.has(ContextKey::Signals)
             && ctx.has(ContextKey::Strategies)
             && match read_latest_split_from_ctx(ctx) {
@@ -1040,7 +1040,7 @@ impl Agent for SampleInferenceAgent {
             }
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
@@ -1176,7 +1176,7 @@ fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
     Ok(())
 }
 
-fn read_latest_split_from_ctx(ctx: &Context) -> Result<DatasetSplit> {
+fn read_latest_split_from_ctx(ctx: &dyn converge_core::ContextView) -> Result<DatasetSplit> {
     let facts = ctx.get(ContextKey::Signals);
     let mut latest: Option<DatasetSplit> = None;
     for fact in facts {
@@ -1193,19 +1193,19 @@ fn read_latest_split_from_ctx(ctx: &Context) -> Result<DatasetSplit> {
     latest.ok_or_else(|| anyhow!("missing dataset split"))
 }
 
-fn read_model_path_from_ctx(ctx: &Context) -> Result<String> {
+fn read_model_path_from_ctx(ctx: &dyn converge_core::ContextView) -> Result<String> {
     let meta = read_latest_model_meta_from_ctx(ctx)?;
     Ok(meta.model_path)
 }
 
-fn read_model_from_ctx(ctx: &Context) -> Result<BaselineModel> {
+fn read_model_from_ctx(ctx: &dyn converge_core::ContextView) -> Result<BaselineModel> {
     let model_path = read_model_path_from_ctx(ctx)?;
     let content = std::fs::read_to_string(model_path)?;
     let model = serde_json::from_str(&content)?;
     Ok(model)
 }
 
-fn read_latest_model_meta_from_ctx(ctx: &Context) -> Result<ModelMetadata> {
+fn read_latest_model_meta_from_ctx(ctx: &dyn converge_core::ContextView) -> Result<ModelMetadata> {
     let facts = ctx.get(ContextKey::Strategies);
     let mut latest: Option<ModelMetadata> = None;
     for fact in facts {
@@ -1222,7 +1222,7 @@ fn read_latest_model_meta_from_ctx(ctx: &Context) -> Result<ModelMetadata> {
     latest.ok_or_else(|| anyhow!("missing model metadata"))
 }
 
-fn read_latest_plan_from_ctx(ctx: &Context) -> Option<TrainingPlan> {
+fn read_latest_plan_from_ctx(ctx: &dyn converge_core::ContextView) -> Option<TrainingPlan> {
     let facts = ctx.get(ContextKey::Constraints);
     let mut latest: Option<TrainingPlan> = None;
     for fact in facts {
@@ -1239,7 +1239,7 @@ fn read_latest_plan_from_ctx(ctx: &Context) -> Option<TrainingPlan> {
     latest
 }
 
-fn has_split_for_iteration(ctx: &Context, iteration: usize) -> bool {
+fn has_split_for_iteration(ctx: &dyn converge_core::ContextView, iteration: usize) -> bool {
     ctx.get(ContextKey::Signals).iter().any(|fact| {
         serde_json::from_str::<DatasetSplit>(&fact.content)
             .map(|split| split.iteration == iteration)
@@ -1247,7 +1247,7 @@ fn has_split_for_iteration(ctx: &Context, iteration: usize) -> bool {
     })
 }
 
-fn has_model_for_iteration(ctx: &Context, iteration: usize) -> bool {
+fn has_model_for_iteration(ctx: &dyn converge_core::ContextView, iteration: usize) -> bool {
     ctx.get(ContextKey::Strategies).iter().any(|fact| {
         serde_json::from_str::<ModelMetadata>(&fact.content)
             .map(|meta| meta.iteration == iteration)
@@ -1255,7 +1255,7 @@ fn has_model_for_iteration(ctx: &Context, iteration: usize) -> bool {
     })
 }
 
-fn has_evaluation_for_iteration(ctx: &Context, iteration: usize) -> bool {
+fn has_evaluation_for_iteration(ctx: &dyn converge_core::ContextView, iteration: usize) -> bool {
     ctx.get(ContextKey::Evaluations).iter().any(|fact| {
         serde_json::from_str::<EvaluationReport>(&fact.content)
             .map(|report| report.iteration == iteration)
@@ -1263,7 +1263,7 @@ fn has_evaluation_for_iteration(ctx: &Context, iteration: usize) -> bool {
     })
 }
 
-fn has_inference_for_iteration(ctx: &Context, iteration: usize) -> bool {
+fn has_inference_for_iteration(ctx: &dyn converge_core::ContextView, iteration: usize) -> bool {
     ctx.get(ContextKey::Hypotheses).iter().any(|fact| {
         serde_json::from_str::<InferenceSample>(&fact.content)
             .map(|sample| sample.iteration == iteration)
@@ -1271,7 +1271,7 @@ fn has_inference_for_iteration(ctx: &Context, iteration: usize) -> bool {
     })
 }
 
-fn has_data_quality_for_iteration(ctx: &Context, iteration: usize) -> bool {
+fn has_data_quality_for_iteration(ctx: &dyn converge_core::ContextView, iteration: usize) -> bool {
     ctx.get(ContextKey::Signals).iter().any(|fact| {
         serde_json::from_str::<DataQualityReport>(&fact.content)
             .map(|report| report.iteration == iteration)
@@ -1279,7 +1279,7 @@ fn has_data_quality_for_iteration(ctx: &Context, iteration: usize) -> bool {
     })
 }
 
-fn has_feature_spec_for_iteration(ctx: &Context, iteration: usize) -> bool {
+fn has_feature_spec_for_iteration(ctx: &dyn converge_core::ContextView, iteration: usize) -> bool {
     ctx.get(ContextKey::Constraints).iter().any(|fact| {
         serde_json::from_str::<FeatureSpec>(&fact.content)
             .map(|spec| spec.iteration == iteration)
@@ -1287,7 +1287,7 @@ fn has_feature_spec_for_iteration(ctx: &Context, iteration: usize) -> bool {
     })
 }
 
-fn has_hyperparam_result_for_iteration(ctx: &Context, iteration: usize) -> bool {
+fn has_hyperparam_result_for_iteration(ctx: &dyn converge_core::ContextView, iteration: usize) -> bool {
     ctx.get(ContextKey::Evaluations).iter().any(|fact| {
         serde_json::from_str::<HyperparameterSearchResult>(&fact.content)
             .map(|result| result.iteration == iteration)
@@ -1295,7 +1295,7 @@ fn has_hyperparam_result_for_iteration(ctx: &Context, iteration: usize) -> bool 
     })
 }
 
-fn has_registry_record_for_iteration(ctx: &Context, iteration: usize) -> bool {
+fn has_registry_record_for_iteration(ctx: &dyn converge_core::ContextView, iteration: usize) -> bool {
     ctx.get(ContextKey::Strategies).iter().any(|fact| {
         serde_json::from_str::<ModelRegistryRecord>(&fact.content)
             .map(|record| record.iteration == iteration)
@@ -1303,7 +1303,7 @@ fn has_registry_record_for_iteration(ctx: &Context, iteration: usize) -> bool {
     })
 }
 
-fn has_monitoring_report_for_iteration(ctx: &Context, iteration: usize) -> bool {
+fn has_monitoring_report_for_iteration(ctx: &dyn converge_core::ContextView, iteration: usize) -> bool {
     ctx.get(ContextKey::Evaluations).iter().any(|fact| {
         serde_json::from_str::<MonitoringReport>(&fact.content)
             .map(|report| report.iteration == iteration)
@@ -1311,7 +1311,7 @@ fn has_monitoring_report_for_iteration(ctx: &Context, iteration: usize) -> bool 
     })
 }
 
-fn has_deployment_decision_for_iteration(ctx: &Context, iteration: usize) -> bool {
+fn has_deployment_decision_for_iteration(ctx: &dyn converge_core::ContextView, iteration: usize) -> bool {
     ctx.get(ContextKey::Strategies).iter().any(|fact| {
         serde_json::from_str::<DeploymentDecision>(&fact.content)
             .map(|decision| decision.iteration == iteration)
@@ -1319,7 +1319,7 @@ fn has_deployment_decision_for_iteration(ctx: &Context, iteration: usize) -> boo
     })
 }
 
-fn latest_evaluation_report(ctx: &Context, iteration: usize) -> Option<EvaluationReport> {
+fn latest_evaluation_report(ctx: &dyn converge_core::ContextView, iteration: usize) -> Option<EvaluationReport> {
     let mut latest: Option<EvaluationReport> = None;
     for fact in ctx.get(ContextKey::Evaluations) {
         if let Ok(report) = serde_json::from_str::<EvaluationReport>(&fact.content) {
@@ -1344,7 +1344,7 @@ fn latest_evaluation_report(ctx: &Context, iteration: usize) -> Option<Evaluatio
 }
 
 fn latest_data_quality_before_iteration(
-    ctx: &Context,
+    ctx: &dyn converge_core::ContextView,
     iteration: usize,
 ) -> Option<DataQualityReport> {
     let mut latest: Option<DataQualityReport> = None;
@@ -1364,7 +1364,7 @@ fn latest_data_quality_before_iteration(
 }
 
 fn drift_score_from_ctx(
-    ctx: &Context,
+    ctx: &dyn converge_core::ContextView,
     iteration: usize,
     numeric_means: &HashMap<String, f64>,
 ) -> Option<f64> {
@@ -1538,7 +1538,7 @@ fn is_numeric_dtype(dtype: &DataType) -> bool {
 }
 
 /// Read the latest FeatureSpec from context for a given iteration
-fn read_feature_spec_from_ctx(ctx: &Context, iteration: usize) -> Option<FeatureSpec> {
+fn read_feature_spec_from_ctx(ctx: &dyn converge_core::ContextView, iteration: usize) -> Option<FeatureSpec> {
     ctx.get(ContextKey::Constraints).iter().find_map(|fact| {
         serde_json::from_str::<FeatureSpec>(&fact.content)
             .ok()

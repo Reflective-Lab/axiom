@@ -59,7 +59,7 @@ impl Agent for SignalCaptureAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Seeds).iter().any(|s| {
             s.content.contains("slack.message")
                 || s.content.contains("customer.feedback")
@@ -67,7 +67,7 @@ impl Agent for SignalCaptureAgent {
         })
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
         let mut facts = Vec::new();
 
@@ -112,13 +112,13 @@ impl Agent for HypothesisGeneratorAgent {
         &[ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Signals).iter().any(|s| {
             s.id.starts_with(SIGNAL_PREFIX) && s.content.contains("\"state\":\"signal_captured\"")
         })
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let mut facts = Vec::new();
 
@@ -160,14 +160,14 @@ impl Agent for HypothesisReviewerAgent {
         &[ContextKey::Hypotheses]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Hypotheses).iter().any(|h| {
             h.id.starts_with(HYPOTHESIS_PREFIX)
                 && h.content.contains("\"state\":\"hypothesis_proposed\"")
         })
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let hypotheses = ctx.get(ContextKey::Hypotheses);
         let mut facts = Vec::new();
 
@@ -207,7 +207,7 @@ impl Agent for ExperimentSchedulerAgent {
         &[ContextKey::Hypotheses]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         let has_approved = ctx
             .get(ContextKey::Hypotheses)
             .iter()
@@ -219,7 +219,7 @@ impl Agent for ExperimentSchedulerAgent {
         has_approved && !has_scheduled
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let hypotheses = ctx.get(ContextKey::Hypotheses);
         let mut facts = Vec::new();
 
@@ -261,13 +261,13 @@ impl Agent for ExperimentRunnerAgent {
         &[ContextKey::Proposals, ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Proposals).iter().any(|e| {
             e.id.starts_with(EXPERIMENT_PREFIX) && e.content.contains("\"state\":\"running\"")
         })
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let signals = ctx.get(ContextKey::Signals);
         let mut facts = Vec::new();
@@ -319,13 +319,13 @@ impl Agent for DecisionMemoAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Proposals).iter().any(|e| {
             e.id.contains(EXPERIMENT_PREFIX) && e.content.contains("\"state\":\"completed\"")
         })
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -366,13 +366,13 @@ impl Agent for CanonicalKnowledgeAgent {
         &[ContextKey::Signals, ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Signals)
             .iter()
             .any(|s| s.content.contains("decision.made"))
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let mut facts = Vec::new();
 
@@ -416,13 +416,13 @@ impl Agent for ClaimValidatorAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Seeds)
             .iter()
             .any(|s| s.content.contains("claim.submitted"))
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
         let mut facts = Vec::new();
 
@@ -468,7 +468,7 @@ impl Invariant for ClaimHasProvenanceInvariant {
         InvariantClass::Structural
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         for claim in ctx.get(ContextKey::Evaluations).iter() {
             if claim.id.starts_with(CLAIM_PREFIX) && !claim.content.contains("\"provenance\":") {
                 return InvariantResult::Violated(Violation::with_facts(
@@ -494,7 +494,7 @@ impl Invariant for NoOrphanExperimentsInvariant {
         InvariantClass::Structural
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         for experiment in ctx.get(ContextKey::Proposals).iter() {
             if experiment.id.starts_with(EXPERIMENT_PREFIX)
                 && !experiment.content.contains("\"hypothesis_id\":")
@@ -522,7 +522,7 @@ impl Invariant for ExperimentHasMetricsInvariant {
         InvariantClass::Acceptance
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         for experiment in ctx.get(ContextKey::Proposals).iter() {
             if experiment.id.starts_with(EXPERIMENT_PREFIX)
                 && experiment.content.contains("\"state\":\"running\"")
@@ -554,7 +554,7 @@ impl Invariant for DecisionHasOwnerInvariant {
         InvariantClass::Acceptance
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         for decision in ctx.get(ContextKey::Proposals).iter() {
             if decision.id.starts_with(DECISION_PREFIX) && !decision.content.contains("\"owner\":")
             {
@@ -581,7 +581,7 @@ impl Invariant for PatentEvidenceHasProvenanceInvariant {
         InvariantClass::Structural
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         for evidence in ctx.get(ContextKey::Evaluations).iter() {
             if evidence.id.starts_with(PRIOR_ART_PREFIX)
                 && !evidence.content.contains("\"provenance\":")

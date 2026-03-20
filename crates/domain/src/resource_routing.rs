@@ -79,7 +79,7 @@ impl Agent for TaskRetrievalAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Run once when seeds exist but no task signals yet
         let has_tasks_seed = ctx
             .get(ContextKey::Seeds)
@@ -93,7 +93,7 @@ impl Agent for TaskRetrievalAgent {
         has_tasks_seed && !has_task_signals
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
 
         let mut facts = Vec::new();
@@ -151,7 +151,7 @@ impl Agent for ResourceRetrievalAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Run once when seeds exist but no resource signals yet
         let has_resources_seed = ctx.get(ContextKey::Seeds).iter().any(|s| {
             s.id == "resources" || s.content.contains("resource") || s.content.contains("vehicle")
@@ -164,7 +164,7 @@ impl Agent for ResourceRetrievalAgent {
         has_resources_seed && !has_resource_signals
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
 
         let mut facts = Vec::new();
@@ -223,7 +223,7 @@ impl Agent for ConstraintValidationAgent {
         &[ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Run when we have both tasks and resources but no constraints yet
         let has_tasks = ctx
             .get(ContextKey::Signals)
@@ -238,7 +238,7 @@ impl Agent for ConstraintValidationAgent {
         has_tasks && has_resources && !has_constraints
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
 
         let mut facts = Vec::new();
@@ -293,12 +293,12 @@ impl Agent for SolverAgent {
         &[ContextKey::Constraints, ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Run when constraints exist but no assignment strategies yet
         ctx.has(ContextKey::Constraints) && !ctx.has(ContextKey::Strategies)
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let _constraints = ctx.get(ContextKey::Constraints);
 
@@ -397,12 +397,12 @@ impl Agent for FeasibilityAgent {
         &[ContextKey::Strategies, ContextKey::Constraints]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Run when assignments exist but no evaluations yet
         ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
         let _constraints = ctx.get(ContextKey::Constraints);
         let signals = ctx.get(ContextKey::Signals);
@@ -517,7 +517,7 @@ impl Invariant for RequireAllTasksAssigned {
         InvariantClass::Acceptance
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         let signals = ctx.get(ContextKey::Signals);
         let strategies = ctx.get(ContextKey::Strategies);
 
@@ -555,7 +555,7 @@ impl Invariant for RequireCapacityRespected {
         InvariantClass::Semantic
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         let signals = ctx.get(ContextKey::Signals);
         let strategies = ctx.get(ContextKey::Strategies);
 
@@ -624,7 +624,7 @@ impl Invariant for RequireValidDefinitions {
         InvariantClass::Structural
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         let signals = ctx.get(ContextKey::Signals);
 
         // Only check when signals exist (pipeline has started producing output)

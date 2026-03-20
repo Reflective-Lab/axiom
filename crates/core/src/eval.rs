@@ -47,7 +47,7 @@
 //!     fn name(&self) -> &str { "strategy_diversity" }
 //!     fn description(&self) -> &str { "Ensures at least 3 distinct strategies exist" }
 //!
-//!     fn evaluate(&self, ctx: &Context) -> EvalResult {
+//!     fn evaluate(&self, ctx: &dyn crate::ContextView) -> EvalResult {
 //!         let strategies = ctx.get(ContextKey::Strategies);
 //!         let distinct_count = strategies.len();
 //!
@@ -213,7 +213,7 @@ pub trait Eval: Send + Sync {
     ///
     /// This is pure and side-effect free. The result is stored
     /// as a fact in context by the caller.
-    fn evaluate(&self, ctx: &Context) -> EvalResult;
+    fn evaluate(&self, ctx: &dyn crate::ContextView) -> EvalResult;
 
     /// Optional: Context keys this eval depends on.
     ///
@@ -273,7 +273,7 @@ impl EvalRegistry {
     ///
     /// Results are returned in registration order for determinism.
     #[must_use]
-    pub fn evaluate_all(&self, ctx: &Context) -> Vec<EvalResult> {
+    pub fn evaluate_all(&self, ctx: &dyn crate::ContextView) -> Vec<EvalResult> {
         self.evals.iter().map(|eval| eval.evaluate(ctx)).collect()
     }
 
@@ -281,7 +281,7 @@ impl EvalRegistry {
     ///
     /// Used for efficient scheduling (only run when dependencies change).
     #[must_use]
-    pub fn evaluate_dependent(&self, ctx: &Context, dirty_keys: &[ContextKey]) -> Vec<EvalResult> {
+    pub fn evaluate_dependent(&self, ctx: &dyn crate::ContextView, dirty_keys: &[ContextKey]) -> Vec<EvalResult> {
         let mut eval_ids: std::collections::HashSet<EvalId> = std::collections::HashSet::new();
 
         // Find evals that depend on dirty keys
@@ -312,7 +312,7 @@ impl EvalRegistry {
     ///
     /// Panics if the eval ID is out of bounds.
     #[must_use]
-    pub fn evaluate_by_id(&self, id: EvalId, ctx: &Context) -> EvalResult {
+    pub fn evaluate_by_id(&self, id: EvalId, ctx: &dyn crate::ContextView) -> EvalResult {
         self.evals[id.0 as usize].evaluate(ctx)
     }
 }
@@ -333,7 +333,7 @@ mod tests {
             "Checks if at least one seed exists in context"
         }
 
-        fn evaluate(&self, ctx: &Context) -> EvalResult {
+        fn evaluate(&self, ctx: &dyn crate::ContextView) -> EvalResult {
             let seeds = ctx.get(ContextKey::Seeds);
             let count = seeds.len();
 

@@ -73,7 +73,7 @@ impl Agent for InvoiceCreatorAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Accept when we have triggers but haven't created invoices yet
         let has_triggers = ctx.get(ContextKey::Seeds).iter().any(|f| {
             f.content.contains("deal.closed_won")
@@ -87,7 +87,7 @@ impl Agent for InvoiceCreatorAgent {
         has_triggers && !has_invoices
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let triggers = ctx.get(ContextKey::Seeds);
         let mut facts = Vec::new();
 
@@ -132,14 +132,14 @@ impl Agent for PaymentAllocatorAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Accept when we have unallocated payments
         ctx.get(ContextKey::Proposals).iter().any(|p| {
             p.id.starts_with(PAYMENT_PREFIX) && p.content.contains("\"state\":\"unallocated\"")
         })
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let payments: Vec<_> = proposals
             .iter()
@@ -194,7 +194,7 @@ impl Agent for ReconciliationMatcherAgent {
         &[ContextKey::Signals, ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Accept when we have bank transactions (signals) and no ledger entries yet
         let has_bank_txns = ctx
             .get(ContextKey::Signals)
@@ -207,7 +207,7 @@ impl Agent for ReconciliationMatcherAgent {
         has_bank_txns && !has_ledger
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let proposals = ctx.get(ContextKey::Proposals);
 
@@ -262,7 +262,7 @@ impl Agent for OverdueDetectorAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Check for open/partial invoices past due date
         ctx.get(ContextKey::Proposals).iter().any(|inv| {
             inv.id.starts_with(INVOICE_PREFIX)
@@ -272,7 +272,7 @@ impl Agent for OverdueDetectorAgent {
         })
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -314,14 +314,14 @@ impl Agent for PeriodCloserAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Accept when period is in "closing" state and all reconciliation complete
         ctx.get(ContextKey::Proposals)
             .iter()
             .any(|p| p.id.starts_with(PERIOD_PREFIX) && p.content.contains("\"state\":\"closing\""))
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -365,7 +365,7 @@ impl Invariant for InvoiceHasCustomerInvariant {
         InvariantClass::Structural
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         for invoice in ctx.get(ContextKey::Proposals).iter() {
             if invoice.id.starts_with(INVOICE_PREFIX) && !invoice.content.contains("customer_id") {
                 return InvariantResult::Violated(Violation::with_facts(
@@ -391,7 +391,7 @@ impl Invariant for PaymentAllocationCompleteInvariant {
         InvariantClass::Semantic
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         // Check that paid invoices have allocations summing to total
         for invoice in ctx.get(ContextKey::Proposals).iter() {
             if invoice.id.starts_with(INVOICE_PREFIX)
@@ -418,7 +418,7 @@ impl Invariant for ClosedPeriodReadonlyInvariant {
         InvariantClass::Acceptance
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         // Check that facts in closed periods have override references
         for period in ctx.get(ContextKey::Proposals).iter() {
             if period.id.starts_with(PERIOD_PREFIX)

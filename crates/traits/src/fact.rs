@@ -1,5 +1,4 @@
-// Copyright 2024-2025 Aprio One AB, Sweden
-// Author: Kenneth Pernyer, kenneth@aprio.one
+// Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 
 //! Facts and proposed facts — the type boundary.
@@ -7,24 +6,6 @@
 //! This is the most important design decision in Converge: LLMs suggest,
 //! the engine validates. `ProposedFact` is not `Fact`. There is no implicit
 //! conversion between them.
-//!
-//! # Why two types?
-//!
-//! A `Fact` is an authoritative assertion in the context. It was either
-//! provided by a human (seed), produced by a deterministic agent (policy,
-//! optimizer), or explicitly promoted from a `ProposedFact` by a
-//! `ValidationAgent`.
-//!
-//! A `ProposedFact` is a suggestion from a non-authoritative source (typically
-//! an LLM). It lives in `ContextKey::Proposals` until validated. This
-//! separation is what makes Converge trustworthy: you can always distinguish
-//! between "an LLM said this" and "the system asserts this."
-//!
-//! # Security implications
-//!
-//! Any weakening of this boundary — implicit promotion, auto-validation,
-//! or type coercion — is a correctness and security issue. Treat changes
-//! to these types as requiring security review.
 
 use serde::{Deserialize, Serialize};
 
@@ -34,43 +15,84 @@ use crate::context::ContextKey;
 ///
 /// Facts are append-only. Once added to the context, they are never
 /// mutated or removed (within a convergence run). History is preserved.
-///
-/// # Identity
-///
-/// The `id` field uniquely identifies this fact within its key namespace.
-/// Convention: `"{agent_name}-{uuid}"` for agent-produced facts,
-/// `"seed:{name}"` for initial seeds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Fact {
-    /// Unique identifier within the context key namespace.
-    pub id: String,
     /// Which context key this fact belongs to.
     pub key: ContextKey,
+    /// Unique identifier within the context key namespace.
+    pub id: String,
     /// The fact's content as a string. Interpretation is key-dependent.
     pub content: String,
+}
+
+impl Fact {
+    /// Creates a new fact.
+    #[must_use]
+    pub fn new(key: ContextKey, id: impl Into<String>, content: impl Into<String>) -> Self {
+        Self {
+            key,
+            id: id.into(),
+            content: content.into(),
+        }
+    }
 }
 
 /// An unvalidated suggestion from a non-authoritative source.
 ///
 /// Proposed facts live in `ContextKey::Proposals` until a `ValidationAgent`
-/// promotes them to `Fact` by writing to the target key. The proposal
-/// tracks its origin for audit trail.
-///
-/// # ID Convention
-///
-/// Proposal IDs encode their lineage:
-/// `"proposal:{target_key}:{agent_name}-{uuid}"`
-///
-/// After promotion, the resulting `Fact` gets ID:
-/// `"{agent_name}-{uuid}"` (the proposal prefix is stripped).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// promotes them to `Fact`. The proposal tracks its origin for audit trail.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProposedFact {
+    /// The context key this proposal targets.
+    pub key: ContextKey,
     /// Unique identifier encoding origin and target.
     pub id: String,
-    /// The context key this proposal targets (where it would go if validated).
-    pub target_key: ContextKey,
     /// The proposed content.
     pub content: String,
-    /// Which agent produced this proposal.
-    pub source_agent: String,
+    /// Confidence hint from the source (0.0 - 1.0).
+    pub confidence: f64,
+    /// Provenance information (e.g., model ID, prompt hash).
+    pub provenance: String,
+}
+
+/// Error when a `ProposedFact` fails validation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ValidationError {
+    /// Reason the proposal was rejected.
+    pub reason: String,
+}
+
+impl std::fmt::Display for ValidationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "validation failed: {}", self.reason)
+    }
+}
+
+impl std::error::Error for ValidationError {}
+
+impl TryFrom<ProposedFact> for Fact {
+    type Error = ValidationError;
+
+    fn try_from(proposed: ProposedFact) -> Result<Self, Self::Error> {
+        if !proposed.confidence.is_finite()
+            || proposed.confidence < 0.0
+            || proposed.confidence > 1.0
+        {
+            return Err(ValidationError {
+                reason: "confidence must be a finite number between 0.0 and 1.0".into(),
+            });
+        }
+
+        if proposed.content.trim().is_empty() {
+            return Err(ValidationError {
+                reason: "content cannot be empty".into(),
+            });
+        }
+
+        Ok(Fact {
+            key: proposed.key,
+            id: proposed.id,
+            content: proposed.content,
+        })
+    }
 }

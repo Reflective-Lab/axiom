@@ -65,7 +65,7 @@ impl Agent for EvalExecutionAgent {
         ]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Run if:
         // 1. We have strategies or other eval inputs
         // 2. We haven't already run evals (idempotency check)
@@ -88,7 +88,7 @@ impl Agent for EvalExecutionAgent {
         !has_existing
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         // Get dirty keys from context (simplified: use all keys with data)
         let dirty_keys: Vec<ContextKey> = [
             ContextKey::Strategies,

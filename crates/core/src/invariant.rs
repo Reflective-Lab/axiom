@@ -27,7 +27,7 @@
 //!     fn name(&self) -> &str { "no_empty_facts" }
 //!     fn class(&self) -> InvariantClass { InvariantClass::Structural }
 //!
-//!     fn check(&self, ctx: &Context) -> InvariantResult {
+//!     fn check(&self, ctx: &dyn crate::ContextView) -> InvariantResult {
 //!         // Check logic here
 //!         InvariantResult::Ok
 //!     }
@@ -118,7 +118,7 @@ pub trait Invariant: Send + Sync {
     fn class(&self) -> InvariantClass;
 
     /// Check the invariant against the current context.
-    fn check(&self, ctx: &Context) -> InvariantResult;
+    fn check(&self, ctx: &dyn crate::ContextView) -> InvariantResult;
 }
 
 /// Unique identifier for a registered invariant.
@@ -256,7 +256,7 @@ mod tests {
             InvariantClass::Acceptance
         }
 
-        fn check(&self, ctx: &Context) -> InvariantResult {
+        fn check(&self, ctx: &dyn crate::ContextView) -> InvariantResult {
             if ctx.has(ContextKey::Seeds) {
                 InvariantResult::Ok
             } else {
@@ -277,7 +277,7 @@ mod tests {
             InvariantClass::Structural
         }
 
-        fn check(&self, ctx: &Context) -> InvariantResult {
+        fn check(&self, ctx: &dyn crate::ContextView) -> InvariantResult {
             for key in &[
                 ContextKey::Seeds,
                 ContextKey::Hypotheses,

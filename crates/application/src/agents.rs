@@ -68,7 +68,7 @@ Keep each insight concise (1-2 sentences).".to_string(),
 
     /// Builds the user prompt from context.
     #[allow(clippy::unused_self)]
-    fn build_prompt(&self, ctx: &Context) -> String {
+    fn build_prompt(&self, ctx: &dyn converge_core::ContextView) -> String {
         let mut prompt = String::new();
 
         prompt.push_str("## Market Signals\n");
@@ -145,12 +145,12 @@ impl Agent for StrategicInsightAgent {
         &[ContextKey::Evaluations]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Run once when evaluations exist but no hypotheses (insights) yet
         ctx.has(ContextKey::Evaluations) && !ctx.has(ContextKey::Hypotheses)
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let prompt = self.build_prompt(ctx);
 
         let request = ChatRequest {
@@ -293,7 +293,7 @@ Keep each risk assessment concise (2-3 sentences)."
 
     /// Builds the user prompt from context.
     #[allow(clippy::unused_self)]
-    fn build_prompt(&self, ctx: &Context) -> String {
+    fn build_prompt(&self, ctx: &dyn converge_core::ContextView) -> String {
         let mut prompt = String::new();
 
         prompt.push_str("## Company Context\n");
@@ -378,14 +378,14 @@ impl Agent for RiskAssessmentAgent {
         &[ContextKey::Strategies, ContextKey::Evaluations]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Run once when strategies and evaluations exist but no constraints (risks) yet
         ctx.has(ContextKey::Strategies)
             && ctx.has(ContextKey::Evaluations)
             && !ctx.has(ContextKey::Constraints)
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let prompt = self.build_prompt(ctx);
 
         let request = ChatRequest {

@@ -1,46 +1,116 @@
-# converge.zone
+# Converge.zone
 
-Converge Agent OS — a correctness-first, context-driven multi-agent runtime.
+**Converge** is a correctness-first, context-driven multi-agent runtime built in Rust. It provides a modular platform for building and deploying intelligent agents with LLM inference capabilities.
 
-## Crate Map
+## Overview
 
-| Crate | Description | License |
-|-------|-------------|---------|
-| `converge-traits` | Public trait contracts and backend abstraction | MIT |
-| `converge-core` | Core engine — contexts, invariants, convergence | MIT |
-| `converge-provider` | LLM provider implementations (Anthropic, Gemini, OpenAI, etc.) | MIT |
-| `converge-domain` | Domain-specific agent packs | Proprietary |
-| `converge-experience` | Experience store (SurrealDB, LanceDB) | MIT |
-| `converge-knowledge` | Vector search knowledgebase with gRPC and MCP | MIT |
-| `converge-optimization` | Optimization algorithms (OR-Tools subset in Rust) | Apache-2.0 |
-| `converge-analytics` | Analytics and ML pipeline (Polars, Burn) | Proprietary |
-| `converge-llm` | Local LLM inference and training (Burn) | Proprietary |
-| `converge-policy` | Cedar-based policy decision point | Proprietary |
-| `converge-runtime` | HTTP/gRPC server, consensus, crypto, identity | Proprietary |
-| `converge-remote` | gRPC client driver for the runtime | Proprietary |
-| `converge-tool` | Dev tools, Gherkin validation, `cz` CLI | Proprietary |
-| `converge-application` | Full distribution binary | Proprietary |
+Converge is designed as a workspace of 15 Rust crates that work together to provide:
 
-## Getting Started
+- **Agent Runtime**: Context-driven execution engine
+- **LLM Inference**: Local and remote LLM support using Burn framework
+- **Knowledge Management**: Semantic embedding and recall systems
+- **Policy Engine**: Rule-based decision making
+- **Multi-Backend Support**: LanceDB, SurrealDB, and other storage options
+
+## Quick Start
+
+### Prerequisites
+
+- Rust 1.90+
+- Cargo (comes with Rust)
+- Optional: CUDA/Vulkan/WGPU for GPU acceleration
+
+### Building
 
 ```bash
-# Build (default members — excludes heavy crates)
-make build-quick
+# Clone the repository
+git clone https://github.com/Reflective-Labs/converge.zone.git
+cd converge.zone
+
+# Build all crates
+cargo build --workspace
 
 # Run tests
-make test
-
-# Full workspace build including analytics, llm, runtime
-cargo build --workspace --release
-
-# Lint
-make lint
+cargo test --workspace
 ```
+
+### Running Examples
+
+```bash
+# LLM inference example
+cargo run --example local_inference --features "llama3,ndarray"
+
+# Start the gRPC server
+cargo run --bin converge-llm-server --features "server,llama3"
+```
+
+## Architecture
+
+```
+converge.zone/
+├── crates/
+│   ├── traits/          # Core trait definitions
+│   ├── core/            # Agent runtime engine
+│   ├── llm/             # LLM inference (Burn-based)
+│   ├── domain/          # Domain models
+│   ├── experience/      # Experience management
+│   ├── knowledge/       # Knowledge base
+│   ├── policy/          # Policy engine
+│   ├── runtime/         # Runtime environment
+│   ├── provider/        # External providers
+│   ├── analytics/       # Analytics
+│   ├── optimization/    # Optimization algorithms
+│   ├── remote/          # Remote services
+│   ├── tool/            # Tooling
+│   └── application/     # Application layer
+└── Cargo.toml           # Workspace configuration
+```
+
+## Features
+
+### Core Features
+
+- **Multi-Agent Runtime**: Execute multiple agents with context sharing
+- **LLM Backends**: Local (Llama3, TinyLLM) and remote (Anthropic) support
+- **Knowledge Recall**: Semantic embedding with ONNX models
+- **Policy Engine**: Cedar-based policy evaluation
+- **Observability**: OpenTelemetry integration
+
+### Backend Support
+
+- **Storage**: LanceDB, SurrealDB, Firestore
+- **Compute**: CUDA, Vulkan, WGPU, CPU
+- **Network**: gRPC, HTTP, NATS
+
+## Configuration
+
+Create a `.env` file or set environment variables:
+
+```env
+# LLM Configuration
+CONVERGE_LLM_BACKEND=ndarray
+CONVERGE_LLM_MODEL=llama3
+
+# Storage Configuration
+CONVERGE_STORAGE_BACKEND=lancedb
+CONVERGE_STORAGE_PATH=./data
+
+# Logging
+RUST_LOG=info
+```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ## License
 
-See individual crate licenses. Core platform crates are MIT-licensed.
-Public optimization crates are Apache-2.0. Domain-specific and infrastructure
-crates are proprietary to Reflective Labs.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Copyright (c) 2024-2026 Reflective Labs
+Copyright © 2024 Reflective Group AB
+
+## Contact
+
+Kenneth Pernyer - [kenneth@reflective.se](mailto:kenneth@reflective.se)
+
+Project Link: [https://github.com/Reflective-Labs/converge.zone](https://github.com/Reflective-Labs/converge.zone)

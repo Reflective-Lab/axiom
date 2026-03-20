@@ -328,7 +328,7 @@ impl Agent for LlmAgent {
     fn dependencies(&self) -> &[ContextKey] {
         &self.full_dependencies
     }
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn crate::ContextView) -> bool {
         let has_input = self.config.dependencies.iter().any(|k| ctx.has(*k));
         if !has_input {
             return false;
@@ -338,7 +338,7 @@ impl Agent for LlmAgent {
             .iter()
             .any(|f| f.id.starts_with(&my_prefix))
     }
-    fn execute(&self, _ctx: &Context) -> AgentEffect {
+    fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
         let request = LlmRequest::new("prompt") // Simplified for traits demonstration
             .with_max_tokens(self.config.max_tokens)
             .with_temperature(self.config.temperature);

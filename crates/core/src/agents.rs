@@ -64,14 +64,14 @@ impl Agent for SeedAgent {
         &[] // No dependencies = eligible on first cycle
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn crate::ContextView) -> bool {
         // Only run if we haven't contributed yet
         !ctx.get(ContextKey::Seeds)
             .iter()
             .any(|f| f.id == self.fact_id)
     }
 
-    fn execute(&self, _ctx: &Context) -> AgentEffect {
+    fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
         AgentEffect::with_fact(Fact {
             key: ContextKey::Seeds,
             id: self.fact_id.clone(),
@@ -111,7 +111,7 @@ impl Agent for ReactOnceAgent {
         &[ContextKey::Seeds] // Only wake when Seeds change
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn crate::ContextView) -> bool {
         // Run if: seeds exist AND we haven't contributed
         ctx.has(ContextKey::Seeds)
             && !ctx
@@ -120,7 +120,7 @@ impl Agent for ReactOnceAgent {
                 .any(|f| f.id == self.fact_id)
     }
 
-    fn execute(&self, _ctx: &Context) -> AgentEffect {
+    fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
         AgentEffect::with_fact(Fact {
             key: ContextKey::Hypotheses,
             id: self.fact_id.clone(),
@@ -185,11 +185,11 @@ mod tests {
                 &[ContextKey::Hypotheses]
             }
 
-            fn accepts(&self, ctx: &Context) -> bool {
+            fn accepts(&self, ctx: &dyn crate::ContextView) -> bool {
                 ctx.has(ContextKey::Hypotheses) && !ctx.has(ContextKey::Strategies)
             }
 
-            fn execute(&self, _ctx: &Context) -> AgentEffect {
+            fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
                 AgentEffect::with_fact(Fact {
                     key: ContextKey::Strategies,
                     id: "strat-1".into(),

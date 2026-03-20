@@ -22,7 +22,7 @@ impl Agent for DraftingResearchAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.has(ContextKey::Seeds)
             && !ctx
                 .get(ContextKey::Signals)
@@ -30,7 +30,7 @@ impl Agent for DraftingResearchAgent {
                 .any(|fact| fact.id.starts_with(DRAFT_RESEARCH_PREFIX))
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let summary = ctx
             .get(ContextKey::Seeds)
             .iter()
@@ -58,7 +58,7 @@ impl Agent for DraftingComposerAgent {
         &[ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Signals)
             .iter()
             .any(|fact| fact.id.starts_with(DRAFT_RESEARCH_PREFIX))
@@ -68,7 +68,7 @@ impl Agent for DraftingComposerAgent {
                 .any(|fact| fact.id.starts_with(DRAFT_OUTPUT_PREFIX))
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let notes = ctx
             .get(ContextKey::Signals)
             .iter()

@@ -13,7 +13,7 @@ impl Invariant for AuthorityRequired {
         InvariantClass::Semantic
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         // Simplified check for the 15 jobs alignment:
         // "Given an AccessFact exists, Then a corresponding AuthorityDecision must exist in history"
 
@@ -56,7 +56,7 @@ impl Invariant for AuditTrailRequired {
         InvariantClass::Structural
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         // In a real system, we'd check the internal 'Fact' metadata.
         // For this MVP, we'll check if the content contains a 'provenance:' or 'by:' tag.
 

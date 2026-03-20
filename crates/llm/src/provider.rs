@@ -457,7 +457,7 @@ impl ProviderAgent {
     }
 
     /// Builds the prompt from context using the configured format.
-    fn build_prompt(&self, ctx: &Context) -> String {
+    fn build_prompt(&self, ctx: &dyn converge_core::ContextView) -> String {
         use std::fmt::Write;
 
         if matches!(self.config.prompt_format, PromptFormat::Edn) {
@@ -514,7 +514,7 @@ impl Agent for ProviderAgent {
         &self.full_dependencies
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         let has_input = self.config.dependencies.iter().any(|k| ctx.has(*k));
         if !has_input {
             return false;
@@ -529,7 +529,7 @@ impl Agent for ProviderAgent {
         !already_contributed
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let prompt = self.build_prompt(ctx);
 
         let request = LlmRequest::new(prompt)

@@ -140,7 +140,7 @@ impl PromptContext {
 
     /// Builds context from a Context and dependency keys.
     #[must_use]
-    pub fn from_context(ctx: &Context, dependencies: &[ContextKey]) -> Self {
+    pub fn from_context(ctx: &dyn converge_core::ContextView, dependencies: &[ContextKey]) -> Self {
         let mut prompt_ctx = Self::new();
         for &key in dependencies {
             let facts = ctx.get(key).to_vec();

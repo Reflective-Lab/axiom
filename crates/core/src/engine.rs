@@ -1216,11 +1216,11 @@ mod tests {
             &[] // No dependencies = runs first cycle
         }
 
-        fn accepts(&self, ctx: &Context) -> bool {
+        fn accepts(&self, ctx: &dyn crate::ContextView) -> bool {
             !ctx.has(ContextKey::Seeds)
         }
 
-        fn execute(&self, _ctx: &Context) -> AgentEffect {
+        fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
             AgentEffect::with_fact(Fact {
                 key: ContextKey::Seeds,
                 id: "seed-1".into(),
@@ -1241,11 +1241,11 @@ mod tests {
             &[ContextKey::Seeds]
         }
 
-        fn accepts(&self, ctx: &Context) -> bool {
+        fn accepts(&self, ctx: &dyn crate::ContextView) -> bool {
             ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Hypotheses)
         }
 
-        fn execute(&self, _ctx: &Context) -> AgentEffect {
+        fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
             AgentEffect::with_fact(Fact {
                 key: ContextKey::Hypotheses,
                 id: "hyp-1".into(),
@@ -1320,11 +1320,11 @@ mod tests {
                 &[]
             }
 
-            fn accepts(&self, _ctx: &Context) -> bool {
+            fn accepts(&self, _ctx: &dyn crate::ContextView) -> bool {
                 true // Always wants to run
             }
 
-            fn execute(&self, _ctx: &Context) -> AgentEffect {
+            fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
                 let n = self.counter.fetch_add(1, Ordering::SeqCst);
                 AgentEffect::with_fact(Fact {
                     key: ContextKey::Seeds,
@@ -1363,11 +1363,11 @@ mod tests {
                 &[]
             }
 
-            fn accepts(&self, _ctx: &Context) -> bool {
+            fn accepts(&self, _ctx: &dyn crate::ContextView) -> bool {
                 true
             }
 
-            fn execute(&self, ctx: &Context) -> AgentEffect {
+            fn execute(&self, ctx: &dyn crate::ContextView) -> AgentEffect {
                 let n = ctx.get(ContextKey::Seeds).len();
                 AgentEffect::with_facts(
                     (0..10)
@@ -1408,11 +1408,11 @@ mod tests {
                 &[ContextKey::Strategies]
             }
 
-            fn accepts(&self, _ctx: &Context) -> bool {
+            fn accepts(&self, _ctx: &dyn crate::ContextView) -> bool {
                 true
             }
 
-            fn execute(&self, _ctx: &Context) -> AgentEffect {
+            fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
                 AgentEffect::with_fact(Fact {
                     key: ContextKey::Constraints,
                     id: "constraint-1".into(),
@@ -1445,11 +1445,11 @@ mod tests {
             &[]
         }
 
-        fn accepts(&self, _ctx: &Context) -> bool {
+        fn accepts(&self, _ctx: &dyn crate::ContextView) -> bool {
             true
         }
 
-        fn execute(&self, _ctx: &Context) -> AgentEffect {
+        fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
             AgentEffect::empty()
         }
     }
@@ -1466,11 +1466,11 @@ mod tests {
             &[ContextKey::Seeds]
         }
 
-        fn accepts(&self, _ctx: &Context) -> bool {
+        fn accepts(&self, _ctx: &dyn crate::ContextView) -> bool {
             true
         }
 
-        fn execute(&self, _ctx: &Context) -> AgentEffect {
+        fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
             AgentEffect::empty()
         }
     }
@@ -1501,11 +1501,11 @@ mod tests {
             &[ContextKey::Seeds, ContextKey::Hypotheses]
         }
 
-        fn accepts(&self, _ctx: &Context) -> bool {
+        fn accepts(&self, _ctx: &dyn crate::ContextView) -> bool {
             true
         }
 
-        fn execute(&self, _ctx: &Context) -> AgentEffect {
+        fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
             AgentEffect::empty()
         }
     }
@@ -1535,11 +1535,11 @@ mod tests {
             &[]
         }
 
-        fn accepts(&self, _ctx: &Context) -> bool {
+        fn accepts(&self, _ctx: &dyn crate::ContextView) -> bool {
             true
         }
 
-        fn execute(&self, _ctx: &Context) -> AgentEffect {
+        fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
             AgentEffect::with_fact(Fact {
                 key: ContextKey::Seeds,
                 id: self.fact_id.into(),
@@ -1605,7 +1605,7 @@ mod tests {
             InvariantClass::Structural
         }
 
-        fn check(&self, ctx: &Context) -> InvariantResult {
+        fn check(&self, ctx: &dyn crate::ContextView) -> InvariantResult {
             for fact in ctx.get(ContextKey::Seeds) {
                 if fact.content.contains(self.forbidden) {
                     return InvariantResult::Violated(Violation::with_facts(
@@ -1630,7 +1630,7 @@ mod tests {
             InvariantClass::Semantic
         }
 
-        fn check(&self, ctx: &Context) -> InvariantResult {
+        fn check(&self, ctx: &dyn crate::ContextView) -> InvariantResult {
             let seeds = ctx.get(ContextKey::Seeds).len();
             let hyps = ctx.get(ContextKey::Hypotheses).len();
             // Semantic rule: can't have seeds without hypotheses for more than one cycle
@@ -1655,7 +1655,7 @@ mod tests {
             InvariantClass::Acceptance
         }
 
-        fn check(&self, ctx: &Context) -> InvariantResult {
+        fn check(&self, ctx: &dyn crate::ContextView) -> InvariantResult {
             let seeds = ctx.get(ContextKey::Seeds).len();
             if seeds < 2 {
                 return InvariantResult::Violated(Violation::new(format!(
@@ -1752,12 +1752,12 @@ mod tests {
                 &[]
             }
 
-            fn accepts(&self, ctx: &Context) -> bool {
+            fn accepts(&self, ctx: &dyn crate::ContextView) -> bool {
                 // Only propose once
                 !ctx.has(ContextKey::Hypotheses)
             }
 
-            fn execute(&self, _ctx: &Context) -> AgentEffect {
+            fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
                 AgentEffect {
                     facts: Vec::new(),
                     proposals: vec![ProposedFact {
@@ -1783,7 +1783,7 @@ mod tests {
                 InvariantClass::Structural
             }
 
-            fn check(&self, ctx: &Context) -> InvariantResult {
+            fn check(&self, ctx: &dyn crate::ContextView) -> InvariantResult {
                 for key in ContextKey::iter() {
                     for fact in ctx.get(key) {
                         if fact.content.contains("INJECTED") {
@@ -1843,11 +1843,11 @@ mod tests {
                 &[]
             }
 
-            fn accepts(&self, ctx: &Context) -> bool {
+            fn accepts(&self, ctx: &dyn crate::ContextView) -> bool {
                 !ctx.has(ContextKey::Hypotheses)
             }
 
-            fn execute(&self, _ctx: &Context) -> AgentEffect {
+            fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
                 AgentEffect {
                     facts: Vec::new(),
                     proposals: vec![ProposedFact {
@@ -1889,11 +1889,11 @@ mod tests {
                 &[]
             }
 
-            fn accepts(&self, ctx: &Context) -> bool {
+            fn accepts(&self, ctx: &dyn crate::ContextView) -> bool {
                 !ctx.has(ContextKey::Hypotheses)
             }
 
-            fn execute(&self, _ctx: &Context) -> AgentEffect {
+            fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
                 AgentEffect {
                     facts: Vec::new(),
                     proposals: vec![ProposedFact {
@@ -1935,11 +1935,11 @@ mod tests {
                 &[]
             }
 
-            fn accepts(&self, ctx: &Context) -> bool {
+            fn accepts(&self, ctx: &dyn crate::ContextView) -> bool {
                 !ctx.has(ContextKey::Hypotheses)
             }
 
-            fn execute(&self, _ctx: &Context) -> AgentEffect {
+            fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
                 AgentEffect {
                     facts: Vec::new(),
                     proposals: vec![ProposedFact {
@@ -1979,11 +1979,11 @@ mod tests {
                 &[]
             }
 
-            fn accepts(&self, ctx: &Context) -> bool {
+            fn accepts(&self, ctx: &dyn crate::ContextView) -> bool {
                 !ctx.has(ContextKey::Seeds)
             }
 
-            fn execute(&self, _ctx: &Context) -> AgentEffect {
+            fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
                 AgentEffect::with_facts(vec![
                     Fact {
                         key: ContextKey::Seeds,
@@ -2011,11 +2011,11 @@ mod tests {
                 &[ContextKey::Seeds]
             }
 
-            fn accepts(&self, ctx: &Context) -> bool {
+            fn accepts(&self, ctx: &dyn crate::ContextView) -> bool {
                 ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Hypotheses)
             }
 
-            fn execute(&self, _ctx: &Context) -> AgentEffect {
+            fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
                 AgentEffect::with_fact(Fact {
                     key: ContextKey::Hypotheses,
                     id: "hyp-1".into(),
@@ -2036,7 +2036,7 @@ mod tests {
                 InvariantClass::Semantic
             }
 
-            fn check(&self, _ctx: &Context) -> InvariantResult {
+            fn check(&self, _ctx: &dyn crate::ContextView) -> InvariantResult {
                 InvariantResult::Ok
             }
         }
@@ -2077,11 +2077,11 @@ mod tests {
             &[]
         }
 
-        fn accepts(&self, ctx: &Context) -> bool {
+        fn accepts(&self, ctx: &dyn crate::ContextView) -> bool {
             !ctx.has(ContextKey::Hypotheses)
         }
 
-        fn execute(&self, _ctx: &Context) -> AgentEffect {
+        fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
             AgentEffect::with_proposal(ProposedFact {
                 key: ContextKey::Hypotheses,
                 id: "prop-1".into(),

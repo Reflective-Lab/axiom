@@ -219,6 +219,10 @@ pub mod validation;
 pub use agent::{Agent, AgentId};
 pub use context::{Context, ContextKey, Fact, ProposedFact, ValidationError};
 pub use effect::AgentEffect;
+
+/// Re-export the Context trait from converge-traits.
+/// Agent and Invariant implementations use `&dyn ContextView` in their signatures.
+pub use converge_traits::Context as ContextView;
 pub use engine::{
     Budget, ConvergeResult, Engine, EngineHitlPolicy, HitlPause, RunResult, StreamingCallback,
 };

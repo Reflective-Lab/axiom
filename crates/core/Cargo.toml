@@ -11,6 +11,7 @@ keywords = ["agent", "runtime", "convergence", "context-driven"]
 categories = ["algorithms", "concurrency"]
 
 [dependencies]
+converge-traits.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 serde.workspace = true

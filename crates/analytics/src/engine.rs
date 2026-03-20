@@ -100,12 +100,12 @@ impl Agent for FeatureAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Run if we have Seeds but haven't produced Proposals yet
         ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Proposals)
     }
 
-    fn execute(&self, _ctx: &Context) -> AgentEffect {
+    fn execute(&self, _ctx: &dyn converge_core::ContextView) -> AgentEffect {
         // 1. Compute features using Polars
         let features = match self.compute_features() {
             Ok(f) => f,

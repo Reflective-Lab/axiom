@@ -54,13 +54,13 @@ impl Agent for SessionValidatorAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Seeds)
             .iter()
             .any(|s| s.content.contains("session.token"))
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let triggers = ctx.get(ContextKey::Seeds);
         let mut facts = Vec::new();
 
@@ -102,7 +102,7 @@ impl Agent for RbacEnforcerAgent {
         &[ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         let has_valid_session = ctx
             .get(ContextKey::Signals)
             .iter()
@@ -114,7 +114,7 @@ impl Agent for RbacEnforcerAgent {
         has_valid_session && !has_decisions
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let mut facts = Vec::new();
 
@@ -156,13 +156,13 @@ impl Agent for AuditWriterAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Proposals)
             .iter()
             .any(|p| p.id.starts_with(ACCESS_DECISION_PREFIX))
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -203,7 +203,7 @@ impl Agent for ProvenanceTrackerAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         let has_audit = ctx
             .get(ContextKey::Proposals)
             .iter()
@@ -215,7 +215,7 @@ impl Agent for ProvenanceTrackerAgent {
         has_audit && !has_provenance
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -256,7 +256,7 @@ impl Agent for ComplianceScannerAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         let has_audit = ctx
             .get(ContextKey::Proposals)
             .iter()
@@ -268,7 +268,7 @@ impl Agent for ComplianceScannerAgent {
         has_audit && !has_compliance
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let audit_count = proposals
             .iter()
@@ -306,13 +306,13 @@ impl Agent for ViolationRemediatorAgent {
         &[ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Signals)
             .iter()
             .any(|v| v.id.starts_with(VIOLATION_PREFIX) && v.content.contains("\"state\":\"open\""))
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let mut facts = Vec::new();
 
@@ -353,13 +353,13 @@ impl Agent for PiiRedactorAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Seeds)
             .iter()
             .any(|s| s.content.contains("redaction.required"))
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let triggers = ctx.get(ContextKey::Seeds);
         let mut facts = Vec::new();
 
@@ -401,7 +401,7 @@ impl Invariant for AllActionsAuditedInvariant {
         InvariantClass::Acceptance
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         let proposals = ctx.get(ContextKey::Proposals);
         for decision in proposals.iter() {
             if decision.id.starts_with(ACCESS_DECISION_PREFIX) {
@@ -433,7 +433,7 @@ impl Invariant for AuditImmutabilityInvariant {
         InvariantClass::Structural
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         for entry in ctx.get(ContextKey::Proposals).iter() {
             if entry.id.starts_with(AUDIT_PREFIX) && !entry.content.contains("\"immutable\":true") {
                 return InvariantResult::Violated(Violation::with_facts(
@@ -459,7 +459,7 @@ impl Invariant for ViolationsHaveRemediationInvariant {
         InvariantClass::Semantic
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         let proposals = ctx.get(ContextKey::Proposals);
         for violation in ctx.get(ContextKey::Signals).iter() {
             if violation.id.starts_with(VIOLATION_PREFIX)
@@ -506,7 +506,7 @@ impl Invariant for LegalActionsAuditedInvariant {
         InvariantClass::Acceptance
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         let proposals = ctx.get(ContextKey::Proposals);
 
         // Check executed contracts have audit entries

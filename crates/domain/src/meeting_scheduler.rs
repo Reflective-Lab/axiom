@@ -81,12 +81,12 @@ impl Agent for AvailabilityRetrievalAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Run once when seeds exist but no availability signals yet
         ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Signals)
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
 
         // Extract participants from seeds
@@ -151,7 +151,7 @@ impl Agent for TimeZoneNormalizationAgent {
         &[ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Run when availability signals exist but no normalized times yet
         // Check if we have availability signals but haven't normalized
         let has_availability = ctx
@@ -166,7 +166,7 @@ impl Agent for TimeZoneNormalizationAgent {
         has_availability && !has_normalized
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
 
         let mut facts = Vec::new();
@@ -206,7 +206,7 @@ impl Agent for WorkingHoursConstraintAgent {
         &[ContextKey::Signals, ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Run when normalized availability exists but constraints not yet defined
         let has_normalized = ctx
             .get(ContextKey::Signals)
@@ -220,7 +220,7 @@ impl Agent for WorkingHoursConstraintAgent {
         has_normalized && !has_constraints
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let seeds = ctx.get(ContextKey::Seeds);
 
@@ -273,12 +273,12 @@ impl Agent for SlotOptimizationAgent {
         &[ContextKey::Constraints, ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Run when constraints exist but no candidate slots yet
         ctx.has(ContextKey::Constraints) && !ctx.has(ContextKey::Strategies)
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let constraints = ctx.get(ContextKey::Constraints);
         let _signals = ctx.get(ContextKey::Signals);
 
@@ -336,12 +336,12 @@ impl Agent for ConflictDetectionAgent {
         &[ContextKey::Strategies, ContextKey::Constraints]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Run when candidate slots exist but no evaluations yet
         ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
         let constraints = ctx.get(ContextKey::Constraints);
 
@@ -428,7 +428,7 @@ impl Invariant for RequireValidSlot {
         InvariantClass::Acceptance
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         let evaluations = ctx.get(ContextKey::Evaluations);
 
         // Check if there's at least one valid (non-INFEASIBLE) evaluation
@@ -464,7 +464,7 @@ impl Invariant for RequireParticipantAvailability {
         InvariantClass::Semantic
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         let evaluations = ctx.get(ContextKey::Evaluations);
         let signals = ctx.get(ContextKey::Signals);
 
@@ -522,7 +522,7 @@ impl Invariant for RequirePositiveDuration {
         InvariantClass::Structural
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         let seeds = ctx.get(ContextKey::Seeds);
         let constraints = ctx.get(ContextKey::Constraints);
 

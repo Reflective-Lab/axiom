@@ -34,14 +34,14 @@ struct AskSource {
     content: String,
 }
 
-fn parse_question(ctx: &Context) -> Option<String> {
+fn parse_question(ctx: &dyn converge_core::ContextView) -> Option<String> {
     ctx.get(ContextKey::Seeds)
         .iter()
         .find(|seed| seed.id == QUESTION_SEED_ID)
         .map(|seed| seed.content.clone())
 }
 
-fn parse_sources(ctx: &Context) -> Vec<AskSource> {
+fn parse_sources(ctx: &dyn converge_core::ContextView) -> Vec<AskSource> {
     ctx.get(ContextKey::Seeds)
         .iter()
         .filter(|seed| seed.id.starts_with(SOURCE_SEED_PREFIX))
@@ -102,7 +102,7 @@ impl Agent for AskConvergeAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         let has_question = parse_question(ctx).is_some();
         let has_answer = ctx
             .get(ContextKey::Strategies)
@@ -111,7 +111,7 @@ impl Agent for AskConvergeAgent {
         has_question && !has_answer
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let question = match parse_question(ctx) {
             Some(question) => question,
             None => return AgentEffect::empty(),
@@ -145,7 +145,7 @@ impl Invariant for GroundedAnswerInvariant {
         InvariantClass::Semantic
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         for fact in ctx.get(ContextKey::Strategies) {
             if fact.id != ANSWER_ID {
                 continue;
@@ -186,7 +186,7 @@ impl Invariant for RecallNotEvidenceInvariant {
         InvariantClass::Semantic
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         for fact in ctx.get(ContextKey::Strategies) {
             if fact.id != ANSWER_ID {
                 continue;

@@ -62,7 +62,7 @@ impl LlmAgent {
     }
 
     /// Build prompt from context using the template.
-    fn build_prompt(&self, ctx: &Context) -> String {
+    fn build_prompt(&self, ctx: &dyn converge_core::ContextView) -> String {
         let mut prompt = self.prompt_template.system.clone();
         prompt.push_str("\n\n");
 
@@ -109,7 +109,7 @@ impl Agent for LlmAgent {
         &[ContextKey::Seeds, ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Check if we have input to process
         let has_seeds = !ctx.get(ContextKey::Seeds).is_empty();
 
@@ -134,7 +134,7 @@ impl Agent for LlmAgent {
         has_seeds && !has_pending && !has_validated
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let prompt = self.build_prompt(ctx);
 
         tracing::info!(

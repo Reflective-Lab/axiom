@@ -215,7 +215,7 @@ impl Agent for ValidationAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn crate::ContextView) -> bool {
         // Run when there are proposals that haven't been validated yet
         let proposals = ctx.get(ContextKey::Proposals);
 
@@ -234,7 +234,7 @@ impl Agent for ValidationAgent {
         false
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn crate::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 

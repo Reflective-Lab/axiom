@@ -42,7 +42,7 @@ publish = false
 
 [workspace.dependencies]
 # Internal crates — path (local dev) + version (crates.io publish)
-converge-traits = { path = "crates/traits", version = "1.1.0" }
+converge-traits = { path = "crates/traits", version = "1.1.0", features = ["strum"] }
 converge-core = { path = "crates/core", version = "1.1.0" }
 converge-provider = { path = "crates/provider", version = "1.1.0" }
 converge-domain = { path = "crates/domain", version = "1.1.0" }

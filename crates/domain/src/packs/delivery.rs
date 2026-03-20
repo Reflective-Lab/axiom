@@ -44,7 +44,7 @@ impl Agent for PromiseCreatorAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Seeds)
             .iter()
             .any(|s| s.content.contains("deal.closed_won"))
@@ -54,7 +54,7 @@ impl Agent for PromiseCreatorAgent {
                 .any(|p| p.id.starts_with(PROMISE_PREFIX))
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let triggers = ctx.get(ContextKey::Seeds);
         let mut facts = Vec::new();
 
@@ -92,13 +92,13 @@ impl Agent for ScopeExtractorAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Proposals)
             .iter()
             .any(|p| p.id.starts_with(PROMISE_PREFIX) && p.content.contains("\"state\":\"draft\""))
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -138,7 +138,7 @@ impl Agent for WorkBreakdownAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         let has_scope = ctx
             .get(ContextKey::Proposals)
             .iter()
@@ -150,7 +150,7 @@ impl Agent for WorkBreakdownAgent {
         has_scope && !has_tasks
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -188,13 +188,13 @@ impl Agent for BlockerDetectorAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Proposals)
             .iter()
             .any(|t| t.id.starts_with(TASK_PREFIX) && t.content.contains("\"blocked\":true"))
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -232,13 +232,13 @@ impl Agent for BlockerRouterAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Proposals)
             .iter()
             .any(|b| b.id.starts_with(BLOCKER_PREFIX) && b.content.contains("\"state\":\"raised\""))
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -278,7 +278,7 @@ impl Agent for RiskAssessorAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         let has_promises = ctx
             .get(ContextKey::Proposals)
             .iter()
@@ -290,7 +290,7 @@ impl Agent for RiskAssessorAgent {
         has_promises && !has_risks
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let blocker_count = proposals
             .iter()
@@ -341,7 +341,7 @@ impl Agent for StatusAggregatorAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         let has_promises = ctx
             .get(ContextKey::Proposals)
             .iter()
@@ -353,7 +353,7 @@ impl Agent for StatusAggregatorAgent {
         has_promises && has_tasks
     }
 
-    fn execute(&self, _ctx: &Context) -> AgentEffect {
+    fn execute(&self, _ctx: &dyn converge_core::ContextView) -> AgentEffect {
         // Aggregates status - simplified implementation
         AgentEffect::with_facts(vec![])
     }
@@ -372,13 +372,13 @@ impl Agent for AcceptanceRequestorAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Proposals)
             .iter()
             .any(|p| p.id.starts_with(PROMISE_PREFIX) && p.content.contains("\"state\":\"review\""))
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -417,13 +417,13 @@ impl Agent for PostmortemSchedulerAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.get(ContextKey::Proposals).iter().any(|p| {
             p.id.starts_with(PROMISE_PREFIX) && p.content.contains("\"state\":\"completed\"")
         })
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -466,7 +466,7 @@ impl Invariant for PromiseHasDealInvariant {
         InvariantClass::Structural
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         for promise in ctx.get(ContextKey::Proposals).iter() {
             if promise.id.starts_with(PROMISE_PREFIX) && !promise.content.contains("\"deal_id\":") {
                 return InvariantResult::Violated(Violation::with_facts(
@@ -492,7 +492,7 @@ impl Invariant for BlockerHasResolutionPathInvariant {
         InvariantClass::Semantic
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         let proposals = ctx.get(ContextKey::Proposals);
 
         for blocker in proposals.iter() {
@@ -532,7 +532,7 @@ impl Invariant for ScopeChangeRequiresApprovalInvariant {
         InvariantClass::Acceptance
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         for scope in ctx.get(ContextKey::Proposals).iter() {
             if scope.id.starts_with(SCOPE_PREFIX) && scope.content.contains("\"change_type\":") {
                 // Scope has been modified - check for approval
@@ -563,7 +563,7 @@ impl Invariant for CompletedPromiseHasAcceptanceInvariant {
         InvariantClass::Acceptance
     }
 
-    fn check(&self, ctx: &Context) -> InvariantResult {
+    fn check(&self, ctx: &dyn converge_core::ContextView) -> InvariantResult {
         let proposals = ctx.get(ContextKey::Proposals);
 
         for promise in proposals.iter() {

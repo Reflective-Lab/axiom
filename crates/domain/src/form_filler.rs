@@ -20,11 +20,11 @@ const RISK_FACT_ID: &str = "form_filler:risk_classification";
 const FILL_PLAN_FACT_ID: &str = "form_filler:fill_plan";
 const PROPOSAL_PREFIX: &str = "form_filler:proposed_field:";
 
-fn has_fact(ctx: &Context, key: ContextKey, id: &str) -> bool {
+fn has_fact(ctx: &dyn converge_core::ContextView, key: ContextKey, id: &str) -> bool {
     ctx.get(key).iter().any(|fact| fact.id == id)
 }
 
-fn parse_form_request(ctx: &Context) -> Option<FormRequestSeed> {
+fn parse_form_request(ctx: &dyn converge_core::ContextView) -> Option<FormRequestSeed> {
     ctx.get(ContextKey::Seeds)
         .iter()
         .find(|seed| seed.id == FORM_REQUEST_SEED_ID)
@@ -88,11 +88,11 @@ impl Agent for FormSchemaAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.has(ContextKey::Seeds) && !has_fact(ctx, ContextKey::Signals, SCHEMA_FACT_ID)
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let request = match parse_form_request(ctx) {
             Some(request) => request,
             None => return AgentEffect::empty(),
@@ -123,11 +123,11 @@ impl Agent for FieldMappingAgent {
         &[ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.has(ContextKey::Signals) && !has_fact(ctx, ContextKey::Hypotheses, MAPPINGS_FACT_ID)
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let schema = ctx
             .get(ContextKey::Signals)
             .iter()
@@ -168,12 +168,12 @@ impl Agent for NormalizationAgent {
         &[ContextKey::Hypotheses]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.has(ContextKey::Hypotheses)
             && !has_fact(ctx, ContextKey::Hypotheses, NORMALIZED_FACT_ID)
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let mappings = ctx
             .get(ContextKey::Hypotheses)
             .iter()
@@ -212,12 +212,12 @@ impl Agent for CompletenessAgent {
         &[ContextKey::Hypotheses]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.has(ContextKey::Hypotheses)
             && !has_fact(ctx, ContextKey::Constraints, COMPLETENESS_FACT_ID)
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let normalized = ctx
             .get(ContextKey::Hypotheses)
             .iter()
@@ -254,11 +254,11 @@ impl Agent for RiskClassifierAgent {
         &[ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.has(ContextKey::Signals) && !has_fact(ctx, ContextKey::Constraints, RISK_FACT_ID)
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let schema = ctx
             .get(ContextKey::Signals)
             .iter()
@@ -296,13 +296,13 @@ impl Agent for FillPlanAgent {
         &[ContextKey::Signals, ContextKey::Constraints]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.has(ContextKey::Signals)
             && ctx.has(ContextKey::Constraints)
             && !has_fact(ctx, ContextKey::Strategies, FILL_PLAN_FACT_ID)
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let schema = ctx
             .get(ContextKey::Signals)
             .iter()
@@ -362,11 +362,11 @@ impl Agent for ProposalEmitterAgent {
         &[ContextKey::Hypotheses, ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &Context) -> bool {
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         ctx.has(ContextKey::Hypotheses) && ctx.has(ContextKey::Signals)
     }
 
-    fn execute(&self, ctx: &Context) -> AgentEffect {
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let normalized = ctx
             .get(ContextKey::Hypotheses)
             .iter()

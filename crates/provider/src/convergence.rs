@@ -1,35 +1,10 @@
-// Copyright 2024-2025 Aprio One AB, Sweden
+// Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 
 //! Convergence integration for LLM providers.
 //!
 //! This module bridges the gap between the simple `LlmProvider` invocation
 //! trait and the platform-wide convergence contract (`Backend`, `Agent`).
-//!
-//! # Architecture
-//!
-//! ```text
-//! converge-traits
-//!     │
-//!     ├── Backend (identity + capabilities)
-//!     └── Agent (accepts + execute → AgentEffect)
-//!
-//! converge-provider
-//!     │
-//!     ├── LlmProvider (invocation: prompt → response)
-//!     └── LlmAgent<P> (wraps LlmProvider as convergence Agent)
-//! ```
-//!
-//! # Usage
-//!
-//! ```ignore
-//! use converge_provider::{AnthropicProvider, LlmAgent};
-//! use converge_traits::ContextKey;
-//!
-//! let provider = AnthropicProvider::new("key", "claude-sonnet-4-6");
-//! let agent = LlmAgent::new(provider, "competitor-analyst", ContextKey::Competitors);
-//! // agent implements converge_traits::Agent
-//! ```
 
 use converge_traits::{
     Agent, AgentEffect, Backend, BackendKind, Capability, Context, ContextKey, ProposedFact,
@@ -41,15 +16,7 @@ use crate::provider_api::{LlmProvider, LlmRequest};
 ///
 /// `LlmAgent` reads from specified dependency keys, builds a prompt from
 /// context, calls the wrapped provider, and emits `ProposedFact` instances
-/// to `ContextKey::Proposals`.
-///
-/// # Design
-///
-/// - LLM outputs are *proposals*, never facts. The trust boundary is
-///   enforced by emitting `AgentEffect::Propose`, not `AgentEffect::AddFacts`.
-/// - Idempotency is context-based: if this agent has already contributed
-///   proposals, it does not re-execute.
-/// - The agent is `Send + Sync` because `LlmProvider` is `Send + Sync`.
+/// via `AgentEffect::with_proposal`.
 pub struct LlmAgent<P: LlmProvider> {
     provider: P,
     agent_name: String,
@@ -60,10 +27,6 @@ pub struct LlmAgent<P: LlmProvider> {
 
 impl<P: LlmProvider> LlmAgent<P> {
     /// Create a new LLM agent wrapping a provider.
-    ///
-    /// - `provider`: The LLM provider to call.
-    /// - `agent_name`: Unique name for this agent in the convergence run.
-    /// - `target_key`: The context key that proposals target (e.g., `Competitors`).
     #[must_use]
     pub fn new(provider: P, agent_name: impl Into<String>, target_key: ContextKey) -> Self {
         Self {
@@ -113,7 +76,7 @@ impl<P: LlmProvider> LlmAgent<P> {
     /// Check if this agent has already contributed proposals.
     fn has_contributed(&self, ctx: &dyn Context) -> bool {
         let proposals = ctx.get_proposals(ContextKey::Proposals);
-        proposals.iter().any(|p| p.source_agent == self.agent_name)
+        proposals.iter().any(|p| p.provenance == self.agent_name)
     }
 }
 
@@ -127,12 +90,9 @@ impl<P: LlmProvider> Agent for LlmAgent<P> {
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
-        // Don't re-execute if we've already contributed
         if self.has_contributed(ctx) {
             return false;
         }
-
-        // Execute if any dependency key has facts
         self.dependency_keys.iter().any(|&key| ctx.has(key))
     }
 
@@ -152,13 +112,14 @@ impl<P: LlmProvider> Agent for LlmAgent<P> {
                 );
 
                 let proposal = ProposedFact {
+                    key: self.target_key,
                     id: proposal_id,
-                    target_key: self.target_key,
                     content: response.content,
-                    source_agent: self.agent_name.clone(),
+                    confidence: 0.7,
+                    provenance: self.agent_name.clone(),
                 };
 
-                AgentEffect::Propose(vec![proposal])
+                AgentEffect::with_proposal(proposal)
             }
             Err(e) => {
                 tracing::warn!(
@@ -166,13 +127,11 @@ impl<P: LlmProvider> Agent for LlmAgent<P> {
                     error = %e,
                     "LLM provider call failed, emitting nothing"
                 );
-                AgentEffect::Nothing
+                AgentEffect::empty()
             }
         }
     }
 }
-
-// ── Backend implementation for LlmAgent ──────────────────────────────
 
 impl<P: LlmProvider> Backend for LlmAgent<P> {
     fn name(&self) -> &str {
@@ -188,7 +147,7 @@ impl<P: LlmProvider> Backend for LlmAgent<P> {
     }
 
     fn supports_replay(&self) -> bool {
-        false // Remote LLM APIs are non-deterministic
+        false
     }
 
     fn requires_network(&self) -> bool {
@@ -217,11 +176,14 @@ mod tests {
         }
 
         fn with_seed(mut self, content: &str) -> Self {
-            self.facts.entry(ContextKey::Seeds).or_default().push(Fact {
-                id: format!("seed:{content}"),
-                key: ContextKey::Seeds,
-                content: content.to_string(),
-            });
+            self.facts
+                .entry(ContextKey::Seeds)
+                .or_default()
+                .push(Fact::new(
+                    ContextKey::Seeds,
+                    format!("seed:{content}"),
+                    content,
+                ));
             self
         }
 
@@ -230,10 +192,11 @@ mod tests {
                 .entry(ContextKey::Proposals)
                 .or_default()
                 .push(ProposedFact {
+                    key: ContextKey::Hypotheses,
                     id: format!("proposal:test:{agent}"),
-                    target_key: ContextKey::Hypotheses,
                     content: content.to_string(),
-                    source_agent: agent.to_string(),
+                    confidence: 0.8,
+                    provenance: agent.to_string(),
                 });
             self
         }
@@ -253,7 +216,6 @@ mod tests {
         }
     }
 
-    /// Deterministic provider for convergence tests.
     struct StubProvider {
         response: String,
     }
@@ -334,16 +296,11 @@ mod tests {
         );
 
         let effect = agent.execute(&ctx);
-
-        match effect {
-            AgentEffect::Propose(proposals) => {
-                assert_eq!(proposals.len(), 1);
-                assert_eq!(proposals[0].content, "Competitor X is strong");
-                assert_eq!(proposals[0].target_key, ContextKey::Competitors);
-                assert_eq!(proposals[0].source_agent, "competitor-analyst");
-            }
-            other => panic!("Expected Propose, got {other:?}"),
-        }
+        assert!(!effect.is_empty());
+        assert_eq!(effect.proposals.len(), 1);
+        assert_eq!(effect.proposals[0].content, "Competitor X is strong");
+        assert_eq!(effect.proposals[0].key, ContextKey::Competitors);
+        assert_eq!(effect.proposals[0].provenance, "competitor-analyst");
     }
 
     #[test]
@@ -379,6 +336,6 @@ mod tests {
         let agent = LlmAgent::new(FailingProvider, "fail-test", ContextKey::Hypotheses);
         let effect = agent.execute(&ctx);
 
-        assert!(matches!(effect, AgentEffect::Nothing));
+        assert!(effect.is_empty());
     }
 }

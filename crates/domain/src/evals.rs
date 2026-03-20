@@ -44,7 +44,7 @@ impl Eval for MeetingScheduleFeasibilityEval {
         &[ContextKey::Strategies, ContextKey::Constraints]
     }
 
-    fn evaluate(&self, ctx: &Context) -> EvalResult {
+    fn evaluate(&self, ctx: &dyn converge_core::ContextView) -> EvalResult {
         let strategies = ctx.get(ContextKey::Strategies);
         let constraints = ctx.get(ContextKey::Constraints);
 
@@ -136,7 +136,7 @@ impl Eval for InvoiceAccuracyEval {
         &[ContextKey::Proposals]
     }
 
-    fn evaluate(&self, ctx: &Context) -> EvalResult {
+    fn evaluate(&self, ctx: &dyn converge_core::ContextView) -> EvalResult {
         let proposals = ctx.get(ContextKey::Proposals);
         let invoices: Vec<_> = proposals
             .iter()
@@ -206,7 +206,7 @@ impl Eval for PaymentReconciliationEval {
         &[ContextKey::Proposals]
     }
 
-    fn evaluate(&self, ctx: &Context) -> EvalResult {
+    fn evaluate(&self, ctx: &dyn converge_core::ContextView) -> EvalResult {
         let proposals = ctx.get(ContextKey::Proposals);
         let payments: Vec<_> = proposals
             .iter()
@@ -272,7 +272,7 @@ impl Eval for PromiseFulfillmentEval {
         &[ContextKey::Proposals]
     }
 
-    fn evaluate(&self, ctx: &Context) -> EvalResult {
+    fn evaluate(&self, ctx: &dyn converge_core::ContextView) -> EvalResult {
         let proposals = ctx.get(ContextKey::Proposals);
         let promises: Vec<_> = proposals
             .iter()
@@ -335,7 +335,7 @@ impl Eval for ScopeCreepDetectionEval {
         &[ContextKey::Proposals, ContextKey::Signals]
     }
 
-    fn evaluate(&self, ctx: &Context) -> EvalResult {
+    fn evaluate(&self, ctx: &dyn converge_core::ContextView) -> EvalResult {
         let proposals = ctx.get(ContextKey::Proposals);
         let scope_changes: Vec<_> = proposals
             .iter()
@@ -396,7 +396,7 @@ impl Eval for AccessComplianceEval {
         &[ContextKey::Proposals]
     }
 
-    fn evaluate(&self, ctx: &Context) -> EvalResult {
+    fn evaluate(&self, ctx: &dyn converge_core::ContextView) -> EvalResult {
         let proposals = ctx.get(ContextKey::Proposals);
         let terminated: Vec<_> = proposals
             .iter()
@@ -464,7 +464,7 @@ impl Eval for AuditCoverageEval {
         &[ContextKey::Proposals]
     }
 
-    fn evaluate(&self, ctx: &Context) -> EvalResult {
+    fn evaluate(&self, ctx: &dyn converge_core::ContextView) -> EvalResult {
         let proposals = ctx.get(ContextKey::Proposals);
         let actions: Vec<_> = proposals
             .iter()
@@ -525,7 +525,7 @@ impl Eval for RbacEnforcementEval {
         &[ContextKey::Proposals]
     }
 
-    fn evaluate(&self, ctx: &Context) -> EvalResult {
+    fn evaluate(&self, ctx: &dyn converge_core::ContextView) -> EvalResult {
         let proposals = ctx.get(ContextKey::Proposals);
         let access_attempts: Vec<_> = proposals
             .iter()
@@ -594,7 +594,7 @@ impl Eval for ClaimProvenanceEval {
         &[ContextKey::Proposals]
     }
 
-    fn evaluate(&self, ctx: &Context) -> EvalResult {
+    fn evaluate(&self, ctx: &dyn converge_core::ContextView) -> EvalResult {
         let proposals = ctx.get(ContextKey::Proposals);
         let claims: Vec<_> = proposals
             .iter()
@@ -653,7 +653,7 @@ impl Eval for ExperimentMetricsEval {
         &[ContextKey::Proposals]
     }
 
-    fn evaluate(&self, ctx: &Context) -> EvalResult {
+    fn evaluate(&self, ctx: &dyn converge_core::ContextView) -> EvalResult {
         let proposals = ctx.get(ContextKey::Proposals);
         let experiments: Vec<_> = proposals
             .iter()
@@ -718,7 +718,7 @@ impl Eval for MetricDefinitionQualityEval {
         &[ContextKey::Proposals]
     }
 
-    fn evaluate(&self, ctx: &Context) -> EvalResult {
+    fn evaluate(&self, ctx: &dyn converge_core::ContextView) -> EvalResult {
         let proposals = ctx.get(ContextKey::Proposals);
         let metrics: Vec<_> = proposals
             .iter()
@@ -784,7 +784,7 @@ impl Eval for DashboardSourceEval {
         &[ContextKey::Proposals]
     }
 
-    fn evaluate(&self, ctx: &Context) -> EvalResult {
+    fn evaluate(&self, ctx: &dyn converge_core::ContextView) -> EvalResult {
         let proposals = ctx.get(ContextKey::Proposals);
         let dashboards: Vec<_> = proposals
             .iter()

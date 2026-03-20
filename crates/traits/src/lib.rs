@@ -69,7 +69,7 @@ mod tests;
 pub use agent::Agent;
 pub use context::{Context, ContextKey};
 pub use effect::AgentEffect;
-pub use fact::{Fact, ProposedFact};
+pub use fact::{Fact, ProposedFact, ValidationError};
 pub use invariant::{Invariant, InvariantClass, InvariantResult};
 
 // ── Backend re-exports ───────────────────────────────────────────────
