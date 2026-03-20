@@ -11,8 +11,7 @@ use thiserror::Error;
 use utoipa::ToSchema;
 
 /// Runtime-level errors.
-#[derive(Debug, Error, ToSchema)]
-#[schema(as = RuntimeErrorResponse)]
+#[derive(Debug, Error)]
 pub enum RuntimeError {
     /// Converge engine error.
     #[error("converge error: {0}")]

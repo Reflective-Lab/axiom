@@ -11,8 +11,31 @@ use axum::{
     routing::{get, post},
 };
 use converge_core::{Context, ContextKey, Engine};
-use converge_provider::AnthropicProvider;
+use converge_core::llm::{LlmProvider, LlmRequest, LlmResponse, LlmError, FinishReason, TokenUsage};
 use converge_tool::gherkin::{GherkinValidator, IssueCategory, Severity, ValidationConfig};
+
+/// Stub LLM provider that returns empty responses.
+/// Real LLM validation should be configured via organism-application.
+struct StubLlmProvider;
+
+impl LlmProvider for StubLlmProvider {
+    fn complete(&self, _request: &LlmRequest) -> Result<LlmResponse, LlmError> {
+        Ok(LlmResponse {
+            content: String::new(),
+            model: "stub".to_string(),
+            finish_reason: FinishReason::Stop,
+            usage: TokenUsage::default(),
+        })
+    }
+
+    fn name(&self) -> &'static str {
+        "stub"
+    }
+
+    fn model(&self) -> &str {
+        "stub"
+    }
+}
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use strum::IntoEnumIterator;
@@ -20,7 +43,7 @@ use tokio::task;
 use tracing::{info, info_span, warn};
 use utoipa::ToSchema;
 
-use crate::error::RuntimeError;
+use crate::error::{RuntimeError, RuntimeErrorResponse};
 use crate::state::AppState;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -167,8 +190,8 @@ pub async fn ready() -> Result<Json<serde_json::Value>, RuntimeError> {
     request_body = FormPlanRequest,
     responses(
         (status = 200, description = "Form plan generated", body = FormPlanResponse),
-        (status = 400, description = "Invalid request", body = RuntimeError),
-        (status = 500, description = "Internal server error", body = RuntimeError)
+        (status = 400, description = "Invalid request", body = RuntimeErrorResponse),
+        (status = 500, description = "Internal server error", body = RuntimeErrorResponse)
     )
 )]
 pub async fn plan_form(
@@ -206,8 +229,8 @@ pub async fn plan_form(
     request_body = FormApprovalRequest,
     responses(
         (status = 200, description = "Approvals recorded", body = FormApprovalResponse),
-        (status = 400, description = "Invalid request", body = RuntimeError),
-        (status = 500, description = "Internal server error", body = RuntimeError)
+        (status = 400, description = "Invalid request", body = RuntimeErrorResponse),
+        (status = 500, description = "Internal server error", body = RuntimeErrorResponse)
     )
 )]
 pub async fn approve_form(
@@ -230,8 +253,8 @@ pub async fn approve_form(
     request_body = FormExecuteRequest,
     responses(
         (status = 200, description = "Form executed", body = FormExecuteResponse),
-        (status = 400, description = "Invalid request", body = RuntimeError),
-        (status = 500, description = "Internal server error", body = RuntimeError)
+        (status = 400, description = "Invalid request", body = RuntimeErrorResponse),
+        (status = 500, description = "Internal server error", body = RuntimeErrorResponse)
     )
 )]
 pub async fn execute_form(
@@ -283,11 +306,11 @@ pub async fn metrics() -> (
     request_body = JobRequest,
     responses(
         (status = 200, description = "Job completed successfully", body = JobResponse),
-        (status = 400, description = "Invalid request", body = RuntimeError),
-        (status = 422, description = "Invariant violation", body = RuntimeError),
-        (status = 413, description = "Budget exhausted", body = RuntimeError),
-        (status = 409, description = "Conflict detected", body = RuntimeError),
-        (status = 500, description = "Internal server error", body = RuntimeError)
+        (status = 400, description = "Invalid request", body = RuntimeErrorResponse),
+        (status = 422, description = "Invariant violation", body = RuntimeErrorResponse),
+        (status = 413, description = "Budget exhausted", body = RuntimeErrorResponse),
+        (status = 409, description = "Conflict detected", body = RuntimeErrorResponse),
+        (status = 500, description = "Internal server error", body = RuntimeErrorResponse)
     )
 )]
 #[axum::debug_handler]
@@ -414,8 +437,8 @@ pub struct ValidateRulesResponse {
     request_body = ValidateRulesRequest,
     responses(
         (status = 200, description = "Validation completed", body = ValidateRulesResponse),
-        (status = 400, description = "Invalid request", body = RuntimeError),
-        (status = 500, description = "Internal server error", body = RuntimeError)
+        (status = 400, description = "Invalid request", body = RuntimeErrorResponse),
+        (status = 500, description = "Internal server error", body = RuntimeErrorResponse)
     )
 )]
 #[axum::debug_handler]
@@ -445,22 +468,9 @@ pub async fn validate_rules(
             min_confidence: 0.7,
         };
 
-        // Create provider if LLM validation is requested
-        // NOTE: GherkinValidator uses the deprecated LlmProvider trait.
-        // This will be updated when converge_domain migrates to ChatProvider.
-        #[allow(deprecated)]
-        let provider: Arc<dyn converge_core::llm::LlmProvider> = if use_llm {
-            match AnthropicProvider::from_env("claude-3-5-haiku-20241022") {
-                Ok(p) => Arc::new(p),
-                Err(e) => {
-                    warn!("Failed to create LLM provider, falling back to convention-only: {e}");
-                    Arc::new(converge_core::llm::MockProvider::new(vec![]))
-                }
-            }
-        } else {
-            // Use mock provider for convention-only validation
-            Arc::new(converge_core::llm::MockProvider::new(vec![]))
-        };
+        // Create a stub LLM provider for GherkinValidator.
+        // Real LLM validation requires domain-specific setup in organism-application.
+        let provider: Arc<dyn converge_core::llm::LlmProvider> = Arc::new(StubLlmProvider);
 
         let validator = GherkinValidator::new(provider, config);
         validator.validate(&content, &file_name)
@@ -566,8 +576,8 @@ pub struct GetJobResponse {
     request_body = CreateJobRequest,
     responses(
         (status = 201, description = "Job created successfully", body = CreateJobResponse),
-        (status = 503, description = "Database not available", body = RuntimeError),
-        (status = 500, description = "Internal server error", body = RuntimeError)
+        (status = 503, description = "Database not available", body = RuntimeErrorResponse),
+        (status = 500, description = "Internal server error", body = RuntimeErrorResponse)
     )
 )]
 #[axum::debug_handler]
@@ -630,9 +640,9 @@ pub async fn create_job(
     ),
     responses(
         (status = 200, description = "Job found", body = GetJobResponse),
-        (status = 404, description = "Job not found", body = RuntimeError),
-        (status = 503, description = "Database not available", body = RuntimeError),
-        (status = 500, description = "Internal server error", body = RuntimeError)
+        (status = 404, description = "Job not found", body = RuntimeErrorResponse),
+        (status = 503, description = "Database not available", body = RuntimeErrorResponse),
+        (status = 500, description = "Internal server error", body = RuntimeErrorResponse)
     )
 )]
 #[axum::debug_handler]
@@ -709,10 +719,10 @@ pub struct RunJobResponse {
     ),
     responses(
         (status = 200, description = "Job completed", body = RunJobResponse),
-        (status = 404, description = "Job not found", body = RuntimeError),
-        (status = 409, description = "Job not in pending state", body = RuntimeError),
-        (status = 503, description = "Database not available", body = RuntimeError),
-        (status = 500, description = "Internal server error", body = RuntimeError)
+        (status = 404, description = "Job not found", body = RuntimeErrorResponse),
+        (status = 409, description = "Job not in pending state", body = RuntimeErrorResponse),
+        (status = 503, description = "Database not available", body = RuntimeErrorResponse),
+        (status = 500, description = "Internal server error", body = RuntimeErrorResponse)
     )
 )]
 #[axum::debug_handler]
@@ -868,10 +878,10 @@ pub struct CancelJobResponse {
     ),
     responses(
         (status = 200, description = "Job cancelled", body = CancelJobResponse),
-        (status = 404, description = "Job not found", body = RuntimeError),
-        (status = 409, description = "Job already completed", body = RuntimeError),
-        (status = 503, description = "Database not available", body = RuntimeError),
-        (status = 500, description = "Internal server error", body = RuntimeError)
+        (status = 404, description = "Job not found", body = RuntimeErrorResponse),
+        (status = 409, description = "Job already completed", body = RuntimeErrorResponse),
+        (status = 503, description = "Database not available", body = RuntimeErrorResponse),
+        (status = 500, description = "Internal server error", body = RuntimeErrorResponse)
     )
 )]
 #[axum::debug_handler]
@@ -947,9 +957,9 @@ pub async fn cancel_job(
     ),
     responses(
         (status = 204, description = "Job deleted"),
-        (status = 404, description = "Job not found", body = RuntimeError),
-        (status = 503, description = "Database not available", body = RuntimeError),
-        (status = 500, description = "Internal server error", body = RuntimeError)
+        (status = 404, description = "Job not found", body = RuntimeErrorResponse),
+        (status = 503, description = "Database not available", body = RuntimeErrorResponse),
+        (status = 500, description = "Internal server error", body = RuntimeErrorResponse)
     )
 )]
 #[axum::debug_handler]
@@ -1010,8 +1020,8 @@ pub async fn delete_job(
     ),
     responses(
         (status = 200, description = "Jobs list", body = Vec<GetJobResponse>),
-        (status = 503, description = "Database not available", body = RuntimeError),
-        (status = 500, description = "Internal server error", body = RuntimeError)
+        (status = 503, description = "Database not available", body = RuntimeErrorResponse),
+        (status = 500, description = "Internal server error", body = RuntimeErrorResponse)
     )
 )]
 #[axum::debug_handler]
@@ -1098,7 +1108,7 @@ pub async fn list_templates(State(state): State<AppState>) -> Json<Vec<PackSumma
     ),
     responses(
         (status = 200, description = "Pack found", body = PackConfig),
-        (status = 404, description = "Pack not found", body = RuntimeError)
+        (status = 404, description = "Pack not found", body = RuntimeErrorResponse)
     )
 )]
 #[axum::debug_handler]
@@ -1126,11 +1136,11 @@ pub async fn get_template(
     request_body = PackJobRequest,
     responses(
         (status = 200, description = "Job completed successfully", body = JobResponse),
-        (status = 404, description = "Pack not found", body = RuntimeError),
-        (status = 400, description = "Invalid request", body = RuntimeError),
-        (status = 422, description = "Invariant violation", body = RuntimeError),
-        (status = 413, description = "Budget exhausted", body = RuntimeError),
-        (status = 500, description = "Internal server error", body = RuntimeError)
+        (status = 404, description = "Pack not found", body = RuntimeErrorResponse),
+        (status = 400, description = "Invalid request", body = RuntimeErrorResponse),
+        (status = 422, description = "Invariant violation", body = RuntimeErrorResponse),
+        (status = 413, description = "Budget exhausted", body = RuntimeErrorResponse),
+        (status = 500, description = "Internal server error", body = RuntimeErrorResponse)
     )
 )]
 #[axum::debug_handler]

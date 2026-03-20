@@ -786,7 +786,7 @@ pub async fn execute_streaming_job(
 /// Execute a grounded ask request with SSE streaming.
 pub async fn execute_ask_stream(
     axum::Json(request): axum::Json<AskStreamingRequest>,
-) -> Sse<BoxStream<'static, Result<Event, Infallible>>> {
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     if request.question.trim().is_empty() {
         let stream = stream::once(async {
             Ok(Event::default()
@@ -799,7 +799,11 @@ pub async fn execute_ask_stream(
                 .unwrap())
         })
         .boxed();
-        return Sse::new(stream);
+        return Sse::new(stream).keep_alive(
+            KeepAlive::new()
+                .interval(Duration::from_secs(15))
+                .text("heartbeat"),
+        );
     }
 
     if request.sources.is_empty() {
@@ -814,7 +818,11 @@ pub async fn execute_ask_stream(
                 .unwrap())
         })
         .boxed();
-        return Sse::new(stream);
+        return Sse::new(stream).keep_alive(
+            KeepAlive::new()
+                .interval(Duration::from_secs(15))
+                .text("heartbeat"),
+        );
     }
 
     let mut seeds = Vec::with_capacity(1 + request.sources.len());

@@ -1,5 +1,4 @@
-// Copyright 2024-2025 Aprio One AB, Sweden
-// Author: Kenneth Pernyer, kenneth@aprio.one
+// Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 
 //! Eval Fixtures for Converge
@@ -7,80 +6,39 @@
 //! This module implements reproducible evaluation testing based on the
 //! cross-platform contract pattern from iOS/Android implementations.
 //!
-//! Eval fixtures define:
-//! - Input seeds for a convergence run
-//! - Expected outcomes (convergence, cycle count, required facts)
-//! - Pass/fail criteria with specific thresholds
-//!
-//! # Usage
-//!
-//! ```bash
-//! # Run all evals
-//! converge eval run
-//!
-//! # Run specific eval
-//! converge eval run growth_strategy_smb_001
-//!
-//! # List available evals
-//! converge eval list
-//! ```
+//! Domain-specific agent registration for evals should be provided by
+//! organism-application or via a plugin mechanism.
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 
-use converge_core::traits::DynChatBackend;
 use converge_core::{Context as ConvergeContext, ContextKey, Engine, Fact};
-use converge_provider::AnthropicBackend;
 use strum::IntoEnumIterator;
 
-use crate::agents::{MockInsightProvider, RiskAssessmentAgent, StrategicInsightAgent};
 use crate::packs::SeedFact;
-use converge_domain::growth_strategy::{
-    BrandSafetyInvariant, CompetitorAgent, EvaluationAgent, MarketSignalAgent,
-    RequireEvaluationRationale, RequireMultipleStrategies, RequireStrategyEvaluations,
-    StrategyAgent,
-};
 
 /// Expected outcomes for an eval
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvalExpectation {
-    /// Must converge (reach fixed point)
     #[serde(default)]
     pub converged: Option<bool>,
-
-    /// Maximum allowed cycles
     #[serde(default)]
     pub max_cycles: Option<u32>,
-
-    /// Minimum number of facts produced
     #[serde(default)]
     pub min_facts: Option<usize>,
-
-    /// Facts that must be present (by ID prefix)
     #[serde(default)]
     pub must_contain_facts: Vec<String>,
-
-    /// Facts that must NOT be present (by ID prefix)
     #[serde(default)]
     pub must_not_contain_facts: Vec<String>,
-
-    /// Minimum number of strategies generated
     #[serde(default)]
     pub min_strategies: Option<usize>,
-
-    /// Minimum number of evaluations generated
     #[serde(default)]
     pub min_evaluations: Option<usize>,
-
-    /// Maximum latency in milliseconds
     #[serde(default)]
     pub max_latency_ms: Option<u64>,
-
-    /// Context keys that must have facts
     #[serde(default)]
     pub required_context_keys: Vec<String>,
 }
@@ -88,22 +46,11 @@ pub struct EvalExpectation {
 /// An eval fixture defining a test scenario
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvalFixture {
-    /// Unique identifier for this eval
     pub eval_id: String,
-
-    /// Human-readable description
     pub description: String,
-
-    /// Pack to use for this eval
     pub pack: String,
-
-    /// Input seeds
     pub seeds: Vec<SeedFact>,
-
-    /// Expected outcomes
     pub expected: EvalExpectation,
-
-    /// Whether to use mock LLM (faster, deterministic)
     #[serde(default)]
     pub use_mock_llm: bool,
 }
@@ -111,31 +58,14 @@ pub struct EvalFixture {
 /// Result of running an eval
 #[derive(Debug, Clone)]
 pub struct EvalResult {
-    /// The eval that was run
     pub eval_id: String,
-
-    /// Unique run ID for tracing
     pub run_id: Uuid,
-
-    /// Whether the eval passed all expectations
     pub passed: bool,
-
-    /// Individual check results
     pub checks: Vec<EvalCheck>,
-
-    /// Actual cycle count
     pub cycles: u32,
-
-    /// Actual fact count
     pub fact_count: usize,
-
-    /// Whether convergence was reached
     pub converged: bool,
-
-    /// Total run duration
     pub duration: Duration,
-
-    /// Error message if run failed
     pub error: Option<String>,
 }
 
@@ -149,7 +79,6 @@ pub struct EvalCheck {
 }
 
 impl EvalResult {
-    /// Create a failed result due to error
     pub fn error(eval_id: &str, run_id: Uuid, error: String, duration: Duration) -> Self {
         Self {
             eval_id: eval_id.to_string(),
@@ -198,7 +127,6 @@ pub fn load_fixtures_from_dir(dir: &Path) -> Result<Vec<EvalFixture>> {
         }
     }
 
-    // Sort by eval_id for consistent ordering
     fixtures.sort_by(|a, b| a.eval_id.cmp(&b.eval_id));
 
     Ok(fixtures)
@@ -216,7 +144,6 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
         "Starting eval run"
     );
 
-    // Build context from seeds
     let mut context = ConvergeContext::new();
     for seed in &fixture.seeds {
         let fact = Fact::new(ContextKey::Seeds, &seed.id, &seed.content);
@@ -230,18 +157,10 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
         }
     }
 
-    // Create engine and register agents
+    // Create engine - domain-specific agent registration should be provided
+    // by organism-application or via a plugin mechanism
     let mut engine = Engine::new();
-    if let Err(e) = register_pack_agents(&mut engine, &fixture.pack, fixture.use_mock_llm) {
-        return EvalResult::error(
-            &fixture.eval_id,
-            run_id,
-            format!("Failed to register agents: {e}"),
-            start.elapsed(),
-        );
-    }
 
-    // Run convergence
     let result = match engine.run(context) {
         Ok(r) => r,
         Err(e) => {
@@ -256,7 +175,6 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
 
     let duration = start.elapsed();
 
-    // Collect facts
     let all_facts: Vec<_> = ContextKey::iter()
         .flat_map(|key| result.context.get(key).to_vec())
         .collect();
@@ -265,11 +183,9 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
     let strategy_count = result.context.get(ContextKey::Strategies).len();
     let evaluation_count = result.context.get(ContextKey::Evaluations).len();
 
-    // Run checks
     let mut checks = Vec::new();
     let expected = &fixture.expected;
 
-    // Check: converged
     if let Some(expected_converged) = expected.converged {
         checks.push(EvalCheck {
             name: "converged".to_string(),
@@ -279,7 +195,6 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
         });
     }
 
-    // Check: max_cycles
     if let Some(max_cycles) = expected.max_cycles {
         checks.push(EvalCheck {
             name: "max_cycles".to_string(),
@@ -289,7 +204,6 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
         });
     }
 
-    // Check: min_facts
     if let Some(min_facts) = expected.min_facts {
         checks.push(EvalCheck {
             name: "min_facts".to_string(),
@@ -299,7 +213,6 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
         });
     }
 
-    // Check: min_strategies
     if let Some(min_strategies) = expected.min_strategies {
         checks.push(EvalCheck {
             name: "min_strategies".to_string(),
@@ -309,7 +222,6 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
         });
     }
 
-    // Check: min_evaluations
     if let Some(min_evaluations) = expected.min_evaluations {
         checks.push(EvalCheck {
             name: "min_evaluations".to_string(),
@@ -319,7 +231,6 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
         });
     }
 
-    // Check: max_latency_ms
     if let Some(max_latency_ms) = expected.max_latency_ms {
         let actual_ms = u64::try_from(duration.as_millis()).unwrap_or(u64::MAX);
         checks.push(EvalCheck {
@@ -330,7 +241,6 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
         });
     }
 
-    // Check: must_contain_facts
     for fact_prefix in &expected.must_contain_facts {
         let found = all_facts.iter().any(|f| f.id.starts_with(fact_prefix));
         checks.push(EvalCheck {
@@ -345,7 +255,6 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
         });
     }
 
-    // Check: must_not_contain_facts
     for fact_prefix in &expected.must_not_contain_facts {
         let found = all_facts.iter().any(|f| f.id.starts_with(fact_prefix));
         checks.push(EvalCheck {
@@ -360,7 +269,6 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
         });
     }
 
-    // Check: required_context_keys
     for key_name in &expected.required_context_keys {
         let key = match key_name.as_str() {
             "Seeds" => Some(ContextKey::Seeds),
@@ -388,7 +296,6 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
         }
     }
 
-    // Determine overall pass/fail
     let passed = checks.iter().all(|c| c.passed);
 
     tracing::info!(
@@ -417,53 +324,6 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
 /// Run multiple eval fixtures
 pub fn run_evals(fixtures: &[EvalFixture]) -> Vec<EvalResult> {
     fixtures.iter().map(run_eval).collect()
-}
-
-/// Creates a chat backend (real or mock based on flag).
-///
-/// OpenAI support pending `OpenAiBackend` in converge-provider.
-fn create_chat_backend(use_mock: bool) -> Arc<dyn DynChatBackend> {
-    if use_mock {
-        return Arc::new(MockInsightProvider::default_insights()) as Arc<dyn DynChatBackend>;
-    }
-
-    // Try Anthropic
-    if let Ok(backend) = AnthropicBackend::from_env() {
-        return Arc::new(backend.with_model("claude-sonnet-4-20250514")) as Arc<dyn DynChatBackend>;
-    }
-
-    // Fall back to mock provider
-    Arc::new(MockInsightProvider::default_insights()) as Arc<dyn DynChatBackend>
-}
-
-/// Register agents for a pack
-fn register_pack_agents(engine: &mut Engine, pack_name: &str, use_mock_llm: bool) -> Result<()> {
-    match pack_name {
-        "growth-strategy" => {
-            // Register deterministic agents
-            engine.register(MarketSignalAgent);
-            engine.register(CompetitorAgent);
-            engine.register(StrategyAgent);
-            engine.register(EvaluationAgent);
-
-            // Create chat backend
-            let llm_provider = create_chat_backend(use_mock_llm);
-
-            // Register LLM-powered agents
-            engine.register(StrategicInsightAgent::new(llm_provider.clone()));
-            engine.register(RiskAssessmentAgent::new(llm_provider));
-
-            // Register Invariants
-            engine.register_invariant(BrandSafetyInvariant::default());
-            engine.register_invariant(RequireMultipleStrategies);
-            engine.register_invariant(RequireStrategyEvaluations);
-            engine.register_invariant(RequireEvaluationRationale);
-        }
-        _ => {
-            return Err(anyhow::anyhow!("Unknown pack: {pack_name}"));
-        }
-    }
-    Ok(())
 }
 
 /// Print eval results in a formatted way
@@ -498,7 +358,6 @@ pub fn print_results(results: &[EvalResult]) {
             println!("      Error: {error}");
         }
 
-        // Show failed checks
         for check in &result.checks {
             if !check.passed {
                 println!(

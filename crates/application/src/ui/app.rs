@@ -1,3 +1,6 @@
+// Copyright 2024-2026 Reflective Labs
+// SPDX-License-Identifier: MIT
+
 //! Application State and Logic
 //!
 //! This module defines the core application state and business logic for the
@@ -26,11 +29,6 @@ use strum::IntoEnumIterator;
 
 use crate::agents::{MockInsightProvider, RiskAssessmentAgent, StrategicInsightAgent};
 use crate::packs;
-use converge_domain::growth_strategy::{
-    BrandSafetyInvariant, CompetitorAgent, EvaluationAgent, MarketSignalAgent,
-    RequireEvaluationRationale, RequireMultipleStrategies, RequireStrategyEvaluations,
-    StrategyAgent,
-};
 
 pub type AppResult<T> = Result<T>;
 
@@ -46,7 +44,6 @@ pub enum View {
 }
 
 impl View {
-    /// Get all tab-navigable views (flat navigation)
     pub fn all() -> Vec<View> {
         vec![
             View::Jobs,
@@ -69,7 +66,6 @@ impl View {
     }
 }
 
-/// Breadcrumb segment for hierarchical navigation
 #[derive(Debug, Clone)]
 pub struct BreadcrumbSegment {
     pub label: String,
@@ -77,7 +73,6 @@ pub struct BreadcrumbSegment {
     pub data_id: Option<String>,
 }
 
-/// Job status
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum JobStatus {
     Pending,
@@ -99,7 +94,6 @@ impl JobStatus {
     }
 }
 
-/// Job information
 #[derive(Debug, Clone)]
 pub struct JobInfo {
     pub id: String,
@@ -110,7 +104,6 @@ pub struct JobInfo {
     pub created_at: String,
 }
 
-/// Pack information
 #[derive(Debug, Clone)]
 pub struct PackInfo {
     pub name: String,
@@ -120,7 +113,6 @@ pub struct PackInfo {
     pub invariants: Vec<String>,
 }
 
-/// Agent information
 #[derive(Debug, Clone)]
 pub struct AgentInfo {
     pub name: String,
@@ -129,7 +121,6 @@ pub struct AgentInfo {
     pub facts_produced: usize,
 }
 
-/// Fact information
 #[derive(Debug, Clone)]
 pub struct FactInfo {
     pub key: String,
@@ -138,7 +129,6 @@ pub struct FactInfo {
     pub confidence: f64,
 }
 
-/// Job detail with full context
 #[derive(Debug, Clone)]
 pub struct JobDetail {
     pub info: JobInfo,
@@ -147,7 +137,6 @@ pub struct JobDetail {
     pub proposals: Vec<ProposalInfo>,
 }
 
-/// Proposal awaiting review
 #[derive(Debug, Clone)]
 pub struct ProposalInfo {
     pub id: String,
@@ -157,7 +146,6 @@ pub struct ProposalInfo {
     pub confidence: f64,
 }
 
-/// Submit job form
 #[derive(Debug, Clone, Default)]
 pub struct SubmitForm {
     pub pack: String,
@@ -187,28 +175,22 @@ pub struct App {
     pub current_view: View,
     pub breadcrumb: Vec<BreadcrumbSegment>,
 
-    // Jobs view
     pub jobs: Vec<JobInfo>,
     pub job_state: TableState,
     pub job_detail: Option<JobDetail>,
     pub job_details_cache: std::collections::HashMap<String, JobDetail>,
 
-    // Packs view
     pub packs: Vec<PackInfo>,
     pub pack_state: ListState,
 
-    // Submit view
     pub submit_form: SubmitForm,
 
-    // Context view
     pub context_facts: Vec<FactInfo>,
     pub fact_state: ListState,
 
-    // Agents view
     pub agents: Vec<AgentInfo>,
     pub agent_state: TableState,
 
-    // Status
     pub status_message: Option<String>,
     pub loading: bool,
 }
@@ -250,9 +232,7 @@ impl App {
         app
     }
 
-    /// Load real pack data from the packs module
     fn load_demo_data(&mut self) {
-        // Load real packs from the packs module
         let available = packs::available_packs();
         self.packs = available
             .iter()
@@ -262,38 +242,13 @@ impl App {
                     name: info.name,
                     version: info.version,
                     description: info.description,
-                    agents: get_pack_agents(name),
+                    agents: Vec::new(),
                     invariants: info.invariants,
                 }
             })
             .collect();
 
-        // Initialize agents list for growth-strategy (default pack)
         self.agents = vec![
-            AgentInfo {
-                name: "MarketSignalAgent".to_string(),
-                status: "Ready".to_string(),
-                last_run: None,
-                facts_produced: 0,
-            },
-            AgentInfo {
-                name: "CompetitorAgent".to_string(),
-                status: "Ready".to_string(),
-                last_run: None,
-                facts_produced: 0,
-            },
-            AgentInfo {
-                name: "StrategyAgent".to_string(),
-                status: "Ready".to_string(),
-                last_run: None,
-                facts_produced: 0,
-            },
-            AgentInfo {
-                name: "EvaluationAgent".to_string(),
-                status: "Ready".to_string(),
-                last_run: None,
-                facts_produced: 0,
-            },
             AgentInfo {
                 name: "StrategicInsightAgent".to_string(),
                 status: "Ready".to_string(),
@@ -308,14 +263,10 @@ impl App {
             },
         ];
 
-        // Start with empty jobs (no demo jobs)
         self.jobs = Vec::new();
-
-        // Empty context facts until a job is run
         self.context_facts = Vec::new();
     }
 
-    /// Update breadcrumb based on current view
     pub fn update_breadcrumb(&mut self) {
         self.breadcrumb.clear();
 
@@ -372,7 +323,6 @@ impl App {
         }
     }
 
-    /// Navigate to next tab view
     pub fn next_view(&mut self) {
         let views = View::all();
         let current_idx = views
@@ -384,7 +334,6 @@ impl App {
         self.update_breadcrumb();
     }
 
-    /// Navigate to previous tab view
     pub fn prev_view(&mut self) {
         let views = View::all();
         let current_idx = views
@@ -400,7 +349,6 @@ impl App {
         self.update_breadcrumb();
     }
 
-    /// Go to specific tab view by index
     pub fn goto_view(&mut self, index: usize) {
         let views = View::all();
         if index < views.len() {
@@ -409,7 +357,6 @@ impl App {
         }
     }
 
-    /// Navigate back via breadcrumb
     pub fn navigate_back(&mut self) {
         if self.breadcrumb.len() > 1 {
             self.breadcrumb.pop();
@@ -419,7 +366,6 @@ impl App {
         }
     }
 
-    /// Select next item in current list
     pub fn select_next(&mut self) {
         match self.current_view {
             View::Jobs => {
@@ -457,7 +403,6 @@ impl App {
         }
     }
 
-    /// Select previous item in current list
     pub fn select_prev(&mut self) {
         match self.current_view {
             View::Jobs => {
@@ -503,7 +448,6 @@ impl App {
         }
     }
 
-    /// Handle character input
     pub fn handle_char(&mut self, c: char) {
         if self.current_view == View::Submit {
             let field = match self.submit_form.selected_field {
@@ -517,7 +461,6 @@ impl App {
         }
     }
 
-    /// Handle backspace
     pub fn handle_backspace(&mut self) {
         if self.current_view == View::Submit {
             let field = match self.submit_form.selected_field {
@@ -530,17 +473,13 @@ impl App {
         }
     }
 
-    /// Enter job detail view
     pub fn enter_job_detail(&mut self) {
         if let Some(idx) = self.job_state.selected() {
             if let Some(job) = self.jobs.get(idx) {
-                // Try to get cached job detail
                 if let Some(detail) = self.job_details_cache.get(&job.id) {
                     self.job_detail = Some(detail.clone());
-                    // Update context facts to show this job's facts
                     self.context_facts = detail.facts.clone();
                 } else {
-                    // No cached detail - create a minimal one
                     self.job_detail = Some(JobDetail {
                         info: job.clone(),
                         facts: Vec::new(),
@@ -554,14 +493,12 @@ impl App {
         }
     }
 
-    /// Submit and run a new job using the real convergence engine
     pub fn submit_job(&mut self) {
         if self.submit_form.pack.is_empty() {
             self.submit_form.error = Some("Pack name is required".to_string());
             return;
         }
 
-        // Validate pack exists
         if !self.packs.iter().any(|p| p.name == self.submit_form.pack) {
             self.submit_form.error = Some(format!("Pack '{}' not found", self.submit_form.pack));
             return;
@@ -571,7 +508,6 @@ impl App {
         let pack_name = self.submit_form.pack.clone();
         let seeds_json = self.submit_form.seeds.clone();
 
-        // Parse seeds if provided
         let mut context = Context::new();
         if !seeds_json.is_empty() {
             match serde_json::from_str::<Vec<crate::packs::SeedFact>>(&seeds_json) {
@@ -591,19 +527,15 @@ impl App {
             }
         }
 
-        // Run convergence engine
         let mut engine = Engine::new();
 
-        // Register agents for the pack
-        if let Err(e) = register_pack_agents(&mut engine, &pack_name) {
-            self.submit_form.error = Some(format!("Failed to register agents: {e}"));
-            return;
-        }
+        // Register generic LLM agents
+        let llm_provider = create_chat_backend();
+        engine.register(StrategicInsightAgent::new(llm_provider.clone()));
+        engine.register(RiskAssessmentAgent::new(llm_provider));
 
-        // Run the convergence loop
         match engine.run(context) {
             Ok(result) => {
-                // Calculate total facts
                 let total_facts: usize = ContextKey::iter()
                     .map(|key| result.context.get(key).len())
                     .sum();
@@ -614,7 +546,6 @@ impl App {
                     JobStatus::Failed
                 };
 
-                // Convert facts to FactInfo
                 let facts: Vec<FactInfo> = ContextKey::iter()
                     .flat_map(|key| {
                         result
@@ -631,10 +562,8 @@ impl App {
                     })
                     .collect();
 
-                // Update context facts for the Context view
                 self.context_facts.clone_from(&facts);
 
-                // Create job info
                 let job = JobInfo {
                     id: job_id.clone(),
                     pack: pack_name.clone(),
@@ -644,7 +573,6 @@ impl App {
                     created_at: chrono::Local::now().format("%Y-%m-%d %H:%M").to_string(),
                 };
 
-                // Create job detail
                 let detail = JobDetail {
                     info: job.clone(),
                     facts: facts.clone(),
@@ -652,7 +580,6 @@ impl App {
                     proposals: Vec::new(),
                 };
 
-                // Store job and detail
                 self.job_details_cache
                     .insert(job_id.clone(), detail.clone());
                 self.job_detail = Some(detail);
@@ -672,7 +599,6 @@ impl App {
                 self.submit_form.success = Some(status_msg);
             }
             Err(e) => {
-                // Create failed job entry
                 self.jobs.insert(
                     0,
                     JobInfo {
@@ -688,7 +614,6 @@ impl App {
             }
         }
 
-        // Clear form
         self.submit_form.pack.clear();
         self.submit_form.seeds.clear();
         self.submit_form.max_cycles = "50".to_string();
@@ -713,20 +638,17 @@ pub async fn run_app(
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     match key.code {
-                        // Quit
                         KeyCode::Char('q') | KeyCode::Esc => {
                             if app.current_view == View::JobDetail {
                                 app.navigate_back();
                             } else if app.current_view == View::Submit
                                 && !app.submit_form.pack.is_empty()
                             {
-                                // Clear form on first Esc, quit on second
                                 app.submit_form = SubmitForm::new();
                             } else {
                                 app.running = false;
                             }
                         }
-                        // Tab navigation
                         KeyCode::Tab | KeyCode::Right => {
                             app.next_view();
                         }
@@ -740,7 +662,6 @@ pub async fn run_app(
                                 app.prev_view();
                             }
                         }
-                        // Direct tab access with Ctrl+Number
                         KeyCode::Char('1') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                             app.goto_view(0);
                         }
@@ -756,14 +677,12 @@ pub async fn run_app(
                         KeyCode::Char('5') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                             app.goto_view(4);
                         }
-                        // List navigation
                         KeyCode::Down | KeyCode::Char('j') => {
                             app.select_next();
                         }
                         KeyCode::Up | KeyCode::Char('k') => {
                             app.select_prev();
                         }
-                        // Enter actions
                         KeyCode::Enter => match app.current_view {
                             View::Jobs => {
                                 app.enter_job_detail();
@@ -777,13 +696,11 @@ pub async fn run_app(
                             }
                             _ => {}
                         },
-                        // Back navigation
                         KeyCode::Char('b') => {
                             if app.breadcrumb.len() > 1 {
                                 app.navigate_back();
                             }
                         }
-                        // Text input
                         KeyCode::Char(c) => {
                             app.handle_char(c);
                         }
@@ -802,66 +719,11 @@ pub async fn run_app(
     }
 }
 
-/// Get the list of agents for a pack
-fn get_pack_agents(pack_name: &str) -> Vec<String> {
-    match pack_name {
-        "growth-strategy" => vec![
-            "MarketSignalAgent".to_string(),
-            "CompetitorAgent".to_string(),
-            "StrategyAgent".to_string(),
-            "EvaluationAgent".to_string(),
-            "StrategicInsightAgent".to_string(),
-            "RiskAssessmentAgent".to_string(),
-        ],
-        "sdr-pipeline" => vec![
-            "LeadScoringAgent".to_string(),
-            "OutreachAgent".to_string(),
-            "FollowUpAgent".to_string(),
-        ],
-        _ => Vec::new(),
-    }
-}
-
 /// Creates a chat backend from environment variables.
-///
-/// Tries Anthropic first, falls back to mock provider.
-/// OpenAI support pending `OpenAiBackend` in converge-provider.
 fn create_chat_backend() -> Arc<dyn DynChatBackend> {
-    // Try Anthropic
     if let Ok(backend) = AnthropicBackend::from_env() {
         return Arc::new(backend.with_model("claude-sonnet-4-20250514")) as Arc<dyn DynChatBackend>;
     }
 
-    // Fall back to mock provider
     Arc::new(MockInsightProvider::default_insights()) as Arc<dyn DynChatBackend>
-}
-
-/// Register agents and invariants for a specific domain pack.
-fn register_pack_agents(engine: &mut Engine, pack_name: &str) -> Result<()> {
-    match pack_name {
-        "growth-strategy" => {
-            // Register deterministic agents
-            engine.register(MarketSignalAgent);
-            engine.register(CompetitorAgent);
-            engine.register(StrategyAgent);
-            engine.register(EvaluationAgent);
-
-            // Create chat backend (shared by all LLM agents)
-            let llm_provider = create_chat_backend();
-
-            // Register LLM-powered agents
-            engine.register(StrategicInsightAgent::new(llm_provider.clone()));
-            engine.register(RiskAssessmentAgent::new(llm_provider));
-
-            // Register Invariants
-            engine.register_invariant(BrandSafetyInvariant::default());
-            engine.register_invariant(RequireMultipleStrategies);
-            engine.register_invariant(RequireStrategyEvaluations);
-            engine.register_invariant(RequireEvaluationRationale);
-        }
-        _ => {
-            return Err(anyhow::anyhow!("Pack '{pack_name}' not implemented"));
-        }
-    }
-    Ok(())
 }
