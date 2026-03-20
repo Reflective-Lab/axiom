@@ -223,7 +223,7 @@ impl ScoreBasedRoutingSolver {
             // Select from tied candidates using deterministic tie-breaking
             let selected = tie_break.select_by(&tied, seed, |a, b| a.0.id.cmp(&b.0.id));
 
-            if let Some(&(rep, score, ref rationale)) = selected {
+            if let Some(&(rep, score, rationale)) = selected {
                 Some((rep, *score, rationale.clone()))
             } else {
                 // Fallback: take first (already sorted by ID)

@@ -21,7 +21,7 @@ path = "src/bin/cz/main.rs"
 
 [dependencies]
 converge-core.workspace = true
-converge-provider = { workspace = true, default-features = false, features = ["anthropic", "registry"] }
+converge-provider.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

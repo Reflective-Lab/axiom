@@ -1,0 +1,29 @@
+// Copyright (c) 2026 Aprio One AB
+// Author: Kenneth Pernyer, kenneth@pernyer.se
+// SPDX-License-Identifier: LicenseRef-Proprietary
+
+//! Build script for protobuf code generation.
+//!
+//! Compiles `proto/kernel.proto` when the `server` or `grpc-client` feature is enabled.
+
+fn main() {
+    #[cfg(feature = "server")]
+    {
+        tonic_build::configure()
+            .build_server(true)
+            .build_client(true)
+            .out_dir("src/server/generated")
+            .compile(&["proto/kernel.proto"], &["proto"])
+            .expect("Failed to compile kernel.proto");
+    }
+
+    #[cfg(all(feature = "grpc-client", not(feature = "server")))]
+    {
+        tonic_build::configure()
+            .build_server(false)
+            .build_client(true)
+            .out_dir("src/server/generated")
+            .compile(&["proto/kernel.proto"], &["proto"])
+            .expect("Failed to compile kernel.proto");
+    }
+}

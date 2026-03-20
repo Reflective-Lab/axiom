@@ -63,6 +63,7 @@ anyhow = "1"
 arrow-array = "57"
 arrow-schema = "57"
 async-nats = "0.40"
+async-stream = "0.3"
 async-trait = "0.1"
 axum = { version = "0.8", features = ["macros"] }
 base64 = "0.22"
@@ -144,7 +145,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 typed-builder = "0.20"
 urlencoding = "2.1"
 utoipa = "5"
-utoipa-swagger-ui = "9"
+utoipa-swagger-ui = { version = "9", features = ["axum"] }
 uuid = { version = "1.11", features = ["v4", "serde"] }
 varisat = "0.2"
 wasmtime = "30"
