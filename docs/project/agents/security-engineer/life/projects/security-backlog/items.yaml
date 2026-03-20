@@ -1,0 +1,27 @@
+- id: sec-backlog-wave1
+  fact: "Filed 6 security issues on 2026-03-11 from CRATE_ALIGNMENT.md review: REF-6 (WASM signing), REF-7 (secrets mgmt), REF-8 (LLM boundary), REF-9 (input validation), REF-10 (agent identity), REF-11 (security traits)"
+  source: heartbeat-2026-03-11
+  created: 2026-03-11
+  status: active
+  confidence: 1.0
+
+- id: sec-backlog-pilot
+  fact: "Filed 4 security issues on 2026-03-12 from PILOT_METRICS_FRAMEWORK.md review: REF-15 (data isolation), REF-16 (webhook auth), REF-17 (data retention), REF-18 (PII anonymization)"
+  source: heartbeat-2026-03-12
+  created: 2026-03-12
+  status: active
+  confidence: 1.0
+
+- id: sec-backlog-escalation
+  fact: "REF-8 (CRITICAL) and REF-11 (MEDIUM) still in todo status as of 2026-03-12. Added escalation comments to both. No engineering response yet."
+  source: heartbeat-2026-03-12
+  created: 2026-03-12
+  status: active
+  confidence: 1.0
+
+- id: sec-backlog-total
+  fact: "Total security backlog: 11 issues. 1 critical, 7 high, 3 medium. Plus 1 in_progress (security one-pager)."
+  source: heartbeat-2026-03-12
+  created: 2026-03-12
+  status: active
+  confidence: 1.0

@@ -1,0 +1,23 @@
+# Acknowledgment for customer-commitment.timeline-pressure warnings
+# Required: mitigation + counter-voice consultation
+
+gate_id: customer-commitment
+artifact_ref: deals/bigco-sow-2026-01.md
+timestamp: "2026-01-26T11:30:00Z"
+
+warnings_accepted:
+  - check_id: hemingway.exception_phrase_detect.v1
+    rationale: Timeline pressure is real but bounded - Q1 close required for budget cycle
+    mitigation: Integration scope bounded to API read endpoints only; write access deferred to Q2
+
+  - check_id: sell.deal_scope_integrity.v1
+    rationale: Custom integration requested but scoped to existing API surface
+    mitigation: Appendix A added specifying exact endpoint list; out-of-scope requests require change order
+
+counter_voice_consulted:
+  voice: christensen
+  conclusion: Job alignment risk acceptable if integration scope is bounded; recommend explicit job mapping for Q2 expansion
+
+owner:
+  name: Sales Lead
+  role: sales-lead

@@ -1,0 +1,116 @@
+[package]
+name = "converge-runtime"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license = "LicenseRef-Proprietary"
+publish = false
+description = "Converge Agent OS runtime - HTTP/gRPC server, consensus, crypto, identity"
+keywords = ["converge", "runtime", "grpc", "server", "agent"]
+categories = ["web-programming", "network-programming"]
+
+[[bin]]
+name = "converge-runtime"
+path = "src/main.rs"
+
+[dependencies]
+# Converge crates
+converge-core.workspace = true
+converge-provider.workspace = true
+converge-tool.workspace = true
+
+# Async runtime
+tokio.workspace = true
+tokio-stream.workspace = true
+futures.workspace = true
+
+# HTTP server
+axum.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+hyper.workspace = true
+
+# gRPC / Protobuf
+tonic = { workspace = true, optional = true }
+prost = { workspace = true, optional = true }
+prost-types = { workspace = true, optional = true }
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+strum.workspace = true
+
+# Error handling
+thiserror.workspace = true
+anyhow.workspace = true
+
+# Observability
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-opentelemetry.workspace = true
+opentelemetry.workspace = true
+opentelemetry-otlp.workspace = true
+opentelemetry_sdk.workspace = true
+metrics.workspace = true
+metrics-exporter-prometheus.workspace = true
+
+# Crypto
+chacha20poly1305.workspace = true
+ed25519-dalek.workspace = true
+sha2.workspace = true
+hmac.workspace = true
+rustls.workspace = true
+rustls-pemfile.workspace = true
+
+# Auth
+jsonwebtoken.workspace = true
+
+# Date/time
+chrono.workspace = true
+
+# HTTP client
+reqwest.workspace = true
+
+# NATS messaging
+async-nats.workspace = true
+
+# Async traits
+async-trait.workspace = true
+
+# OpenAPI
+utoipa.workspace = true
+utoipa-swagger-ui.workspace = true
+
+# WASM runtime
+wasmtime = { workspace = true, optional = true }
+
+# Database
+firestore = { workspace = true, optional = true }
+
+# CLI / config
+clap.workspace = true
+config.workspace = true
+dotenv.workspace = true
+uuid.workspace = true
+hostname.workspace = true
+regex.workspace = true
+base64.workspace = true
+
+[build-dependencies]
+tonic-build = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile.workspace = true
+proptest.workspace = true
+tokio-test = "0.4"
+
+[features]
+default = ["grpc"]
+grpc = ["dep:tonic", "dep:prost", "dep:prost-types", "dep:tonic-build"]
+wasm = ["dep:wasmtime"]
+gcp = ["dep:firestore"]
+
+[lints]
+workspace = true

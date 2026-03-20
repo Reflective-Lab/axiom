@@ -1,0 +1,85 @@
+# customer-commitment gate execution: PASS scenario
+# Clean SOW with all primaries passing, no authority concessions
+
+fixture_id: customer-commitment.clean-sow
+gate_id: customer-commitment
+lens_pack_version: v3.1
+timestamp: "2026-01-26T10:00:00Z"
+
+artifact:
+  type: sow
+  ref: deals/acme-corp-sow-2026-01.md
+  summary: Standard mid-market SOW for persona governance SaaS
+
+lens_results:
+  # Ostrom checks (governance authority)
+  - check_id: ostrom.authority_concession_scan.v1
+    voice: ostrom
+    class: A
+    severity: PASS
+    summary: No authority bypass or governance override commitments detected
+    evidence_refs:
+      - acme-corp-sow-2026-01.md#scope-of-work
+      - acme-corp-sow-2026-01.md#service-levels
+
+  - check_id: ostrom.local_governance_fit.v1
+    voice: ostrom
+    class: B
+    severity: PASS
+    summary: Commitments align with standard enterprise deployment model
+    evidence_refs:
+      - acme-corp-sow-2026-01.md#deployment-section
+
+  # Hemingway checks (exception drift)
+  - check_id: hemingway.exception_phrase_detect.v1
+    voice: hemingway
+    class: A
+    severity: PASS
+    summary: No exception phrases detected - no "just for this customer" or "quick patch"
+    evidence_refs:
+      - acme-corp-sow-2026-01.md#customization-section
+
+  - check_id: hemingway.gradual_drift_risk.v1
+    voice: hemingway
+    class: B
+    severity: PASS
+    summary: No scope creep patterns - deliverables bounded to documented capabilities
+    evidence_refs:
+      - acme-corp-sow-2026-01.md#deliverables
+
+  # SELL checks (commercial integrity)
+  - check_id: sell.buyability_check.v1
+    voice: sell
+    class: B
+    severity: PASS
+    summary: Standard packaging, no friction-inducing custom terms
+    evidence_refs:
+      - acme-corp-sow-2026-01.md#pricing
+
+  - check_id: sell.deal_scope_integrity.v1
+    voice: sell
+    class: B
+    severity: PASS
+    summary: Scope matches product capabilities, no hidden expansions
+    evidence_refs:
+      - acme-corp-sow-2026-01.md#scope-of-work
+
+  # Thaler check (no system-level guarantees)
+  - check_id: thaler.system_level_guarantees_in_terms.v1
+    voice: thaler
+    class: A
+    severity: PASS
+    summary: No unbounded guarantees - SLA bounded to documented uptime (99.5%)
+    evidence_refs:
+      - acme-corp-sow-2026-01.md#service-levels
+
+  # Vogels counter-voice (operational advisory)
+  - check_id: vogels.operational_surface.v1
+    voice: vogels
+    class: B
+    severity: NOTE
+    summary: Operational surface acceptable for standard enterprise deployment
+    evidence_refs: []
+
+decision:
+  outcome: PASS

@@ -1,0 +1,67 @@
+[package]
+name = "converge-optimization"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license = "Apache-2.0"
+description = "Optimization algorithms for converge.zone - Rust reimplementation of OR-Tools subset"
+keywords = ["optimization", "constraint", "graph", "scheduling", "assignment"]
+categories = ["algorithms", "mathematics", "science"]
+exclude = ["target/*", "target/", "ortools/*", "ortools/", "build/*", "build/"]
+
+[dependencies]
+# Core
+thiserror.workspace = true
+tracing.workspace = true
+
+# Data structures
+petgraph.workspace = true
+indexmap.workspace = true
+smallvec.workspace = true
+bitvec.workspace = true
+
+# Numeric
+num-traits.workspace = true
+ordered-float.workspace = true
+
+# Parallelism
+rayon.workspace = true
+
+# Serialization (for problem/solution I/O)
+serde.workspace = true
+serde_json.workspace = true
+
+# Optional: FFI to C++ OR-Tools
+ortools-sys = { workspace = true, optional = true, features = ["link"] }
+
+# SAT solver for native CP
+varisat = { workspace = true, optional = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+proptest.workspace = true
+rand.workspace = true
+approx = "0.5"
+
+[features]
+default = []
+ffi = ["dep:ortools-sys"]
+sat = ["dep:varisat"]
+full = ["ffi", "sat"]
+
+[[bench]]
+name = "assignment"
+harness = false
+
+[[bench]]
+name = "graph"
+harness = false
+
+[[bench]]
+name = "cp_comparison"
+harness = false
+required-features = ["sat", "ffi"]
+
+[lints]
+workspace = true

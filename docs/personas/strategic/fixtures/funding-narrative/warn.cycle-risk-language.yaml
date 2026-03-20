@@ -1,0 +1,82 @@
+# funding-narrative gate execution: WARN scenario
+# Deck with "inevitable" framing and platform narrative requiring acknowledgment
+
+fixture_id: funding-narrative.cycle-risk-language
+gate_id: funding-narrative
+lens_pack_version: v3.1
+timestamp: "2026-01-26T12:00:00Z"
+
+artifact:
+  type: deck
+  ref: funding/board-deck-q1-2026.md
+  summary: Q1 board deck with aggressive growth narrative for expansion funding
+
+lens_results:
+  # Marks checks
+  - check_id: marks.claim_proof_map_required.v1
+    voice: marks
+    class: A
+    severity: PASS
+    summary: Capability claims mapped to proof - traction metrics verified
+    evidence_refs:
+      - board-deck-q1-2026.md#claim-mapping
+
+  - check_id: marks.cycle_risk_language.v1
+    voice: marks
+    class: B
+    severity: WARN
+    summary: '"Inevitable" framing without downside - AI governance will be mandatory lacks risk articulation'
+    evidence_refs:
+      - "board-deck-q1-2026.md:line:34"
+      - "board-deck-q1-2026.md:line:67"
+    remediation: Add "What if we're wrong" section - regulatory delay, competitive entry, adoption uncertainty
+
+  # Mokyr checks (institutional grounding)
+  - check_id: mokyr.institutional_foundation.v1
+    voice: mokyr
+    class: B
+    severity: PASS
+    summary: Market narrative grounded in institutional trends - cites EU AI Act, NIST framework, enterprise adoption patterns
+    evidence_refs:
+      - board-deck-q1-2026.md#institutional-context
+
+  # Altman check
+  - check_id: altman.ambition_alignment.v1
+    voice: altman
+    class: B
+    severity: PASS
+    summary: Vision appropriately scaled for current phase
+    evidence_refs:
+      - board-deck-q1-2026.md#vision
+
+  # Lessin check - WARN triggered
+  - check_id: lessin.moat_economics.v1
+    voice: lessin
+    class: B
+    severity: WARN
+    summary: 'Platform economics claimed without proof - winner take most asserted, not demonstrated'
+    evidence_refs:
+      - board-deck-q1-2026.md#economics-section
+    remediation: Document specific switching costs with customer evidence
+
+  # Nadella check
+  - check_id: nadella.platform_adoption.v1
+    voice: nadella
+    class: B
+    severity: PASS
+    summary: Enterprise adoption story present with pilot metrics
+    evidence_refs:
+      - board-deck-q1-2026.md#enterprise-traction
+
+  # Ostrom counter-voice
+  - check_id: ostrom.governance_autonomy.v1
+    voice: ostrom
+    class: B
+    severity: NOTE
+    summary: 'Growth narrative does not compromise governance - expansion preserves authority model'
+    evidence_refs: []
+
+decision:
+  outcome: WARN
+
+acknowledgment_ref: acks/cycle-risk-language.yaml

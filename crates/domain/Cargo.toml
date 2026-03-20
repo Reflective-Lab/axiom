@@ -1,0 +1,27 @@
+[package]
+name = "converge-domain"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license = "LicenseRef-Proprietary"
+publish = false
+description = "Domain-specific agents and examples for Converge"
+documentation = "https://docs.rs/converge-domain"
+keywords = ["agent", "domain", "converge", "multi-agent"]
+categories = ["algorithms", "simulation"]
+
+[dependencies]
+converge-core.workspace = true
+converge-provider = { workspace = true, features = ["patent", "linkedin"] }
+tracing.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tracing-test = "0.2"
+dotenv.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true

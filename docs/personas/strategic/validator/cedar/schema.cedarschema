@@ -1,0 +1,66 @@
+namespace ConvergePersonas {
+    // User entity represents personas from TEAM.md
+    // Maps to persona_id, with team membership and authority tier
+    entity User in [Team] {
+        persona_id: String,
+        authority_tier: String,  // "Blocking-by-Policy" | "Escalating" | "Advisory"
+    };
+
+    // Team entity represents Core vs Extended teams from TEAM.md
+    entity Team {
+        team_type: String,  // "Core" | "Extended"
+    };
+
+    // Gate entity represents gates from GATES.md
+    entity Gate {
+        gate_id: String,
+        risk_class: String,  // "low" | "medium" | "high"
+        elevated_approvers: Set<User>,  // Per-gate elevation from GATES.md elevated_blocking_evals
+    };
+
+    // Override entity represents gate override decisions
+    // Supports two-person rule enforcement for high-risk gates
+    entity Override {
+        gate: Gate,
+        approvers: Set<User>,
+        rationale: String,
+        created_by: User,
+    };
+
+    // EvaluateGate action - persona evaluates a gate with evidence
+    action EvaluateGate appliesTo {
+        principal: [User],
+        resource: [Gate],
+        context: {
+            eval_result: String,      // "PASS" | "WARN" | "STOP"
+            evidence_provided: Bool,
+        }
+    };
+
+    // ApproveGate action - persona approves promotion at a gate
+    action ApproveGate appliesTo {
+        principal: [User],
+        resource: [Gate],
+        context: {
+            prior_evaluations: Long,  // count of completed evals
+        }
+    };
+
+    // CreateOverride action - create override with rationale
+    action CreateOverride appliesTo {
+        principal: [User],
+        resource: [Override],
+        context: {
+            expiration_hours: Long,
+        }
+    };
+
+    // ApproveOverride action - approve override (two-person rule check)
+    action ApproveOverride appliesTo {
+        principal: [User],
+        resource: [Override],
+        context: {
+            is_self_approval: Bool,  // for two-person rule check
+        }
+    };
+}

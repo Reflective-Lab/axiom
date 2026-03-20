@@ -1,0 +1,87 @@
+# customer-commitment gate execution: WARN scenario
+# Aggressive Q1 close with "quick patch" language requiring acknowledgment
+
+fixture_id: customer-commitment.timeline-pressure
+gate_id: customer-commitment
+lens_pack_version: v3.1
+timestamp: "2026-01-26T11:00:00Z"
+
+artifact:
+  type: sow
+  ref: deals/bigco-sow-2026-01.md
+  summary: BigCo SOW with aggressive timeline and custom integration
+
+lens_results:
+  # Ostrom checks
+  - check_id: ostrom.authority_concession_scan.v1
+    voice: ostrom
+    class: A
+    severity: PASS
+    summary: No authority bypass - integration uses standard API surface
+    evidence_refs:
+      - bigco-sow-2026-01.md#integration-scope
+
+  - check_id: ostrom.local_governance_fit.v1
+    voice: ostrom
+    class: B
+    severity: PASS
+    summary: Deployment model fits BigCo's existing SSO and audit infrastructure
+    evidence_refs:
+      - bigco-sow-2026-01.md#deployment-requirements
+
+  # Hemingway checks - WARN triggered
+  - check_id: hemingway.exception_phrase_detect.v1
+    voice: hemingway
+    class: A
+    severity: WARN
+    summary: "Exception phrase detected: 'quick patch' in integration timeline"
+    evidence_refs:
+      - "bigco-sow-2026-01.md:line:34"
+    remediation: Replace 'quick patch' with explicit scope-bounded integration plan
+
+  - check_id: hemingway.gradual_drift_risk.v1
+    voice: hemingway
+    class: B
+    severity: PASS
+    summary: No pattern of accumulated concessions in deal history
+    evidence_refs: []
+
+  # SELL checks
+  - check_id: sell.buyability_check.v1
+    voice: sell
+    class: B
+    severity: PASS
+    summary: Standard enterprise pricing, no friction-inducing terms
+    evidence_refs:
+      - bigco-sow-2026-01.md#pricing
+
+  - check_id: sell.deal_scope_integrity.v1
+    voice: sell
+    class: B
+    severity: WARN
+    summary: Custom integration scope slightly broader than standard offering
+    evidence_refs:
+      - bigco-sow-2026-01.md#custom-integration
+    remediation: Document integration boundaries explicitly in scope appendix
+
+  # Thaler check
+  - check_id: thaler.system_level_guarantees_in_terms.v1
+    voice: thaler
+    class: A
+    severity: PASS
+    summary: No system-level guarantees - SLA bounded appropriately
+    evidence_refs:
+      - bigco-sow-2026-01.md#service-levels
+
+  # Vogels counter-voice
+  - check_id: vogels.operational_surface.v1
+    voice: vogels
+    class: B
+    severity: NOTE
+    summary: Custom integration adds ops surface - recommend read-only scope initially
+    evidence_refs: []
+
+decision:
+  outcome: WARN
+
+acknowledgment_ref: acks/timeline-pressure.yaml

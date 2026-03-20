@@ -1,0 +1,35 @@
+- id: converge-core-nan-bypass
+  type: bug_fix
+  date: "2026-03-12"
+  summary: >
+    ProposedFact TryFrom validation had a NaN bypass bug. confidence: NaN
+    passed the range check because NaN comparisons return false in IEEE 754.
+    Fixed with is_finite() guard in commit f1f83d8. Discovered by proptest
+    property-based testing.
+  status: active
+  tags: [security, validation, proptest, ref-8]
+
+- id: converge-core-ref8-tests
+  type: milestone
+  date: "2026-03-12"
+  summary: >
+    Added 8 tests for REF-8 (ProposedFact validation boundary):
+    4 engine integration tests (malicious proposal, invalid confidence,
+    empty content, valid promotion) and 4 proptest property-based tests
+    (invalid confidence, empty content, valid proposals, determinism).
+    Commit f1f83d8 on ref-8/proposed-fact-validation branch.
+  status: active
+  tags: [testing, security, ref-8]
+
+- id: converge-core-invariant-timing
+  type: design_decision
+  date: "2026-03-12"
+  summary: >
+    Structural invariants run post-merge, not per-proposal. This is sufficient
+    because no convergence result is returned if invariants fail. Between
+    promotion and check, other proposals from same cycle merge against
+    potentially tainted context, but those agents already executed against
+    the previous cycle's clean context. Future: consider per-proposal
+    invariant check for defense-in-depth.
+  status: active
+  tags: [architecture, security, invariants]

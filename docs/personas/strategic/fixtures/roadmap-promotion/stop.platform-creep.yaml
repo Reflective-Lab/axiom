@@ -1,0 +1,107 @@
+# roadmap-promotion gate execution: STOP scenario
+# Platform creep blocked - "Strategic governance OS" has no job statement
+#
+# CRITICAL: No override_ref present
+# Missing job statement is a deterministic failure per Christensen (Class A).
+# The Christensen vs SELL tension:
+#   - SELL: "Three prospects want this, $2M pipeline at risk"
+#   - Christensen: "What job does it do? 'Governance OS' is not a job."
+#
+# Resolution path: Rewrite roadmap item to specify the job.
+# Example transformation:
+#   BAD: "Strategic governance OS for enterprise AI decision infrastructure"
+#   GOOD: "Compliance officers proving governance coverage to auditors need
+#          a dashboard showing which agent actions have audit trails."
+#
+# The feature may be valid once the job is articulated.
+# STOP forces that articulation before commitment.
+
+fixture_id: roadmap-promotion.platform-creep
+gate_id: roadmap-promotion
+lens_pack_version: v3.1
+timestamp: "2026-01-26T16:00:00Z"
+
+artifact:
+  type: roadmap
+  ref: roadmap/strategic-governance-os.md
+  summary: Strategic governance OS for enterprise AI decision infrastructure
+
+lens_results:
+  # Christensen checks - STOP condition triggered
+  - check_id: christensen.job_statement_required.v1
+    voice: christensen
+    class: A
+    severity: STOP
+    summary: "No job statement - 'strategic governance OS' is category/platform language, not job language"
+    evidence_refs:
+      - strategic-governance-os.md#overview
+      - strategic-governance-os.md#value-proposition
+    remediation: |
+      Answer the question: "When [specific persona] is trying to [specific outcome],
+      they currently struggle with [specific pain]. This feature helps by [specific mechanism]."
+      "Strategic governance OS" is not a job. What specific decision does this help someone make?
+      Example: "Compliance officers need to prove governance coverage to auditors" is a job.
+
+  - check_id: christensen.non_consumption_fit.v1
+    voice: christensen
+    class: B
+    severity: WARN
+    summary: Governance platforms exist - ServiceNow GRC, Archer, Riskonnect all address enterprise governance
+    evidence_refs:
+      - strategic-governance-os.md#competitive-landscape
+    remediation: Identify non-consumption gap that governance OS category leaders cannot address
+
+  # Aghion check (compounding) - WARN
+  - check_id: aghion.compounding_path.v1
+    voice: aghion
+    class: B
+    severity: WARN
+    summary: Reuse statement vague - "insights across customers" is not a compounding mechanism
+    evidence_refs:
+      - strategic-governance-os.md#compounding-path
+    remediation: Define specific artifact that accrues value with each deployment (schema, policy template, etc.)
+
+  # Mokyr check (institutionalization) - WARN
+  - check_id: mokyr.institutionalization.v1
+    voice: mokyr
+    class: B
+    severity: WARN
+    summary: No artifact design - dashboards are consumption, not knowledge capture
+    evidence_refs:
+      - strategic-governance-os.md#deliverables
+    remediation: Define what knowledge is captured and made reusable, not just what is displayed
+
+  # Howitt check (diffusion loop) - WARN
+  - check_id: howitt.diffusion_loop.v1
+    voice: howitt
+    class: B
+    severity: WARN
+    summary: No feedback loop - analytics for viewing not improving; no reinvestment mechanism
+    evidence_refs:
+      - strategic-governance-os.md#analytics-section
+    remediation: Define how usage data feeds back into product improvement or customer value
+
+  # Adner check (adoption chain) - PASS
+  - check_id: adner.adoption_chain.v1
+    voice: adner
+    class: B
+    severity: PASS
+    summary: Dependencies clear - builds on existing persona data model and policy engine
+    evidence_refs:
+      - strategic-governance-os.md#dependencies
+      - strategic-governance-os.md#architecture
+
+  # SELL counter-voice - critical pressure to note
+  - check_id: sell.time_to_revenue.v1
+    voice: sell
+    class: B
+    severity: NOTE
+    summary: |
+      $2M pipeline from three enterprise prospects requesting 'governance OS'.
+      SELL notes: Revenue opportunity is real, but 'OS' request should translate
+      to specific jobs. Ask prospects: "What decision are you trying to make?"
+      The pipeline justifies further discovery, not roadmap commitment.
+    evidence_refs: []
+
+decision:
+  outcome: STOP

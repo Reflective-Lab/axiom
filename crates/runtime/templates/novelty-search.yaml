@@ -1,0 +1,36 @@
+# Novelty Search Template
+# Short flow: query -> search -> evidence -> shortlist
+
+name: novelty-search
+description: Short novelty search flow for patent prior art.
+version: "1.0.0"
+spec: specs/novelty-search.feature
+
+budget:
+  max_cycles: 15
+  max_facts: 150
+
+agents:
+  - id: patent_query_builder
+    requirements: fast_extraction
+
+  - id: patent_operator_planner
+    requirements:
+      cost_class: low
+      requires_reasoning: true
+
+  - id: patent_search_executor
+    requirements:
+      cost_class: medium
+      max_latency_ms: 20000
+      requires_reasoning: false
+
+  - id: patent_evidence_collector
+    requirements:
+      cost_class: medium
+      requires_reasoning: true
+
+  - id: prior_art_shortlist
+    requirements:
+      cost_class: medium
+      requires_reasoning: true

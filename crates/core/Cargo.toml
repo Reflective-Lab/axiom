@@ -1,0 +1,36 @@
+[package]
+name = "converge-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Converge Agent OS - correctness-first, context-driven multi-agent runtime"
+documentation = "https://docs.rs/converge-core"
+keywords = ["agent", "runtime", "convergence", "context-driven"]
+categories = ["algorithms", "concurrency"]
+
+[dependencies]
+thiserror.workspace = true
+tracing.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+strum.workspace = true
+hex.workspace = true
+typed-builder.workspace = true
+
+[dev-dependencies]
+tracing-test = "0.2"
+proptest.workspace = true
+insta = { version = "1.42", features = ["json"] }
+static_assertions = "1.1"
+serde_test = "1.0"
+trybuild = "1.0"
+criterion = { version = "0.5", default-features = false, features = ["html_reports", "cargo_bench_support"] }
+
+[[bench]]
+name = "engine_bench"
+harness = false
+
+[lints]
+workspace = true

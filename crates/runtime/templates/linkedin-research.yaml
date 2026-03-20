@@ -1,0 +1,29 @@
+name: linkedin-research
+version: "1.0.0"
+description: "Governed LinkedIn research with evidence and approvals"
+spec: specs/linkedin-research.feature
+requires:
+  core: ">=0.6.0"
+  runtime_api: ">=0.1.0"
+budget:
+  max_cycles: 30
+  max_facts: 300
+agents:
+  - id: signal_ingest
+    requirements: fast_extraction
+  - id: evidence_validator
+    requirements: deterministic
+  - id: dossier_builder
+    requirements:
+      cost_class: medium
+      requires_reasoning: true
+  - id: path_verifier
+    requirements:
+      cost_class: medium
+      requires_reasoning: true
+  - id: approval_recorder
+    requirements: deterministic
+  - id: linkedin_target_discovery
+    requirements:
+      cost_class: medium
+      requires_reasoning: false

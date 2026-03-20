@@ -1,0 +1,20 @@
+- id: soc2-outline-drafted
+  fact: "SOC 2 Type I readiness outline drafted on 2026-03-12. Covers TSC gap analysis (CC, A, C, PI, P), priority controls, evidence collection plan, and timeline through Q4 2026."
+  source: heartbeat-2026-03-12
+  created: 2026-03-12
+  status: active
+  confidence: 1.0
+
+- id: soc2-issue-filed
+  fact: "SOC 2 readiness issue filed as REF-19 (high priority), assigned to Ava Petrov."
+  source: heartbeat-2026-03-12
+  created: 2026-03-12
+  status: active
+  confidence: 1.0
+
+- id: soc2-policy-gap
+  fact: "SOC 2 requires ~12 policy documents we don't have yet: security policy, access control, incident response, change management, risk assessment, data classification, vendor management, BCP, encryption, log review, privacy, employee training."
+  source: heartbeat-2026-03-12
+  created: 2026-03-12
+  status: active
+  confidence: 1.0

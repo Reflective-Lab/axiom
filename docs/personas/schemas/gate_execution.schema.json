@@ -1,0 +1,216 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://converge.zone/schemas/gate_execution.schema.json",
+  "title": "Gate Execution Fixture",
+  "description": "Schema for gate execution fixtures that validate promotion decisions",
+  "type": "object",
+  "required": [
+    "fixture_id",
+    "gate_id",
+    "timestamp",
+    "scenario",
+    "inputs",
+    "eval_results",
+    "decision"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "fixture_id": {
+      "type": "string",
+      "description": "Unique identifier for this fixture",
+      "pattern": "^[a-z0-9_-]+$"
+    },
+    "gate_id": {
+      "type": "string",
+      "description": "Gate identifier from GATES.md",
+      "enum": [
+        "pr-merge",
+        "release-candidate",
+        "release-approval",
+        "content-publish",
+        "customer-commitment",
+        "production-deploy"
+      ]
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "When this gate execution occurred",
+      "format": "date-time"
+    },
+    "scenario": {
+      "type": "string",
+      "description": "Scenario type for this fixture",
+      "enum": [
+        "pass",
+        "blocked",
+        "override"
+      ]
+    },
+    "inputs": {
+      "type": "object",
+      "description": "Context inputs for gate execution",
+      "additionalProperties": true,
+      "properties": {
+        "pr_id": {
+          "type": "string",
+          "description": "Pull request identifier"
+        },
+        "commit_sha": {
+          "type": "string",
+          "description": "Commit SHA being evaluated"
+        },
+        "author": {
+          "type": "string",
+          "description": "Author of the change"
+        }
+      }
+    },
+    "eval_results": {
+      "type": "array",
+      "description": "Results from eval executions",
+      "items": {
+        "type": "object",
+        "required": [
+          "eval_id",
+          "determinism_class",
+          "outcome"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "eval_id": {
+            "type": "string",
+            "description": "Eval identifier (filename from evals/ directory)"
+          },
+          "determinism_class": {
+            "type": "string",
+            "description": "Determinism classification",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ]
+          },
+          "outcome": {
+            "type": "string",
+            "description": "Eval execution outcome",
+            "enum": [
+              "pass",
+              "fail",
+              "advisory"
+            ]
+          },
+          "evidence_ref": {
+            "type": "string",
+            "description": "Reference to evidence supporting outcome"
+          }
+        }
+      }
+    },
+    "elevation_applied": {
+      "type": "array",
+      "description": "Extended evals elevated to blocking for this gate",
+      "items": {
+        "type": "object",
+        "required": [
+          "eval_id",
+          "reason"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "eval_id": {
+            "type": "string",
+            "description": "Extended eval that was elevated"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why this eval was elevated at this gate"
+          }
+        }
+      }
+    },
+    "escalation": {
+      "type": "object",
+      "description": "Links to escalation packet and disposition if escalation occurred",
+      "additionalProperties": true,
+      "properties": {
+        "packet_ref": {
+          "type": "string",
+          "description": "Path to escalation packet fixture"
+        },
+        "disposition_ref": {
+          "type": "string",
+          "description": "Path to disposition feedback fixture"
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "description": "Final promotion decision",
+      "required": [
+        "outcome",
+        "promotion_target",
+        "rationale"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "outcome": {
+          "type": "string",
+          "description": "Promotion decision outcome",
+          "enum": [
+            "pass",
+            "block",
+            "override"
+          ]
+        },
+        "promotion_target": {
+          "type": "string",
+          "description": "Target for promotion (branch, tag, environment, etc.)"
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Explanation for decision"
+        }
+      }
+    },
+    "override": {
+      "type": "object",
+      "description": "Override details (only present if decision.outcome = override)",
+      "required": [
+        "policy_type",
+        "approvers",
+        "rationale",
+        "compensating_controls"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "policy_type": {
+          "type": "string",
+          "description": "Override policy type based on gate risk class",
+          "enum": [
+            "single-person-with-rationale",
+            "two-person-required"
+          ]
+        },
+        "approvers": {
+          "type": "array",
+          "description": "Core persona IDs who approved override",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Justification for override"
+        },
+        "compensating_controls": {
+          "type": "array",
+          "description": "Mitigations applied when overriding failed evals",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

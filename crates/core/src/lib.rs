@@ -1,0 +1,443 @@
+// Copyright 2024-2025 Aprio One AB, Sweden
+// Author: Kenneth Pernyer, kenneth@aprio.one
+// SPDX-License-Identifier: LicenseRef-Proprietary
+// All rights reserved. This source code is proprietary and confidential.
+// Unauthorized copying, modification, or distribution is strictly prohibited.
+
+//! # Converge Core
+//!
+//! A correctness-first, context-driven multi-agent runtime.
+//!
+//! Converge is an Agent OS where:
+//! - Context is the API
+//! - Agents collaborate through data, not calls
+//! - Execution proceeds until a fixed point
+//! - Convergence is explicit and observable
+//!
+//! ## Quick Start
+//!
+//! ```
+//! use converge_core::{Engine, Context, ContextKey};
+//! use converge_core::agents::{SeedAgent, ReactOnceAgent};
+//!
+//! // Create engine and register agents
+//! let mut engine = Engine::new();
+//! engine.register(SeedAgent::new("seed-1", "initial data"));
+//! engine.register(ReactOnceAgent::new("hyp-1", "derived insight"));
+//!
+//! // Run until convergence
+//! let result = engine.run(Context::new()).expect("should converge");
+//!
+//! // Inspect results
+//! assert!(result.converged);
+//! assert!(result.context.has(ContextKey::Seeds));
+//! assert!(result.context.has(ContextKey::Hypotheses));
+//! println!("Converged in {} cycles", result.cycles);
+//! ```
+//!
+//! ## Core Concepts
+//!
+//! - [`Context`]: The shared, typed, evolving state of a job
+//! - [`Agent`]: A capability that reads context and emits effects
+//! - [`AgentEffect`]: Buffered output (facts) from an agent
+//! - [`Engine`]: The convergence loop that coordinates agents
+//!
+//! ## Guarantees
+//!
+//! - **Determinism**: Same input → same output
+//! - **Termination**: Budgets prevent infinite loops
+//! - **Isolation**: Agents never call each other
+//! - **Auditability**: All changes are traceable
+//!
+//! # Design Tenets
+//!
+//! These are the nine non-negotiable axioms that `converge-core` exists to encode,
+//! enforce, and protect. Every type, trait, and pattern in this crate serves one
+//! or more of these tenets.
+//!
+//! ## 1. Explicit Authority
+//!
+//! **Axiom**: No defaults that grant authority. Authority is always explicit, typed, and traceable.
+//!
+//! **Why**: Implicit permissions lead to security drift and unauditable systems.
+//!
+//! **In code**: [`AuthorityGrant`] and [`AuthorityScope`] require explicit construction.
+//! The `pub(crate)` constructors on `AuthorityGrant` prevent external code from forging
+//! authority. See also [`PromotionRecord`] which traces approvers.
+//!
+//! ## 2. Convergence Over Control Flow
+//!
+//! **Axiom**: We converge on outcomes via governed proposals, not ad-hoc loops or hidden heuristics.
+//!
+//! **Why**: Control flow hides decisions; convergence makes them observable.
+//!
+//! **In code**: The [`Engine`] runs agents repeatedly until a fixed point is reached.
+//! [`StopReason`] exhaustively enumerates why execution halted. No hidden loops.
+//!
+//! ## 3. Append-Only Truth
+//!
+//! **Axiom**: Facts are never mutated. Corrections are new facts.
+//!
+//! **Why**: Mutable state hides history and prevents audit replay.
+//!
+//! **In code**: [`TypesFact`] has private fields with no `&mut` methods.
+//! [`CorrectionEvent`] creates new correction facts rather than
+//! mutating existing ones. The [`Context`] accumulates facts without overwriting.
+//!
+//! ## 4. Agents Suggest, Engine Decides
+//!
+//! **Axiom**: Agents emit proposals; promotion requires validation gates (and sometimes humans).
+//!
+//! **Why**: Separates suggestion from decision, enabling governance and audit.
+//!
+//! **In code**: [`PromotionGate`] is the ONLY path to create Facts. Agents produce
+//! [`Proposal`] in the `Draft` state which must go through [`ValidationReport`]
+//! before becoming `Validated` and finally [`TypesFact`].
+//!
+//! ## 5. Safety by Construction
+//!
+//! **Axiom**: Make invalid states unrepresentable. Prefer types over conventions.
+//!
+//! **Why**: Runtime checks can be bypassed; type-level guarantees cannot.
+//!
+//! **In code**: The type-state pattern on [`Proposal`] (`Draft` vs `Validated`)
+//! makes it impossible to promote an unvalidated proposal. Newtype IDs like [`FactId`],
+//! [`ProposalId`], and [`ObservationId`] prevent mixing.
+//!
+//! ## 6. Transparent Determinism
+//!
+//! **Axiom**: The system tells the truth about replayability and determinism.
+//!
+//! **Why**: Hidden non-determinism corrupts audit trails and reproducibility.
+//!
+//! **In code**: [`TypesTraceLink`] distinguishes [`LocalTrace`]
+//! (replay-eligible) from [`RemoteRef`] (audit-only). [`Replayability`]
+//! explicitly marks whether operations can be replayed deterministically.
+//!
+//! ## 7. Human Authority First-Class
+//!
+//! **Axiom**: Explicit pause/approve gates for consequential actions.
+//!
+//! **Why**: AI systems must preserve human oversight for high-stakes decisions.
+//!
+//! **In code**: [`Actor`] and [`ActorKind`] distinguish
+//! human from automated approvers. [`PromotionRecord`] records
+//! who approved each fact. The [`ValidationPolicy`] can require human approval.
+//!
+//! ## 8. No Hidden Work
+//!
+//! **Axiom**: No silent background effects, retries, implicit state changes, or shadow decisioning.
+//!
+//! **Why**: Hidden work makes systems unpredictable and unauditable.
+//!
+//! **In code**: [`AgentEffect`] explicitly captures all agent output. The [`Engine`]
+//! budget system ([`CycleBudget`], [`FactBudget`], [`TokenBudget`]) makes resource
+//! consumption visible. [`StopReason`] explains exactly why execution ended.
+//!
+//! ## 9. Scale by Intent Replication
+//!
+//! **Axiom**: Scale by replicating intent and invariants across domains.
+//!
+//! **Why**: Scaling should preserve governance, not bypass it.
+//!
+//! **In code**: [`RootIntent`] and [`Frame`] capture intent as data.
+//! [`Invariant`] enforces governance rules. These types can be serialized and
+//! replicated across distributed systems while preserving their constraints.
+//!
+//! # Purity Declaration
+//!
+//! `converge-core` is the constitutional foundation for Converge. It must remain
+//! **pure**: no I/O, no runtime behavior, no implementation logic. Only types,
+//! traits, and promotion gates.
+//!
+//! ## Allowed Dependencies
+//!
+//! | Crate | Purpose | Rationale |
+//! |-------|---------|-----------|
+//! | `thiserror` | Error derives | Pure derives, no runtime |
+//! | `tracing` | Log macros | Compile-time only when used |
+//! | `serde` | Serialization derives | Pure derives, no I/O |
+//! | `serde_json` | JSON encoding | Value-only, no I/O |
+//! | `typed-builder` | Builder derives | Pure derives |
+//! | `hex` | Hex encoding | Pure transforms |
+//! | Small pure libs | Hashing, encoding | No I/O, no async |
+//!
+//! ## Forbidden Dependencies
+//!
+//! | Crate | Category | Why Forbidden |
+//! |-------|----------|---------------|
+//! | `tokio` | Async runtime | Implies execution |
+//! | `reqwest` | HTTP client | Network I/O |
+//! | `axum` | HTTP server | Network I/O |
+//! | `tonic` | gRPC | Network I/O |
+//! | `prost` | Protobuf | gRPC dependency |
+//! | `burn` | ML runtime | Heavy computation |
+//! | `llama-burn` | LLM inference | Model execution |
+//! | `fastembed` | Embeddings | Model execution |
+//! | `polars` | DataFrames | Heavy computation |
+//! | `arrow` | Columnar data | Analytics dependency |
+//! | `lancedb` | Vector DB | Persistence |
+//! | `surrealdb` | Database | Persistence |
+//! | `postgres` | Database | Persistence |
+//! | `rand` | Randomness | Non-determinism |
+//! | `rayon` | Parallelism | Execution strategy |
+//!
+//! ## The Purity Rule
+//!
+//! > If a module implies execution, I/O, network, model inference, or persistence,
+//! > it does not belong in `converge-core`.
+//!
+//! Capability crates (e.g., `converge-runtime`, `converge-llm`, `converge-provider`)
+//! implement the traits defined here using the forbidden dependencies.
+//!
+//! See `deny.toml` at the crate root for CI enforcement of these rules.
+
+mod agent;
+pub mod agents;
+pub mod backend;
+pub mod capability;
+mod context;
+mod effect;
+mod engine;
+mod error;
+pub mod eval;
+pub mod experience_store;
+pub mod gates;
+pub mod governed_artifact;
+pub mod integrity;
+pub mod invariant;
+pub mod kernel_boundary;
+pub mod llm;
+pub mod model_selection;
+pub mod prompt;
+pub mod recall;
+pub mod root_intent;
+pub mod traits;
+pub mod types;
+pub mod validation;
+
+pub use agent::{Agent, AgentId};
+pub use context::{Context, ContextKey, Fact, ProposedFact, ValidationError};
+pub use effect::AgentEffect;
+pub use engine::{
+    Budget, ConvergeResult, Engine, EngineHitlPolicy, HitlPause, RunResult, StreamingCallback,
+};
+pub use error::ConvergeError;
+pub use eval::{Eval, EvalId, EvalOutcome, EvalRegistry, EvalResult};
+pub use experience_store::{
+    ArtifactKind, ArtifactQuery, ContractResultSnapshot, EventQuery, ExperienceEvent,
+    ExperienceEventEnvelope, ExperienceEventKind, ExperienceStore, ExperienceStoreError,
+    ExperienceStoreResult, PolicySnapshot, TimeRange,
+};
+pub use invariant::{Invariant, InvariantClass, InvariantError, InvariantResult, Violation};
+pub use model_selection::{
+    AgentRequirements, ComplianceLevel, CostClass, CostTier, DataSovereignty, Jurisdiction,
+    LatencyClass, ModelSelectorTrait, RequiredCapabilities, SelectionCriteria, TaskComplexity,
+};
+pub use prompt::{AgentPrompt, AgentRole, Constraint, OutputContract, PromptContext, PromptFormat};
+pub use root_intent::{
+    Budgets, ConstraintSeverity, IntentConstraint, IntentId, IntentKind, IntentValidationError,
+    Objective, RootIntent, Scope, ScopeConstraint, SuccessCriteria, SuccessCriterion,
+};
+
+// Re-export core capability types for convenience
+pub use capability::{
+    CapabilityError, CapabilityErrorKind, CapabilityKind, CapabilityMetadata, EmbedInput,
+    EmbedRequest, EmbedResponse, Embedding, GraphEdge, GraphNode, GraphQuery, GraphRecall,
+    GraphResult, Modality, RankedItem, RerankRequest, RerankResponse, Reranking, VectorMatch,
+    VectorQuery, VectorRecall, VectorRecord,
+};
+
+// Re-export capability boundary traits (interfaces for external implementations)
+pub use traits::{Executor, Fingerprint, FingerprintError, Randomness};
+
+// Re-export kernel boundary types (constitutional types for all kernels)
+pub use kernel_boundary::{
+    AdapterTrace,
+    ContentKind,
+    ContextFact,
+    // Contract types
+    ContractResult,
+    DataClassification,
+    // Decision step (reasoning phases)
+    DecisionStep,
+    ExecutionEnv,
+    KernelContext,
+    // Kernel input types (platform-to-kernel contract)
+    KernelIntent,
+    KernelPolicy,
+    // Proposal types (kernel output boundary)
+    KernelProposal,
+    LocalTraceLink,
+    ProposalKind,
+    ProposedContent,
+    RecallTrace,
+    RemoteTraceLink,
+    Replayability,
+    // Routing policy types
+    RiskTier,
+    RoutingPolicy,
+    SamplerParams,
+    // TraceLink types (replay vs audit semantics)
+    TraceLink,
+};
+
+// Re-export governed artifact types (lifecycle governance for any artifact that changes outcomes)
+pub use governed_artifact::{
+    // Lifecycle state machine
+    GovernedArtifactState,
+    InvalidStateTransition,
+    // Audit trail
+    LifecycleEvent,
+    // Replay integrity
+    ReplayIntegrityViolation,
+    RollbackImpact,
+    RollbackRecord,
+    // Rollback types
+    RollbackSeverity,
+    validate_transition,
+};
+
+// Re-export backend types (unified LLM interface for local and remote)
+pub use backend::{
+    BackendAdapterPolicy,
+    BackendBudgets,
+    // Capabilities
+    BackendCapability,
+    BackendContractResult,
+    // Error types
+    BackendError,
+    BackendPrompt,
+    BackendRecallPolicy,
+    // Request types
+    BackendRequest,
+    // Response types
+    BackendResponse,
+    BackendResult,
+    BackendUsage,
+    BackoffStrategy,
+    CircuitBreakerConfig,
+    CircuitState,
+    ContractReport,
+    ContractSpec,
+    // Trait
+    LlmBackend,
+    Message,
+    MessageRole,
+    // Retry and circuit breaker types (production error handling)
+    RetryPolicy,
+};
+
+// Re-export new types module (3-tier hierarchy: Observation -> Proposal -> Fact)
+// Note: types::Fact is the new governed Fact with PromotionRecord
+// The existing context::Fact remains for backward compatibility
+pub use types::{
+    Actor,
+    ActorKind,
+    ApprovalId,
+    ArtifactId,
+    CaptureContext,
+    ChosenSide,
+    ConflictType,
+    ConstraintKind,
+    ConstraintSeverity as TypesConstraintSeverity,
+    ContentHash,
+    ContextBuilder,
+    CorrectionError,
+    // Correction types (append-only corrections)
+    CorrectionEvent,
+    CorrectionReason,
+    CorrectionScope,
+    Criterion,
+    Draft,
+    EvidenceRef,
+    // Fact types (third tier - promoted, governed)
+    // Note: types::Fact as TypesFact to avoid collision with context::Fact
+    Fact as TypesFact,
+    FactContent,
+    FactContentKind,
+    // ID types (newtypes for type safety)
+    FactId,
+    Frame,
+    FrameConstraint,
+    // Frame types (six-phase flow - framing)
+    FrameId,
+    GateId,
+    Hypothesis,
+    IntentId as TypesIntentId,
+    LocalTrace,
+    // Observation types (first tier - raw provider output)
+    Observation,
+    ObservationError,
+    ObservationId,
+    ObservationKind,
+    ObservationProvenance,
+    PromotionError,
+    // Provenance types (audit/replay support)
+    PromotionRecord,
+    // Proposal types (second tier - type-state pattern)
+    Proposal,
+    ProposalId,
+    ProposedContent as TypesProposedContent,
+    ProposedContentKind,
+    ProviderIdentity,
+    RemoteRef,
+    RiskPosture,
+    Tension,
+    // Tension types (six-phase flow - tension/convergence)
+    TensionId,
+    TensionResolution,
+    TensionSide,
+    Timestamp,
+    TraceLink as TypesTraceLink,
+    // Error types (thiserror)
+    TypeError,
+    TypesBudgets,
+    // Context types (builder pattern)
+    TypesContextKey,
+    TypesContextSnapshot,
+    TypesIntentConstraint,
+    // Intent types (builder pattern)
+    TypesIntentKind,
+    TypesObjective,
+    TypesRootIntent,
+    TypesValidationError,
+    Validated,
+    ValidationSummary,
+};
+
+// Gate Pattern (agents suggest, engine decides)
+pub use gates::{
+    // Boundary types (constitutional kernel-platform contract)
+    AuthorityGrant,
+    AuthorityGrantor,
+    AuthorityScope,
+    // Validation types
+    CheckResult,
+    // Budget types (guaranteed termination)
+    CycleBudget,
+    ErrorCategory,
+    ExecutionBudget,
+    FactBudget,
+    // Gate implementation
+    PromotionGate,
+    // Trait
+    ProposalLifecycle,
+    SimpleIntent,
+    // Stop reasons (exhaustive termination enumeration)
+    StopReason,
+    TokenBudget,
+    ValidatedProposal,
+    ValidationContext,
+    ValidationError as GatesValidationError,
+    ValidationPolicy,
+    ValidationReport,
+};
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn crate_compiles() {
+        // Placeholder: proves the crate structure is valid
+    }
+}

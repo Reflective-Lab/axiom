@@ -1,0 +1,24 @@
+# Override for content-publish STOP (hypothetical - shows structure only)
+# Note: Banned guarantees should normally be rewritten, not overridden
+# This example shows structure for cases where override is truly necessary
+
+gate_id: content-publish
+stop_checks:
+  - thaler.banned_guarantees.v1
+timestamp: "2026-01-26T12:30:00Z"
+
+justification: |
+  Series A press release deadline is 4 hours away. Legal has reviewed and approved
+  specific phrasing with qualifiers added. Full rewrite scheduled for website copy
+  within 48 hours.
+
+scope: |
+  This override applies ONLY to press-release-series-a.md for the January 26, 2026
+  announcement. Does not set precedent for future content.
+
+expiry: "2026-01-28T00:00:00Z"
+
+# Note: content-publish is medium-risk, so single-person override is allowed
+signatures:
+  - name: Founder
+    role: founder

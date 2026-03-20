@@ -1,0 +1,51 @@
+{
+  "customer_id": "anon-001",
+  "industry": "B2B SaaS",
+  "company_size": "10-50 employees",
+  "baseline_period": {
+    "start": "2026-02-24",
+    "end": "2026-03-09",
+    "business_days": 10
+  },
+  "workflow_mapping": {
+    "total_steps": 14,
+    "manual_steps": 12,
+    "automated_steps": 2,
+    "handoff_points": 5,
+    "tools_involved": ["HubSpot CRM", "Gmail", "Google Sheets", "Slack", "DocuSign"]
+  },
+  "metrics": {
+    "cycle_time": {
+      "avg_minutes": 480,
+      "median_minutes": 420,
+      "p95_minutes": 1440,
+      "unit": "minutes",
+      "note": "Lead creation to qualified opportunity. P95 shows multi-day stragglers."
+    },
+    "lead_response_time": {
+      "avg_minutes": 127,
+      "median_minutes": 95,
+      "p95_minutes": 480,
+      "unit": "minutes",
+      "note": "First meaningful action (not auto-reply). P95 = next business day."
+    },
+    "decision_latency": {
+      "avg_minutes": 240,
+      "median_minutes": 180,
+      "p95_minutes": 720,
+      "unit": "minutes",
+      "note": "Intent signal available to action taken."
+    },
+    "manual_steps_count": 14,
+    "automation_rate_pct": 14.3,
+    "throughput_items_per_day": 8,
+    "rework_rate_pct": 22,
+    "convergence_success_rate_pct": null
+  },
+  "observations": [
+    "3 reps maintain independent spreadsheets for lead scoring — no single source of truth",
+    "Slack DM between sales and solutions engineering is a critical handoff with no audit trail",
+    "Manual CSV export from HubSpot to Google Sheets happens daily at 9 AM — frequently stale by noon",
+    "No alerting when leads go untouched for >2 hours"
+  ]
+}

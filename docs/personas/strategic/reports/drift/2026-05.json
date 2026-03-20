@@ -1,0 +1,17 @@
+{
+  "week": "2026-05",
+  "generated_at": "2026-01-27T20:12:00.908267+01:00",
+  "repo_fingerprint": {
+    "commit_hash": "6c8ddbaf50bbd198195e69a82fce80d3e23cbe41",
+    "dirty": true,
+    "tree_hash": "0980c511baee0e013006f3abc57a279c91032468"
+  },
+  "findings": [],
+  "summary": {
+    "total": 0,
+    "high_count": 0,
+    "medium_count": 0,
+    "low_count": 0,
+    "by_code": {}
+  }
+}

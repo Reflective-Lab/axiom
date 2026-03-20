@@ -1,0 +1,80 @@
+# content-publish gate execution: WARN scenario
+# Platform-adjacent language requiring acknowledgment
+
+fixture_id: content-publish.platform-language
+gate_id: content-publish
+lens_pack_version: v3.1
+timestamp: "2026-01-26T11:00:00Z"
+
+artifact:
+  type: website
+  ref: docs/homepage-rebrand-v1.md
+  summary: Homepage refresh with new positioning
+
+lens_results:
+  # Christensen checks
+  - check_id: christensen.job_clarity.v1
+    voice: christensen
+    class: B
+    severity: WARN
+    summary: '"Platform for AI governance" lacks specific job articulation'
+    evidence_refs:
+      - homepage-rebrand-v1.md#headline
+    remediation: 'Replace with job-focused headline, e.g., "Review AI decisions before they ship"'
+
+  - check_id: christensen.wedge_first.v1
+    voice: christensen
+    class: B
+    severity: WARN
+    summary: 'Universal positioning ("for all enterprises") without adoption wedge'
+    evidence_refs:
+      - homepage-rebrand-v1.md#target-audience
+    remediation: 'Specify initial wedge segment (e.g., "for engineering teams using Claude")'
+
+  # Thaler checks
+  - check_id: thaler.banned_guarantees.v1
+    voice: thaler
+    class: A
+    severity: PASS
+    summary: No system-level guarantees detected
+    evidence_refs:
+      - claim-inventory.yaml
+
+  - check_id: thaler.friction_language.v1
+    voice: thaler
+    class: B
+    severity: WARN
+    summary: '"Converge your AI outputs" requires insider explanation'
+    evidence_refs:
+      - homepage-rebrand-v1.md#tagline
+    remediation: 'Use plain language - "Review and approve AI outputs before they ship"'
+
+  # Mollick check
+  - check_id: mollick.adoption_realism.v1
+    voice: mollick
+    class: B
+    severity: PASS
+    summary: No transformation claims detected
+    evidence_refs: []
+
+  # Nadella check
+  - check_id: nadella.enterprise_legibility.v1
+    voice: nadella
+    class: B
+    severity: PASS
+    summary: Integration section present and clear
+    evidence_refs:
+      - homepage-rebrand-v1.md#integrations
+
+  # Altman counter-voice (advisory)
+  - check_id: altman.ambition_fit.v1
+    voice: altman
+    class: B
+    severity: NOTE
+    summary: Vision appropriately ambitious; warns against over-constraining
+    evidence_refs: []
+
+decision:
+  outcome: WARN
+
+acknowledgment_ref: acks/platform-language.yaml

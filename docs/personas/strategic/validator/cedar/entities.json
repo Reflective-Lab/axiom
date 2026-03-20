@@ -1,0 +1,511 @@
+[
+  {
+    "attrs": {
+      "team_type": "Core"
+    },
+    "parents": [],
+    "uid": {
+      "id": "Core",
+      "type": "ConvergePersonas::Team"
+    }
+  },
+  {
+    "attrs": {
+      "team_type": "Extended"
+    },
+    "parents": [],
+    "uid": {
+      "id": "Extended",
+      "type": "ConvergePersonas::Team"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Blocking-by-Policy",
+      "persona_id": "system-architect"
+    },
+    "parents": [
+      {
+        "id": "Core",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "system-architect",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Blocking-by-Policy",
+      "persona_id": "qa-engineer"
+    },
+    "parents": [
+      {
+        "id": "Core",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "qa-engineer",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Blocking-by-Policy",
+      "persona_id": "security-auditor"
+    },
+    "parents": [
+      {
+        "id": "Core",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "security-auditor",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Blocking-by-Policy",
+      "persona_id": "founder"
+    },
+    "parents": [
+      {
+        "id": "Core",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "founder",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Blocking-by-Policy",
+      "persona_id": "legal-counsel"
+    },
+    "parents": [
+      {
+        "id": "Core",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "legal-counsel",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Blocking-by-Policy",
+      "persona_id": "ethics-safety-officer"
+    },
+    "parents": [
+      {
+        "id": "Core",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "ethics-safety-officer",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Escalating",
+      "persona_id": "data-protection-officer"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "data-protection-officer",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Escalating",
+      "persona_id": "sustainability-lead"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "sustainability-lead",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Escalating",
+      "persona_id": "sre-operations"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "sre-operations",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Escalating",
+      "persona_id": "insurance-underwriter"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "insurance-underwriter",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Escalating",
+      "persona_id": "regulator-lens"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "regulator-lens",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Advisory",
+      "persona_id": "academic-researcher"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "academic-researcher",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Advisory",
+      "persona_id": "build-vs-buy-analyst"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "build-vs-buy-analyst",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Advisory",
+      "persona_id": "curious-searcher"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "curious-searcher",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Advisory",
+      "persona_id": "developer-advocate"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "developer-advocate",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Advisory",
+      "persona_id": "end-user-advocate"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "end-user-advocate",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Advisory",
+      "persona_id": "future-historian"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "future-historian",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Advisory",
+      "persona_id": "investor"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "investor",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Advisory",
+      "persona_id": "journalist-investigator"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "journalist-investigator",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Advisory",
+      "persona_id": "marketing-lead"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "marketing-lead",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Advisory",
+      "persona_id": "product-manager"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "product-manager",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Advisory",
+      "persona_id": "sales-engineer"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "sales-engineer",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Advisory",
+      "persona_id": "skeptical-critic"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "skeptical-critic",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "authority_tier": "Advisory",
+      "persona_id": "spiritual-advisor"
+    },
+    "parents": [
+      {
+        "id": "Extended",
+        "type": "ConvergePersonas::Team"
+      }
+    ],
+    "uid": {
+      "id": "spiritual-advisor",
+      "type": "ConvergePersonas::User"
+    }
+  },
+  {
+    "attrs": {
+      "elevated_approvers": [],
+      "gate_id": "pr-merge",
+      "risk_class": "medium"
+    },
+    "parents": [],
+    "uid": {
+      "id": "pr-merge",
+      "type": "ConvergePersonas::Gate"
+    }
+  },
+  {
+    "attrs": {
+      "elevated_approvers": [
+        {
+          "id": "sre-operations",
+          "type": "ConvergePersonas::User"
+        }
+      ],
+      "gate_id": "release-candidate",
+      "risk_class": "high"
+    },
+    "parents": [],
+    "uid": {
+      "id": "release-candidate",
+      "type": "ConvergePersonas::Gate"
+    }
+  },
+  {
+    "attrs": {
+      "elevated_approvers": [
+        {
+          "id": "sre-operations",
+          "type": "ConvergePersonas::User"
+        },
+        {
+          "id": "developer-advocate",
+          "type": "ConvergePersonas::User"
+        },
+        {
+          "id": "marketing-lead",
+          "type": "ConvergePersonas::User"
+        }
+      ],
+      "gate_id": "release-approval",
+      "risk_class": "high"
+    },
+    "parents": [],
+    "uid": {
+      "id": "release-approval",
+      "type": "ConvergePersonas::Gate"
+    }
+  },
+  {
+    "attrs": {
+      "elevated_approvers": [
+        {
+          "id": "marketing-lead",
+          "type": "ConvergePersonas::User"
+        }
+      ],
+      "gate_id": "content-publish",
+      "risk_class": "medium"
+    },
+    "parents": [],
+    "uid": {
+      "id": "content-publish",
+      "type": "ConvergePersonas::Gate"
+    }
+  },
+  {
+    "attrs": {
+      "elevated_approvers": [
+        {
+          "id": "sales-engineer",
+          "type": "ConvergePersonas::User"
+        }
+      ],
+      "gate_id": "customer-commitment",
+      "risk_class": "high"
+    },
+    "parents": [],
+    "uid": {
+      "id": "customer-commitment",
+      "type": "ConvergePersonas::Gate"
+    }
+  },
+  {
+    "attrs": {
+      "elevated_approvers": [
+        {
+          "id": "sre-operations",
+          "type": "ConvergePersonas::User"
+        }
+      ],
+      "gate_id": "production-deploy",
+      "risk_class": "high"
+    },
+    "parents": [],
+    "uid": {
+      "id": "production-deploy",
+      "type": "ConvergePersonas::Gate"
+    }
+  }
+]

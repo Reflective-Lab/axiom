@@ -1,0 +1,26 @@
+{
+  "customer_id": "anon-001",
+  "pilot_week": 1,
+  "period": {
+    "start": "2026-03-9",
+    "end": "2026-03-15"
+  },
+  "metrics": {
+    "cycle_time_avg_minutes": 320,
+    "lead_response_time_avg_minutes": 45,
+    "decision_latency_avg_minutes": 160,
+    "manual_steps_count": 12,
+    "automation_rate_pct": 35,
+    "throughput_items_per_day": 12,
+    "rework_rate_pct": 18,
+    "convergence_success_rate_pct": 82
+  },
+  "converge_engine": {
+    "total_runs": 60,
+    "avg_convergence_time_seconds": 3.6,
+    "avg_cycles_to_converge": 7,
+    "agents_per_run": 3,
+    "invariant_violations": 9,
+    "budget_exhaustions": 3
+  }
+}

@@ -1,0 +1,54 @@
+fixture_id: "release-cut-override-001"
+gate_id: "release-candidate"
+timestamp: "2026-01-26T12:00:00Z"
+scenario: "override"
+
+inputs:
+  pr_id: "RC-v2.2"
+  commit_sha: "jkl3456"
+  author: "release-manager"
+
+eval_results:
+  - eval_id: "system-architect-eval"
+    determinism_class: "A"
+    outcome: "pass"
+    evidence_ref: "Architecture review passed"
+
+  - eval_id: "qa-engineer-eval"
+    determinism_class: "A"
+    outcome: "pass"
+    evidence_ref: "All tests passing, coverage 95.8%"
+
+  - eval_id: "security-auditor-eval"
+    determinism_class: "A"
+    outcome: "pass"
+    evidence_ref: "Security audit clean, no critical vulnerabilities"
+
+  - eval_id: "sre-operations-eval"
+    determinism_class: "B"
+    outcome: "fail"
+    evidence_ref: "Monitoring not fully configured: Grafana dashboards for new metrics pending, alert thresholds not validated"
+
+elevation_applied:
+  - eval_id: "sre-operations-eval"
+    reason: "Operational readiness critical for RC tagging"
+
+escalation: null
+
+decision:
+  outcome: "override"
+  promotion_target: "RC-v2.2"
+  rationale: "SRE Operations eval failed due to incomplete monitoring setup. Risk assessed as acceptable with compensating controls for initial RC. Full monitoring required before GA release."
+
+override:
+  policy_type: "two-person-required"
+  approvers:
+    - "founder"
+    - "security-auditor"
+  rationale: "High-risk gate (release-candidate) requires two-person approval for override. Monitoring delay acceptable for initial RC with compensating controls. Feature flag enables quick rollback if issues detected. Manual monitoring checklist covers critical metrics until automated dashboards complete. 24h on-call coverage ensures rapid response."
+  compensating_controls:
+    - "Manual monitoring checklist for critical metrics (CPU, memory, latency, error rates)"
+    - "24h on-call coverage with escalation path to SRE team"
+    - "Feature flag for quick rollback without redeployment"
+    - "Limited initial rollout (10% canary) before full release"
+    - "Grafana dashboard completion required before GA promotion"

@@ -1,0 +1,58 @@
+{
+  "customer_id": "anon-001",
+  "comparison": {
+    "baseline_period": "2026-02-24 to 2026-03-09",
+    "pilot_period": "2026-03-10 to 2026-04-06",
+    "pilot_final_week": 4
+  },
+  "deltas": {
+    "cycle_time": {
+      "before_avg_minutes": 480,
+      "after_avg_minutes": 150,
+      "change_pct": -68.8,
+      "threshold_met": true,
+      "threshold": "-30%"
+    },
+    "lead_response_time": {
+      "before_avg_minutes": 127,
+      "after_avg_minutes": 8,
+      "change_pct": -93.7,
+      "threshold_met": true,
+      "threshold": "-50%"
+    },
+    "manual_steps": {
+      "before_count": 14,
+      "after_count": 4,
+      "change_pct": -71.4,
+      "threshold_met": true,
+      "threshold": "-40%"
+    },
+    "automation_rate": {
+      "before_pct": 14.3,
+      "after_pct": 65.0,
+      "change_pp": 50.7,
+      "threshold_met": true,
+      "threshold": "+20 pp"
+    },
+    "throughput": {
+      "before_items_per_day": 8,
+      "after_items_per_day": 25,
+      "change_pct": 212.5,
+      "threshold_met": true,
+      "threshold": "+25%"
+    },
+    "rework_rate": {
+      "before_pct": 22,
+      "after_pct": 6,
+      "change_pct": -72.7
+    }
+  },
+  "verdict": {
+    "thresholds_met": 5,
+    "thresholds_required_for_success": 2,
+    "thresholds_required_for_strong": 3,
+    "result": "strong_success",
+    "publishable_headline": true
+  },
+  "statistical_note": "Sample size is illustrative. Real pilots require paired t-test or Wilcoxon signed-rank test with N>=10 observations per metric for significance claims."
+}

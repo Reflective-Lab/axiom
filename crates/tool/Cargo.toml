@@ -1,0 +1,58 @@
+[package]
+name = "converge-tool"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license = "LicenseRef-Proprietary"
+publish = false
+description = "Development tools for Converge including Gherkin spec validation"
+documentation = "https://docs.rs/converge-tool"
+keywords = ["gherkin", "testing", "converge", "development"]
+categories = ["development-tools", "development-tools::testing"]
+
+[lib]
+name = "converge_tool"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cz"
+path = "src/bin/cz/main.rs"
+
+[dependencies]
+converge-core.workspace = true
+converge-provider = { workspace = true, default-features = false, features = ["anthropic", "registry"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tokio.workspace = true
+
+# Gherkin parsing
+gherkin.workspace = true
+
+# Truth: preprocessing
+regex.workspace = true
+
+# Content hashing (SHA-256)
+sha2.workspace = true
+
+# CLI framework
+clap.workspace = true
+
+# Terminal output
+colored.workspace = true
+
+# Timestamps for audit records
+chrono.workspace = true
+
+# YAML serialization for governance artifacts
+serde_yaml.workspace = true
+
+[dev-dependencies]
+dotenv.workspace = true
+proptest.workspace = true
+syn = { version = "2", features = ["full", "parsing"] }
+
+[lints]
+workspace = true

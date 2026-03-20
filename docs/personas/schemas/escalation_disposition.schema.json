@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://converge.zone/schemas/escalation_disposition.schema.json",
+  "title": "Escalation Disposition",
+  "description": "Schema for Core team disposition response to escalation packets",
+  "type": "object",
+  "required": [
+    "disposition_id",
+    "escalation_id",
+    "reviewed_by",
+    "reviewed_at",
+    "outcome",
+    "learning"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "disposition_id": {
+      "type": "string",
+      "description": "Unique identifier for this disposition decision",
+      "pattern": "^DISP-\\d{4}-\\d{3}$"
+    },
+    "escalation_id": {
+      "type": "string",
+      "description": "Links to original escalation packet",
+      "pattern": "^ESC-\\d{4}-\\d{3}(-v\\d+)?$"
+    },
+    "reviewed_by": {
+      "type": "array",
+      "description": "Core persona IDs who reviewed and approved this disposition",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "reviewed_at": {
+      "type": "string",
+      "description": "When disposition decision was finalized",
+      "format": "date-time"
+    },
+    "outcome": {
+      "type": "object",
+      "description": "Core decision and reasoning",
+      "required": [
+        "disposition",
+        "rationale"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "disposition": {
+          "type": "string",
+          "description": "Core team decision on escalation",
+          "enum": [
+            "approved",
+            "denied",
+            "need_more_info",
+            "deferred"
+          ]
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Why Core team made this decision"
+        },
+        "precedent_references": {
+          "type": "array",
+          "description": "Similar past decisions showing consistency",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "learning": {
+      "type": "object",
+      "description": "Coaching feedback to help Extended improve escalation quality",
+      "required": [
+        "what_was_strong"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "what_was_strong": {
+          "type": "string",
+          "description": "What made this escalation effective (positive reinforcement)"
+        },
+        "what_to_improve": {
+          "type": "string",
+          "description": "How to strengthen future escalations (constructive feedback)"
+        },
+        "coaching_notes": {
+          "type": "string",
+          "description": "Guidance for Extended team on this topic"
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "description": "Next steps and ownership following disposition",
+      "additionalProperties": true,
+      "properties": {
+        "next_steps": {
+          "type": "string",
+          "description": "What happens now (required if disposition: approved)"
+        },
+        "compensating_controls": {
+          "type": "array",
+          "description": "Mitigations if denied (required if disposition: denied)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "follow_up_owner": {
+          "type": "string",
+          "description": "Who owns next action (required if disposition: approved or deferred)"
+        }
+      }
+    }
+  }
+}

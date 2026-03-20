@@ -1,0 +1,57 @@
+# Lens Pack Configuration v1
+# Defines primary, secondary, and counter voices per gate
+# Used by validator for semantic enforcement (VAL-01/02/03)
+
+version: "1.0"
+
+gates:
+  content-publish:
+    primary_voices:
+      - christensen
+      - thaler
+    secondary_voices:
+      - mollick
+      - nadella
+    counter_voices:
+      - altman
+      - hemingway
+
+  customer-commitment:
+    primary_voices:
+      - ostrom
+      - hemingway
+    secondary_voices:
+      - thaler
+    counter_voices:
+      - christensen
+      - benioff
+
+  roadmap-promotion:
+    primary_voices:
+      - christensen
+      - adner
+    secondary_voices:
+      - aghion
+    counter_voices:
+      - ostrom
+      - hemingway
+
+  architecture-promotion:
+    primary_voices:
+      - thaler
+      - ostrom
+    secondary_voices:
+      - vogels
+    counter_voices:
+      - hemingway
+      - aghion
+
+  funding-narrative:
+    primary_voices:
+      - marks
+      - mokyr
+    secondary_voices:
+      - lessin
+    counter_voices:
+      - altman
+      - aghion

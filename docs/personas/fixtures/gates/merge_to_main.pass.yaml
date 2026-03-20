@@ -1,0 +1,36 @@
+fixture_id: "merge-to-main-pass-001"
+gate_id: "pr-merge"
+timestamp: "2026-01-26T10:00:00Z"
+scenario: "pass"
+
+inputs:
+  pr_id: "PR-123"
+  commit_sha: "abc1234"
+  author: "developer"
+
+eval_results:
+  - eval_id: "system-architect-eval"
+    determinism_class: "A"
+    outcome: "pass"
+    evidence_ref: "Architecture review passed: no circular dependencies, clear module boundaries"
+
+  - eval_id: "qa-engineer-eval"
+    determinism_class: "A"
+    outcome: "pass"
+    evidence_ref: "All 487 tests passing, coverage 94.2% (above 90% threshold)"
+
+  - eval_id: "security-auditor-eval"
+    determinism_class: "A"
+    outcome: "pass"
+    evidence_ref: "No CVEs in dependencies, input validation present, no SQL injection vectors"
+
+elevation_applied: []
+
+escalation: null
+
+decision:
+  outcome: "pass"
+  promotion_target: "main"
+  rationale: "All required evals passed. Core technical pack (system-architect, qa-engineer, security-auditor) all Class A deterministic checks passing."
+
+override: null

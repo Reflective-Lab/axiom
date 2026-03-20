@@ -1,0 +1,87 @@
+// Copyright 2024-2025 Aprio One AB, Sweden
+// SPDX-License-Identifier: MIT
+
+//! Kernel pack agents organized by domain.
+//!
+//! Each pack module contains agents that implement the contracts
+//! defined in the corresponding Gherkin specs (specs/*.feature).
+//!
+//! # Kernel Packs
+//!
+//! - [`money`]: Finance operations (AR -> AP -> Reconcile -> Close)
+//! - [`trust`]: Cross-cutting substrate (Identity -> Access -> Audit -> Provenance)
+//! - [`delivery`]: Promise fulfillment (Promise -> Execute -> Blockers -> Complete)
+//! - [`knowledge`]: Organizational learning (Signal -> Hypothesis -> Experiment -> Canonical)
+//! - [`data_metrics`]: Single source of truth (Instrument -> Collect -> Validate -> Report -> Alert)
+//!
+//! # Agent Wiring
+//!
+//! Agent IDs in YAML (packs/*.yaml) map to structs in these modules:
+//!
+//! ```yaml
+//! # packs/money.yaml
+//! agents:
+//!   - id: invoice_creator
+//!     requirements: deterministic
+//! ```
+//!
+//! Maps to:
+//!
+//! ```rust,ignore
+//! use converge_domain::packs::money::InvoiceCreatorAgent;
+//! engine.register(InvoiceCreatorAgent);
+//! ```
+//!
+//! # Fact ID Prefixes
+//!
+//! Since converge-core uses a fixed ContextKey enum, pack-specific facts are
+//! distinguished by their ID prefixes. Each pack defines its own prefixes:
+//!
+//! - Money: `invoice:`, `payment:`, `ledger:`, `period:`
+//! - Trust: `session:`, `audit:`, `compliance:`, `violation:`, `remediation:`
+//! - Delivery: `promise:`, `scope:`, `task:`, `blocker:`, `risk:`
+//! - Knowledge: `signal:`, `hypothesis:`, `experiment:`, `decision:`, `canonical:`
+//! - Data Metrics: `metric:`, `source:`, `pipeline:`, `validation:`, `dashboard:`, `report:`, `alert:`, `anomaly:`
+
+pub mod data_metrics;
+pub mod delivery;
+pub mod knowledge;
+pub mod money;
+pub mod trust;
+
+// Re-export agents for convenience (explicit to avoid conflicts)
+pub use delivery::{
+    AcceptanceRequestorAgent, BlockerDetectorAgent, BlockerHasResolutionPathInvariant,
+    BlockerRouterAgent, CompletedPromiseHasAcceptanceInvariant, PostmortemSchedulerAgent,
+    PromiseCreatorAgent, PromiseHasDealInvariant, RiskAssessorAgent,
+    ScopeChangeRequiresApprovalInvariant, ScopeExtractorAgent, StatusAggregatorAgent,
+    WorkBreakdownAgent,
+};
+
+pub use knowledge::{
+    CanonicalKnowledgeAgent, ClaimHasProvenanceInvariant, ClaimValidatorAgent,
+    DecisionHasOwnerInvariant, DecisionMemoAgent, ExperimentHasMetricsInvariant,
+    ExperimentRunnerAgent, ExperimentSchedulerAgent, HypothesisGeneratorAgent,
+    HypothesisReviewerAgent, NoOrphanExperimentsInvariant, PatentEvidenceHasProvenanceInvariant,
+    SignalCaptureAgent,
+};
+
+pub use money::{
+    ClosedPeriodReadonlyInvariant, InvoiceCreatorAgent, InvoiceHasCustomerInvariant,
+    OverdueDetectorAgent, PaymentAllocationCompleteInvariant, PaymentAllocatorAgent,
+    PeriodCloserAgent, ReconciliationMatcherAgent,
+};
+
+pub use trust::{
+    AllActionsAuditedInvariant, AuditImmutabilityInvariant, AuditWriterAgent,
+    ComplianceScannerAgent, LegalActionsAuditedInvariant, PiiRedactorAgent, ProvenanceTrackerAgent,
+    RbacEnforcerAgent, SessionValidatorAgent, ViolationRemediatorAgent,
+    ViolationsHaveRemediationInvariant,
+};
+
+pub use data_metrics::{
+    AlertEvaluatorAgent, AlertHasOwnerInvariant, AnomalyDetectorAgent, DashboardBuilderAgent,
+    DashboardCitesSourcesInvariant, DataFreshnessInvariant, DataValidatorAgent,
+    FreshnessMonitorAgent, MetricCalculatorAgent, MetricDefinitionVersionedInvariant,
+    MetricRegistrarAgent, PipelineCoordinatorAgent, ReportGeneratorAgent, SourceConnectorAgent,
+};

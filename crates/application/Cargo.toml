@@ -1,0 +1,63 @@
+[package]
+name = "converge-application"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license = "LicenseRef-Proprietary"
+publish = false
+description = "Converge distribution - packages domain packs, providers, and runtime into a deployable product"
+documentation = "https://docs.rs/converge-application"
+keywords = ["converge", "distribution", "packaging", "agentic", "workflow"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "converge"
+path = "src/main.rs"
+
+[dependencies]
+converge-core.workspace = true
+converge-provider.workspace = true
+converge-domain.workspace = true
+converge-tool.workspace = true
+
+# TUI
+ratatui.workspace = true
+crossterm.workspace = true
+
+# CLI
+clap.workspace = true
+
+# Async runtime
+tokio.workspace = true
+
+# Configuration
+config.workspace = true
+dotenv.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+strum.workspace = true
+
+# Date/time
+chrono.workspace = true
+
+# Observability
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+# Error handling
+thiserror.workspace = true
+anyhow.workspace = true
+uuid.workspace = true
+hostname.workspace = true
+
+[features]
+default = []
+full = ["growth-strategy", "sdr-pipeline"]
+growth-strategy = []
+sdr-pipeline = []
+
+[lints]
+workspace = true

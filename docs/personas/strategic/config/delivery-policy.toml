@@ -1,0 +1,48 @@
+# Delivery Policy Configuration
+# Version: 1.0
+#
+# This file configures routing, rate limiting, and quiet hours for alert delivery.
+
+version = "1.0"
+
+# Quiet hours - suppress non-critical alerts during these hours
+[quiet_hours]
+start_hour = 22  # 10 PM
+end_hour = 6     # 6 AM
+timezone = "Local"  # Use local system timezone
+
+# Rate limiting - prevent alert fatigue
+[rate_limiting]
+max_alerts_per_hour = 10  # Maximum alerts per recipient per hour
+window_minutes = 60       # Time window for rate limiting
+
+# Routing rules - determine who receives which alerts
+# Priority: exact match (gate + severity + drift) > partial match > fallback
+# First matching rule wins
+
+# Example: High-priority STOP alerts for G_PROMOTE_01
+[[routing_rules]]
+gate_id = "G_PROMOTE_01"
+severity = "STOP"
+recipients = ["team@example.com", "oncall@example.com"]
+priority = "critical"
+owner = "security-team"
+
+# Example: WARN alerts for G_PROMOTE_01
+[[routing_rules]]
+gate_id = "G_PROMOTE_01"
+severity = "WARN"
+recipients = ["team@example.com"]
+priority = "medium"
+owner = "security-team"
+
+# Example: Fallback for all other G_PROMOTE_01 alerts
+[[routing_rules]]
+gate_id = "G_PROMOTE_01"
+recipients = ["team@example.com"]
+priority = "low"
+owner = "security-team"
+
+# Gate acknowledgments - maps gate ID to list of people who must acknowledge alerts for that gate
+[gate_acknowledgments]
+G_PROMOTE_03 = ["security-team@example.com", "compliance@example.com"]

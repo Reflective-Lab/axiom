@@ -1,0 +1,36 @@
+fixture_id: "merge-to-main-blocked-001"
+gate_id: "pr-merge"
+timestamp: "2026-01-26T10:15:00Z"
+scenario: "blocked"
+
+inputs:
+  pr_id: "PR-456"
+  commit_sha: "def5678"
+  author: "developer"
+
+eval_results:
+  - eval_id: "system-architect-eval"
+    determinism_class: "A"
+    outcome: "pass"
+    evidence_ref: "Architecture review passed: clean separation of concerns"
+
+  - eval_id: "qa-engineer-eval"
+    determinism_class: "A"
+    outcome: "fail"
+    evidence_ref: "Test coverage 78.3% (below 90% threshold). Missing integration tests for OAuth flow."
+
+  - eval_id: "security-auditor-eval"
+    determinism_class: "A"
+    outcome: "pass"
+    evidence_ref: "Security scan clean, no vulnerabilities detected"
+
+elevation_applied: []
+
+escalation: null
+
+decision:
+  outcome: "block"
+  promotion_target: "main"
+  rationale: "qa-engineer-eval failed: test coverage below threshold (78.3% < 90%). OAuth flow integration tests missing. Cannot merge until coverage requirements met."
+
+override: null
