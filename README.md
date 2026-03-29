@@ -1,116 +1,110 @@
 # Converge.zone
 
-**Converge** is a correctness-first, context-driven multi-agent runtime built in Rust. It provides a modular platform for building and deploying intelligent agents with LLM inference capabilities.
+**Converge** is a correctness-first, context-driven multi-agent runtime built in Rust.
 
-## Overview
+Agents collaborate through shared context, not by calling each other. The engine runs agents repeatedly until a fixed point is reached — convergence is explicit and observable.
 
-Converge is designed as a workspace of 15 Rust crates that work together to provide:
+## Design Principles
 
-- **Agent Runtime**: Context-driven execution engine
-- **LLM Inference**: Local and remote LLM support using Burn framework
-- **Knowledge Management**: Semantic embedding and recall systems
-- **Policy Engine**: Rule-based decision making
-- **Multi-Backend Support**: LanceDB, SurrealDB, and other storage options
+1. **Agents suggest, engines decide.** `ProposedFact` is not `Fact`.
+2. **Context is the API.** Agents communicate through shared context.
+3. **Append-only truth.** Facts are never mutated; corrections are new facts.
+4. **Safety by construction.** `unsafe_code = "forbid"` everywhere.
 
 ## Quick Start
 
-### Prerequisites
-
-- Rust 1.90+
-- Cargo (comes with Rust)
-- Optional: CUDA/Vulkan/WGPU for GPU acceleration
-
-### Building
-
 ```bash
-# Clone the repository
 git clone https://github.com/Reflective-Labs/converge.zone.git
 cd converge.zone
 
-# Build all crates
-cargo build --workspace
-
-# Run tests
-cargo test --workspace
+just build-quick    # build (fast iteration)
+just test           # run tests
+just lint           # format + clippy
 ```
 
-### Running Examples
+## Examples
 
 ```bash
-# LLM inference example
-cargo run --example local_inference --features "llama3,ndarray"
-
-# Start the gRPC server
-cargo run --bin converge-llm-server --features "server,llama3"
+just example hello-convergence   # engine loop, agents, facts
+just example custom-agent        # implement the Agent trait
+just example meeting-scheduler   # domain pack with constraints
+just example custom-provider     # implement an LLM provider
 ```
+
+See [examples/README.md](examples/README.md) for the full list.
 
 ## Architecture
 
 ```
-converge.zone/
-├── crates/
-│   ├── traits/          # Core trait definitions
-│   ├── core/            # Agent runtime engine
-│   ├── llm/             # LLM inference (Burn-based)
-│   ├── domain/          # Domain models
-│   ├── experience/      # Experience management
-│   ├── knowledge/       # Knowledge base
-│   ├── policy/          # Policy engine
-│   ├── runtime/         # Runtime environment
-│   ├── provider/        # External providers
-│   ├── analytics/       # Analytics
-│   ├── optimization/    # Optimization algorithms
-│   ├── remote/          # Remote services
-│   ├── tool/            # Tooling
-│   └── application/     # Application layer
-└── Cargo.toml           # Workspace configuration
+crates/
+├── traits/        # Public contract — partners implement these
+├── core/          # Convergence engine
+├── provider/      # Remote LLM providers (Anthropic, OpenAI, Gemini, ...)
+├── domain/        # Domain packs (scheduling, routing, drafting, ...)
+├── experience/    # Event-sourced audit store
+├── knowledge/     # Vector knowledge base
+├── optimization/  # Constraint solving (OR-Tools)
+├── policy/        # Cedar policy engine
+├── llm/           # Local LLM inference (Burn)
+├── analytics/     # ML/analytics agents
+├── tool/          # Development toolchain (Gherkin, JTBD)
+├── runtime/       # HTTP/gRPC execution service
+├── remote/        # gRPC client to runtime
+└── application/   # Reference distribution
+examples/
+├── hello-convergence/   # Minimal convergence loop
+├── custom-agent/        # Implement the Agent trait
+├── meeting-scheduler/   # Domain pack with constraints
+├── custom-provider/     # LLM provider adapter
+└── local-inference/     # Local inference on Apple Silicon
 ```
 
-## Features
+## Publishable Crates
 
-### Core Features
+Nine crates are published to [crates.io](https://crates.io):
 
-- **Multi-Agent Runtime**: Execute multiple agents with context sharing
-- **LLM Backends**: Local (Llama3, TinyLLM) and remote (Anthropic) support
-- **Knowledge Recall**: Semantic embedding with ONNX models
-- **Policy Engine**: Cedar-based policy evaluation
-- **Observability**: OpenTelemetry integration
-
-### Backend Support
-
-- **Storage**: LanceDB, SurrealDB, Firestore
-- **Compute**: CUDA, Vulkan, WGPU, CPU
-- **Network**: gRPC, HTTP, NATS
+| Crate | Role |
+|-------|------|
+| `converge-traits` | Public contract — traits and types |
+| `converge-core` | Convergence engine |
+| `converge-provider` | Remote LLM provider adapters |
+| `converge-domain` | Domain packs and use cases |
+| `converge-experience` | Event-sourced audit store |
+| `converge-knowledge` | Vector knowledge base |
+| `converge-optimization` | Constraint solving |
+| `converge-tool` | Development toolchain |
+| `ortools-sys` | OR-Tools FFI bindings |
 
 ## Configuration
 
-Create a `.env` file or set environment variables:
-
 ```env
-# LLM Configuration
 CONVERGE_LLM_BACKEND=ndarray
 CONVERGE_LLM_MODEL=llama3
-
-# Storage Configuration
 CONVERGE_STORAGE_BACKEND=lancedb
 CONVERGE_STORAGE_PATH=./data
-
-# Logging
 RUST_LOG=info
 ```
 
-## Contributing
+## Documentation
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+- [DEVELOPMENT.md](DEVELOPMENT.md) — setup, build, git workflow (worktrees, jj)
+- [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guidelines
+- [SECURITY.md](SECURITY.md) — vulnerability reporting
+- [docs/deployment/QUICKSTART.md](docs/deployment/QUICKSTART.md) — local, container, and hosted startup
+- [docs/deployment/TERRAFORM_GCP.md](docs/deployment/TERRAFORM_GCP.md) — default Google Cloud + Secret Manager deployment path
+- [docs/deployment/GPU_WORKERS.md](docs/deployment/GPU_WORKERS.md) — Modal / Runpod guidance for GPU inference and training
+- [crates/provider/.env.example](crates/provider/.env.example) — provider API key and endpoint catalog
+- [docs/security/README.md](docs/security/README.md) — enterprise security and compliance package
+- [docs/security/DATA_HANDLING_DECLARATION.md](docs/security/DATA_HANDLING_DECLARATION.md) — what this project is designed to handle and what it is not
+- [docs/security/COMPLIANCE_READINESS.md](docs/security/COMPLIANCE_READINESS.md) — current declarations, recommendations, and non-claims
+- [examples/](examples/) — runnable examples
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
 
-Copyright © 2024 Reflective Group AB
+Copyright 2024-2026 Reflective Labs
 
-## Contact
+Kenneth Pernyer — [kenneth@reflective.se](mailto:kenneth@reflective.se)
 
-Kenneth Pernyer - [kenneth@reflective.se](mailto:kenneth@reflective.se)
-
-Project Link: [https://github.com/Reflective-Labs/converge.zone](https://github.com/Reflective-Labs/converge.zone)
+Project: [github.com/Reflective-Labs/converge.zone](https://github.com/Reflective-Labs/converge.zone)

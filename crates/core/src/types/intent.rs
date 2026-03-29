@@ -194,6 +194,14 @@ impl TypesBudgets {
         self.time_limit_ms = Some(time_limit_ms);
         self
     }
+
+    /// Convert to the engine-local budget representation.
+    pub fn to_engine_budget(&self) -> crate::engine::Budget {
+        crate::engine::Budget {
+            max_cycles: self.max_cycles,
+            max_facts: self.max_facts,
+        }
+    }
 }
 
 // ============================================================================
@@ -245,6 +253,9 @@ pub struct TypesRootIntent {
     /// Constraints on execution.
     #[builder(default)]
     pub constraints: Vec<TypesIntentConstraint>,
+    /// Which packs should participate in this run.
+    #[builder(default)]
+    pub active_packs: Vec<String>,
     /// Success criteria (per CONTEXT.md: RootIntent contains success_criteria).
     #[builder(default)]
     pub success_criteria: Vec<Criterion>,
@@ -272,6 +283,11 @@ impl TypesRootIntent {
         self.constraints
             .iter()
             .filter(|c| c.severity == ConstraintSeverity::Hard)
+    }
+
+    /// Check whether a pack is active for this intent.
+    pub fn activates_pack(&self, pack_id: &str) -> bool {
+        self.active_packs.iter().any(|active| active == pack_id)
     }
 }
 
@@ -327,6 +343,7 @@ mod tests {
             .request("Find growth opportunities")
             .objective(Some(TypesObjective::IncreaseDemand))
             .risk_posture(RiskPosture::Conservative)
+            .active_packs(vec!["growth-pack".to_string()])
             .success_criteria(vec![Criterion::required("growth", "10% growth")])
             .build();
 
@@ -337,6 +354,7 @@ mod tests {
             Some(TypesObjective::IncreaseDemand)
         ));
         assert_eq!(intent.risk_posture, RiskPosture::Conservative);
+        assert!(intent.activates_pack("growth-pack"));
         assert!(intent.has_required_criteria());
     }
 

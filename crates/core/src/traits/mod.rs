@@ -53,8 +53,10 @@
 //! ### ExperienceStore (Event Sourcing) Capabilities
 //! - [`ExperienceAppender`]: Append-only event storage (governance boundary)
 //! - [`ExperienceReplayer`]: Streaming replay access (audit, debugging)
+//! - [`ContextStore`]: Durable context snapshots across runs
 //! - [`DynExperienceAppender`]: Dyn-safe appender for runtime polymorphism
 //! - [`DynExperienceReplayer`]: Dyn-safe replayer for runtime polymorphism
+//! - [`DynContextStore`]: Dyn-safe context store for runtime polymorphism
 //! - [`StoreError`]: Store errors implementing [`CapabilityError`]
 //!
 //! ### Validation Capabilities (Type-State Aware)
@@ -117,8 +119,8 @@ pub use recall::{
 
 // ExperienceStore (event sourcing) capability traits
 pub use store::{
-    DynExperienceAppender, DynExperienceReplayer, ExperienceAppender, ExperienceReplayer,
-    ReplayBatch, ReplayCursor, ReplayOptions, StoreError,
+    ContextStore, DynContextStore, DynExperienceAppender, DynExperienceReplayer,
+    ExperienceAppender, ExperienceReplayer, ReplayBatch, ReplayCursor, ReplayOptions, StoreError,
 };
 
 // Validation capability traits

@@ -50,6 +50,7 @@ use std::future::Future;
 use std::time::Duration;
 
 use super::error::{CapabilityError, ErrorCategory};
+use crate::context::Context;
 use crate::experience_store::{EventQuery, ExperienceEventEnvelope, TimeRange};
 
 // ============================================================================
@@ -457,6 +458,29 @@ pub trait ExperienceReplayer: Send + Sync {
     fn query<'a>(&'a self, query: &'a EventQuery) -> Self::QueryFut<'a>;
 }
 
+/// Durable context snapshot storage.
+///
+/// Applications with state that spans multiple runs need a place to persist
+/// and reconstruct the engine context. This trait defines that boundary
+/// without prescribing a storage backend.
+pub trait ContextStore: Send + Sync {
+    /// Future type for loading a context snapshot.
+    type LoadFut<'a>: Future<Output = Result<Option<Context>, StoreError>> + Send + 'a
+    where
+        Self: 'a;
+
+    /// Future type for saving a context snapshot.
+    type SaveFut<'a>: Future<Output = Result<(), StoreError>> + Send + 'a
+    where
+        Self: 'a;
+
+    /// Load the latest snapshot for a run, tenant, or application-defined scope.
+    fn load_context<'a>(&'a self, scope_id: &'a str) -> Self::LoadFut<'a>;
+
+    /// Persist the latest snapshot for a run, tenant, or application-defined scope.
+    fn save_context<'a>(&'a self, scope_id: &'a str, context: &'a Context) -> Self::SaveFut<'a>;
+}
+
 // ============================================================================
 // Dyn-Safe Wrappers (for runtime polymorphism)
 // ============================================================================
@@ -515,6 +539,39 @@ impl<T: ExperienceReplayer> DynExperienceReplayer for T {
         query: &'a EventQuery,
     ) -> BoxFuture<'a, Result<Vec<ExperienceEventEnvelope>, StoreError>> {
         Box::pin(ExperienceReplayer::query(self, query))
+    }
+}
+
+/// Dyn-safe context store for runtime polymorphism.
+pub trait DynContextStore: Send + Sync {
+    /// Load a stored context snapshot.
+    fn load_context<'a>(
+        &'a self,
+        scope_id: &'a str,
+    ) -> BoxFuture<'a, Result<Option<Context>, StoreError>>;
+
+    /// Save a context snapshot.
+    fn save_context<'a>(
+        &'a self,
+        scope_id: &'a str,
+        context: &'a Context,
+    ) -> BoxFuture<'a, Result<(), StoreError>>;
+}
+
+impl<T: ContextStore> DynContextStore for T {
+    fn load_context<'a>(
+        &'a self,
+        scope_id: &'a str,
+    ) -> BoxFuture<'a, Result<Option<Context>, StoreError>> {
+        Box::pin(ContextStore::load_context(self, scope_id))
+    }
+
+    fn save_context<'a>(
+        &'a self,
+        scope_id: &'a str,
+        context: &'a Context,
+    ) -> BoxFuture<'a, Result<(), StoreError>> {
+        Box::pin(ContextStore::save_context(self, scope_id, context))
     }
 }
 

@@ -19,19 +19,24 @@ mod config;
 mod evals;
 mod packs;
 mod streaming;
+#[cfg(feature = "tui")]
 mod ui;
 
 use anyhow::Result;
 use chrono::Utc;
 use clap::{Parser, Subcommand};
+#[cfg(feature = "tui")]
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
+#[cfg(feature = "tui")]
 use ratatui::{Terminal, backend::CrosstermBackend};
 use serde::Serialize;
+#[cfg(feature = "tui")]
 use std::io;
+#[cfg(feature = "tui")]
 use std::panic;
 use std::sync::Arc;
 use tracing::{info, warn};
@@ -57,6 +62,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Launch interactive TUI
+    #[cfg(feature = "tui")]
     Tui,
 
     /// Manage domain packs
@@ -197,6 +203,7 @@ async fn main() -> Result<()> {
     }
 
     match cli.command {
+        #[cfg(feature = "tui")]
         Commands::Tui => {
             run_tui().await?;
         }
@@ -472,12 +479,14 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "tui")]
 /// Cleanup terminal on exit or panic
 fn cleanup_terminal() {
     let _ = disable_raw_mode();
     let _ = execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture);
 }
 
+#[cfg(feature = "tui")]
 /// Run the TUI application with proper terminal lifecycle management
 async fn run_tui() -> Result<()> {
     let original_hook = panic::take_hook();

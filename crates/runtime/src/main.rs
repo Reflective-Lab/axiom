@@ -46,6 +46,8 @@ use tracing_subscriber::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
     // Initialize Sentry (must be done before tracing)
     #[cfg(feature = "sentry")]
     let _sentry_guard = init_sentry();

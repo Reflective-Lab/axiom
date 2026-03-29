@@ -30,12 +30,13 @@ mod openai;
 pub use openai::{OpenAIConfig, OpenAIEmbedding, OpenAIModel, UsageSnapshot, UsageStats};
 
 use crate::error::{Error, Result};
+use std::any::Any;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 /// Embedding provider trait for different backends.
 #[async_trait::async_trait]
-pub trait EmbeddingProvider: Send + Sync {
+pub trait EmbeddingProvider: Any + Send + Sync {
     /// Generate embedding for text.
     async fn embed(&self, text: &str) -> Result<Vec<f32>>;
 
@@ -50,6 +51,9 @@ pub trait EmbeddingProvider: Send + Sync {
 
     /// Get embedding dimensions.
     fn dimensions(&self) -> usize;
+
+    /// Downcast support for provider-specific fast paths.
+    fn as_any(&self) -> &dyn Any;
 }
 
 /// Embedding engine for converting text to vectors.
@@ -148,8 +152,7 @@ impl EmbeddingEngine {
 
     /// Try to get underlying hash provider (for sync operations).
     fn as_hash_provider(&self) -> Option<&HashEmbedding> {
-        // Use Any trait for downcasting
-        None // Simplified - in practice use Any
+        self.provider.as_any().downcast_ref::<HashEmbedding>()
     }
 
     /// Compute similarity between two embeddings.
@@ -262,6 +265,10 @@ impl EmbeddingProvider for HashEmbedding {
 
     fn dimensions(&self) -> usize {
         self.dimensions
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 

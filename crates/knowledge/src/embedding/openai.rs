@@ -26,6 +26,7 @@
 use super::EmbeddingProvider;
 use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
+use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -563,6 +564,10 @@ impl EmbeddingProvider for OpenAIEmbedding {
 
     fn dimensions(&self) -> usize {
         self.effective_dimensions
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 

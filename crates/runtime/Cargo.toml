@@ -82,7 +82,6 @@ async-trait.workspace = true
 
 # OpenAPI
 utoipa.workspace = true
-utoipa-swagger-ui.workspace = true
 
 # WASM runtime
 wasmtime = { workspace = true, optional = true }
@@ -98,6 +97,7 @@ uuid.workspace = true
 hostname.workspace = true
 regex.workspace = true
 base64.workspace = true
+rand.workspace = true
 
 [build-dependencies]
 tonic-build = { workspace = true, optional = true }
@@ -112,6 +112,14 @@ default = ["grpc"]
 grpc = ["dep:tonic", "dep:prost", "dep:prost-types", "dep:tonic-build"]
 wasm = ["dep:wasmtime"]
 gcp = ["dep:firestore"]
+auth = []
+firebase = ["auth"]
+metrics = []
+telemetry = []
+security = []
+nats = []
+crypto = []
+billing = []
 
 [lints]
 workspace = true

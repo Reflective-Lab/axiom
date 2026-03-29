@@ -8,7 +8,6 @@
 use axum::{
     Json, Router,
     extract::{Path, Query},
-    http::HeaderMap,
     response::sse::{Event, KeepAlive, Sse},
     routing::{get, post},
 };
@@ -20,9 +19,6 @@ use std::time::Duration;
 use tracing::warn;
 
 use crate::error::RuntimeError;
-
-#[cfg(feature = "firebase")]
-use crate::auth::{FirebaseConfig, FirebaseValidator};
 
 static RELEASE_READINESS_RUNS: LazyLock<RwLock<HashMap<String, Vec<RunEventEnvelope>>>> =
     LazyLock::new(|| RwLock::new(HashMap::new()));
@@ -341,71 +337,6 @@ fn build_release_readiness_script(
     events
 }
 
-fn sanitize_token(token: String) -> Result<String, RuntimeError> {
-    let trimmed = token.trim().to_string();
-    if trimmed.is_empty() {
-        return Err(RuntimeError::Authentication(
-            "Missing bearer token.".to_string(),
-        ));
-    }
-    Ok(trimmed)
-}
-
-fn extract_bearer_from_headers(headers: &HeaderMap) -> Option<String> {
-    headers
-        .get(axum::http::header::AUTHORIZATION)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| {
-            value
-                .strip_prefix("Bearer ")
-                .or_else(|| value.strip_prefix("bearer "))
-        })
-        .map(std::string::ToString::to_string)
-}
-
-async fn authenticate_request(
-    headers: &HeaderMap,
-    query_token: Option<String>,
-) -> Result<(), RuntimeError> {
-    let token = sanitize_token(
-        extract_bearer_from_headers(headers)
-            .or(query_token)
-            .ok_or_else(|| RuntimeError::Authentication("Missing bearer token.".to_string()))?,
-    )?;
-
-    #[cfg(feature = "firebase")]
-    {
-        let project_id = std::env::var("FIREBASE_PROJECT_ID")
-            .or_else(|_| std::env::var("GOOGLE_CLOUD_PROJECT"))
-            .or_else(|_| std::env::var("GCP_PROJECT_ID"))
-            .map_err(|_| {
-                RuntimeError::Config(
-                    "FIREBASE_PROJECT_ID (or GCP project env) is required for Firebase auth."
-                        .to_string(),
-                )
-            })?;
-
-        let validator = FirebaseValidator::new(FirebaseConfig::new(&project_id));
-        validator
-            .validate(&token)
-            .await
-            .map_err(|e| RuntimeError::Authentication(format!("Invalid Firebase token: {e}")))?;
-    }
-
-    #[cfg(not(feature = "firebase"))]
-    {
-        // Non-firebase builds still enforce that callers send a token so the
-        // contract is secure-by-default when deployed with firebase enabled.
-        if token.len() < 20 {
-            return Err(RuntimeError::Authentication(
-                "Bearer token is too short.".to_string(),
-            ));
-        }
-    }
-
-    Ok(())
-}
-
 fn put_script(run_id: &str, script: Vec<RunEventEnvelope>) -> Result<(), RuntimeError> {
     let mut runs = RELEASE_READINESS_RUNS
         .write()
@@ -434,11 +365,8 @@ fn get_or_create_script(
 }
 
 pub async fn create_release_readiness_run(
-    headers: HeaderMap,
     Json(request): Json<CreateRunRequest>,
 ) -> Result<Json<CreateRunResponse>, RuntimeError> {
-    authenticate_request(&headers, None).await?;
-
     let run_id = format!("rr-{}", &uuid::Uuid::new_v4().simple().to_string()[..8]);
     let candidate = normalized_candidate(request.candidate);
     let environment = normalized_environment(request.environment);
@@ -483,12 +411,9 @@ pub async fn create_release_readiness_run(
 }
 
 pub async fn stream_release_readiness_events(
-    headers: HeaderMap,
     Path(run_id): Path<String>,
     Query(query): Query<StreamQuery>,
 ) -> Result<Sse<impl futures::Stream<Item = Result<Event, Infallible>>>, RuntimeError> {
-    authenticate_request(&headers, query.token.clone()).await?;
-
     if query
         .invite_session_id
         .as_deref()
@@ -559,7 +484,7 @@ pub fn router() -> Router<()> {
             post(create_release_readiness_run),
         )
         .route(
-            "/api/pilot/release-readiness/runs/:run_id/events",
+            "/api/pilot/release-readiness/runs/{run_id}/events",
             get(stream_release_readiness_events),
         )
 }
@@ -587,8 +512,7 @@ mod tests {
 
     #[tokio::test]
     async fn short_token_is_rejected_in_non_firebase_build() {
-        let headers = HeaderMap::new();
-        let result = authenticate_request(&headers, Some("short".to_string())).await;
+        let result = crate::http_auth::validate_token("short").await;
         #[cfg(not(feature = "firebase"))]
         assert!(result.is_err());
         #[cfg(feature = "firebase")]

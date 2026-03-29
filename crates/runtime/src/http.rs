@@ -5,14 +5,15 @@
 
 //! HTTP server implementation using Axum.
 
-use axum::Router;
+use axum::{Json, Router, routing::get};
+#[cfg(feature = "auth")]
+use axum::middleware::from_fn;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::{compression::CompressionLayer, cors::CorsLayer, trace::TraceLayer};
 use tracing::{Level, info};
 
 use utoipa::OpenApi;
-use utoipa_swagger_ui::SwaggerUi;
 
 use crate::api::ApiDoc;
 use crate::config::HttpConfig;
@@ -40,11 +41,20 @@ impl HttpServer {
         info!(%addr, "Starting HTTP server");
 
         // Build router with middleware and OpenAPI docs
-        let app = Router::new()
-            .merge(handlers::router(self.state.clone()))
+        let protected = Router::new()
+            .merge(handlers::protected_router(self.state.clone()))
             .merge(pilot::router())
-            .merge(sse::router().with_state(self.state))
-            .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+            .merge(sse::router().with_state(self.state.clone()));
+        #[cfg(feature = "auth")]
+        let protected = protected.layer(from_fn(crate::http_auth::require_auth));
+
+        let app = Router::new()
+            .merge(handlers::public_router())
+            .merge(protected)
+            .route(
+                "/api-docs/openapi.json",
+                get(|| async { Json(ApiDoc::openapi()) }),
+            )
             .layer(
                 ServiceBuilder::new()
                     .layer(

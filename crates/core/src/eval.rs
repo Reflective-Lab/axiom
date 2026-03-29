@@ -38,8 +38,8 @@
 //! # Example
 //!
 //! ```
-//! use converge_core::eval::{Eval, EvalResult, EvalOutcome};
-//! use converge_core::{Context, ContextKey};
+//! use converge_core::eval::{Eval, EvalOutcome, EvalResult};
+//! use converge_core::{Context, ContextKey, ContextView};
 //!
 //! struct StrategyDiversityEval;
 //!
@@ -47,7 +47,7 @@
 //!     fn name(&self) -> &str { "strategy_diversity" }
 //!     fn description(&self) -> &str { "Ensures at least 3 distinct strategies exist" }
 //!
-//!     fn evaluate(&self, ctx: &dyn crate::ContextView) -> EvalResult {
+//!     fn evaluate(&self, ctx: &dyn ContextView) -> EvalResult {
 //!         let strategies = ctx.get(ContextKey::Strategies);
 //!         let distinct_count = strategies.len();
 //!
@@ -281,7 +281,11 @@ impl EvalRegistry {
     ///
     /// Used for efficient scheduling (only run when dependencies change).
     #[must_use]
-    pub fn evaluate_dependent(&self, ctx: &dyn crate::ContextView, dirty_keys: &[ContextKey]) -> Vec<EvalResult> {
+    pub fn evaluate_dependent(
+        &self,
+        ctx: &dyn crate::ContextView,
+        dirty_keys: &[ContextKey],
+    ) -> Vec<EvalResult> {
         let mut eval_ids: std::collections::HashSet<EvalId> = std::collections::HashSet::new();
 
         // Find evals that depend on dirty keys

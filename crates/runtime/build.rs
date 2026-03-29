@@ -9,26 +9,27 @@
 fn main() {
     #[cfg(feature = "grpc")]
     {
-        let context_proto = std::path::Path::new("proto/context.proto");
-        let converge_proto = std::path::Path::new("proto/converge.proto");
+        let schema_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../schema/proto");
+        let context_proto = format!("{schema_dir}/context.proto");
+        let converge_proto = format!("{schema_dir}/converge.proto");
 
-        if context_proto.exists() {
-            println!("cargo:rerun-if-changed=proto/context.proto");
+        if std::path::Path::new(&context_proto).exists() {
+            println!("cargo:rerun-if-changed={context_proto}");
             tonic_build::configure()
                 .build_server(false)
                 .build_client(true)
                 .out_dir("src/ledger/generated")
-                .compile(&["proto/context.proto"], &["proto"])
+                .compile(&[&context_proto], &[schema_dir])
                 .expect("Failed to compile context.proto");
         }
 
-        if converge_proto.exists() {
-            println!("cargo:rerun-if-changed=proto/converge.proto");
+        if std::path::Path::new(&converge_proto).exists() {
+            println!("cargo:rerun-if-changed={converge_proto}");
             tonic_build::configure()
                 .build_server(true)
                 .build_client(true)
                 .out_dir("src/grpc/generated")
-                .compile(&["proto/converge.proto"], &["proto"])
+                .compile(&[&converge_proto], &[schema_dir])
                 .expect("Failed to compile converge.proto");
         }
     }

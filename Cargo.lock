@@ -239,9 +239,6 @@ name = "arbitrary"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
-dependencies = [
- "derive_arbitrary",
-]
 
 [[package]]
 name = "arc-swap"
@@ -2518,7 +2515,12 @@ dependencies = [
  "chrono",
  "clap",
  "config",
+ "converge-analytics",
  "converge-core",
+ "converge-knowledge",
+ "converge-llm",
+ "converge-mcp",
+ "converge-optimization",
  "converge-provider",
  "converge-tool",
  "crossterm 0.28.1",
@@ -2593,13 +2595,12 @@ version = "1.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "axum 0.8.8",
  "bincode 1.3.3",
  "chrono",
  "clap",
+ "converge-mcp",
  "criterion",
  "dashmap",
- "hyper 1.8.1",
  "parking_lot",
  "pdf-extract",
  "prost 0.13.5",
@@ -2618,8 +2619,6 @@ dependencies = [
  "tokio-test",
  "tonic 0.12.3",
  "tonic-build",
- "tower 0.5.3",
- "tower-http",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -2662,6 +2661,21 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tracing-test",
+]
+
+[[package]]
+name = "converge-mcp"
+version = "1.1.0"
+dependencies = [
+ "async-trait",
+ "axum 0.8.8",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower 0.5.3",
+ "tower-http",
+ "tracing",
 ]
 
 [[package]]
@@ -2715,6 +2729,7 @@ dependencies = [
  "arrow-schema",
  "base64 0.22.1",
  "converge-core",
+ "converge-mcp",
  "converge-traits",
  "futures",
  "lancedb",
@@ -2801,6 +2816,7 @@ dependencies = [
  "proptest",
  "prost 0.13.5",
  "prost-types 0.13.5",
+ "rand 0.8.5",
  "regex",
  "reqwest 0.12.28",
  "rustls 0.23.37",
@@ -2823,7 +2839,6 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "utoipa",
- "utoipa-swagger-ui",
  "uuid",
  "wasmtime",
 ]
@@ -4568,17 +4583,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "derive_arbitrary"
-version = "1.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e567bd82dcff979e4b03460c307b3cdc9e96fde3d73bed1496d2bc75d9dd62a"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.117",
-]
-
-[[package]]
 name = "derive_builder"
 version = "0.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5081,6 +5085,85 @@ checksum = "8be9f3dfaaffdae2972880079a491a1a8bb7cbed0b8dd7a347f668b4150a3b93"
 dependencies = [
  "event-listener 5.4.1",
  "pin-project-lite",
+]
+
+[[package]]
+name = "example-custom-agent"
+version = "0.0.0"
+dependencies = [
+ "converge-core",
+ "converge-traits",
+]
+
+[[package]]
+name = "example-custom-provider"
+version = "0.0.0"
+dependencies = [
+ "async-trait",
+ "converge-core",
+ "converge-provider",
+ "converge-traits",
+ "tokio",
+]
+
+[[package]]
+name = "example-expense-approval"
+version = "0.0.0"
+dependencies = [
+ "converge-core",
+ "converge-domain",
+ "converge-traits",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "example-hello-convergence"
+version = "0.0.0"
+dependencies = [
+ "converge-core",
+ "converge-traits",
+]
+
+[[package]]
+name = "example-loan-application"
+version = "0.0.0"
+dependencies = [
+ "converge-core",
+ "converge-domain",
+ "converge-traits",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "example-local-inference"
+version = "0.0.0"
+dependencies = [
+ "burn",
+ "converge-llm",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "example-meeting-scheduler"
+version = "0.0.0"
+dependencies = [
+ "converge-core",
+ "converge-domain",
+ "converge-traits",
+]
+
+[[package]]
+name = "example-vendor-selection"
+version = "0.0.0"
+dependencies = [
+ "converge-core",
+ "converge-domain",
+ "converge-traits",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -11797,40 +11880,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-embed"
-version = "8.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04113cb9355a377d83f06ef1f0a45b8ab8cd7d8b1288160717d66df5c7988d27"
-dependencies = [
- "rust-embed-impl",
- "rust-embed-utils",
- "walkdir",
-]
-
-[[package]]
-name = "rust-embed-impl"
-version = "8.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da0902e4c7c8e997159ab384e6d0fc91c221375f6894346ae107f47dd0f3ccaa"
-dependencies = [
- "proc-macro2",
- "quote",
- "rust-embed-utils",
- "syn 2.0.117",
- "walkdir",
-]
-
-[[package]]
-name = "rust-embed-utils"
-version = "8.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5bcdef0be6fe7f6fa333b1073c949729274b05f123a0ad7efcb8efd878e5c3b1"
-dependencies = [
- "sha2",
- "walkdir",
-]
-
-[[package]]
 name = "rust-ini"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -15038,24 +15087,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "utoipa-swagger-ui"
-version = "9.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d047458f1b5b65237c2f6dc6db136945667f40a7668627b3490b9513a3d43a55"
-dependencies = [
- "axum 0.8.8",
- "base64 0.22.1",
- "mime_guess",
- "regex",
- "rust-embed",
- "serde",
- "serde_json",
- "url",
- "utoipa",
- "zip 3.0.0",
-]
-
-[[package]]
 name = "uuid"
 version = "1.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -16814,20 +16845,6 @@ dependencies = [
  "sha1",
  "time",
  "zstd 0.11.2+zstd.1.5.2",
-]
-
-[[package]]
-name = "zip"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12598812502ed0105f607f941c386f43d441e00148fce9dec3ca5ffb0bde9308"
-dependencies = [
- "arbitrary",
- "crc32fast",
- "flate2",
- "indexmap 2.13.0",
- "memchr",
- "zopfli",
 ]
 
 [[package]]

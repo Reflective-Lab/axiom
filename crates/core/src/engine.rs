@@ -21,8 +21,13 @@ use crate::agent::{Agent, AgentId};
 use crate::context::{Context, ContextKey, Fact, ProposedFact};
 use crate::effect::AgentEffect;
 use crate::error::ConvergeError;
+use crate::experience_store::ExperienceEvent;
+use crate::gates::StopReason;
 use crate::gates::hitl::{GateDecision, GateEvent, GateRequest, GateVerdict, TimeoutPolicy};
 use crate::invariant::{Invariant, InvariantError, InvariantId, InvariantRegistry};
+use crate::kernel_boundary::DecisionStep;
+use crate::truth::{CriterionEvaluator, CriterionOutcome, CriterionResult};
+use crate::types::TypesRootIntent;
 
 /// Callback trait for streaming fact emissions during convergence.
 ///
@@ -46,6 +51,30 @@ pub trait StreamingCallback: Send + Sync {
 
     /// Called at the end of each convergence cycle.
     fn on_cycle_end(&self, cycle: u32, facts_added: usize);
+}
+
+/// Run-scoped observer for experience events emitted during convergence.
+pub trait ExperienceEventObserver: Send + Sync {
+    /// Called when the engine emits an experience event.
+    fn on_event(&self, event: &ExperienceEvent);
+}
+
+impl<F> ExperienceEventObserver for F
+where
+    F: Fn(&ExperienceEvent) + Send + Sync,
+{
+    fn on_event(&self, event: &ExperienceEvent) {
+        self(event);
+    }
+}
+
+/// Per-run hooks for typed intent execution.
+#[derive(Default)]
+pub struct TypesRunHooks {
+    /// Optional application evaluator for success criteria.
+    pub criterion_evaluator: Option<Arc<dyn CriterionEvaluator>>,
+    /// Optional run-scoped observer for experience events.
+    pub event_observer: Option<Arc<dyn ExperienceEventObserver>>,
 }
 
 /// Budget limits for execution.
@@ -115,6 +144,10 @@ pub struct ConvergeResult {
     pub cycles: u32,
     /// Whether convergence was reached (vs budget exhaustion).
     pub converged: bool,
+    /// Why the engine stopped from the runtime's point of view.
+    pub stop_reason: StopReason,
+    /// Evaluated success criteria for the active intent, if any.
+    pub criteria_outcomes: Vec<CriterionOutcome>,
 }
 
 /// State returned when convergence pauses at a HITL gate.
@@ -158,6 +191,8 @@ pub enum RunResult {
 pub struct Engine {
     /// Registered agents in order of registration.
     agents: Vec<Box<dyn Agent>>,
+    /// Optional pack ownership for registered agents.
+    agent_packs: Vec<Option<String>>,
     /// Dependency index: `ContextKey` → `AgentId`s interested in that key.
     index: HashMap<ContextKey, Vec<AgentId>>,
     /// Agents with no dependencies (run on every cycle).
@@ -172,6 +207,8 @@ pub struct Engine {
     streaming_callback: Option<Arc<dyn StreamingCallback>>,
     /// Optional HITL policy for gating proposals.
     hitl_policy: Option<EngineHitlPolicy>,
+    /// Optional active pack filter for the current run.
+    active_packs: Option<HashSet<String>>,
     /// Proposal IDs that were HITL-rejected. Re-proposals with the same ID
     /// are silently discarded (a human already said no).
     rejected_proposals: HashSet<String>,
@@ -189,6 +226,7 @@ impl Engine {
     pub fn new() -> Self {
         Self {
             agents: Vec::new(),
+            agent_packs: Vec::new(),
             index: HashMap::new(),
             always_eligible: Vec::new(),
             next_id: 0,
@@ -196,6 +234,7 @@ impl Engine {
             invariants: InvariantRegistry::new(),
             streaming_callback: None,
             hitl_policy: None,
+            active_packs: None,
             rejected_proposals: HashSet::new(),
         }
     }
@@ -381,6 +420,27 @@ impl Engine {
     /// Agents are assigned monotonically increasing IDs.
     /// The dependency index is updated incrementally.
     pub fn register(&mut self, agent: impl Agent + 'static) -> AgentId {
+        self.register_internal(None, agent)
+    }
+
+    /// Registers an agent as part of a named pack.
+    ///
+    /// Pack ownership is used by [`run_with_types_intent`](Self::run_with_types_intent)
+    /// and [`set_active_packs`](Self::set_active_packs) to constrain which
+    /// agents may participate in a run.
+    pub fn register_in_pack(
+        &mut self,
+        pack_id: impl Into<String>,
+        agent: impl Agent + 'static,
+    ) -> AgentId {
+        self.register_internal(Some(pack_id.into()), agent)
+    }
+
+    fn register_internal(
+        &mut self,
+        pack_id: Option<String>,
+        agent: impl Agent + 'static,
+    ) -> AgentId {
         let id = AgentId(self.next_id);
         self.next_id += 1;
 
@@ -398,7 +458,8 @@ impl Engine {
         }
 
         self.agents.push(Box::new(agent));
-        debug!(agent = %name, ?id, ?deps, "Registered agent");
+        self.agent_packs.push(pack_id.clone());
+        debug!(agent = %name, ?id, ?deps, ?pack_id, "Registered agent");
         id
     }
 
@@ -406,6 +467,61 @@ impl Engine {
     #[must_use]
     pub fn agent_count(&self) -> usize {
         self.agents.len()
+    }
+
+    /// Restrict future runs to the provided pack IDs.
+    pub fn set_active_packs<I, S>(&mut self, pack_ids: I)
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        let packs = pack_ids.into_iter().map(Into::into).collect::<HashSet<_>>();
+        self.active_packs = (!packs.is_empty()).then_some(packs);
+    }
+
+    /// Remove any active pack restriction.
+    pub fn clear_active_packs(&mut self) {
+        self.active_packs = None;
+    }
+
+    /// Run the engine with budgets and active packs derived from a typed intent.
+    pub fn run_with_types_intent(
+        &mut self,
+        context: Context,
+        intent: &TypesRootIntent,
+    ) -> Result<ConvergeResult, ConvergeError> {
+        self.run_with_types_intent_and_hooks(context, intent, TypesRunHooks::default())
+    }
+
+    /// Run the engine with a typed intent plus run-scoped observers/evaluators.
+    pub fn run_with_types_intent_and_hooks(
+        &mut self,
+        context: Context,
+        intent: &TypesRootIntent,
+        hooks: TypesRunHooks,
+    ) -> Result<ConvergeResult, ConvergeError> {
+        let previous_budget = self.budget.clone();
+        let previous_active_packs = self.active_packs.clone();
+
+        self.set_budget(intent.budgets.to_engine_budget());
+        if intent.active_packs.is_empty() {
+            self.clear_active_packs();
+        } else {
+            self.set_active_packs(intent.active_packs.iter().cloned());
+        }
+
+        let result = self
+            .run_observed(context, hooks.event_observer.as_ref())
+            .map(|result| {
+                finalize_types_result(result, intent, hooks.criterion_evaluator.as_deref())
+            });
+
+        emit_terminal_event(hooks.event_observer.as_ref(), intent, result.as_ref());
+
+        self.budget = previous_budget;
+        self.active_packs = previous_active_packs;
+
+        result
     }
 
     /// Runs the convergence loop until fixed point or budget exhaustion.
@@ -430,7 +546,15 @@ impl Engine {
     /// Returns `ConvergeError::BudgetExhausted` if:
     /// - `max_cycles` is exceeded
     /// - `max_facts` is exceeded
-    pub fn run(&mut self, mut context: Context) -> Result<ConvergeResult, ConvergeError> {
+    pub fn run(&mut self, context: Context) -> Result<ConvergeResult, ConvergeError> {
+        self.run_observed(context, None)
+    }
+
+    fn run_observed(
+        &mut self,
+        mut context: Context,
+        event_observer: Option<&Arc<dyn ExperienceEventObserver>>,
+    ) -> Result<ConvergeResult, ConvergeError> {
         let _span = info_span!("engine_run").entered();
         let mut cycles: u32 = 0;
 
@@ -484,6 +608,8 @@ impl Engine {
                     context,
                     cycles,
                     converged: true,
+                    stop_reason: StopReason::converged(),
+                    criteria_outcomes: Vec::new(),
                 });
             }
 
@@ -499,7 +625,8 @@ impl Engine {
             // Merge effects serially (deterministic order by AgentId)
             let (new_dirty_keys, facts_added) = {
                 let _span = info_span!("merge_effects", count = effects.len()).entered();
-                let (d, count) = self.merge_effects(&mut context, effects, cycles)?;
+                let (d, count) =
+                    self.merge_effects(&mut context, effects, cycles, event_observer)?;
                 info!(count = d.len(), "Merged effects");
                 (d, count)
             };
@@ -539,6 +666,8 @@ impl Engine {
                     context,
                     cycles,
                     converged: true,
+                    stop_reason: StopReason::converged(),
+                    criteria_outcomes: Vec::new(),
                 });
             }
 
@@ -586,13 +715,22 @@ impl Engine {
             .into_iter()
             .filter(|&id| {
                 let agent = &self.agents[id.0 as usize];
-                agent.accepts(context)
+                self.is_agent_active_for_pack(id) && agent.accepts(context)
             })
             .collect();
 
         // Sort for determinism
         eligible.sort();
         eligible
+    }
+
+    fn is_agent_active_for_pack(&self, id: AgentId) -> bool {
+        match &self.active_packs {
+            None => true,
+            Some(active_packs) => self.agent_packs[id.0 as usize]
+                .as_ref()
+                .is_none_or(|pack_id| active_packs.contains(pack_id)),
+        }
     }
 
     /// Executes agents sequentially and collects their effects.
@@ -629,6 +767,7 @@ impl Engine {
         context: &mut Context,
         mut effects: Vec<(AgentId, AgentEffect)>,
         cycle: u32,
+        event_observer: Option<&Arc<dyn ExperienceEventObserver>>,
     ) -> Result<(Vec<ContextKey>, usize), ConvergeError> {
         // Sort by AgentId for deterministic ordering (DECISIONS.md §1)
         effects.sort_by_key(|(id, _)| *id);
@@ -661,11 +800,22 @@ impl Engine {
 
             // 2. Process proposals (Validation & Promotion)
             for proposal in effect.proposals {
+                let proposal_id = proposal.id.clone();
                 let _span =
-                    info_span!("validate_proposal", agent = %id, proposal = %proposal.id).entered();
+                    info_span!("validate_proposal", agent = %id, proposal = %proposal_id).entered();
                 match Fact::try_from(proposal) {
                     Ok(fact) => {
                         info!(agent = %id, fact = %fact.id, "Proposal promoted to fact");
+                        emit_experience_event(
+                            event_observer,
+                            ExperienceEvent::FactPromoted {
+                                proposal_id,
+                                fact_id: fact.id.clone(),
+                                promoted_by: format!("agent-{}", id.0),
+                                reason: "proposal validated in engine merge".to_string(),
+                                requires_human: false,
+                            },
+                        );
                         // Emit streaming callback for promoted proposal
                         if let Some(ref cb) = self.streaming_callback {
                             cb.on_fact(cycle, &fact);
@@ -763,6 +913,8 @@ impl Engine {
                     context,
                     cycles,
                     converged: true,
+                    stop_reason: StopReason::converged(),
+                    criteria_outcomes: Vec::new(),
                 }));
             }
 
@@ -812,6 +964,8 @@ impl Engine {
                     context,
                     cycles,
                     converged: true,
+                    stop_reason: StopReason::converged(),
+                    criteria_outcomes: Vec::new(),
                 }));
             }
 
@@ -868,6 +1022,8 @@ impl Engine {
                 context,
                 cycles: from_cycle,
                 converged: true,
+                stop_reason: StopReason::converged(),
+                criteria_outcomes: Vec::new(),
             }));
         }
 
@@ -925,6 +1081,8 @@ impl Engine {
                     context,
                     cycles,
                     converged: true,
+                    stop_reason: StopReason::converged(),
+                    criteria_outcomes: Vec::new(),
                 }));
             }
 
@@ -966,6 +1124,8 @@ impl Engine {
                     context,
                     cycles,
                     converged: true,
+                    stop_reason: StopReason::converged(),
+                    criteria_outcomes: Vec::new(),
                 }));
             }
 
@@ -1186,10 +1346,151 @@ impl std::fmt::Debug for MergeResult {
     }
 }
 
+fn finalize_types_result(
+    mut result: ConvergeResult,
+    intent: &TypesRootIntent,
+    evaluator: Option<&dyn CriterionEvaluator>,
+) -> ConvergeResult {
+    result.criteria_outcomes = intent
+        .success_criteria
+        .iter()
+        .cloned()
+        .map(|criterion| CriterionOutcome {
+            result: evaluator.map_or(CriterionResult::Indeterminate, |evaluator| {
+                evaluator.evaluate(&criterion, &result.context)
+            }),
+            criterion,
+        })
+        .collect();
+
+    let required_outcomes = result
+        .criteria_outcomes
+        .iter()
+        .filter(|outcome| outcome.criterion.required)
+        .collect::<Vec<_>>();
+    let met_required = required_outcomes
+        .iter()
+        .all(|outcome| matches!(outcome.result, CriterionResult::Met { .. }));
+    let required_criteria = required_outcomes
+        .iter()
+        .map(|outcome| outcome.criterion.id.clone())
+        .collect::<Vec<_>>();
+    let blocked_required = required_outcomes
+        .iter()
+        .filter_map(|outcome| match &outcome.result {
+            CriterionResult::Blocked { .. } => Some(outcome.criterion.id.clone()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    let approval_refs = required_outcomes
+        .iter()
+        .filter_map(|outcome| match &outcome.result {
+            CriterionResult::Blocked {
+                approval_ref: Some(reference),
+                ..
+            } => Some(reference.clone()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    result.stop_reason = if !required_criteria.is_empty() && met_required {
+        StopReason::criteria_met(required_criteria)
+    } else if !blocked_required.is_empty() {
+        StopReason::human_intervention_required(blocked_required, approval_refs)
+    } else {
+        StopReason::converged()
+    };
+
+    result
+}
+
+fn emit_experience_event(
+    observer: Option<&Arc<dyn ExperienceEventObserver>>,
+    event: ExperienceEvent,
+) {
+    if let Some(observer) = observer {
+        observer.on_event(&event);
+    }
+}
+
+fn emit_terminal_event(
+    observer: Option<&Arc<dyn ExperienceEventObserver>>,
+    intent: &TypesRootIntent,
+    result: Result<&ConvergeResult, &ConvergeError>,
+) {
+    let Some(observer) = observer else {
+        return;
+    };
+
+    match result {
+        Ok(result) => {
+            let passed = result
+                .criteria_outcomes
+                .iter()
+                .filter(|outcome| outcome.criterion.required)
+                .all(|outcome| matches!(outcome.result, CriterionResult::Met { .. }));
+            observer.on_event(&ExperienceEvent::OutcomeRecorded {
+                chain_id: intent.id.as_str().to_string(),
+                step: DecisionStep::Planning,
+                passed,
+                stop_reason: Some(stop_reason_label(&result.stop_reason)),
+                latency_ms: None,
+                tokens: None,
+                cost_microdollars: None,
+                backend: Some("converge-engine".to_string()),
+            });
+        }
+        Err(error) => {
+            let stop_reason = error.stop_reason();
+            if let ConvergeError::BudgetExhausted { kind } = error {
+                observer.on_event(&ExperienceEvent::BudgetExceeded {
+                    chain_id: intent.id.as_str().to_string(),
+                    resource: "engine-budget".to_string(),
+                    limit: kind.clone(),
+                    observed: None,
+                });
+            }
+            observer.on_event(&ExperienceEvent::OutcomeRecorded {
+                chain_id: intent.id.as_str().to_string(),
+                step: DecisionStep::Planning,
+                passed: false,
+                stop_reason: Some(stop_reason_label(&stop_reason)),
+                latency_ms: None,
+                tokens: None,
+                cost_microdollars: None,
+                backend: Some("converge-engine".to_string()),
+            });
+        }
+    }
+}
+
+fn stop_reason_label(stop_reason: &StopReason) -> String {
+    match stop_reason {
+        StopReason::Converged => "converged".to_string(),
+        StopReason::CriteriaMet { .. } => "criteria-met".to_string(),
+        StopReason::UserCancelled => "user-cancelled".to_string(),
+        StopReason::HumanInterventionRequired { .. } => {
+            "human-intervention-required".to_string()
+        }
+        StopReason::CycleBudgetExhausted { .. } => "cycle-budget-exhausted".to_string(),
+        StopReason::FactBudgetExhausted { .. } => "fact-budget-exhausted".to_string(),
+        StopReason::TokenBudgetExhausted { .. } => "token-budget-exhausted".to_string(),
+        StopReason::TimeBudgetExhausted { .. } => "time-budget-exhausted".to_string(),
+        StopReason::InvariantViolated { .. } => "invariant-violated".to_string(),
+        StopReason::PromotionRejected { .. } => "promotion-rejected".to_string(),
+        StopReason::Error { .. } => "error".to_string(),
+        StopReason::AgentRefused { .. } => "agent-refused".to_string(),
+        StopReason::HitlGatePending { .. } => "hitl-gate-pending".to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::context::{Fact, ProposedFact};
+    use crate::truth::{CriterionEvaluator, CriterionResult};
+    use crate::{Criterion, TypesBudgets, TypesIntentId, TypesIntentKind, TypesRootIntent};
+    use std::sync::Mutex;
     use strum::IntoEnumIterator;
     use tracing_test::traced_test;
 
@@ -1254,6 +1555,72 @@ mod tests {
         }
     }
 
+    struct ProposalSeedAgent;
+
+    impl Agent for ProposalSeedAgent {
+        fn name(&self) -> &str {
+            "ProposalSeedAgent"
+        }
+
+        fn dependencies(&self) -> &[ContextKey] {
+            &[]
+        }
+
+        fn accepts(&self, ctx: &dyn crate::ContextView) -> bool {
+            !ctx.has(ContextKey::Seeds)
+        }
+
+        fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
+            AgentEffect::with_proposal(ProposedFact {
+                key: ContextKey::Seeds,
+                id: "seed-1".into(),
+                content: "initial seed".into(),
+                confidence: 0.9,
+                provenance: "test".into(),
+            })
+        }
+    }
+
+    #[derive(Default)]
+    struct TestObserver {
+        events: Mutex<Vec<ExperienceEvent>>,
+    }
+
+    impl ExperienceEventObserver for TestObserver {
+        fn on_event(&self, event: &ExperienceEvent) {
+            self.events
+                .lock()
+                .expect("observer lock")
+                .push(event.clone());
+        }
+    }
+
+    struct SeedCriterionEvaluator;
+    struct BlockedCriterionEvaluator;
+
+    impl CriterionEvaluator for SeedCriterionEvaluator {
+        fn evaluate(&self, criterion: &Criterion, context: &Context) -> CriterionResult {
+            if criterion.id == "seed.present" && context.has(ContextKey::Seeds) {
+                CriterionResult::Met {
+                    evidence: vec![crate::FactId::new("seed-1")],
+                }
+            } else {
+                CriterionResult::Unmet {
+                    reason: "seed fact missing".to_string(),
+                }
+            }
+        }
+    }
+
+    impl CriterionEvaluator for BlockedCriterionEvaluator {
+        fn evaluate(&self, _criterion: &Criterion, _context: &Context) -> CriterionResult {
+            CriterionResult::Blocked {
+                reason: "human approval required".to_string(),
+                approval_ref: Some("approval:test".to_string()),
+            }
+        }
+    }
+
     #[test]
     fn engine_converges_with_single_agent() {
         let mut engine = Engine::new();
@@ -1300,6 +1667,113 @@ mod tests {
             r1.context.get(ContextKey::Hypotheses),
             r2.context.get(ContextKey::Hypotheses)
         );
+    }
+
+    #[test]
+    fn typed_intent_run_evaluates_success_criteria() {
+        let mut engine = Engine::new();
+        engine.register(SeedAgent);
+
+        let intent = TypesRootIntent::builder()
+            .id(TypesIntentId::new("truth:test-seed"))
+            .kind(TypesIntentKind::Custom)
+            .request("test seed criterion")
+            .success_criteria(vec![Criterion::required("seed.present", "seed is present")])
+            .budgets(TypesBudgets::default())
+            .build();
+
+        let result = engine
+            .run_with_types_intent_and_hooks(
+                Context::new(),
+                &intent,
+                TypesRunHooks {
+                    criterion_evaluator: Some(Arc::new(SeedCriterionEvaluator)),
+                    event_observer: None,
+                },
+            )
+            .expect("should converge");
+
+        assert!(matches!(result.stop_reason, StopReason::CriteriaMet { .. }));
+        assert_eq!(result.criteria_outcomes.len(), 1);
+        assert!(matches!(
+            result.criteria_outcomes[0].result,
+            CriterionResult::Met { .. }
+        ));
+    }
+
+    #[test]
+    fn typed_intent_run_emits_fact_and_outcome_events() {
+        let mut engine = Engine::new();
+        engine.register(ProposalSeedAgent);
+
+        let intent = TypesRootIntent::builder()
+            .id(TypesIntentId::new("truth:event-test"))
+            .kind(TypesIntentKind::Custom)
+            .request("test event observer")
+            .success_criteria(vec![Criterion::required("seed.present", "seed is present")])
+            .budgets(TypesBudgets::default())
+            .build();
+
+        let observer = Arc::new(TestObserver::default());
+        let _ = engine
+            .run_with_types_intent_and_hooks(
+                Context::new(),
+                &intent,
+                TypesRunHooks {
+                    criterion_evaluator: Some(Arc::new(SeedCriterionEvaluator)),
+                    event_observer: Some(observer.clone()),
+                },
+            )
+            .expect("should converge");
+
+        let events = observer.events.lock().expect("observer lock");
+        assert!(
+            events
+                .iter()
+                .any(|event| matches!(event, ExperienceEvent::FactPromoted { .. }))
+        );
+        assert!(
+            events
+                .iter()
+                .any(|event| matches!(event, ExperienceEvent::OutcomeRecorded { .. }))
+        );
+    }
+
+    #[test]
+    fn typed_intent_run_surfaces_human_intervention_required() {
+        let mut engine = Engine::new();
+        engine.register(SeedAgent);
+
+        let intent = TypesRootIntent::builder()
+            .id(TypesIntentId::new("truth:blocked-test"))
+            .kind(TypesIntentKind::Custom)
+            .request("test blocked criterion")
+            .success_criteria(vec![Criterion::required(
+                "approval.pending",
+                "approval is pending",
+            )])
+            .budgets(TypesBudgets::default())
+            .build();
+
+        let result = engine
+            .run_with_types_intent_and_hooks(
+                Context::new(),
+                &intent,
+                TypesRunHooks {
+                    criterion_evaluator: Some(Arc::new(BlockedCriterionEvaluator)),
+                    event_observer: None,
+                },
+            )
+            .expect("should converge");
+
+        assert!(matches!(
+            result.stop_reason,
+            StopReason::HumanInterventionRequired { .. }
+        ));
+        assert!(matches!(
+            result.criteria_outcomes[0].result,
+            CriterionResult::Blocked { .. }
+        ));
     }
 
     #[test]
@@ -1520,6 +1994,18 @@ mod tests {
         assert_eq!(eligible, vec![multi_id]);
     }
 
+    #[test]
+    fn find_eligible_respects_active_pack_filter() {
+        let mut engine = Engine::new();
+        let pack_a_id = engine.register_in_pack("pack-a", AlwaysAgent);
+        let _pack_b_id = engine.register_in_pack("pack-b", AlwaysAgent);
+        let global_id = engine.register(AlwaysAgent);
+        engine.set_active_packs(["pack-a"]);
+
+        let eligible = engine.find_eligible(&Context::new(), &[]);
+        assert_eq!(eligible, vec![pack_a_id, global_id]);
+    }
+
     /// Agent with static fact output used for merge ordering tests.
     struct NamedAgent {
         name: &'static str,
@@ -1574,7 +2060,12 @@ mod tests {
 
         // Intentionally feed merge_effects in reverse order.
         let (dirty, facts_added) = engine
-            .merge_effects(&mut context, vec![(id_b, effect_b), (id_a, effect_a)], 1)
+            .merge_effects(
+                &mut context,
+                vec![(id_b, effect_b), (id_a, effect_a)],
+                1,
+                None,
+            )
             .expect("should not conflict");
 
         let seeds = context.get(ContextKey::Seeds);

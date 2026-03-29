@@ -1,0 +1,9 @@
+.git
+.github
+target
+.jj
+.converge
+.env
+.env.local
+docs/project
+docs/personas

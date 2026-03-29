@@ -213,6 +213,7 @@ pub mod prompt;
 pub mod recall;
 pub mod root_intent;
 pub mod traits;
+pub mod truth;
 pub mod types;
 pub mod validation;
 
@@ -224,7 +225,8 @@ pub use effect::AgentEffect;
 /// Agent and Invariant implementations use `&dyn ContextView` in their signatures.
 pub use converge_traits::Context as ContextView;
 pub use engine::{
-    Budget, ConvergeResult, Engine, EngineHitlPolicy, HitlPause, RunResult, StreamingCallback,
+    Budget, ConvergeResult, Engine, EngineHitlPolicy, ExperienceEventObserver, HitlPause,
+    RunResult, StreamingCallback, TypesRunHooks,
 };
 pub use error::ConvergeError;
 pub use eval::{Eval, EvalId, EvalOutcome, EvalRegistry, EvalResult};
@@ -243,6 +245,9 @@ pub use root_intent::{
     Budgets, ConstraintSeverity, IntentConstraint, IntentId, IntentKind, IntentValidationError,
     Objective, RootIntent, Scope, ScopeConstraint, SuccessCriteria, SuccessCriterion,
 };
+pub use truth::{
+    CriterionEvaluator, CriterionOutcome, CriterionResult, TruthCatalog, TruthDefinition, TruthKind,
+};
 
 // Re-export core capability types for convenience
 pub use capability::{
@@ -253,7 +258,7 @@ pub use capability::{
 };
 
 // Re-export capability boundary traits (interfaces for external implementations)
-pub use traits::{Executor, Fingerprint, FingerprintError, Randomness};
+pub use traits::{ContextStore, Executor, Fingerprint, FingerprintError, Randomness};
 
 // Re-export kernel boundary types (constitutional types for all kernels)
 pub use kernel_boundary::{

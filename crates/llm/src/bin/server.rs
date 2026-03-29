@@ -28,6 +28,15 @@ use converge_llm::server::health::HealthState;
 use converge_llm::server::proto::kernel_service_server::KernelServiceServer;
 use converge_llm::server::service::KernelServiceImpl;
 
+#[cfg(feature = "cuda")]
+type ServerBackend = burn::backend::CudaJit<burn::tensor::f16, i32>;
+
+#[cfg(all(not(feature = "cuda"), feature = "wgpu"))]
+type ServerBackend = burn::backend::Wgpu;
+
+#[cfg(all(not(feature = "cuda"), not(feature = "wgpu")))]
+type ServerBackend = burn::backend::ndarray::NdArray;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
@@ -169,12 +178,10 @@ fn backend_name() -> &'static str {
 fn load_engine(
     max_seq_len: usize,
 ) -> Result<
-    converge_llm::LlamaEngine<burn::backend::ndarray::NdArray>,
+    converge_llm::LlamaEngine<ServerBackend>,
     Box<dyn std::error::Error>,
 > {
-    use burn::backend::ndarray::NdArrayDevice;
-
-    let device = NdArrayDevice::Cpu;
+    let device = burn::tensor::Device::<ServerBackend>::default();
 
     let model_path = std::env::var("MODEL_PATH")
         .expect("MODEL_PATH environment variable is required (path to model checkpoint)");
@@ -184,9 +191,13 @@ fn load_engine(
     info!("  model_path: {model_path}");
     info!("  tokenizer_path: {tokenizer_path}");
 
-    let engine =
-        converge_llm::LlamaEngine::load_from_checkpoint(&model_path, &tokenizer_path, max_seq_len, &device)
-            .map_err(|e| format!("failed to load model: {e}"))?;
+    let engine = converge_llm::LlamaEngine::load_from_checkpoint(
+        &model_path,
+        &tokenizer_path,
+        max_seq_len,
+        &device,
+    )
+    .map_err(|e| format!("failed to load model: {e}"))?;
 
     Ok(engine)
 }

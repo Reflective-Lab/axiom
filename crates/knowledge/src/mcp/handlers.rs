@@ -1,6 +1,12 @@
-//! MCP request handlers.
+//! MCP request handlers — knowledge-specific implementation.
 
-use super::types::*;
+use converge_mcp::{
+    CallToolRequest, CallToolResult, InitializeResult, JsonRpcRequest, JsonRpcResponse,
+    ListResourcesResult, ListToolsResult, ReadResourceResult, Resource,
+    ResourceContent, ServerCapabilities, ServerInfo, Tool, ToolContent,
+    server::McpRequestHandler,
+};
+
 use crate::core::{KnowledgeBase, KnowledgeEntry, SearchOptions};
 
 use serde_json::json;
@@ -8,39 +14,20 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-/// MCP request handler.
-pub struct McpHandler {
+/// Knowledge-base-specific MCP request handler.
+pub struct KnowledgeHandler {
     kb: Arc<RwLock<KnowledgeBase>>,
 }
 
-impl McpHandler {
+impl KnowledgeHandler {
     /// Create a new handler.
     pub fn new(kb: Arc<RwLock<KnowledgeBase>>) -> Self {
         Self { kb }
     }
 
-    /// Handle an MCP request.
-    pub async fn handle(&self, request: JsonRpcRequest) -> JsonRpcResponse {
-        match request.method.as_str() {
-            "initialize" => self.handle_initialize(request.id).await,
-            "initialized" => JsonRpcResponse::success(request.id, json!({})),
-            "tools/list" => self.handle_list_tools(request.id).await,
-            "tools/call" => self.handle_call_tool(request.id, request.params).await,
-            "resources/list" => self.handle_list_resources(request.id).await,
-            "resources/read" => self.handle_read_resource(request.id, request.params).await,
-            "ping" => JsonRpcResponse::success(request.id, json!({})),
-            _ => JsonRpcResponse::error(
-                request.id,
-                -32601,
-                format!("Method not found: {}", request.method),
-            ),
-        }
-    }
-
-    /// Handle initialize request.
     async fn handle_initialize(&self, id: Option<serde_json::Value>) -> JsonRpcResponse {
         let result = InitializeResult {
-            protocol_version: "2024-11-05".to_string(),
+            protocol_version: converge_mcp::MCP_PROTOCOL_VERSION.to_string(),
             capabilities: ServerCapabilities::default(),
             server_info: ServerInfo {
                 name: "converge-knowledge".to_string(),
@@ -51,7 +38,6 @@ impl McpHandler {
         JsonRpcResponse::success(id, serde_json::to_value(result).unwrap())
     }
 
-    /// Handle list tools request.
     async fn handle_list_tools(&self, id: Option<serde_json::Value>) -> JsonRpcResponse {
         let tools = vec![
             Tool {
@@ -147,7 +133,6 @@ impl McpHandler {
         JsonRpcResponse::success(id, serde_json::to_value(result).unwrap())
     }
 
-    /// Handle call tool request.
     async fn handle_call_tool(
         &self,
         id: Option<serde_json::Value>,
@@ -163,7 +148,7 @@ impl McpHandler {
         let request: CallToolRequest = match serde_json::from_value(params) {
             Ok(r) => r,
             Err(e) => {
-                return JsonRpcResponse::error(id, -32602, format!("Invalid params: {}", e));
+                return JsonRpcResponse::error(id, -32602, format!("Invalid params: {e}"));
             }
         };
 
@@ -188,7 +173,6 @@ impl McpHandler {
         }
     }
 
-    /// Handle knowledge search tool.
     async fn tool_search(
         &self,
         args: &std::collections::HashMap<String, serde_json::Value>,
@@ -225,7 +209,6 @@ impl McpHandler {
         })
     }
 
-    /// Handle knowledge add tool.
     async fn tool_add(
         &self,
         args: &std::collections::HashMap<String, serde_json::Value>,
@@ -259,13 +242,12 @@ impl McpHandler {
 
         Ok(CallToolResult {
             content: vec![ToolContent::Text {
-                text: format!("Added entry with ID: {}", id),
+                text: format!("Added entry with ID: {id}"),
             }],
             is_error: None,
         })
     }
 
-    /// Handle knowledge get tool.
     async fn tool_get(
         &self,
         args: &std::collections::HashMap<String, serde_json::Value>,
@@ -275,7 +257,7 @@ impl McpHandler {
             .and_then(|v| v.as_str())
             .ok_or_else(|| "Missing 'id' argument".to_string())?;
 
-        let id = Uuid::parse_str(id_str).map_err(|e| format!("Invalid UUID: {}", e))?;
+        let id = Uuid::parse_str(id_str).map_err(|e| format!("Invalid UUID: {e}"))?;
 
         let kb = self.kb.read().await;
         match kb.get(id) {
@@ -296,11 +278,10 @@ impl McpHandler {
                     is_error: None,
                 })
             }
-            None => Err(format!("Entry not found: {}", id_str)),
+            None => Err(format!("Entry not found: {id_str}")),
         }
     }
 
-    /// Handle knowledge feedback tool.
     async fn tool_feedback(
         &self,
         args: &std::collections::HashMap<String, serde_json::Value>,
@@ -315,7 +296,7 @@ impl McpHandler {
             .and_then(|v| v.as_bool())
             .ok_or_else(|| "Missing 'helpful' argument".to_string())?;
 
-        let id = Uuid::parse_str(id_str).map_err(|e| format!("Invalid UUID: {}", e))?;
+        let id = Uuid::parse_str(id_str).map_err(|e| format!("Invalid UUID: {e}"))?;
 
         let kb = self.kb.read().await;
         kb.record_feedback(id, helpful)
@@ -336,7 +317,6 @@ impl McpHandler {
         })
     }
 
-    /// Handle knowledge stats tool.
     async fn tool_stats(&self) -> std::result::Result<CallToolResult, String> {
         let kb = self.kb.read().await;
         let stats = kb.stats();
@@ -363,7 +343,6 @@ impl McpHandler {
         })
     }
 
-    /// Handle list resources request.
     async fn handle_list_resources(&self, id: Option<serde_json::Value>) -> JsonRpcResponse {
         let kb = self.kb.read().await;
         let entries = kb.all_entries();
@@ -382,7 +361,6 @@ impl McpHandler {
         JsonRpcResponse::success(id, serde_json::to_value(result).unwrap())
     }
 
-    /// Handle read resource request.
     async fn handle_read_resource(
         &self,
         id: Option<serde_json::Value>,
@@ -395,14 +373,13 @@ impl McpHandler {
             }
         };
 
-        let request: ReadResourceRequest = match serde_json::from_value(params) {
+        let request: converge_mcp::ReadResourceRequest = match serde_json::from_value(params) {
             Ok(r) => r,
             Err(e) => {
-                return JsonRpcResponse::error(id, -32602, format!("Invalid params: {}", e));
+                return JsonRpcResponse::error(id, -32602, format!("Invalid params: {e}"));
             }
         };
 
-        // Parse URI: knowledge://{id}
         let entry_id = request
             .uri
             .strip_prefix("knowledge://")
@@ -411,7 +388,7 @@ impl McpHandler {
         let uuid = match Uuid::parse_str(entry_id) {
             Ok(u) => u,
             Err(e) => {
-                return JsonRpcResponse::error(id, -32602, format!("Invalid entry ID: {}", e));
+                return JsonRpcResponse::error(id, -32602, format!("Invalid entry ID: {e}"));
             }
         };
 
@@ -437,12 +414,33 @@ impl McpHandler {
 
                 JsonRpcResponse::success(id, serde_json::to_value(result).unwrap())
             }
-            None => JsonRpcResponse::error(id, -32602, format!("Entry not found: {}", entry_id)),
+            None => {
+                JsonRpcResponse::error(id, -32602, format!("Entry not found: {entry_id}"))
+            }
         }
     }
 }
 
-/// Truncate a string to a maximum length.
+#[async_trait::async_trait]
+impl McpRequestHandler for KnowledgeHandler {
+    async fn handle(&self, request: JsonRpcRequest) -> JsonRpcResponse {
+        match request.method.as_str() {
+            "initialize" => self.handle_initialize(request.id).await,
+            "initialized" => JsonRpcResponse::success(request.id, json!({})),
+            "tools/list" => self.handle_list_tools(request.id).await,
+            "tools/call" => self.handle_call_tool(request.id, request.params).await,
+            "resources/list" => self.handle_list_resources(request.id).await,
+            "resources/read" => self.handle_read_resource(request.id, request.params).await,
+            "ping" => JsonRpcResponse::success(request.id, json!({})),
+            _ => JsonRpcResponse::error(
+                request.id,
+                -32601,
+                format!("Method not found: {}", request.method),
+            ),
+        }
+    }
+}
+
 fn truncate(s: &str, max_len: usize) -> String {
     if s.len() <= max_len {
         s.to_string()

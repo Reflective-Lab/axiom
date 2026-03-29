@@ -51,6 +51,8 @@ pub mod sse;
 // Public modules for use by converge-app
 pub mod config;
 pub mod http;
+#[cfg(feature = "auth")]
+pub mod http_auth;
 pub mod state;
 pub mod templates;
 

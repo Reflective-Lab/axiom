@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::context::Context;
+use crate::gates::StopReason;
 use crate::invariant::InvariantClass;
 
 /// Top-level error type for Converge operations.
@@ -64,6 +65,33 @@ impl ConvergeError {
                 Some(context)
             }
             Self::BudgetExhausted { .. } | Self::AgentFailed { .. } => None,
+        }
+    }
+
+    /// Convert this error into a platform-level stop reason.
+    #[must_use]
+    pub fn stop_reason(&self) -> StopReason {
+        match self {
+            Self::BudgetExhausted { kind } => StopReason::Error {
+                message: format!("budget exhausted: {kind}"),
+                category: crate::gates::ErrorCategory::Resource,
+            },
+            Self::InvariantViolation {
+                name,
+                class,
+                reason,
+                ..
+            } => StopReason::invariant_violated(*class, name.clone(), reason.clone()),
+            Self::AgentFailed { agent_id } => StopReason::AgentRefused {
+                agent_id: agent_id.clone(),
+                reason: "agent execution failed".to_string(),
+            },
+            Self::Conflict {
+                id, existing, new, ..
+            } => StopReason::Error {
+                message: format!("conflict for fact '{id}': existing '{existing}' vs new '{new}'"),
+                category: crate::gates::ErrorCategory::Internal,
+            },
         }
     }
 }

@@ -19,7 +19,7 @@
 //!
 //! ```
 //! use converge_core::invariant::{Invariant, InvariantClass, InvariantResult};
-//! use converge_core::Context;
+//! use converge_core::{Context, ContextView};
 //!
 //! struct NoEmptyFacts;
 //!
@@ -27,7 +27,7 @@
 //!     fn name(&self) -> &str { "no_empty_facts" }
 //!     fn class(&self) -> InvariantClass { InvariantClass::Structural }
 //!
-//!     fn check(&self, ctx: &dyn crate::ContextView) -> InvariantResult {
+//!     fn check(&self, ctx: &dyn ContextView) -> InvariantResult {
 //!         // Check logic here
 //!         InvariantResult::Ok
 //!     }

@@ -48,6 +48,9 @@ cargo test -p converge-core
 
 # Run with specific features
 cargo test --features "llama3,ndarray"
+
+# Validate security/compliance repository declarations
+just compliance-check
 ```
 
 ### Pull Request Process
@@ -56,8 +59,9 @@ cargo test --features "llama3,ndarray"
 2. Make your changes with clear commit messages
 3. Ensure all tests pass
 4. Update documentation if needed
-5. Submit a pull request to the `main` branch
-6. Wait for code review and address feedback
+5. If data handling, security posture, or policy boundaries changed, update `docs/security/`
+6. Submit a pull request to the `main` branch
+7. Wait for code review and address feedback
 
 ### Code Style
 

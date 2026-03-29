@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/traits",
     "crates/core",
+    "crates/mcp",
     "crates/provider",
     "crates/domain",
     "crates/experience",
@@ -16,10 +17,19 @@ members = [
     "crates/remote",
     "crates/tool",
     "crates/application",
+    "examples/hello-convergence",
+    "examples/custom-agent",
+    "examples/meeting-scheduler",
+    "examples/custom-provider",
+    "examples/local-inference",
+    "examples/expense-approval",
+    "examples/vendor-selection",
+    "examples/loan-application",
 ]
 default-members = [
     "crates/traits",
     "crates/core",
+    "crates/mcp",
     "crates/provider",
     "crates/domain",
     "crates/experience",
@@ -35,7 +45,7 @@ default-members = [
 [workspace.package]
 version = "1.1.0"
 edition = "2024"
-rust-version = "1.90"
+rust-version = "1.94.0"
 license = "MIT"
 repository = "https://github.com/Reflective-Labs/converge.zone"
 publish = false
@@ -56,6 +66,7 @@ converge-policy = { path = "crates/policy", version = "1.1.0" }
 converge-runtime = { path = "crates/runtime", version = "1.1.0" }
 converge-remote = { path = "crates/remote", version = "1.1.0" }
 converge-tool = { path = "crates/tool", version = "1.1.0" }
+converge-mcp = { path = "crates/mcp", version = "1.1.0", default-features = false }
 converge-application = { path = "crates/application", version = "1.1.0" }
 
 # Shared dependencies

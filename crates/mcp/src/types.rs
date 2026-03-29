@@ -1,7 +1,13 @@
 //! MCP protocol types.
+//!
+//! JSON-RPC request/response types and MCP-specific structures
+//! shared by both client and server implementations.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+/// MCP protocol version.
+pub const MCP_PROTOCOL_VERSION: &str = "2024-11-05";
 
 /// MCP JSON-RPC request.
 #[derive(Debug, Clone, Serialize, Deserialize)]

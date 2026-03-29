@@ -5,7 +5,7 @@
 
 mod handlers;
 mod server;
-mod types;
 
 pub use server::McpServer;
-pub use types::*;
+// Re-export MCP types for consumers that don't depend on converge-mcp directly
+pub use converge_mcp::*;

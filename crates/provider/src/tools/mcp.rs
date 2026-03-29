@@ -1,149 +1,75 @@
 // Copyright 2024-2025 Aprio One AB, Sweden
 // SPDX-License-Identifier: MIT
 
-//! MCP (Model Context Protocol) client implementation.
+//! MCP (Model Context Protocol) client integration.
+//!
+//! Re-exports transport types from `converge-mcp` and provides
+//! Converge-specific integration (tool registration, call/result mapping).
 
 use super::{InputSchema, ToolCall, ToolDefinition, ToolError, ToolResult, ToolSource};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use serde::Deserialize;
 
-/// MCP protocol version.
-pub const MCP_PROTOCOL_VERSION: &str = "2024-11-05";
-
-/// MCP transport configuration.
-#[derive(Debug, Clone)]
-pub enum McpTransport {
-    Stdio {
-        command: String,
-        args: Vec<String>,
-        env: HashMap<String, String>,
-    },
-    Http {
-        base_url: String,
-        auth_header: Option<String>,
-    },
-}
-
-impl McpTransport {
-    #[must_use]
-    pub fn stdio(command: impl Into<String>, args: &[&str]) -> Self {
-        Self::Stdio {
-            command: command.into(),
-            args: args.iter().map(|s| (*s).to_string()).collect(),
-            env: HashMap::new(),
-        }
-    }
-
-    #[must_use]
-    pub fn stdio_with_env(
-        command: impl Into<String>,
-        args: &[&str],
-        env: HashMap<String, String>,
-    ) -> Self {
-        Self::Stdio {
-            command: command.into(),
-            args: args.iter().map(|s| (*s).to_string()).collect(),
-            env,
-        }
-    }
-
-    #[must_use]
-    pub fn http(base_url: impl Into<String>) -> Self {
-        Self::Http {
-            base_url: base_url.into(),
-            auth_header: None,
-        }
-    }
-
-    #[must_use]
-    pub fn http_with_auth(base_url: impl Into<String>, auth_header: impl Into<String>) -> Self {
-        Self::Http {
-            base_url: base_url.into(),
-            auth_header: Some(auth_header.into()),
-        }
-    }
-
-    #[must_use]
-    pub fn to_uri(&self) -> String {
-        match self {
-            Self::Stdio { command, args, .. } => format!("stdio:{} {}", command, args.join(" ")),
-            Self::Http { base_url, .. } => base_url.clone(),
-        }
-    }
-}
+// Re-export transport types from converge-mcp
+pub use converge_mcp::client::{McpClientBuilder, McpClientError, McpTransport};
+pub use converge_mcp::MCP_PROTOCOL_VERSION;
 
 /// MCP server information.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct McpServerInfo {
-    pub name: String,
-    pub version: String,
-    #[serde(default)]
-    pub protocol_version: String,
-}
+pub use converge_mcp::client::McpServerInfo;
 
-/// MCP client for communicating with MCP servers.
+/// MCP client with Converge tool integration.
+///
+/// Wraps [`converge_mcp::client::McpClient`] and adds integration
+/// with Converge's [`ToolDefinition`] / [`ToolCall`] / [`ToolResult`] types.
 #[derive(Debug)]
 pub struct McpClient {
-    name: String,
-    transport: McpTransport,
-    server_info: Option<McpServerInfo>,
+    inner: converge_mcp::client::McpClient,
     cached_tools: Vec<ToolDefinition>,
-    connected: bool,
 }
 
 impl McpClient {
     #[must_use]
     pub fn new(name: impl Into<String>, transport: McpTransport) -> Self {
         Self {
-            name: name.into(),
-            transport,
-            server_info: None,
+            inner: converge_mcp::client::McpClient::new(name, transport),
             cached_tools: Vec::new(),
-            connected: false,
         }
     }
 
     #[must_use]
     pub fn name(&self) -> &str {
-        &self.name
+        self.inner.name()
     }
 
     #[must_use]
     pub fn transport(&self) -> &McpTransport {
-        &self.transport
+        self.inner.transport()
     }
 
     #[must_use]
     pub fn is_connected(&self) -> bool {
-        self.connected
+        self.inner.is_connected()
     }
 
     pub fn connect(&mut self) -> Result<&McpServerInfo, ToolError> {
-        // Stub implementation - real impl needs async runtime
-        self.server_info = Some(McpServerInfo {
-            name: self.name.clone(),
-            version: "1.0.0".to_string(),
-            protocol_version: MCP_PROTOCOL_VERSION.to_string(),
-        });
-        self.connected = true;
-        Ok(self.server_info.as_ref().unwrap())
+        self.inner
+            .connect()
+            .map_err(|e| ToolError::connection_failed(e.to_string()))
     }
 
     pub fn disconnect(&mut self) {
-        self.connected = false;
-        self.server_info = None;
+        self.inner.disconnect();
         self.cached_tools.clear();
     }
 
     pub fn list_tools(&mut self) -> Result<&[ToolDefinition], ToolError> {
-        if !self.connected {
+        if !self.inner.is_connected() {
             return Err(ToolError::connection_failed("Not connected"));
         }
         Ok(&self.cached_tools)
     }
 
     pub fn call_tool(&self, call: &ToolCall) -> Result<ToolResult, ToolError> {
-        if !self.connected {
+        if !self.inner.is_connected() {
             return Err(ToolError::connection_failed("Not connected"));
         }
         if !self.cached_tools.iter().any(|t| t.name == call.tool_name) {
@@ -157,8 +83,8 @@ impl McpClient {
 
     pub fn register_tool(&mut self, tool: ToolDefinition) {
         let tool = tool.with_source(ToolSource::Mcp {
-            server_name: self.name.clone(),
-            server_uri: self.transport.to_uri(),
+            server_name: self.inner.name().to_string(),
+            server_uri: self.inner.transport().to_uri(),
         });
         self.cached_tools.push(tool);
     }
@@ -169,49 +95,7 @@ impl McpClient {
     }
 }
 
-/// Builder for MCP clients.
-#[derive(Debug, Default)]
-pub struct McpClientBuilder {
-    name: Option<String>,
-    transport: Option<McpTransport>,
-}
-
-impl McpClientBuilder {
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    #[must_use]
-    pub fn name(mut self, name: impl Into<String>) -> Self {
-        self.name = Some(name.into());
-        self
-    }
-
-    #[must_use]
-    pub fn stdio(mut self, command: impl Into<String>, args: &[&str]) -> Self {
-        self.transport = Some(McpTransport::stdio(command, args));
-        self
-    }
-
-    #[must_use]
-    pub fn http(mut self, base_url: impl Into<String>) -> Self {
-        self.transport = Some(McpTransport::http(base_url));
-        self
-    }
-
-    pub fn build(self) -> Result<McpClient, ToolError> {
-        let name = self
-            .name
-            .ok_or_else(|| ToolError::invalid_arguments("name required"))?;
-        let transport = self
-            .transport
-            .ok_or_else(|| ToolError::invalid_arguments("transport required"))?;
-        Ok(McpClient::new(name, transport))
-    }
-}
-
-/// MCP tool definition from server.
+/// MCP tool definition from server — converts to Converge [`ToolDefinition`].
 #[derive(Debug, Deserialize)]
 pub struct McpToolDefinition {
     pub name: String,

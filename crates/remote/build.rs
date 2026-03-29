@@ -8,6 +8,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_client(true)
         // Don't derive serde for all types - prost_types::Struct doesn't support it
         // We'll handle JSON conversion manually where needed
-        .compile_protos(&["proto/converge.proto"], &["proto/"])?;
+        .compile_protos(
+            &[concat!(env!("CARGO_MANIFEST_DIR"), "/../../schema/proto/converge.proto")],
+            &[concat!(env!("CARGO_MANIFEST_DIR"), "/../../schema/proto/")],
+        )?;
     Ok(())
 }

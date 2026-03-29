@@ -1,0 +1,12 @@
+[package]
+name = "example-vendor-selection"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+converge-core = { path = "../../crates/core" }
+converge-traits = { path = "../../crates/traits" }
+converge-domain = { path = "../../crates/domain" }
+serde = { workspace = true }
+serde_json = { workspace = true }

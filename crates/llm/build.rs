@@ -13,7 +13,10 @@ fn main() {
             .build_server(true)
             .build_client(true)
             .out_dir("src/server/generated")
-            .compile(&["proto/kernel.proto"], &["proto"])
+            .compile(
+                &[concat!(env!("CARGO_MANIFEST_DIR"), "/../../schema/proto/kernel.proto")],
+                &[concat!(env!("CARGO_MANIFEST_DIR"), "/../../schema/proto")],
+            )
             .expect("Failed to compile kernel.proto");
     }
 
@@ -23,7 +26,10 @@ fn main() {
             .build_server(false)
             .build_client(true)
             .out_dir("src/server/generated")
-            .compile(&["proto/kernel.proto"], &["proto"])
+            .compile(
+                &[concat!(env!("CARGO_MANIFEST_DIR"), "/../../schema/proto/kernel.proto")],
+                &[concat!(env!("CARGO_MANIFEST_DIR"), "/../../schema/proto")],
+            )
             .expect("Failed to compile kernel.proto");
     }
 }

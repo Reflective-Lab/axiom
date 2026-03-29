@@ -13,6 +13,7 @@
 //! # Categories
 //!
 //! - **Successful**: Converged, CriteriaMet, UserCancelled
+//! - **Human intervention**: HumanInterventionRequired, HitlGatePending
 //! - **Budget exhaustion**: CycleBudgetExhausted, FactBudgetExhausted, TokenBudgetExhausted
 //! - **Validation failures**: InvariantViolated, PromotionRejected
 //! - **System errors**: Error, AgentRefused
@@ -52,6 +53,17 @@ pub enum StopReason {
     /// User requested stop via cancellation.
     /// Graceful termination, not an error.
     UserCancelled,
+
+    /// Agents converged, but completion is blocked on human intervention.
+    /// Unlike `HitlGatePending`, the engine did not pause mid-merge; the
+    /// application-level criteria evaluation determined that a human must act
+    /// before the truth can be considered complete.
+    HumanInterventionRequired {
+        /// Which required criteria are blocked.
+        criteria: Vec<String>,
+        /// Optional approval/workflow references surfaced by the evaluator.
+        approval_refs: Vec<String>,
+    },
 
     // ========================================================================
     // Budget exhaustion
@@ -177,6 +189,17 @@ impl StopReason {
         Self::UserCancelled
     }
 
+    /// Create a HumanInterventionRequired stop reason.
+    pub fn human_intervention_required(
+        criteria: Vec<String>,
+        approval_refs: Vec<String>,
+    ) -> Self {
+        Self::HumanInterventionRequired {
+            criteria,
+            approval_refs,
+        }
+    }
+
     /// Create a CycleBudgetExhausted stop reason.
     pub fn cycle_budget_exhausted(cycles_executed: u32, limit: u32) -> Self {
         Self::CycleBudgetExhausted {
@@ -300,6 +323,11 @@ impl StopReason {
     pub fn is_hitl_pending(&self) -> bool {
         matches!(self, Self::HitlGatePending { .. })
     }
+
+    /// Returns true if completion is blocked on human intervention.
+    pub fn is_human_intervention_required(&self) -> bool {
+        matches!(self, Self::HumanInterventionRequired { .. })
+    }
 }
 
 impl std::fmt::Display for StopReason {
@@ -310,6 +338,25 @@ impl std::fmt::Display for StopReason {
                 write!(f, "Criteria met: {}", criteria.join(", "))
             }
             Self::UserCancelled => write!(f, "User cancelled"),
+            Self::HumanInterventionRequired {
+                criteria,
+                approval_refs,
+            } => {
+                if approval_refs.is_empty() {
+                    write!(
+                        f,
+                        "Human intervention required for: {}",
+                        criteria.join(", ")
+                    )
+                } else {
+                    write!(
+                        f,
+                        "Human intervention required for: {} (refs: {})",
+                        criteria.join(", "),
+                        approval_refs.join(", ")
+                    )
+                }
+            }
             Self::CycleBudgetExhausted {
                 cycles_executed,
                 limit,
@@ -422,6 +469,26 @@ mod tests {
     }
 
     #[test]
+    fn test_human_intervention_required_constructor() {
+        let reason = StopReason::human_intervention_required(
+            vec!["payment.confirmed".into()],
+            vec!["approval:top-up".into()],
+        );
+        if let StopReason::HumanInterventionRequired {
+            criteria,
+            approval_refs,
+        } = &reason
+        {
+            assert_eq!(criteria, &vec!["payment.confirmed".to_string()]);
+            assert_eq!(approval_refs, &vec!["approval:top-up".to_string()]);
+        } else {
+            panic!("Expected HumanInterventionRequired");
+        }
+        assert!(!reason.is_success());
+        assert!(reason.is_human_intervention_required());
+    }
+
+    #[test]
     fn test_cycle_budget_exhausted_constructor() {
         let reason = StopReason::cycle_budget_exhausted(100, 100);
         if let StopReason::CycleBudgetExhausted {
@@ -515,6 +582,18 @@ mod tests {
     }
 
     #[test]
+    fn test_display_human_intervention_required() {
+        let reason = StopReason::human_intervention_required(
+            vec!["payment.confirmed".into()],
+            vec!["approval:top-up".into()],
+        );
+        assert_eq!(
+            reason.to_string(),
+            "Human intervention required for: payment.confirmed (refs: approval:top-up)"
+        );
+    }
+
+    #[test]
     fn test_display_cycle_budget_exhausted() {
         let reason = StopReason::cycle_budget_exhausted(50, 100);
         assert_eq!(reason.to_string(), "Cycle budget exhausted: 50/100");
@@ -541,6 +620,10 @@ mod tests {
         let reasons = vec![
             StopReason::converged(),
             StopReason::criteria_met(vec!["done".into()]),
+            StopReason::human_intervention_required(
+                vec!["approval".into()],
+                vec!["workflow:1".into()],
+            ),
             StopReason::cycle_budget_exhausted(10, 10),
             StopReason::invariant_violated(InvariantClass::Acceptance, "test", "reason"),
             StopReason::error("msg", ErrorCategory::Configuration),

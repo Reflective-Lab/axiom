@@ -56,11 +56,8 @@ pdf-extract.workspace = true
 # Pattern matching for routing
 regex.workspace = true
 
-# HTTP for MCP
-axum = { workspace = true, optional = true }
-tower = { workspace = true, optional = true }
-tower-http = { workspace = true, optional = true }
-hyper = { workspace = true, optional = true }
+# MCP
+converge-mcp = { workspace = true, optional = true, features = ["client", "server"] }
 
 # CLI
 clap = { workspace = true, optional = true }
@@ -77,7 +74,7 @@ tonic-build.workspace = true
 default = ["cli", "grpc", "mcp"]
 cli = ["clap"]
 grpc = []
-mcp = ["axum", "tower", "tower-http", "hyper"]
+mcp = ["dep:converge-mcp"]
 memory-only = []
 
 [[bin]]

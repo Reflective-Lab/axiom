@@ -1346,37 +1346,49 @@ pub async fn execute_template_job(
 }
 
 /// Build the HTTP router.
-pub fn router(state: AppState) -> Router<()> {
+pub fn public_router() -> Router<()> {
     let router = Router::new()
         .route("/health", get(health))
-        .route("/ready", get(ready))
-        .route("/api/v1/jobs", post(handle_job))
-        .route("/api/v1/forms/:form_id/plan", post(plan_form))
-        .route("/api/v1/forms/:form_id/approve", post(approve_form))
-        .route("/api/v1/forms/:form_id/execute", post(execute_form));
+        .route("/ready", get(ready));
 
     #[cfg(feature = "metrics")]
     let router = router.route("/metrics", get(metrics));
+
+    router
+}
+
+/// Build the protected HTTP router.
+pub fn protected_router(state: AppState) -> Router<()> {
+    let router = Router::new()
+        .route("/api/v1/jobs", post(handle_job))
+        .route("/api/v1/forms/{form_id}/plan", post(plan_form))
+        .route("/api/v1/forms/{form_id}/approve", post(approve_form))
+        .route("/api/v1/forms/{form_id}/execute", post(execute_form));
 
     let router = router
         .route("/api/v1/validate-rules", post(validate_rules))
         // Template endpoints
         .route("/api/v1/templates", get(list_templates))
-        .route("/api/v1/templates/:name", get(get_template))
+        .route("/api/v1/templates/{name}", get(get_template))
         .route("/api/v1/templates/jobs", post(execute_template_job))
         // Firestore-backed endpoints
         .route("/api/v1/store/jobs", post(create_job))
         .route(
-            "/api/v1/store/jobs/:job_id",
+            "/api/v1/store/jobs/{job_id}",
             get(get_job).delete(delete_job),
         )
-        .route("/api/v1/store/jobs/:job_id/run", post(run_job))
-        .route("/api/v1/store/jobs/:job_id/cancel", post(cancel_job))
-        .route("/api/v1/store/users/:user_id/jobs", get(list_user_jobs))
+        .route("/api/v1/store/jobs/{job_id}/run", post(run_job))
+        .route("/api/v1/store/jobs/{job_id}/cancel", post(cancel_job))
+        .route("/api/v1/store/users/{user_id}/jobs", get(list_user_jobs))
         .with_state(state.clone());
 
     #[cfg(feature = "billing")]
     let router = router.merge(crate::billing::handlers::billing_router(state));
 
     router
+}
+
+/// Build the combined HTTP router.
+pub fn router(state: AppState) -> Router<()> {
+    public_router().merge(protected_router(state))
 }

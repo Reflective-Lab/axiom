@@ -7,3 +7,12 @@
 !.env.example
 .DS_Store
 *.pdb
+.converge/
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+
+# Internal docs — not for partner eyes
+/docs/project/
+/docs/personas/
