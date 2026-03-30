@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Model Context Protocol (MCP) client and server for Converge"
-keywords = ["mcp", "model-context-protocol", "ai", "tools", "converge"]
+keywords = ["mcp", "model-context", "ai", "tools", "converge"]
 categories = ["network-programming"]
 
 [dependencies]
