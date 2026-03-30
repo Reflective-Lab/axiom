@@ -6,4 +6,3 @@ publish = false
 
 [dependencies]
 converge-core = { path = "../../crates/core" }
-converge-traits = { path = "../../crates/traits" }

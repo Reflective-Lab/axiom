@@ -6,9 +6,9 @@
 //! Shows: LlmProvider trait, request/response types, provider registration.
 //! Partners use this pattern to integrate their own model backends.
 
-use async_trait::async_trait;
-use converge_provider::provider_api::{LlmProvider, LlmRequest, LlmResponse, ProviderError};
-use converge_traits::{Backend, BackendKind, Capability};
+use converge_provider::provider_api::{
+    FinishReason, LlmError, LlmErrorKind, LlmProvider, LlmRequest, LlmResponse, TokenUsage,
+};
 
 /// A mock provider that echoes prompts — replace with your real API client.
 struct EchoProvider {
@@ -23,54 +23,44 @@ impl EchoProvider {
     }
 }
 
-impl Backend for EchoProvider {
-    fn kind(&self) -> BackendKind {
-        BackendKind::Llm
+impl LlmProvider for EchoProvider {
+    fn name(&self) -> &'static str {
+        "echo-provider"
     }
 
-    fn name(&self) -> &str {
+    fn model(&self) -> &str {
         &self.model_name
     }
 
-    fn capabilities(&self) -> Vec<Capability> {
-        vec![Capability::TextGeneration, Capability::Chat]
-    }
-}
-
-#[async_trait]
-impl LlmProvider for EchoProvider {
-    async fn generate(&self, request: &LlmRequest) -> Result<LlmResponse, ProviderError> {
-        // Your real implementation calls an API here
+    fn complete(&self, request: &LlmRequest) -> Result<LlmResponse, LlmError> {
         Ok(LlmResponse {
-            text: format!("Echo: {}", request.prompt),
+            content: format!("Echo: {}", request.prompt),
             model: self.model_name.clone(),
-            input_tokens: request.prompt.len() as u32,
-            output_tokens: request.prompt.len() as u32,
-            ..Default::default()
+            usage: TokenUsage {
+                prompt_tokens: request.prompt.len() as u32,
+                completion_tokens: request.prompt.len() as u32,
+                total_tokens: (request.prompt.len() * 2) as u32,
+            },
+            finish_reason: FinishReason::Stop,
         })
     }
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
     println!("=== Custom Provider Example ===\n");
 
     let provider = EchoProvider::new("echo-v1");
 
-    println!("Provider: {} ({:?})", provider.name(), provider.kind());
-    println!("Capabilities: {:?}\n", provider.capabilities());
+    println!("Provider: {} (model: {})", provider.name(), provider.model());
 
-    let request = LlmRequest {
-        prompt: "What is the convergence model?".to_string(),
-        ..Default::default()
-    };
+    let request = LlmRequest::new("What is the convergence model?");
 
-    match provider.generate(&request).await {
+    match provider.complete(&request) {
         Ok(response) => {
-            println!("Response: {}", response.text);
+            println!("Response: {}", response.content);
             println!(
                 "Tokens:   {} in / {} out",
-                response.input_tokens, response.output_tokens
+                response.usage.prompt_tokens, response.usage.completion_tokens
             );
         }
         Err(e) => println!("Error: {e}"),
