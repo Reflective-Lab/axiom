@@ -13,14 +13,13 @@ use std::fmt;
 use std::sync::Arc;
 
 // Import types from converge-core using public re-exports
-use converge_core::{Agent, Context, ContextKey, ProposedFact, AgentEffect};
 use converge_core::validation::encode_proposal;
+use converge_core::{Agent, AgentEffect, Context, ContextKey, ProposedFact};
 
 // Re-export core LLM types - these are the canonical types
 // NOTE: LlmProvider is deprecated in converge-core. We define ChatProvider below as the replacement.
 pub use converge_core::llm::{
-    LlmRequest, LlmResponse, LlmError, LlmErrorKind,
-    FinishReason, TokenUsage,
+    FinishReason, LlmError, LlmErrorKind, LlmRequest, LlmResponse, TokenUsage,
 };
 
 // ============================================================================
@@ -79,7 +78,9 @@ where
 }
 
 // Import prompt types from our local prompt_dsl module
-use crate::prompt_dsl::{AgentPrompt, AgentRole, Constraint, DslOutputContract, PromptContext, PromptFormat};
+use crate::prompt_dsl::{
+    AgentPrompt, AgentRole, Constraint, DslOutputContract, PromptContext, PromptFormat,
+};
 
 // =============================================================================
 // PROVIDER-SPECIFIC ERROR TYPES (for extended error handling)
@@ -474,14 +475,10 @@ impl ProviderAgent {
                     .to_string()
             };
 
-            let agent_prompt = AgentPrompt::new(
-                AgentRole::Proposer,
-                objective,
-                prompt_ctx,
-                output_contract,
-            )
-            .with_constraint(Constraint::NoHallucinate)
-            .with_constraint(Constraint::NoInvent);
+            let agent_prompt =
+                AgentPrompt::new(AgentRole::Proposer, objective, prompt_ctx, output_contract)
+                    .with_constraint(Constraint::NoHallucinate)
+                    .with_constraint(Constraint::NoInvent);
 
             return agent_prompt.serialize(self.config.prompt_format);
         }

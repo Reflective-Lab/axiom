@@ -1,9 +1,9 @@
 //! Solver for Lead Routing pack
 
 use super::types::*;
+use crate::Result;
 use crate::gate::{ProblemSpec, ReplayEnvelope, SolverReport, StopReason};
 use crate::packs::PackSolver;
-use crate::Result;
 use std::collections::HashMap;
 
 /// Scoring-based assignment solver for lead routing
@@ -33,11 +33,8 @@ impl ScoreBasedRoutingSolver {
             .map(|r| (r.id.clone(), r.current_load))
             .collect();
 
-        let mut rep_new_assignments: HashMap<String, i64> = input
-            .reps
-            .iter()
-            .map(|r| (r.id.clone(), 0))
-            .collect();
+        let mut rep_new_assignments: HashMap<String, i64> =
+            input.reps.iter().map(|r| (r.id.clone(), 0)).collect();
 
         // Sort leads by priority (ascending = higher priority) then by score (descending)
         let mut sorted_leads: Vec<&Lead> = input.leads.iter().collect();
@@ -45,7 +42,9 @@ impl ScoreBasedRoutingSolver {
             match a.priority.cmp(&b.priority) {
                 std::cmp::Ordering::Equal => {
                     // Higher score first
-                    b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal)
+                    b.score
+                        .partial_cmp(&a.score)
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 }
                 other => other,
             }
@@ -58,13 +57,7 @@ impl ScoreBasedRoutingSolver {
 
         // Process each lead
         for lead in sorted_leads {
-            let assignment_result = self.find_best_rep(
-                lead,
-                input,
-                config,
-                &rep_loads,
-                spec,
-            );
+            let assignment_result = self.find_best_rep(lead, input, config, &rep_loads, spec);
 
             match assignment_result {
                 Some((rep, fit_score, rationale)) => {
@@ -181,12 +174,8 @@ impl ScoreBasedRoutingSolver {
                 }
 
                 // Calculate detailed scoring
-                let (fit_score, rationale) = self.calculate_detailed_score(
-                    lead,
-                    rep,
-                    current_load,
-                    config,
-                );
+                let (fit_score, rationale) =
+                    self.calculate_detailed_score(lead, rep, current_load, config);
 
                 // Require minimum fit score
                 if fit_score < 10.0 {
@@ -259,7 +248,8 @@ impl ScoreBasedRoutingSolver {
         let skills_score = if lead.required_skills.is_empty() {
             100.0
         } else {
-            let matched = lead.required_skills
+            let matched = lead
+                .required_skills
                 .iter()
                 .filter(|s| rep.skills.contains(*s))
                 .count();
@@ -494,8 +484,16 @@ mod tests {
 
         // Check that west leads go to reps covering west
         for assignment in &output.assignments {
-            let lead = input.leads.iter().find(|l| l.id == assignment.lead_id).unwrap();
-            let rep = input.reps.iter().find(|r| r.id == assignment.rep_id).unwrap();
+            let lead = input
+                .leads
+                .iter()
+                .find(|l| l.id == assignment.lead_id)
+                .unwrap();
+            let rep = input
+                .reps
+                .iter()
+                .find(|r| r.id == assignment.rep_id)
+                .unwrap();
 
             // Either territory matches or it's not required
             assert!(

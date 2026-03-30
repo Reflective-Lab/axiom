@@ -129,7 +129,7 @@ impl EmbeddingEngine {
             hash_provider.embed_sync(text)
         } else {
             // Create a new runtime for async providers
-            
+
             tokio::runtime::Handle::try_current()
                 .map(|h| h.block_on(self.provider.embed(text)))
                 .unwrap_or_else(|_| {

@@ -7,10 +7,7 @@ use crate::packs::{InvariantDef, InvariantResult};
 /// Get invariant definitions
 pub fn get_invariants() -> Vec<InvariantDef> {
     vec![
-        InvariantDef::critical(
-            "all_leads_assigned",
-            "All leads must be assigned to a rep",
-        ),
+        InvariantDef::critical("all_leads_assigned", "All leads must be assigned to a rep"),
         InvariantDef::critical(
             "capacity_not_exceeded",
             "No rep should exceed their capacity",
@@ -150,7 +147,11 @@ fn check_territory_respected(
                 mismatches.len() - 3
             )
         } else {
-            format!("{} territory mismatches: {}", mismatches.len(), mismatches.join("; "))
+            format!(
+                "{} territory mismatches: {}",
+                mismatches.len(),
+                mismatches.join("; ")
+            )
         };
 
         let violation = Violation::new(invariant, 1.0, message);
@@ -188,7 +189,10 @@ fn check_load_balanced(output: &LeadRoutingOutput, _input: &LeadRoutingInput) ->
         InvariantResult::pass(invariant)
     } else {
         let min_util = utilizations.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max_util = utilizations.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let max_util = utilizations
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
 
         let message = format!(
             "Load imbalance detected: utilization ranges from {:.1}% to {:.1}% (std dev: {:.1}%)",
@@ -356,8 +360,7 @@ mod tests {
             assert!(
                 result.passed,
                 "Invariant {} failed: {:?}",
-                result.invariant,
-                result.violation
+                result.invariant, result.violation
             );
         }
     }
@@ -365,18 +368,23 @@ mod tests {
     #[test]
     fn test_unassigned_leads_fail() {
         let mut output = create_valid_output();
-        output.unassigned = vec![
-            UnassignedLead {
-                lead_id: "lead-3".to_string(),
-                reason: "No capacity".to_string(),
-            },
-        ];
+        output.unassigned = vec![UnassignedLead {
+            lead_id: "lead-3".to_string(),
+            reason: "No capacity".to_string(),
+        }];
         output.stats.unassigned_leads = 1;
         output.stats.total_leads = 3;
 
         let result = check_all_leads_assigned(&output);
         assert!(!result.passed);
-        assert!(result.violation.as_ref().unwrap().explanation.contains("lead-3"));
+        assert!(
+            result
+                .violation
+                .as_ref()
+                .unwrap()
+                .explanation
+                .contains("lead-3")
+        );
     }
 
     #[test]

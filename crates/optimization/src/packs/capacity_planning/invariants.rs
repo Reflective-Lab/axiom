@@ -7,10 +7,7 @@ use crate::packs::{InvariantDef, InvariantResult};
 /// Get invariant definitions
 pub fn get_invariants() -> Vec<InvariantDef> {
     vec![
-        InvariantDef::critical(
-            "demand_met",
-            "Minimum fulfillment requirements must be met",
-        ),
+        InvariantDef::critical("demand_met", "Minimum fulfillment requirements must be met"),
         InvariantDef::critical(
             "capacity_not_exceeded",
             "No team should exceed their maximum utilization",
@@ -162,11 +159,8 @@ fn check_utilization_balanced(output: &CapacityPlanningOutput) -> InvariantResul
     }
 
     let mean = utilizations.iter().sum::<f64>() / utilizations.len() as f64;
-    let variance = utilizations
-        .iter()
-        .map(|u| (u - mean).powi(2))
-        .sum::<f64>()
-        / utilizations.len() as f64;
+    let variance =
+        utilizations.iter().map(|u| (u - mean).powi(2)).sum::<f64>() / utilizations.len() as f64;
     let std_dev = variance.sqrt();
 
     // Consider balanced if standard deviation is less than 20%
@@ -175,7 +169,10 @@ fn check_utilization_balanced(output: &CapacityPlanningOutput) -> InvariantResul
         InvariantResult::pass(invariant)
     } else {
         let min_util = utilizations.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max_util = utilizations.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let max_util = utilizations
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
 
         let violation = Violation::new(
             invariant,
@@ -220,7 +217,10 @@ pub fn check_all_invariants_with_input(
     // Replace the cost check with a budget-aware version
     if let Some(budget) = max_budget {
         let budget_result = check_cost_against_budget(output, budget);
-        if let Some(idx) = results.iter().position(|r| r.invariant == "cost_within_budget") {
+        if let Some(idx) = results
+            .iter()
+            .position(|r| r.invariant == "cost_within_budget")
+        {
             results[idx] = budget_result;
         }
     }
@@ -256,17 +256,15 @@ mod tests {
 
     fn create_valid_output() -> CapacityPlanningOutput {
         CapacityPlanningOutput {
-            assignments: vec![
-                ResourceAssignment {
-                    id: "assign-1".to_string(),
-                    team_id: "team-a".to_string(),
-                    period_id: "Q1-2024".to_string(),
-                    resource_type: "engineering".to_string(),
-                    demand_id: "demand-1".to_string(),
-                    allocated_units: 100.0,
-                    cost: 10000.0,
-                },
-            ],
+            assignments: vec![ResourceAssignment {
+                id: "assign-1".to_string(),
+                team_id: "team-a".to_string(),
+                period_id: "Q1-2024".to_string(),
+                resource_type: "engineering".to_string(),
+                demand_id: "demand-1".to_string(),
+                allocated_units: 100.0,
+                cost: 10000.0,
+            }],
             team_utilization: vec![
                 TeamUtilization {
                     team_id: "team-a".to_string(),
@@ -356,7 +354,13 @@ mod tests {
         let result = check_cost_against_budget(&output, 5000.0);
 
         assert!(!result.passed);
-        assert!(result.violation.unwrap().explanation.contains("exceeds budget"));
+        assert!(
+            result
+                .violation
+                .unwrap()
+                .explanation
+                .contains("exceeds budget")
+        );
     }
 
     #[test]
@@ -375,13 +379,21 @@ mod tests {
         assert_eq!(defs.len(), 5);
 
         // Critical invariants
-        let critical_names: Vec<_> = defs.iter().filter(|d| d.critical).map(|d| d.name.as_str()).collect();
+        let critical_names: Vec<_> = defs
+            .iter()
+            .filter(|d| d.critical)
+            .map(|d| d.name.as_str())
+            .collect();
         assert!(critical_names.contains(&"demand_met"));
         assert!(critical_names.contains(&"capacity_not_exceeded"));
         assert!(critical_names.contains(&"skills_matched"));
 
         // Advisory invariants
-        let advisory_names: Vec<_> = defs.iter().filter(|d| !d.critical).map(|d| d.name.as_str()).collect();
+        let advisory_names: Vec<_> = defs
+            .iter()
+            .filter(|d| !d.critical)
+            .map(|d| d.name.as_str())
+            .collect();
         assert!(advisory_names.contains(&"utilization_balanced"));
         assert!(advisory_names.contains(&"cost_within_budget"));
     }

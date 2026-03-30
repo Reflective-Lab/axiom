@@ -21,14 +21,23 @@ use serde::{Deserialize, Serialize};
 // ============================================================================
 
 pub use converge_core::recall::{
-    // Use/Consumer types (Recall ≠ Training boundary)
-    RecallUse, RecallConsumer,
+    CandidateProvenance,
+    CandidateScore,
+    CandidateSourceType,
+    RecallBudgets,
+    RecallCandidate,
+    RecallConsumer,
     // Policy types
-    RecallPolicy, RecallBudgets,
+    RecallPolicy,
+    RecallProvenanceEnvelope,
     // Query/Candidate types
-    RecallQuery, RecallCandidate, RelevanceLevel, CandidateSourceType, CandidateProvenance,
+    RecallQuery,
     // Provenance types
-    RecallTraceLink, RecallProvenanceEnvelope, CandidateScore, StopReason,
+    RecallTraceLink,
+    // Use/Consumer types (Recall ≠ Training boundary)
+    RecallUse,
+    RelevanceLevel,
+    StopReason,
     // Functions
     recall_use_allowed,
 };
@@ -291,11 +300,15 @@ mod tests {
     fn test_recall_policy_defaults_to_runtime_only() {
         let policy = RecallPolicy::default();
         assert!(
-            policy.allowed_uses.contains(&RecallUse::RuntimeAugmentation),
+            policy
+                .allowed_uses
+                .contains(&RecallUse::RuntimeAugmentation),
             "Default policy must allow RuntimeAugmentation"
         );
         assert!(
-            !policy.allowed_uses.contains(&RecallUse::TrainingCandidateSelection),
+            !policy
+                .allowed_uses
+                .contains(&RecallUse::TrainingCandidateSelection),
             "Default policy must NOT allow TrainingCandidateSelection"
         );
     }
@@ -334,7 +347,10 @@ mod tests {
         };
 
         assert!(recall_use_allowed(&policy, RecallUse::RuntimeAugmentation));
-        assert!(recall_use_allowed(&policy, RecallUse::TrainingCandidateSelection));
+        assert!(recall_use_allowed(
+            &policy,
+            RecallUse::TrainingCandidateSelection
+        ));
     }
 
     /// AXIOM: Provenance captures purpose and consumers deterministically.
@@ -368,13 +384,19 @@ mod tests {
         let mut env_training = env.clone();
         env_training.purpose = RecallUse::TrainingCandidateSelection;
         let hash3 = env_training.envelope_hash();
-        assert_ne!(hash1, hash3, "Different purpose must produce different hash");
+        assert_ne!(
+            hash1, hash3,
+            "Different purpose must produce different hash"
+        );
 
         // Changing consumers changes the hash
         let mut env_trainer = env.clone();
         env_trainer.consumers = vec![RecallConsumer::Trainer];
         let hash4 = env_trainer.envelope_hash();
-        assert_ne!(hash1, hash4, "Different consumers must produce different hash");
+        assert_ne!(
+            hash1, hash4,
+            "Different consumers must produce different hash"
+        );
     }
 
     /// Test replay matching includes purpose/consumers.
@@ -405,12 +427,18 @@ mod tests {
         // Different purpose does not match
         let mut env2 = env1.clone();
         env2.purpose = RecallUse::TrainingCandidateSelection;
-        assert!(!env1.matches_for_replay(&env2), "Different purpose must not match");
+        assert!(
+            !env1.matches_for_replay(&env2),
+            "Different purpose must not match"
+        );
 
         // Different consumers does not match
         let mut env3 = env1.clone();
         env3.consumers = vec![RecallConsumer::Trainer];
-        assert!(!env1.matches_for_replay(&env3), "Different consumers must not match");
+        assert!(
+            !env1.matches_for_replay(&env3),
+            "Different consumers must not match"
+        );
     }
 
     /// Test that policy snapshot hash changes when allowed_uses changes.

@@ -1,8 +1,8 @@
 //! Test harness for pack scenarios
 
 use super::Pack;
-use crate::gate::{GateDecision, ProblemSpec};
 use crate::Result;
+use crate::gate::{GateDecision, ProblemSpec};
 
 /// Test scenario for a pack
 #[derive(Debug, Clone)]
@@ -62,7 +62,9 @@ impl TestScenario {
             name,
             description,
             spec,
-            ExpectedOutcome::Infeasible { expected_violations },
+            ExpectedOutcome::Infeasible {
+                expected_violations,
+            },
         )
     }
 }
@@ -159,7 +161,10 @@ pub fn run_scenario(pack: &dyn Pack, scenario: &TestScenario) -> ScenarioResult 
         Err(e) => {
             // Check if we expected infeasibility
             if let ExpectedOutcome::Infeasible { .. } = &scenario.expected {
-                return ScenarioResult::pass(&scenario.name, start.elapsed().as_secs_f64() * 1000.0);
+                return ScenarioResult::pass(
+                    &scenario.name,
+                    start.elapsed().as_secs_f64() * 1000.0,
+                );
             }
             return ScenarioResult::fail(
                 &scenario.name,
@@ -230,7 +235,9 @@ pub fn run_scenario(pack: &dyn Pack, scenario: &TestScenario) -> ScenarioResult 
                 .with_decision(gate.decision)
         }
 
-        ExpectedOutcome::Infeasible { expected_violations } => {
+        ExpectedOutcome::Infeasible {
+            expected_violations,
+        } => {
             // Should not have found a feasible solution
             if solve_result.is_feasible() && gate.is_promoted() {
                 return ScenarioResult::fail(
@@ -324,10 +331,7 @@ impl ScenarioSummary {
 }
 
 /// Helper to create a minimal problem spec for testing
-pub fn test_problem_spec(
-    _pack_name: &str,
-    inputs: serde_json::Value,
-) -> Result<ProblemSpec> {
+pub fn test_problem_spec(_pack_name: &str, inputs: serde_json::Value) -> Result<ProblemSpec> {
     use crate::gate::ObjectiveSpec;
 
     ProblemSpec::builder(format!("test-{}", uuid_v4()), "test-tenant")
@@ -378,10 +382,7 @@ mod tests {
 
     #[test]
     fn test_test_problem_spec() {
-        let spec = test_problem_spec(
-            "test-pack",
-            serde_json::json!({"key": "value"}),
-        ).unwrap();
+        let spec = test_problem_spec("test-pack", serde_json::json!({"key": "value"})).unwrap();
 
         assert!(spec.problem_id.starts_with("test-"));
         assert_eq!(spec.tenant_scope, "test-tenant");

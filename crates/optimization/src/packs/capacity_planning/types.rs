@@ -68,12 +68,16 @@ impl CapacityPlanningInput {
 
     /// Get teams with a specific skill
     pub fn teams_with_skill<'a>(&'a self, skill: &'a str) -> impl Iterator<Item = &'a Team> + 'a {
-        self.teams.iter().filter(move |t| t.skills.iter().any(|s| s == skill))
+        self.teams
+            .iter()
+            .filter(move |t| t.skills.iter().any(|s| s == skill))
     }
 
     /// Get demand for a specific period
     pub fn demand_for_period(&self, period_id: &str) -> Option<&DemandForecast> {
-        self.demand_forecasts.iter().find(|f| f.period_id == period_id)
+        self.demand_forecasts
+            .iter()
+            .find(|f| f.period_id == period_id)
     }
 }
 

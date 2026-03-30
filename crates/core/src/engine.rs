@@ -1469,9 +1469,7 @@ fn stop_reason_label(stop_reason: &StopReason) -> String {
         StopReason::Converged => "converged".to_string(),
         StopReason::CriteriaMet { .. } => "criteria-met".to_string(),
         StopReason::UserCancelled => "user-cancelled".to_string(),
-        StopReason::HumanInterventionRequired { .. } => {
-            "human-intervention-required".to_string()
-        }
+        StopReason::HumanInterventionRequired { .. } => "human-intervention-required".to_string(),
         StopReason::CycleBudgetExhausted { .. } => "cycle-budget-exhausted".to_string(),
         StopReason::FactBudgetExhausted { .. } => "fact-budget-exhausted".to_string(),
         StopReason::TokenBudgetExhausted { .. } => "token-budget-exhausted".to_string(),

@@ -35,8 +35,7 @@ use tokio::sync::{RwLock, Semaphore};
 use tracing::{debug, warn};
 
 /// OpenAI embedding models.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum OpenAIModel {
     /// text-embedding-3-small: 1536 dimensions, lowest cost
     #[default]
@@ -84,7 +83,6 @@ impl OpenAIModel {
         }
     }
 }
-
 
 /// Configuration for the OpenAI embedding provider.
 #[derive(Debug, Clone)]

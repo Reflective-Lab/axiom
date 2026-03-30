@@ -57,7 +57,8 @@ fn main() {
         content: "New onboarding flow launched November 15th".to_string(),
     });
 
-    println!("Context prepared with {} seeds and {} signals\n",
+    println!(
+        "Context prepared with {} seeds and {} signals\n",
         ctx.get(ContextKey::Seeds).len(),
         ctx.get(ContextKey::Signals).len()
     );
@@ -72,7 +73,10 @@ fn main() {
     // Examine the effect
     println!("\nAgent produced {} fact(s):", effect.facts.len());
     for fact in &effect.facts {
-        println!("  [{:?}] {}: {}", fact.key, fact.id,
+        println!(
+            "  [{:?}] {}: {}",
+            fact.key,
+            fact.id,
             if fact.content.len() > 80 {
                 format!("{}...", &fact.content[..80])
             } else {

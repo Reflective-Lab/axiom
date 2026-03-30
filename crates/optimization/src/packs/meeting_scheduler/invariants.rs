@@ -5,13 +5,11 @@ use crate::gate::Violation;
 use crate::packs::{InvariantDef, InvariantResult};
 
 /// Invariant definitions for meeting scheduler
-pub const INVARIANTS: &[InvariantDef] = &[
-    InvariantDef {
-        name: String::new(), // Will be replaced at runtime
-        description: String::new(),
-        critical: true,
-    },
-];
+pub const INVARIANTS: &[InvariantDef] = &[InvariantDef {
+    name: String::new(), // Will be replaced at runtime
+    description: String::new(),
+    critical: true,
+}];
 
 /// Get invariant definitions (with proper String values)
 pub fn get_invariants() -> Vec<InvariantDef> {
@@ -189,7 +187,11 @@ mod tests {
 
         // All should pass when no slot is selected (nothing to verify)
         for result in &results {
-            assert!(result.passed, "Invariant {} should pass for no solution", result.invariant);
+            assert!(
+                result.passed,
+                "Invariant {} should pass for no solution",
+                result.invariant
+            );
         }
     }
 

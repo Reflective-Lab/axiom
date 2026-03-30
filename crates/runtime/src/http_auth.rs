@@ -21,7 +21,12 @@ pub struct AuthenticatedUser(pub UserIdentity);
 
 fn auth_disabled() -> bool {
     std::env::var("DISABLE_AUTH")
-        .map(|value| matches!(value.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
+        .map(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes"
+            )
+        })
         .unwrap_or(false)
 }
 

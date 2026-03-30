@@ -27,8 +27,8 @@ pub mod testing;
 pub mod traits;
 
 // Fully implemented packs
-pub mod meeting_scheduler;
 pub mod inventory_rebalancing;
+pub mod meeting_scheduler;
 
 // Stub packs (types + placeholder solver)
 pub mod anomaly_triage;

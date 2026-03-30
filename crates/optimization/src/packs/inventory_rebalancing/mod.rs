@@ -29,9 +29,9 @@ pub use invariants::*;
 pub use solver::*;
 pub use types::*;
 
-use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
-use crate::packs::{default_gate_evaluation, InvariantDef, InvariantResult, Pack, PackSolveResult};
 use crate::Result;
+use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
+use crate::packs::{InvariantDef, InvariantResult, Pack, PackSolveResult, default_gate_evaluation};
 
 /// Inventory Rebalancing Pack
 pub struct InventoryRebalancingPack;
@@ -100,7 +100,10 @@ impl Pack for InventoryRebalancingPack {
 }
 
 /// Calculate confidence score based on output quality
-fn calculate_confidence(output: &InventoryRebalancingOutput, input: &InventoryRebalancingInput) -> f64 {
+fn calculate_confidence(
+    output: &InventoryRebalancingOutput,
+    input: &InventoryRebalancingInput,
+) -> f64 {
     if output.transfers.is_empty() {
         // No transfers might be correct (already balanced)
         return 0.6;

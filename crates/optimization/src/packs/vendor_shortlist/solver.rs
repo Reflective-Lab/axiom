@@ -1,9 +1,9 @@
 //! Solver for Vendor Shortlist pack
 
 use super::types::*;
+use crate::Result;
 use crate::gate::{ProblemSpec, ReplayEnvelope, SolverReport, StopReason};
 use crate::packs::PackSolver;
-use crate::Result;
 
 /// Score-based ranking solver for vendor shortlisting
 ///
@@ -41,14 +41,22 @@ impl ScoreRankingSolver {
 
             // Check certifications
             if !vendor.has_certifications(&reqs.required_certifications) {
-                let missing: Vec<_> = reqs.required_certifications
+                let missing: Vec<_> = reqs
+                    .required_certifications
                     .iter()
                     .filter(|c| !vendor.certifications.contains(c))
                     .collect();
                 rejected.push(RejectedVendor {
                     vendor_id: vendor.id.clone(),
                     vendor_name: vendor.name.clone(),
-                    reason: format!("Missing certifications: {}", missing.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ")),
+                    reason: format!(
+                        "Missing certifications: {}",
+                        missing
+                            .iter()
+                            .map(|s| s.as_str())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
                 });
                 continue;
             }
@@ -58,7 +66,10 @@ impl ScoreRankingSolver {
                 rejected.push(RejectedVendor {
                     vendor_id: vendor.id.clone(),
                     vendor_name: vendor.name.clone(),
-                    reason: format!("Score {:.1} below minimum {:.1}", vendor.score, reqs.min_score),
+                    reason: format!(
+                        "Score {:.1} below minimum {:.1}",
+                        vendor.score, reqs.min_score
+                    ),
                 });
                 continue;
             }
@@ -68,7 +79,10 @@ impl ScoreRankingSolver {
                 rejected.push(RejectedVendor {
                     vendor_id: vendor.id.clone(),
                     vendor_name: vendor.name.clone(),
-                    reason: format!("Risk score {:.1} exceeds maximum {:.1}", vendor.risk_score, reqs.max_risk_score),
+                    reason: format!(
+                        "Risk score {:.1} exceeds maximum {:.1}",
+                        vendor.risk_score, reqs.max_risk_score
+                    ),
                 });
                 continue;
             }
@@ -78,9 +92,7 @@ impl ScoreRankingSolver {
         }
 
         // Sort by composite score descending
-        shortlist.sort_by(|a, b| {
-            b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
-        });
+        shortlist.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Apply tie-breaking for equal scores
         let tie_break = &spec.determinism.tie_break;
@@ -97,7 +109,9 @@ impl ScoreRankingSolver {
                 if !score_group.is_empty() {
                     // Sort by ID for deterministic tie-breaking
                     score_group.sort_by(|a, b| a.0.id.cmp(&b.0.id));
-                    if let Some(selected) = tie_break.select_by(&score_group, seed, |a, b| a.0.id.cmp(&b.0.id)) {
+                    if let Some(selected) =
+                        tie_break.select_by(&score_group, seed, |a, b| a.0.id.cmp(&b.0.id))
+                    {
                         final_list.push(*selected);
                     } else {
                         final_list.extend(score_group.drain(..));
@@ -110,7 +124,9 @@ impl ScoreRankingSolver {
         // Don't forget the last group
         if !score_group.is_empty() {
             score_group.sort_by(|a, b| a.0.id.cmp(&b.0.id));
-            if let Some(selected) = tie_break.select_by(&score_group, seed, |a, b| a.0.id.cmp(&b.0.id)) {
+            if let Some(selected) =
+                tie_break.select_by(&score_group, seed, |a, b| a.0.id.cmp(&b.0.id))
+            {
                 final_list.push(*selected);
             } else {
                 final_list.extend(score_group.drain(..));
@@ -149,7 +165,10 @@ impl ScoreRankingSolver {
                 total_rejected: input.vendors.len() - total_shortlisted,
                 average_score,
                 reason: if total_shortlisted > 0 {
-                    format!("Selected top {} vendors by composite score", total_shortlisted)
+                    format!(
+                        "Selected top {} vendors by composite score",
+                        total_shortlisted
+                    )
                 } else {
                     "No vendors met all requirements".to_string()
                 },

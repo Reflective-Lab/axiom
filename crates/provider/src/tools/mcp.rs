@@ -10,8 +10,8 @@ use super::{InputSchema, ToolCall, ToolDefinition, ToolError, ToolResult, ToolSo
 use serde::Deserialize;
 
 // Re-export transport types from converge-mcp
-pub use converge_mcp::client::{McpClientBuilder, McpClientError, McpTransport};
 pub use converge_mcp::MCP_PROTOCOL_VERSION;
+pub use converge_mcp::client::{McpClientBuilder, McpClientError, McpTransport};
 
 /// MCP server information.
 pub use converge_mcp::client::McpServerInfo;

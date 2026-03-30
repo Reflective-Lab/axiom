@@ -63,14 +63,21 @@ use crate::trace::{DecisionChain, DecisionStep, DecisionTrace};
 // Re-export kernel boundary types from converge-core (the constitutional home)
 // These types encode the platform's contract for proposals - "language of the system"
 pub use converge_core::kernel_boundary::{
+    ContextFact,
+    ContractResult,
+    DataClassification,
+    KernelContext,
     // Input types
-    KernelIntent, KernelContext, ContextFact, KernelPolicy,
+    KernelIntent,
+    KernelPolicy,
     // Output types (proposal taxonomy)
-    ProposalKind, ContractResult,
+    ProposalKind,
     // Trace semantics
-    Replayability, ReplayabilityDowngradeReason,
+    Replayability,
+    ReplayabilityDowngradeReason,
     // Routing vocabulary
-    RiskTier, DataClassification, RoutingPolicy,
+    RiskTier,
+    RoutingPolicy,
 };
 
 // ============================================================================
@@ -363,7 +370,10 @@ impl<'a, E: ChainEngine> KernelRunner<'a, E> {
         for fact in &context.facts {
             state = state.with_list(
                 format!("fact:{}", fact.key),
-                vec![StateValue::String(format!("[{}] {}", fact.id, fact.content))],
+                vec![StateValue::String(format!(
+                    "[{}] {}",
+                    fact.id, fact.content
+                ))],
             );
         }
 
@@ -396,9 +406,7 @@ impl<'a, E: ChainEngine> KernelRunner<'a, E> {
                     .iter()
                     .filter_map(|v| match v {
                         serde_json::Value::String(s) => Some(StateValue::String(s.clone())),
-                        serde_json::Value::Number(n) => {
-                            n.as_f64().map(StateValue::Float)
-                        }
+                        serde_json::Value::Number(n) => n.as_f64().map(StateValue::Float),
                         _ => None,
                     })
                     .collect();
@@ -635,7 +643,10 @@ fn compute_replayability(
     match downgrade_reasons.len() {
         0 => (Replayability::Deterministic, None),
         1 => (Replayability::BestEffort, Some(downgrade_reasons[0])),
-        _ => (Replayability::BestEffort, Some(ReplayabilityDowngradeReason::MultipleReasons)),
+        _ => (
+            Replayability::BestEffort,
+            Some(ReplayabilityDowngradeReason::MultipleReasons),
+        ),
     }
 }
 
@@ -1021,9 +1032,9 @@ mod tests {
             _stack: &crate::prompt::PromptStack,
             _envelope: &InferenceEnvelope,
         ) -> crate::error::LlmResult<String> {
-            self.responses
-                .pop_front()
-                .ok_or_else(|| crate::error::LlmError::InferenceError("No more mock responses".into()))
+            self.responses.pop_front().ok_or_else(|| {
+                crate::error::LlmError::InferenceError("No more mock responses".into())
+            })
         }
     }
 
@@ -1186,8 +1197,7 @@ mod tests {
     #[test]
     fn test_kernel_policy_adapter() {
         // Test that adapter_id is stored correctly in policy
-        let policy = KernelPolicy::new()
-            .with_adapter("llm/grounded@1.0.0");
+        let policy = KernelPolicy::new().with_adapter("llm/grounded@1.0.0");
 
         assert!(policy.adapter_id.is_some());
         assert_eq!(policy.adapter_id.as_deref(), Some("llm/grounded@1.0.0"));
@@ -1203,8 +1213,7 @@ mod tests {
 
         let intent = KernelIntent::new("analyze");
         let context = KernelContext::new();
-        let policy = KernelPolicy::deterministic(42)
-            .with_adapter("llm/grounded@1.0.0");
+        let policy = KernelPolicy::deterministic(42).with_adapter("llm/grounded@1.0.0");
 
         let proposals = run_kernel(&mut engine, &intent, &context, &policy).unwrap();
 

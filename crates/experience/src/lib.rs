@@ -27,8 +27,8 @@ pub use surrealdb_store::{SurrealDbConfig, SurrealDbExperienceStore};
 pub use validate::validate_envelope;
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::RwLock;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use converge_core::{
     ArtifactKind, EventQuery, ExperienceEvent, ExperienceEventEnvelope, ExperienceStore,
@@ -268,10 +268,12 @@ mod tests {
         let envelope = ExperienceEventEnvelope::new("../../admin:hack", event);
         let result = store.append_event(envelope);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("invalid characters"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("invalid characters")
+        );
     }
 
     #[test]

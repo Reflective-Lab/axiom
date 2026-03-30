@@ -87,19 +87,19 @@ pub use evals::{
     // Trust Pack
     AccessComplianceEval,
     AuditCoverageEval,
-    RbacEnforcementEval,
     // Knowledge Pack
     ClaimProvenanceEval,
-    ExperimentMetricsEval,
     // Data Metrics Pack
     DashboardSourceEval,
-    MetricDefinitionQualityEval,
+    ExperimentMetricsEval,
     // Money Pack
     InvoiceAccuracyEval,
+    // General kernel evals
+    MeetingScheduleFeasibilityEval,
+    MetricDefinitionQualityEval,
     PaymentReconciliationEval,
     // Delivery Pack
     PromiseFulfillmentEval,
+    RbacEnforcementEval,
     ScopeCreepDetectionEval,
-    // General kernel evals
-    MeetingScheduleFeasibilityEval,
 };

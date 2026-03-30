@@ -20,17 +20,17 @@
 //! 3. Apply tie-breaking per DeterminismSpec
 //! 4. Return highest-scoring feasible slot
 
-mod types;
-mod solver;
 mod invariants;
+mod solver;
+mod types;
 
-pub use types::*;
-pub use solver::*;
 pub use invariants::*;
+pub use solver::*;
+pub use types::*;
 
-use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
-use crate::packs::{default_gate_evaluation, InvariantDef, InvariantResult, Pack, PackSolveResult};
 use crate::Result;
+use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
+use crate::packs::{InvariantDef, InvariantResult, Pack, PackSolveResult, default_gate_evaluation};
 
 /// Meeting Scheduler Pack
 pub struct MeetingSchedulerPack;
@@ -156,9 +156,10 @@ mod tests {
                     name: "Alice".to_string(),
                     required: true,
                     available_slots: vec!["slot-1".to_string(), "slot-2".to_string()],
-                    preferences: vec![
-                        SlotPreference { slot_id: "slot-1".to_string(), score: 10.0 },
-                    ],
+                    preferences: vec![SlotPreference {
+                        slot_id: "slot-1".to_string(),
+                        score: 10.0,
+                    }],
                 },
                 Attendee {
                     id: "bob".to_string(),
@@ -197,7 +198,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-001", "test-tenant")
             .objective(ObjectiveSpec::maximize("attendance"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .budgets(SolveBudgets::with_time_limit(10))
             .seed(42)
             .build()
@@ -219,7 +221,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-002", "test-tenant")
             .objective(ObjectiveSpec::maximize("attendance"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -242,7 +245,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-003", "test-tenant")
             .objective(ObjectiveSpec::maximize("attendance"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -283,7 +287,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-004", "test-tenant")
             .objective(ObjectiveSpec::maximize("attendance"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -308,14 +313,16 @@ mod tests {
         // Run twice with same seed
         let spec1 = ProblemSpec::builder("test-005a", "test-tenant")
             .objective(ObjectiveSpec::maximize("attendance"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(12345)
             .build()
             .unwrap();
 
         let spec2 = ProblemSpec::builder("test-005b", "test-tenant")
             .objective(ObjectiveSpec::maximize("attendance"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(12345)
             .build()
             .unwrap();

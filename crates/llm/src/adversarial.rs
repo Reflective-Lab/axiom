@@ -224,7 +224,8 @@ impl ScenarioGenerator {
                     .with_flag("meets_threshold", false)
                     .with_flag("has_nulls", false),
                 expected_behavior: ExpectedBehavior::Complete,
-                description: "Standard bad metrics - should complete with negative assessment".into(),
+                description: "Standard bad metrics - should complete with negative assessment"
+                    .into(),
             },
         ]
     }
@@ -241,7 +242,8 @@ impl ScenarioGenerator {
                     .with_flag("meets_threshold", true), // Contradicts success_ratio
                 expected_behavior: ExpectedBehavior::FlagUncertainty,
                 description: "MAE suggests good fit, success_ratio suggests failure. \
-                              Model should recognize contradiction.".into(),
+                              Model should recognize contradiction."
+                    .into(),
             },
             AdversarialScenario {
                 id: "contradict-flag-metric".into(),
@@ -252,7 +254,8 @@ impl ScenarioGenerator {
                     .with_flag("meets_threshold", false), // Contradicts high success
                 expected_behavior: ExpectedBehavior::FlagUncertainty,
                 description: "High success ratio but threshold flag is false. \
-                              Should question the data consistency.".into(),
+                              Should question the data consistency."
+                    .into(),
             },
             AdversarialScenario {
                 id: "contradict-drift-stable".into(),
@@ -280,7 +283,8 @@ impl ScenarioGenerator {
                     .with_flag("meets_threshold", false),
                 expected_behavior: ExpectedBehavior::Probe,
                 description: "Success ratio epsilon below 0.75 threshold. \
-                              Tests boundary sensitivity.".into(),
+                              Tests boundary sensitivity."
+                    .into(),
             },
             AdversarialScenario {
                 id: "boundary-just-over".into(),
@@ -291,7 +295,8 @@ impl ScenarioGenerator {
                     .with_flag("meets_threshold", true),
                 expected_behavior: ExpectedBehavior::Probe,
                 description: "Success ratio epsilon above 0.75 threshold. \
-                              Tests boundary sensitivity.".into(),
+                              Tests boundary sensitivity."
+                    .into(),
             },
             AdversarialScenario {
                 id: "boundary-exact".into(),
@@ -329,7 +334,8 @@ impl ScenarioGenerator {
                 // No MAE, no success_ratio, no flags
                 expected_behavior: ExpectedBehavior::FlagUncertainty,
                 description: "Only iteration info, no performance metrics. \
-                              Should refuse to make deployment decision.".into(),
+                              Should refuse to make deployment decision."
+                    .into(),
             },
             AdversarialScenario {
                 id: "underspec-single-metric".into(),
@@ -361,7 +367,8 @@ impl ScenarioGenerator {
                     .with_scalar("success_ratio", 0.85),
                 expected_behavior: ExpectedBehavior::FlagUncertainty,
                 description: "Negative MAE is mathematically impossible. \
-                              Model should recognize data error.".into(),
+                              Model should recognize data error."
+                    .into(),
             },
             AdversarialScenario {
                 id: "semantic-ratio-over-one".into(),
@@ -476,7 +483,11 @@ impl AdversarialHarness {
     }
 
     /// Analyze a chain result for anomalies.
-    fn analyze_result(&self, scenario: &AdversarialScenario, chain: DecisionChain) -> ScenarioResult {
+    fn analyze_result(
+        &self,
+        scenario: &AdversarialScenario,
+        chain: DecisionChain,
+    ) -> ScenarioResult {
         let mut anomalies = Vec::new();
 
         // Check if result matched expectation
@@ -608,7 +619,11 @@ impl AdversarialHarness {
         AdversarialReport {
             total_scenarios: self.results.len(),
             total_completed: self.results.iter().filter(|r| r.completed).count(),
-            total_matched: self.results.iter().filter(|r| r.matched_expectation).count(),
+            total_matched: self
+                .results
+                .iter()
+                .filter(|r| r.matched_expectation)
+                .count(),
             total_anomalies: self.results.iter().map(|r| r.anomalies.len()).sum(),
             by_category,
             results: self.results.clone(),
@@ -646,7 +661,10 @@ impl AdversarialReport {
             "═══════════════════════════════════════════════════════════════".to_string(),
             format!(
                 "Total: {} scenarios | {} completed | {} matched | {} anomalies",
-                self.total_scenarios, self.total_completed, self.total_matched, self.total_anomalies
+                self.total_scenarios,
+                self.total_completed,
+                self.total_matched,
+                self.total_anomalies
             ),
             "───────────────────────────────────────────────────────────────".to_string(),
         ];
@@ -661,7 +679,11 @@ impl AdversarialReport {
 
                 lines.push(format!(
                     "{:?}: {}/{} matched ({:.0}%), {} anomalies",
-                    category, stats.matched_expectation, stats.total, match_rate, stats.anomaly_count
+                    category,
+                    stats.matched_expectation,
+                    stats.total,
+                    match_rate,
+                    stats.anomaly_count
                 ));
             }
         }
@@ -678,7 +700,9 @@ impl AdversarialReport {
             .collect();
 
         if !anomalies.is_empty() {
-            lines.push("───────────────────────────────────────────────────────────────".to_string());
+            lines.push(
+                "───────────────────────────────────────────────────────────────".to_string(),
+            );
             lines.push("ANOMALIES:".to_string());
             for (scenario_id, anomaly) in anomalies {
                 lines.push(format!(
@@ -695,7 +719,10 @@ impl AdversarialReport {
     /// Get scenarios that didn't match expectations.
     #[must_use]
     pub fn failures(&self) -> Vec<&ScenarioResult> {
-        self.results.iter().filter(|r| !r.matched_expectation).collect()
+        self.results
+            .iter()
+            .filter(|r| !r.matched_expectation)
+            .collect()
     }
 
     /// Get all anomalies.
@@ -736,7 +763,10 @@ mod tests {
         // All should expect uncertainty
         for scenario in contradictory {
             assert!(
-                matches!(scenario.expected_behavior, ExpectedBehavior::FlagUncertainty),
+                matches!(
+                    scenario.expected_behavior,
+                    ExpectedBehavior::FlagUncertainty
+                ),
                 "Contradictory scenario {} should expect uncertainty",
                 scenario.id
             );

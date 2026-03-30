@@ -15,7 +15,7 @@
 //! - max_embedding_calls: 3 per chain
 //! - max_tokens_per_candidate: 100
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use std::time::Duration;
 
 // ============================================================================
@@ -23,8 +23,8 @@ use std::time::Duration;
 // ============================================================================
 
 fn bench_embedding_latency(c: &mut Criterion) {
-    use converge_llm::recall::HashEmbedder;
     use converge_llm::recall::Embedder;
+    use converge_llm::recall::HashEmbedder;
 
     let mut group = c.benchmark_group("embedding");
     group.measurement_time(Duration::from_secs(5));
@@ -34,16 +34,14 @@ fn bench_embedding_latency(c: &mut Criterion) {
         let embedder = HashEmbedder::new(dim);
 
         group.throughput(Throughput::Elements(1));
-        group.bench_with_input(
-            BenchmarkId::new("hash_embedder", dim),
-            &dim,
-            |b, _| {
-                b.iter(|| {
-                    let result = embedder.embed(black_box("deployment failure memory limit exceeded")).unwrap();
-                    black_box(result)
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("hash_embedder", dim), &dim, |b, _| {
+            b.iter(|| {
+                let result = embedder
+                    .embed(black_box("deployment failure memory limit exceeded"))
+                    .unwrap();
+                black_box(result)
+            });
+        });
     }
 
     // Benchmark with varying input lengths
@@ -85,8 +83,7 @@ fn bench_query_latency(c: &mut Criterion) {
     for corpus_size in [10, 100, 500, 1000] {
         let temp_dir = TempDir::new().unwrap();
         let embedder = HashEmbedder::new(384);
-        let provider =
-            PersistentRecallProvider::create(temp_dir.path(), embedder, "v1").unwrap();
+        let provider = PersistentRecallProvider::create(temp_dir.path(), embedder, "v1").unwrap();
 
         // Populate corpus
         for i in 0..corpus_size {
@@ -100,8 +97,10 @@ fn bench_query_latency(c: &mut Criterion) {
                 },
                 contract_type: "Reasoning".to_string(),
                 input_summary: format!("Input for record {i}"),
-                output_summary: format!("Deployment {} due to resource constraints",
-                    if i % 3 == 0 { "failed" } else { "succeeded" }),
+                output_summary: format!(
+                    "Deployment {} due to resource constraints",
+                    if i % 3 == 0 { "failed" } else { "succeeded" }
+                ),
                 chain_id: format!("chain-{:03}", i % 100),
                 created_at: "2026-01-18T12:00:00Z".to_string(),
                 tenant_scope: None,
@@ -131,7 +130,9 @@ fn bench_query_latency(c: &mut Criterion) {
                 let query = RecallQuery::new("deployment failure resource", 5);
                 let filter = RecallFilter::new().with_outcome(DecisionOutcome::Failure);
                 b.iter(|| {
-                    let response = provider.recall_with_filter(black_box(&query), black_box(&filter)).unwrap();
+                    let response = provider
+                        .recall_with_filter(black_box(&query), black_box(&filter))
+                        .unwrap();
                     black_box(response)
                 });
             },
@@ -153,8 +154,8 @@ fn bench_query_latency(_c: &mut Criterion) {
 #[cfg(feature = "persistent-recall")]
 fn bench_e2e_recall(c: &mut Criterion) {
     use converge_llm::recall::{
-        DecisionOutcome, DecisionRecord, HashEmbedder, PersistentRecallProvider,
-        RecallContext, RecallFilter, RecallHint, RecallQuery,
+        DecisionOutcome, DecisionRecord, HashEmbedder, PersistentRecallProvider, RecallContext,
+        RecallFilter, RecallHint, RecallQuery,
     };
     use converge_llm::trace::DecisionStep;
     use tempfile::TempDir;
@@ -220,7 +221,9 @@ fn bench_e2e_recall(c: &mut Criterion) {
         b.iter(|| {
             let query = RecallQuery::new("deployment failure", 5);
             let filter = RecallFilter::new().with_outcome(DecisionOutcome::Failure);
-            let response = provider.recall_with_filter(black_box(&query), black_box(&filter)).unwrap();
+            let response = provider
+                .recall_with_filter(black_box(&query), black_box(&filter))
+                .unwrap();
             black_box(response)
         });
     });
@@ -240,8 +243,8 @@ fn bench_e2e_recall(_c: &mut Criterion) {
 #[cfg(feature = "persistent-recall")]
 fn bench_budget_compliance(c: &mut Criterion) {
     use converge_llm::recall::{
-        DecisionOutcome, DecisionRecord, HashEmbedder, PersistentRecallProvider,
-        RecallBudgets, RecallFilter, RecallQuery,
+        DecisionOutcome, DecisionRecord, HashEmbedder, PersistentRecallProvider, RecallBudgets,
+        RecallFilter, RecallQuery,
     };
     use converge_llm::trace::DecisionStep;
     use tempfile::TempDir;
@@ -278,9 +281,12 @@ fn bench_budget_compliance(c: &mut Criterion) {
                 0 => "Reasoning",
                 1 => "Evaluation",
                 _ => "Planning",
-            }.to_string(),
+            }
+            .to_string(),
             input_summary: format!("Complex input scenario {i} with multiple conditions"),
-            output_summary: format!("Detailed output {i} describing deployment state and resource allocation"),
+            output_summary: format!(
+                "Detailed output {i} describing deployment state and resource allocation"
+            ),
             chain_id: format!("chain-{:03}", i % 200),
             created_at: format!("2026-01-{:02}T12:00:00Z", (i % 28) + 1),
             tenant_scope: Some(format!("tenant-{}", i % 10)),
@@ -324,7 +330,9 @@ fn bench_budget_compliance(c: &mut Criterion) {
                 .with_contract_type("Reasoning")
                 .with_time_window("2026-01-01", "2026-01-15");
 
-            let response = provider.recall_with_filter(black_box(&query), black_box(&filter)).unwrap();
+            let response = provider
+                .recall_with_filter(black_box(&query), black_box(&filter))
+                .unwrap();
             black_box(response)
         });
     });

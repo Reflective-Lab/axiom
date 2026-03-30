@@ -74,9 +74,7 @@ impl CorpusFingerprint {
     ) -> Self {
         let settings = embedder.settings_snapshot();
         let settings_json = serde_json::to_string(&settings).unwrap_or_default();
-        let settings_hash = blake3::hash(settings_json.as_bytes())
-            .to_hex()
-            .to_string();
+        let settings_hash = blake3::hash(settings_json.as_bytes()).to_hex().to_string();
 
         Self {
             schema_version: schema_version.into(),
@@ -270,9 +268,7 @@ impl CorpusFingerprintBuilder {
     pub fn embedder(mut self, embedder: &dyn Embedder) -> Self {
         let settings = embedder.settings_snapshot();
         let settings_json = serde_json::to_string(&settings).unwrap_or_default();
-        let settings_hash = blake3::hash(settings_json.as_bytes())
-            .to_hex()
-            .to_string();
+        let settings_hash = blake3::hash(settings_json.as_bytes()).to_hex().to_string();
 
         self.embedder_id = Some(embedder.embedder_id().to_string());
         self.embedder_settings_hash = Some(settings_hash);
@@ -502,7 +498,10 @@ mod tests {
         let fp1 = CorpusFingerprint::new("v1", &embedder, "snap", None).with_content_hash(&ids1);
         let fp2 = CorpusFingerprint::new("v1", &embedder, "snap", None).with_content_hash(&ids2);
 
-        assert_ne!(fp1, fp2, "Different content must produce different fingerprints");
+        assert_ne!(
+            fp1, fp2,
+            "Different content must produce different fingerprints"
+        );
     }
 
     // ========================================================================
@@ -524,7 +523,10 @@ mod tests {
     #[test]
     fn test_tenant_policy_required_rejects_none() {
         let policy = TenantPolicy::Required;
-        assert!(!policy.is_valid(None), "Required policy must reject None tenant");
+        assert!(
+            !policy.is_valid(None),
+            "Required policy must reject None tenant"
+        );
     }
 
     #[test]

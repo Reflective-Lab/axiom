@@ -7,10 +7,7 @@ use crate::packs::{InvariantDef, InvariantResult};
 /// Get invariant definitions
 pub fn get_invariants() -> Vec<InvariantDef> {
     vec![
-        InvariantDef::critical(
-            "items_ranked",
-            "All items must be ranked",
-        ),
+        InvariantDef::critical("items_ranked", "All items must be ranked"),
         InvariantDef::critical(
             "rankings_sequential",
             "Rankings must be sequential starting at 1",
@@ -45,11 +42,7 @@ fn check_items_ranked(output: &BacklogPrioritizationOutput) -> InvariantResult {
     if !output.ranked_items.is_empty() {
         InvariantResult::pass(invariant)
     } else {
-        let violation = Violation::new(
-            invariant,
-            1.0,
-            "No items were ranked",
-        );
+        let violation = Violation::new(invariant, 1.0, "No items were ranked");
         InvariantResult::fail(invariant, violation)
     }
 }
@@ -68,7 +61,9 @@ fn check_rankings_sequential(output: &BacklogPrioritizationOutput) -> InvariantR
                 1.0,
                 format!(
                     "Item {} has rank {} but should be {}",
-                    item.item_id, item.rank, i + 1
+                    item.item_id,
+                    item.rank,
+                    i + 1
                 ),
             );
             return InvariantResult::fail(invariant, violation);
@@ -89,11 +84,7 @@ fn check_capacity_utilized(output: &BacklogPrioritizationOutput) -> InvariantRes
     if output.included_count > 0 {
         InvariantResult::pass(invariant)
     } else {
-        let violation = Violation::new(
-            invariant,
-            0.5,
-            "No items fit within capacity",
-        );
+        let violation = Violation::new(invariant, 0.5, "No items fit within capacity");
         InvariantResult::fail(invariant, violation)
     }
 }
@@ -109,11 +100,7 @@ fn check_value_delivered(output: &BacklogPrioritizationOutput) -> InvariantResul
     if output.total_value > 0.0 {
         InvariantResult::pass(invariant)
     } else {
-        let violation = Violation::new(
-            invariant,
-            0.3,
-            "Included items deliver no business value",
-        );
+        let violation = Violation::new(invariant, 0.3, "Included items deliver no business value");
         InvariantResult::fail(invariant, violation)
     }
 }
@@ -167,7 +154,10 @@ mod tests {
         let output = BacklogPrioritizationOutput::empty("No items");
         let results = check_all_invariants(&output);
 
-        let items_result = results.iter().find(|r| r.invariant == "items_ranked").unwrap();
+        let items_result = results
+            .iter()
+            .find(|r| r.invariant == "items_ranked")
+            .unwrap();
         assert!(!items_result.passed);
     }
 

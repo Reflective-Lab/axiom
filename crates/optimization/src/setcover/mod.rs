@@ -40,9 +40,7 @@ impl SetCoverProblem {
 
     /// Create problem with unit costs
     pub fn unit_cost(num_elements: usize, sets: Vec<Vec<usize>>) -> Result<Self> {
-        let sets_with_cost = sets.into_iter()
-            .map(|s| (1, s))
-            .collect();
+        let sets_with_cost = sets.into_iter().map(|s| (1, s)).collect();
         Self::new(num_elements, sets_with_cost)
     }
 
@@ -82,9 +80,7 @@ pub fn greedy(problem: &SetCoverProblem) -> Result<SetCoverSolution> {
                 continue;
             }
 
-            let new_covered: usize = elements.iter()
-                .filter(|e| uncovered.contains(e))
-                .count();
+            let new_covered: usize = elements.iter().filter(|e| uncovered.contains(e)).count();
 
             if new_covered == 0 {
                 continue;
@@ -107,9 +103,7 @@ pub fn greedy(problem: &SetCoverProblem) -> Result<SetCoverSolution> {
                 }
             }
             None => {
-                return Err(Error::infeasible(
-                    "not all elements can be covered"
-                ));
+                return Err(Error::infeasible("not all elements can be covered"));
             }
         }
     }
@@ -146,7 +140,8 @@ mod tests {
                 (1, vec![3, 4]),
                 (1, vec![4, 0]),
             ],
-        ).unwrap();
+        )
+        .unwrap();
 
         let solution = solve(&problem).unwrap();
 
@@ -162,10 +157,8 @@ mod tests {
 
     #[test]
     fn test_unit_cost() {
-        let problem = SetCoverProblem::unit_cost(
-            3,
-            vec![vec![0, 1], vec![1, 2], vec![0, 2]],
-        ).unwrap();
+        let problem =
+            SetCoverProblem::unit_cost(3, vec![vec![0, 1], vec![1, 2], vec![0, 2]]).unwrap();
 
         let solution = solve(&problem).unwrap();
         assert!(solution.total_cost <= 2); // Can be done with 2 sets
@@ -174,10 +167,7 @@ mod tests {
     #[test]
     fn test_infeasible() {
         // Element 2 not in any set
-        let problem = SetCoverProblem::new(
-            3,
-            vec![(1, vec![0]), (1, vec![1])],
-        ).unwrap();
+        let problem = SetCoverProblem::new(3, vec![(1, vec![0]), (1, vec![1])]).unwrap();
 
         let result = solve(&problem);
         assert!(result.is_err());

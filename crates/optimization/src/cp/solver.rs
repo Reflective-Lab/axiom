@@ -245,11 +245,7 @@ impl CpModel {
         }
     }
 
-    fn solve_satisfaction(
-        &self,
-        formula: &CnfFormula,
-        start: std::time::Instant,
-    ) -> CpSolution {
+    fn solve_satisfaction(&self, formula: &CnfFormula, start: std::time::Instant) -> CpSolution {
         let mut solver = Solver::new();
         solver.add_formula(formula);
 
@@ -278,11 +274,7 @@ impl CpModel {
         }
     }
 
-    fn solve_optimization(
-        &self,
-        obj: &Objective,
-        start: std::time::Instant,
-    ) -> CpSolution {
+    fn solve_optimization(&self, obj: &Objective, start: std::time::Instant) -> CpSolution {
         // Compute bounds on objective
         let (obj_lb, obj_ub) = self.compute_objective_bounds(obj);
 
@@ -420,7 +412,13 @@ impl CpModel {
 
     /// Encode linear <= constraint using direct encoding for binary variables
     /// and enumeration for small domains
-    fn encode_linear_le(&self, formula: &mut CnfFormula, vars: &[IntVarId], coeffs: &[i64], rhs: i64) {
+    fn encode_linear_le(
+        &self,
+        formula: &mut CnfFormula,
+        vars: &[IntVarId],
+        coeffs: &[i64],
+        rhs: i64,
+    ) {
         // For small domain sizes, use enumeration-based encoding
         // Check total domain size
         let total_combinations: u64 = vars

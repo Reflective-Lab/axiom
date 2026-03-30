@@ -102,9 +102,9 @@ pub trait RecallProvider: Send + Sync {
         let mut response = self.recall(&adjusted_query)?;
 
         // Apply policy filters
-        response.candidates.retain(|c| {
-            c.final_score >= policy.min_score_threshold
-        });
+        response
+            .candidates
+            .retain(|c| c.final_score >= policy.min_score_threshold);
 
         // Enforce max_k_total
         if response.candidates.len() > policy.max_k_total {
@@ -272,9 +272,7 @@ impl<E: Embedder + Send + Sync> RecallProvider for MockRecallProvider<E> {
             .collect();
 
         // Sort by score descending
-        scored.sort_by(|a, b| {
-            b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal)
-        });
+        scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
 
         // Take top_k
         let top_k = scored.into_iter().take(query.top_k);
@@ -305,7 +303,9 @@ impl<E: Embedder + Send + Sync> RecallProvider for MockRecallProvider<E> {
         };
 
         // Normalize results
-        let normalized = self.normalizer.normalize_batch(raw_results, trace_link.clone(), query.top_k);
+        let normalized =
+            self.normalizer
+                .normalize_batch(raw_results, trace_link.clone(), query.top_k);
 
         // Build candidate scores for provenance
         let candidate_scores: Vec<CandidateScore> = normalized

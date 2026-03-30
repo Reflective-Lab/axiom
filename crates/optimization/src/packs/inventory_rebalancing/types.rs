@@ -1,7 +1,7 @@
 //! Types for Inventory Rebalancing pack
 
-use crate::packs::PackSchema;
 use crate::Result;
+use crate::packs::PackSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -110,7 +110,9 @@ impl Location {
             return Err(crate::Error::invalid_input("location id is required"));
         }
         if self.capacity <= 0 {
-            return Err(crate::Error::invalid_input("location capacity must be positive"));
+            return Err(crate::Error::invalid_input(
+                "location capacity must be positive",
+            ));
         }
         Ok(())
     }
@@ -238,7 +240,9 @@ impl RebalancingConstraints {
     /// Validate constraints
     pub fn validate(&self) -> Result<()> {
         if self.max_total_cost < 0.0 {
-            return Err(crate::Error::invalid_input("max_total_cost cannot be negative"));
+            return Err(crate::Error::invalid_input(
+                "max_total_cost cannot be negative",
+            ));
         }
         Ok(())
     }

@@ -18,34 +18,43 @@ impl PricingGuardrailsInput {
     /// Validate the input
     pub fn validate(&self) -> Result<()> {
         if self.products.is_empty() {
-            return Err(crate::Error::invalid_input("At least one product is required"));
+            return Err(crate::Error::invalid_input(
+                "At least one product is required",
+            ));
         }
 
         for product in &self.products {
             if product.unit_cost < 0.0 {
-                return Err(crate::Error::invalid_input(
-                    format!("Product {} has negative unit cost", product.product_id)
-                ));
+                return Err(crate::Error::invalid_input(format!(
+                    "Product {} has negative unit cost",
+                    product.product_id
+                )));
             }
             if let Some(ref bounds) = product.price_bounds {
                 if bounds.min_price < 0.0 {
-                    return Err(crate::Error::invalid_input(
-                        format!("Product {} has negative min price", product.product_id)
-                    ));
+                    return Err(crate::Error::invalid_input(format!(
+                        "Product {} has negative min price",
+                        product.product_id
+                    )));
                 }
                 if bounds.min_price > bounds.max_price {
-                    return Err(crate::Error::invalid_input(
-                        format!("Product {} has min price > max price", product.product_id)
-                    ));
+                    return Err(crate::Error::invalid_input(format!(
+                        "Product {} has min price > max price",
+                        product.product_id
+                    )));
                 }
             }
         }
 
         if self.margin_requirements.min_margin_pct < 0.0 {
-            return Err(crate::Error::invalid_input("Minimum margin cannot be negative"));
+            return Err(crate::Error::invalid_input(
+                "Minimum margin cannot be negative",
+            ));
         }
         if self.margin_requirements.min_margin_pct > 100.0 {
-            return Err(crate::Error::invalid_input("Minimum margin cannot exceed 100%"));
+            return Err(crate::Error::invalid_input(
+                "Minimum margin cannot exceed 100%",
+            ));
         }
 
         Ok(())
@@ -53,7 +62,9 @@ impl PricingGuardrailsInput {
 
     /// Get products with competitor pricing data
     pub fn products_with_competitor_data(&self) -> impl Iterator<Item = &Product> {
-        self.products.iter().filter(|p| !p.competitor_prices.is_empty())
+        self.products
+            .iter()
+            .filter(|p| !p.competitor_prices.is_empty())
     }
 }
 
@@ -112,8 +123,16 @@ impl Product {
         if self.competitor_prices.is_empty() {
             return None;
         }
-        let min = self.competitor_prices.iter().map(|c| c.price).fold(f64::INFINITY, f64::min);
-        let max = self.competitor_prices.iter().map(|c| c.price).fold(f64::NEG_INFINITY, f64::max);
+        let min = self
+            .competitor_prices
+            .iter()
+            .map(|c| c.price)
+            .fold(f64::INFINITY, f64::min);
+        let max = self
+            .competitor_prices
+            .iter()
+            .map(|c| c.price)
+            .fold(f64::NEG_INFINITY, f64::max);
         Some((min, max))
     }
 }
@@ -222,7 +241,11 @@ impl PricingGuardrailsOutput {
             "Priced {} products, avg margin {:.1}%, {}",
             self.recommendations.len(),
             self.margin_analysis.average_margin_pct,
-            if compliant { "all guardrails passed" } else { "some guardrails violated" }
+            if compliant {
+                "all guardrails passed"
+            } else {
+                "some guardrails violated"
+            }
         )
     }
 }
@@ -315,11 +338,13 @@ mod tests {
 
     fn create_test_product(id: &str, cost: f64, competitor_price: Option<f64>) -> Product {
         let competitor_prices = competitor_price
-            .map(|p| vec![CompetitorPrice {
-                competitor_id: "comp1".to_string(),
-                price: p,
-                as_of_date: None,
-            }])
+            .map(|p| {
+                vec![CompetitorPrice {
+                    competitor_id: "comp1".to_string(),
+                    price: p,
+                    as_of_date: None,
+                }]
+            })
             .unwrap_or_default();
 
         Product {

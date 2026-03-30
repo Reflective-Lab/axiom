@@ -10,7 +10,7 @@
 use std::pin::Pin;
 use std::sync::Arc;
 
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{Mutex, mpsc};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 
@@ -200,8 +200,7 @@ impl<E: KernelEngine> proto::kernel_service_server::KernelService for KernelServ
             (None, None) => None,
         };
 
-        let prompt =
-            streaming::format_chat_template(&req.messages, effective_system.as_deref());
+        let prompt = streaming::format_chat_template(&req.messages, effective_system.as_deref());
 
         let _params: GenerationParams = req
             .params
@@ -244,12 +243,10 @@ impl<E: KernelEngine> proto::kernel_service_server::KernelService for KernelServ
                     for chunk_text in output.chars().collect::<Vec<_>>().chunks(10) {
                         let text: String = chunk_text.iter().collect();
                         let chunk = proto::GenerateChunk {
-                            chunk: Some(proto::generate_chunk::Chunk::Token(
-                                proto::TokenChunk {
-                                    text,
-                                    token_index,
-                                },
-                            )),
+                            chunk: Some(proto::generate_chunk::Chunk::Token(proto::TokenChunk {
+                                text,
+                                token_index,
+                            })),
                         };
                         token_index += 1;
                         if tx.blocking_send(Ok(chunk)).is_err() {
@@ -275,14 +272,12 @@ impl<E: KernelEngine> proto::kernel_service_server::KernelService for KernelServ
                     };
 
                     let _ = tx.blocking_send(Ok(proto::GenerateChunk {
-                        chunk: Some(proto::generate_chunk::Chunk::Finish(
-                            proto::FinishChunk {
-                                reason: finish_reason.into(),
-                                input_tokens: 0,
-                                output_tokens: output.len() as u64,
-                                full_text: output,
-                            },
-                        )),
+                        chunk: Some(proto::generate_chunk::Chunk::Finish(proto::FinishChunk {
+                            reason: finish_reason.into(),
+                            input_tokens: 0,
+                            output_tokens: output.len() as u64,
+                            full_text: output,
+                        })),
                     }));
                 }
                 Err(e) => {
@@ -297,12 +292,10 @@ impl<E: KernelEngine> proto::kernel_service_server::KernelService for KernelServ
                     };
 
                     let _ = tx.blocking_send(Ok(proto::GenerateChunk {
-                        chunk: Some(proto::generate_chunk::Chunk::Error(
-                            proto::ErrorChunk {
-                                message: e.to_string(),
-                                kind: error_kind.into(),
-                            },
-                        )),
+                        chunk: Some(proto::generate_chunk::Chunk::Error(proto::ErrorChunk {
+                            message: e.to_string(),
+                            kind: error_kind.into(),
+                        })),
                     }));
                 }
             }
@@ -386,10 +379,12 @@ impl<E: KernelEngine> proto::kernel_service_server::KernelService for KernelServ
 
         let (current, lifecycle_state) = tokio::task::spawn_blocking(move || {
             let engine_guard = engine.blocking_lock();
-            let current = engine_guard.kernel_adapter_state().map(|a| proto::AdapterInfo {
-                adapter_id: a.adapter_id.to_string(),
-                merged: a.merged,
-            });
+            let current = engine_guard
+                .kernel_adapter_state()
+                .map(|a| proto::AdapterInfo {
+                    adapter_id: a.adapter_id.to_string(),
+                    merged: a.merged,
+                });
             let state = engine_guard.kernel_adapter_lifecycle();
             (current, state)
         })
@@ -400,9 +395,7 @@ impl<E: KernelEngine> proto::kernel_service_server::KernelService for KernelServ
             crate::engine::AdapterLifecycleState::Detached => {
                 proto::AdapterLifecycleState::Detached
             }
-            crate::engine::AdapterLifecycleState::Loading => {
-                proto::AdapterLifecycleState::Loading
-            }
+            crate::engine::AdapterLifecycleState::Loading => proto::AdapterLifecycleState::Loading,
             crate::engine::AdapterLifecycleState::Attached => {
                 proto::AdapterLifecycleState::Attached
             }

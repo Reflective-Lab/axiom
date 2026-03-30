@@ -313,7 +313,10 @@ mod tests {
         let plan = ExecutionPlan::compile(&intent, &policy);
 
         // Invariant: recall is None because policy disabled it
-        assert!(plan.recall().is_none(), "recall should be None when policy disables it");
+        assert!(
+            plan.recall().is_none(),
+            "recall should be None when policy disables it"
+        );
         assert!(!plan.recall_enabled(), "recall_enabled() should be false");
 
         // Verify ALL steps have recall disabled
@@ -343,10 +346,7 @@ mod tests {
         let plan = ExecutionPlan::compile(&intent, &policy);
 
         // Adapter is locked to what policy specified
-        assert_eq!(
-            plan.adapter().unwrap().adapter_id,
-            "llm/approved@1.0.0"
-        );
+        assert_eq!(plan.adapter().unwrap().adapter_id, "llm/approved@1.0.0");
 
         // There is NO method to change the adapter after compilation.
         // The following would NOT compile:

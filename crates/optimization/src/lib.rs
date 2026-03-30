@@ -44,9 +44,9 @@ pub mod gate;
 pub mod graph;
 pub mod knapsack;
 pub mod packs;
+pub mod provider;
 pub mod scheduling;
 pub mod setcover;
-pub mod provider;
 
 #[cfg(feature = "sat")]
 pub mod cp;
@@ -59,11 +59,11 @@ pub use types::*;
 
 /// Prelude for common imports
 pub mod prelude {
-    pub use crate::assignment::{AssignmentProblem, AssignmentSolution, AssignmentSolver};
-    pub use crate::gate::{ProblemSpec, ProposedPlan, SolverReport, PromotionGate, GateDecision};
-    pub use crate::graph::{Graph, NodeId, EdgeId};
-    pub use crate::knapsack::{KnapsackProblem, KnapsackSolution, KnapsackSolver};
-    pub use crate::packs::{Pack, PackRegistry, PackSolveResult};
     pub use crate::Error;
     pub use crate::Result;
+    pub use crate::assignment::{AssignmentProblem, AssignmentSolution, AssignmentSolver};
+    pub use crate::gate::{GateDecision, ProblemSpec, PromotionGate, ProposedPlan, SolverReport};
+    pub use crate::graph::{EdgeId, Graph, NodeId};
+    pub use crate::knapsack::{KnapsackProblem, KnapsackSolution, KnapsackSolver};
+    pub use crate::packs::{Pack, PackRegistry, PackSolveResult};
 }

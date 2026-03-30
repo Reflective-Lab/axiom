@@ -184,7 +184,11 @@ impl Diagnostic {
     }
 
     /// Create a generic diagnostic with data
-    pub fn with_data(kind: DiagnosticKind, message: impl Into<String>, data: serde_json::Value) -> Self {
+    pub fn with_data(
+        kind: DiagnosticKind,
+        message: impl Into<String>,
+        data: serde_json::Value,
+    ) -> Self {
         Self {
             kind,
             message: message.into(),
@@ -220,14 +224,15 @@ impl Diagnostic {
     }
 
     /// Create a performance diagnostic
-    pub fn performance(
-        phase: impl Into<String>,
-        elapsed_ms: f64,
-        iterations: usize,
-    ) -> Self {
+    pub fn performance(phase: impl Into<String>, elapsed_ms: f64, iterations: usize) -> Self {
         Self {
             kind: DiagnosticKind::Performance,
-            message: format!("{}: {:.2}ms, {} iterations", phase.into(), elapsed_ms, iterations),
+            message: format!(
+                "{}: {:.2}ms, {} iterations",
+                phase.into(),
+                elapsed_ms,
+                iterations
+            ),
             data: serde_json::json!({
                 "elapsed_ms": elapsed_ms,
                 "iterations": iterations
@@ -236,11 +241,7 @@ impl Diagnostic {
     }
 
     /// Create a constraint analysis diagnostic
-    pub fn constraint_analysis(
-        constraint: impl Into<String>,
-        slack: f64,
-        binding: bool,
-    ) -> Self {
+    pub fn constraint_analysis(constraint: impl Into<String>, slack: f64, binding: bool) -> Self {
         Self {
             kind: DiagnosticKind::ConstraintAnalysis,
             message: format!(
@@ -296,12 +297,8 @@ mod tests {
     fn test_infeasible_report() {
         let replay = ReplayEnvelope::minimal(42);
         let violation = Violation::new("capacity", 1.0, "exceeded limit");
-        let report = SolverReport::infeasible(
-            "solver-v1",
-            vec![violation],
-            StopReason::Infeasible,
-            replay,
-        );
+        let report =
+            SolverReport::infeasible("solver-v1", vec![violation], StopReason::Infeasible, replay);
 
         assert!(!report.feasible);
         assert!(!report.is_optimal());
@@ -311,12 +308,8 @@ mod tests {
     #[test]
     fn test_budget_exhausted() {
         let replay = ReplayEnvelope::minimal(42);
-        let report = SolverReport::feasible(
-            "solver-v1",
-            150.0,
-            StopReason::TimeBudgetExhausted,
-            replay,
-        );
+        let report =
+            SolverReport::feasible("solver-v1", 150.0, StopReason::TimeBudgetExhausted, replay);
 
         assert!(report.feasible);
         assert!(!report.is_optimal());
@@ -342,7 +335,8 @@ mod tests {
         let diag = Diagnostic::scoring_breakdown(serde_json::json!({"cost": 10, "penalty": 5}));
         assert_eq!(diag.kind, DiagnosticKind::ScoringBreakdown);
 
-        let diag2 = Diagnostic::tie_break_rationale("chose by id", vec!["a".to_string(), "b".to_string()]);
+        let diag2 =
+            Diagnostic::tie_break_rationale("chose by id", vec!["a".to_string(), "b".to_string()]);
         assert_eq!(diag2.kind, DiagnosticKind::TieBreakRationale);
     }
 

@@ -1,9 +1,9 @@
 //! Solver for Pricing Guardrails pack
 
 use super::types::*;
+use crate::Result;
 use crate::gate::{ProblemSpec, ReplayEnvelope, SolverReport, StopReason};
 use crate::packs::PackSolver;
-use crate::Result;
 
 /// Rule-based pricing solver that respects margins and guardrails
 ///
@@ -53,11 +53,8 @@ impl GuardrailPricingSolver {
         // Calculate guardrail compliance
         let all_within_bounds = recommendations.iter().all(|r| r.within_bounds);
         let all_margins_met = recommendations.iter().all(|r| r.margin_target_met);
-        let competitive_position_achieved = self.check_competitive_position(
-            &recommendations,
-            &input.products,
-            margin_req,
-        );
+        let competitive_position_achieved =
+            self.check_competitive_position(&recommendations, &input.products, margin_req);
 
         let guardrail_compliance = GuardrailCompliance {
             all_within_bounds,
@@ -76,7 +73,11 @@ impl GuardrailPricingSolver {
         let is_feasible = all_within_bounds && all_margins_met;
 
         let report = if is_feasible {
-            SolverReport::optimal("guardrail-pricing-v1", output.margin_analysis.average_margin_pct, replay)
+            SolverReport::optimal(
+                "guardrail-pricing-v1",
+                output.margin_analysis.average_margin_pct,
+                replay,
+            )
         } else {
             SolverReport::feasible(
                 "guardrail-pricing-v1",
@@ -347,7 +348,7 @@ impl GuardrailPricingSolver {
                 let strategy_achieved = match margin_req.competitive_strategy {
                     CompetitiveStrategy::PriceToBeat => pos_pct <= -3.0, // At least 3% below
                     CompetitiveStrategy::MatchMarket => pos_pct.abs() <= 5.0, // Within 5%
-                    CompetitiveStrategy::Premium => pos_pct >= 5.0, // At least 5% above
+                    CompetitiveStrategy::Premium => pos_pct >= 5.0,      // At least 5% above
                     CompetitiveStrategy::IgnoreCompetitors => true,
                 };
                 if strategy_achieved {
@@ -565,7 +566,11 @@ mod tests {
         let (output2, _) = solver.solve_pricing(&input, &spec2).unwrap();
 
         assert_eq!(output1.recommendations.len(), output2.recommendations.len());
-        for (r1, r2) in output1.recommendations.iter().zip(output2.recommendations.iter()) {
+        for (r1, r2) in output1
+            .recommendations
+            .iter()
+            .zip(output2.recommendations.iter())
+        {
             assert_eq!(r1.product_id, r2.product_id);
             assert!((r1.recommended_price - r2.recommended_price).abs() < 0.01);
         }
@@ -594,6 +599,9 @@ mod tests {
 
         // Should have compliance flags set
         // With reasonable inputs, most guardrails should be met
-        assert!(output.guardrail_compliance.all_within_bounds || !output.guardrail_compliance.violations.is_empty());
+        assert!(
+            output.guardrail_compliance.all_within_bounds
+                || !output.guardrail_compliance.violations.is_empty()
+        );
     }
 }

@@ -70,12 +70,18 @@ impl OutputStressReport {
             "═══════════════════════════════════════════════════════════════".to_string(),
             "              OUTPUT CONTRACT STRESS REPORT".to_string(),
             "═══════════════════════════════════════════════════════════════".to_string(),
-            format!("Total: {} | Matched: {} | Mismatched: {}",
-                self.total, self.matched, self.total - self.matched),
+            format!(
+                "Total: {} | Matched: {} | Mismatched: {}",
+                self.total,
+                self.matched,
+                self.total - self.matched
+            ),
         ];
 
         if !self.contract_too_weak.is_empty() {
-            lines.push("───────────────────────────────────────────────────────────────".to_string());
+            lines.push(
+                "───────────────────────────────────────────────────────────────".to_string(),
+            );
             lines.push("CONTRACT TOO WEAK (passed when should fail):".to_string());
             for case in &self.contract_too_weak {
                 lines.push(format!("  [{}] {}", case.id, case.name));
@@ -84,7 +90,9 @@ impl OutputStressReport {
         }
 
         if !self.contract_too_strict.is_empty() {
-            lines.push("───────────────────────────────────────────────────────────────".to_string());
+            lines.push(
+                "───────────────────────────────────────────────────────────────".to_string(),
+            );
             lines.push("CONTRACT TOO STRICT (failed when should pass):".to_string());
             for case in &self.contract_too_strict {
                 lines.push(format!("  [{}] {}", case.id, case.name));
@@ -350,12 +358,12 @@ fn evaluation_stress_cases() -> Vec<OutputStressCase> {
             tests: "Does contract enforce justification requirement?".into(),
             interpretation: "Contract must require justification text, not just scores.".into(),
         },
-
         // Should FAIL: Score without confidence
         OutputStressCase {
             id: "eval-no-confidence".into(),
             name: "Score without confidence".into(),
-            output: "Deployment readiness: 0.85. The model performs well on validation data.".into(),
+            output: "Deployment readiness: 0.85. The model performs well on validation data."
+                .into(),
             contract: OutputContract::Evaluation {
                 score_range: (0.0, 1.0),
                 confidence_required: true,
@@ -367,14 +375,14 @@ fn evaluation_stress_cases() -> Vec<OutputStressCase> {
             tests: "Does contract enforce confidence requirement?".into(),
             interpretation: "Contract must detect missing confidence values.".into(),
         },
-
         // Should PASS: Complete evaluation
         OutputStressCase {
             id: "eval-complete".into(),
             name: "Complete evaluation with all components".into(),
             output: "Deployment readiness: 0.85 (confidence: 0.9). \
                     The model shows strong performance on validation metrics with \
-                    low error rates and high success ratio.".into(),
+                    low error rates and high success ratio."
+                .into(),
             contract: OutputContract::Evaluation {
                 score_range: (0.0, 1.0),
                 confidence_required: true,
@@ -386,7 +394,6 @@ fn evaluation_stress_cases() -> Vec<OutputStressCase> {
             tests: "Does contract accept complete evaluations?".into(),
             interpretation: "Contract correctly validates complete output.".into(),
         },
-
         // Should FAIL: Confidence higher than evidence warrants
         OutputStressCase {
             id: "eval-overconfident".into(),
@@ -402,9 +409,9 @@ fn evaluation_stress_cases() -> Vec<OutputStressCase> {
             expected_valid: true, // Will pass structurally - THIS IS A KNOWN LIMITATION
             tests: "Can contract detect miscalibrated confidence?".into(),
             interpretation: "Structural contracts cannot detect calibration. \
-                            This is the primary LoRA target for Phase-4B.".into(),
+                            This is the primary LoRA target for Phase-4B."
+                .into(),
         },
-
         // Should FAIL: Score outside valid range
         OutputStressCase {
             id: "eval-out-of-range".into(),
@@ -421,7 +428,6 @@ fn evaluation_stress_cases() -> Vec<OutputStressCase> {
             tests: "Does contract enforce score bounds?".into(),
             interpretation: "Contract must reject out-of-range scores.".into(),
         },
-
         // === NEW: ScoreCardinality tests ===
 
         // Should PASS: AtLeast(2) with 3 scores
@@ -429,7 +435,8 @@ fn evaluation_stress_cases() -> Vec<OutputStressCase> {
             id: "eval-cardinality-atleast-pass".into(),
             name: "AtLeast(2) with 3 scores".into(),
             output: "Accuracy: 0.85 (confidence: 0.9). Precision: 0.82 (confidence: 0.85). \
-                    Recall: 0.78 (confidence: 0.8). All metrics show strong performance.".into(),
+                    Recall: 0.78 (confidence: 0.8). All metrics show strong performance."
+                .into(),
             contract: OutputContract::Evaluation {
                 score_range: (0.0, 1.0),
                 confidence_required: true,
@@ -441,13 +448,13 @@ fn evaluation_stress_cases() -> Vec<OutputStressCase> {
             tests: "Does AtLeast(n) accept n or more scores?".into(),
             interpretation: "Contract correctly validates score cardinality.".into(),
         },
-
         // Should FAIL: AtLeast(3) with only 2 scores
         OutputStressCase {
             id: "eval-cardinality-atleast-fail".into(),
             name: "AtLeast(3) with only 2 scores".into(),
             output: "Accuracy: 0.85 (confidence: 0.9). Precision: 0.82 (confidence: 0.85). \
-                    Model shows promise.".into(),
+                    Model shows promise."
+                .into(),
             contract: OutputContract::Evaluation {
                 score_range: (0.0, 1.0),
                 confidence_required: true,
@@ -459,13 +466,13 @@ fn evaluation_stress_cases() -> Vec<OutputStressCase> {
             tests: "Does AtLeast(n) reject fewer than n scores?".into(),
             interpretation: "Contract enforces minimum score count.".into(),
         },
-
         // Should PASS: Exactly(2) with 2 scores
         OutputStressCase {
             id: "eval-cardinality-exactly-pass".into(),
             name: "Exactly(2) with 2 scores".into(),
             output: "Accuracy: 0.85 (confidence: 0.9). Precision: 0.82 (confidence: 0.85). \
-                    Both metrics meet threshold.".into(),
+                    Both metrics meet threshold."
+                .into(),
             contract: OutputContract::Evaluation {
                 score_range: (0.0, 1.0),
                 confidence_required: true,
@@ -477,13 +484,13 @@ fn evaluation_stress_cases() -> Vec<OutputStressCase> {
             tests: "Does Exactly(n) accept exactly n scores?".into(),
             interpretation: "Contract correctly validates exact score count.".into(),
         },
-
         // Should FAIL: Exactly(2) with 3 scores
         OutputStressCase {
             id: "eval-cardinality-exactly-fail".into(),
             name: "Exactly(2) with 3 scores".into(),
             output: "Accuracy: 0.85 (confidence: 0.9). Precision: 0.82 (confidence: 0.85). \
-                    Recall: 0.78 (confidence: 0.8). Extra score provided.".into(),
+                    Recall: 0.78 (confidence: 0.8). Extra score provided."
+                .into(),
             contract: OutputContract::Evaluation {
                 score_range: (0.0, 1.0),
                 confidence_required: true,
@@ -495,7 +502,6 @@ fn evaluation_stress_cases() -> Vec<OutputStressCase> {
             tests: "Does Exactly(n) reject more than n scores?".into(),
             interpretation: "Contract enforces exact score count.".into(),
         },
-
         // === NEW: Grounding reference tests ===
 
         // Should PASS: Evaluation with grounding refs present
@@ -503,7 +509,8 @@ fn evaluation_stress_cases() -> Vec<OutputStressCase> {
             id: "eval-grounding-refs-pass".into(),
             name: "Evaluation references required terms".into(),
             output: "Score: 0.85 (confidence: 0.9). The MAE of 0.05 indicates low error, \
-                    and the success_ratio of 0.92 shows strong performance.".into(),
+                    and the success_ratio of 0.92 shows strong performance."
+                .into(),
             contract: OutputContract::Evaluation {
                 score_range: (0.0, 1.0),
                 confidence_required: true,
@@ -515,7 +522,6 @@ fn evaluation_stress_cases() -> Vec<OutputStressCase> {
             tests: "Does contract accept justification with grounding refs?".into(),
             interpretation: "Contract validates presence of grounding references.".into(),
         },
-
         // Should FAIL: Evaluation missing grounding refs
         OutputStressCase {
             id: "eval-grounding-refs-fail".into(),
@@ -553,7 +559,6 @@ fn planning_stress_cases() -> Vec<OutputStressCase> {
             tests: "Does contract require explicit numbering?".into(),
             interpretation: "Contract must enforce step numbering for ordered plans.".into(),
         },
-
         // Should PASS: Proper numbered plan
         OutputStressCase {
             id: "plan-proper".into(),
@@ -561,7 +566,8 @@ fn planning_stress_cases() -> Vec<OutputStressCase> {
             output: "1. Validate model on holdout set\n\
                     2. Deploy to staging environment\n\
                     3. Monitor for 24 hours\n\
-                    4. Proceed to production if stable".into(),
+                    4. Proceed to production if stable"
+                .into(),
             contract: OutputContract::Planning {
                 requires_ordered_steps: true,
                 max_steps: 10,
@@ -572,7 +578,6 @@ fn planning_stress_cases() -> Vec<OutputStressCase> {
             tests: "Does contract accept proper plans?".into(),
             interpretation: "Contract correctly validates proper plan structure.".into(),
         },
-
         // Should FAIL: Plan exceeds max steps
         OutputStressCase {
             id: "plan-too-many-steps".into(),
@@ -588,14 +593,14 @@ fn planning_stress_cases() -> Vec<OutputStressCase> {
             tests: "Does contract enforce max_steps?".into(),
             interpretation: "Contract must limit plan complexity.".into(),
         },
-
         // Should FAIL: Plan references non-existent capability
         OutputStressCase {
             id: "plan-hallucinated-capability".into(),
             name: "Plan references non-existent capability".into(),
             output: "1. Run quantum optimization on the model\n\
                     2. Deploy to Mars datacenter\n\
-                    3. Activate neural link interface".into(),
+                    3. Activate neural link interface"
+                .into(),
             contract: OutputContract::Planning {
                 requires_ordered_steps: true,
                 max_steps: 10,
@@ -605,9 +610,9 @@ fn planning_stress_cases() -> Vec<OutputStressCase> {
             expected_valid: true, // Will pass - capability refs not enforced
             tests: "Can contract detect hallucinated capabilities?".into(),
             interpretation: "Without requires_capability_refs=true and a capability registry, \
-                            planning can hallucinate actions. This is a system-level issue.".into(),
+                            planning can hallucinate actions. This is a system-level issue."
+                .into(),
         },
-
         // Should FAIL: Empty plan
         OutputStressCase {
             id: "plan-empty".into(),
@@ -623,13 +628,13 @@ fn planning_stress_cases() -> Vec<OutputStressCase> {
             tests: "Does contract reject empty plans?".into(),
             interpretation: "Contract must require at least one step.".into(),
         },
-
         // Edge case: Plan that should abort
         OutputStressCase {
             id: "plan-abort".into(),
             name: "Plan that recommends no action".into(),
             output: "1. Do not deploy - metrics indicate model is not ready\n\
-                    2. Return to training with additional data".into(),
+                    2. Return to training with additional data"
+                .into(),
             contract: OutputContract::Planning {
                 requires_ordered_steps: true,
                 max_steps: 10,
@@ -638,9 +643,9 @@ fn planning_stress_cases() -> Vec<OutputStressCase> {
             },
             expected_valid: true, // Should pass - negative action is still action
             tests: "Does contract accept conservative/abort plans?".into(),
-            interpretation: "Contract correctly accepts negative recommendations as valid plans.".into(),
+            interpretation: "Contract correctly accepts negative recommendations as valid plans."
+                .into(),
         },
-
         // === NEW: Capability registry tests ===
 
         // Should PASS: Plan using valid capabilities
@@ -649,7 +654,8 @@ fn planning_stress_cases() -> Vec<OutputStressCase> {
             name: "Plan references valid capabilities".into(),
             output: "1. Run [validate_model] on the holdout set\n\
                     2. Execute [deploy_staging] with current config\n\
-                    3. Use [monitor_metrics] for 24 hours".into(),
+                    3. Use [monitor_metrics] for 24 hours"
+                .into(),
             contract: OutputContract::Planning {
                 requires_ordered_steps: true,
                 max_steps: 10,
@@ -666,14 +672,14 @@ fn planning_stress_cases() -> Vec<OutputStressCase> {
             tests: "Does contract accept plans using valid capabilities?".into(),
             interpretation: "Contract validates capability references against registry.".into(),
         },
-
         // Should FAIL: Plan references invalid capability
         OutputStressCase {
             id: "plan-capability-invalid".into(),
             name: "Plan references unknown capability".into(),
             output: "1. Run [validate_model] on holdout\n\
                     2. Execute [quantum_optimize] for better results\n\
-                    3. Use [deploy_staging] to test".into(),
+                    3. Use [deploy_staging] to test"
+                .into(),
             contract: OutputContract::Planning {
                 requires_ordered_steps: true,
                 max_steps: 10,
@@ -689,14 +695,14 @@ fn planning_stress_cases() -> Vec<OutputStressCase> {
             tests: "Does contract reject unknown capabilities?".into(),
             interpretation: "Contract prevents hallucinated capability references.".into(),
         },
-
         // Should FAIL: Plan missing capability refs when required
         OutputStressCase {
             id: "plan-capability-missing".into(),
             name: "Plan missing capability references".into(),
             output: "1. Validate the model\n\
                     2. Deploy to staging\n\
-                    3. Monitor for issues".into(),
+                    3. Monitor for issues"
+                .into(),
             contract: OutputContract::Planning {
                 requires_ordered_steps: true,
                 max_steps: 10,
@@ -761,7 +767,9 @@ mod tests {
         // These cases document known limitations
         let cases = all_stress_cases();
 
-        let hallucination_case = cases.iter().find(|c| c.id == "reasoning-hallucinated-facts");
+        let hallucination_case = cases
+            .iter()
+            .find(|c| c.id == "reasoning-hallucinated-facts");
         assert!(hallucination_case.is_some());
         assert!(hallucination_case.unwrap().expected_valid); // Known to pass
 
@@ -769,7 +777,9 @@ mod tests {
         assert!(overconfident_case.is_some());
         assert!(overconfident_case.unwrap().expected_valid); // Known to pass
 
-        let capability_case = cases.iter().find(|c| c.id == "plan-hallucinated-capability");
+        let capability_case = cases
+            .iter()
+            .find(|c| c.id == "plan-hallucinated-capability");
         assert!(capability_case.is_some());
         assert!(capability_case.unwrap().expected_valid); // Known to pass
     }

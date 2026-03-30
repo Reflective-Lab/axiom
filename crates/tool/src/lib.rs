@@ -37,11 +37,11 @@
 pub mod codegen;
 pub mod compile;
 pub mod gherkin;
+pub mod jtbd;
 pub mod mock_llm;
+pub mod predicate;
 pub mod provider_bridge;
 pub mod truths;
-pub mod jtbd;
-pub mod predicate;
 
 pub use gherkin::{
     GherkinValidator, InvariantClassTag, IssueCategory, ScenarioKind, ScenarioMeta, Severity,

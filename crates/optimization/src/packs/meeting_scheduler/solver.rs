@@ -1,11 +1,11 @@
 //! Solver for Meeting Scheduler pack
 
 use super::types::*;
+use crate::Result;
 use crate::gate::{
     Diagnostic, DiagnosticKind, ProblemSpec, ReplayEnvelope, SolverReport, StopReason,
 };
 use crate::packs::PackSolver;
-use crate::Result;
 
 /// Greedy scoring solver for meeting scheduling
 ///
@@ -29,10 +29,7 @@ impl GreedySolver {
         let start = std::time::Instant::now();
 
         // Collect all required attendee IDs
-        let required_ids: Vec<&str> = input
-            .required_attendees()
-            .map(|a| a.id.as_str())
-            .collect();
+        let required_ids: Vec<&str> = input.required_attendees().map(|a| a.id.as_str()).collect();
 
         // Score each slot
         let mut scored_slots: Vec<ScoredSlot> = input
@@ -64,9 +61,9 @@ impl GreedySolver {
                 if !score_group.is_empty() {
                     // Apply tie-breaking to group
                     score_group.sort_by(|a, b| a.slot.id.cmp(&b.slot.id));
-                    if let Some(selected) = tie_break.select_by(&score_group, seed, |a, b| {
-                        a.slot.id.cmp(&b.slot.id)
-                    }) {
+                    if let Some(selected) =
+                        tie_break.select_by(&score_group, seed, |a, b| a.slot.id.cmp(&b.slot.id))
+                    {
                         final_slots.push(selected.clone());
                     }
                 }
@@ -77,9 +74,9 @@ impl GreedySolver {
         // Don't forget the last group
         if !score_group.is_empty() {
             score_group.sort_by(|a, b| a.slot.id.cmp(&b.slot.id));
-            if let Some(selected) = tie_break.select_by(&score_group, seed, |a, b| {
-                a.slot.id.cmp(&b.slot.id)
-            }) {
+            if let Some(selected) =
+                tie_break.select_by(&score_group, seed, |a, b| a.slot.id.cmp(&b.slot.id))
+            {
                 final_slots.push(selected.clone());
             }
         }
@@ -115,21 +112,26 @@ impl GreedySolver {
         let replay = ReplayEnvelope::minimal(seed);
         let report = if output.selected_slot.is_some() {
             SolverReport::optimal("greedy-v1", output.score_breakdown.total_score, replay)
-                .with_diagnostic(Diagnostic::performance("scoring", elapsed_ms, input.slots.len()))
+                .with_diagnostic(Diagnostic::performance(
+                    "scoring",
+                    elapsed_ms,
+                    input.slots.len(),
+                ))
                 .with_diagnostic(Diagnostic::scoring_breakdown(serde_json::json!({
                     "required_score": output.score_breakdown.required_score,
                     "optional_score": output.score_breakdown.optional_score,
                     "preference_score": output.score_breakdown.preference_score,
                 })))
         } else {
-            SolverReport::infeasible("greedy-v1", vec![], stop_reason, replay)
-                .with_diagnostic(Diagnostic::new(
+            SolverReport::infeasible("greedy-v1", vec![], stop_reason, replay).with_diagnostic(
+                Diagnostic::new(
                     DiagnosticKind::ConstraintAnalysis,
                     format!(
                         "No slot satisfies all required attendees. {} slots evaluated.",
                         input.slots.len()
                     ),
-                ))
+                ),
+            )
         };
 
         Ok((output, report))
@@ -208,9 +210,12 @@ impl GreedySolver {
 
         // Check if any slot has all required attendees
         let any_feasible = input.slots.iter().any(|slot| {
-            required_ids
-                .iter()
-                .all(|id| input.get_attendee(id).map(|a| a.can_attend(&slot.id)).unwrap_or(false))
+            required_ids.iter().all(|id| {
+                input
+                    .get_attendee(id)
+                    .map(|a| a.can_attend(&slot.id))
+                    .unwrap_or(false)
+            })
         });
 
         if !any_feasible && conflicts.is_empty() {

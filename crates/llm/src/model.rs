@@ -121,10 +121,7 @@ impl<B: Backend> LlamaModel<B> {
         // let logits = self.llama.forward(input);
 
         // Placeholder: return dummy logits
-        tracing::debug!(
-            tokens = tokens.len(),
-            "Running forward pass"
-        );
+        tracing::debug!(tokens = tokens.len(), "Running forward pass");
 
         Ok(vec![0.0; 128256]) // vocab_size logits for last position
     }
@@ -212,7 +209,10 @@ mod tests {
 
         let long_input: Vec<u32> = (0..20).collect();
         let result = model.forward(&long_input);
-        assert!(matches!(result, Err(LlmError::ContextLengthExceeded { .. })));
+        assert!(matches!(
+            result,
+            Err(LlmError::ContextLengthExceeded { .. })
+        ));
     }
 
     #[test]

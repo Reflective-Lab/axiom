@@ -16,12 +16,16 @@ impl InventoryReplenishmentInput {
     /// Validate the input
     pub fn validate(&self) -> Result<()> {
         if self.products.is_empty() {
-            return Err(crate::Error::invalid_input("At least one product is required"));
+            return Err(crate::Error::invalid_input(
+                "At least one product is required",
+            ));
         }
         if self.constraints.budget <= 0.0 {
             return Err(crate::Error::invalid_input("Budget must be positive"));
         }
-        if self.constraints.target_service_level <= 0.0 || self.constraints.target_service_level > 1.0 {
+        if self.constraints.target_service_level <= 0.0
+            || self.constraints.target_service_level > 1.0
+        {
             return Err(crate::Error::invalid_input(
                 "Target service level must be between 0 and 1",
             ));
@@ -50,7 +54,10 @@ impl InventoryReplenishmentInput {
 
     /// Get total estimated demand across all products
     pub fn total_demand(&self) -> f64 {
-        self.products.iter().map(|p| p.total_forecast_demand()).sum()
+        self.products
+            .iter()
+            .map(|p| p.total_forecast_demand())
+            .sum()
     }
 }
 
@@ -121,7 +128,8 @@ impl Product {
     /// Calculate reorder point
     /// ROP = (Average daily demand * Lead time) + Safety stock
     pub fn calculate_reorder_point(&self, service_level: f64) -> f64 {
-        let demand_during_lead_time = self.demand_forecast.average_daily * self.lead_time_days as f64;
+        let demand_during_lead_time =
+            self.demand_forecast.average_daily * self.lead_time_days as f64;
         let safety_stock = self.calculate_safety_stock(service_level);
         demand_during_lead_time + safety_stock
     }
@@ -129,7 +137,8 @@ impl Product {
     /// Check if product needs reorder based on current inventory
     pub fn needs_reorder(&self) -> bool {
         // Conservative check: reorder if inventory is below average lead time demand
-        let demand_during_lead_time = self.demand_forecast.average_daily * self.lead_time_days as f64;
+        let demand_during_lead_time =
+            self.demand_forecast.average_daily * self.lead_time_days as f64;
         (self.current_inventory as f64) < demand_during_lead_time * 1.5
     }
 

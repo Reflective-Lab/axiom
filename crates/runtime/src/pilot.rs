@@ -90,10 +90,7 @@ pub enum ReleaseRunEvent {
         release_window: String,
     },
     #[serde(rename = "log.append")]
-    LogAppend {
-        message: String,
-        level: String,
-    },
+    LogAppend { message: String, level: String },
     #[serde(rename = "step.started")]
     StepStarted {
         #[serde(rename = "stepId")]
@@ -237,7 +234,9 @@ fn build_release_readiness_script(
             &mut events,
             run_id,
             &mut sequence,
-            ReleaseRunEvent::StepStarted { step_id: step_id.to_string() },
+            ReleaseRunEvent::StepStarted {
+                step_id: step_id.to_string(),
+            },
         );
         push_event(
             &mut events,
@@ -252,7 +251,9 @@ fn build_release_readiness_script(
             &mut events,
             run_id,
             &mut sequence,
-            ReleaseRunEvent::StepCompleted { step_id: step_id.to_string() },
+            ReleaseRunEvent::StepCompleted {
+                step_id: step_id.to_string(),
+            },
         );
     }
 

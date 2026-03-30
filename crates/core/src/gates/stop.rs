@@ -190,10 +190,7 @@ impl StopReason {
     }
 
     /// Create a HumanInterventionRequired stop reason.
-    pub fn human_intervention_required(
-        criteria: Vec<String>,
-        approval_refs: Vec<String>,
-    ) -> Self {
+    pub fn human_intervention_required(criteria: Vec<String>, approval_refs: Vec<String>) -> Self {
         Self::HumanInterventionRequired {
             criteria,
             approval_refs,

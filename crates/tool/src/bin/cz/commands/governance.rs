@@ -21,8 +21,8 @@ use colored::Colorize;
 use converge_core::llm::LlmProvider;
 use converge_provider::AnthropicProvider;
 use converge_tool::{
-    GherkinValidator, IssueCategory, ProviderBridge, Severity, StaticLlmProvider,
-    ValidationConfig, ValidationIssue,
+    GherkinValidator, IssueCategory, ProviderBridge, Severity, StaticLlmProvider, ValidationConfig,
+    ValidationIssue,
 };
 use serde::{Deserialize, Serialize};
 use std::fs;

@@ -100,9 +100,7 @@ struct OpenAiRequest<'a> {
 /// Returns true if a model requires `max_completion_tokens` instead of `max_tokens`.
 /// This applies to OpenAI reasoning models (o1, o3) and newer GPT models (gpt-5.x).
 fn uses_max_completion_tokens(model: &str) -> bool {
-    model.starts_with("o1")
-        || model.starts_with("o3")
-        || model.starts_with("gpt-5")
+    model.starts_with("o1") || model.starts_with("o3") || model.starts_with("gpt-5")
 }
 
 #[derive(Serialize)]

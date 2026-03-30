@@ -8,7 +8,9 @@
 //! This module provides shared types and utilities to reduce code duplication
 //! across provider implementations.
 
-use crate::provider_api::{FinishReason, LlmError, LlmErrorKind, LlmRequest, LlmResponse, TokenUsage};
+use crate::provider_api::{
+    FinishReason, LlmError, LlmErrorKind, LlmRequest, LlmResponse, TokenUsage,
+};
 use crate::secret::{SecretProvider, SecretString};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};

@@ -248,12 +248,7 @@ impl<B: Backend> InferenceEngine<B> {
     /// 3. Apply top-k filtering (keep top k highest probability tokens)
     /// 4. Apply top-p (nucleus) filtering (keep smallest set with cumulative prob >= p)
     /// 5. Sample from filtered distribution
-    fn sample(
-        &self,
-        logits: &[f32],
-        params: &GenerationParams,
-        context: &[u32],
-    ) -> LlmResult<u32> {
+    fn sample(&self, logits: &[f32], params: &GenerationParams, context: &[u32]) -> LlmResult<u32> {
         if logits.is_empty() {
             return Err(LlmError::InferenceError("Empty logits".to_string()));
         }
@@ -343,10 +338,7 @@ fn argmax(values: &[f32]) -> usize {
 /// Apply softmax to convert logits to probabilities.
 fn softmax(logits: &[f32]) -> Vec<f32> {
     // Find max for numerical stability
-    let max_logit = logits
-        .iter()
-        .copied()
-        .fold(f32::NEG_INFINITY, f32::max);
+    let max_logit = logits.iter().copied().fold(f32::NEG_INFINITY, f32::max);
 
     // Compute exp(logit - max)
     let exp_values: Vec<f32> = logits.iter().map(|l| (l - max_logit).exp()).collect();

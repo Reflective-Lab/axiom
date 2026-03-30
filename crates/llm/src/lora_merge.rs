@@ -39,8 +39,8 @@
 
 use crate::adapter::AdapterWeights;
 use crate::error::{LlmError, LlmResult};
-use burn::tensor::backend::Backend;
 use burn::tensor::Tensor;
+use burn::tensor::backend::Backend;
 use std::collections::HashMap;
 
 /// Stores original weights for later restoration.
@@ -262,10 +262,7 @@ pub struct MergePlan {
 
 impl MergePlan {
     /// Create a merge plan from adapter weights.
-    pub fn from_adapter(
-        adapter: &AdapterWeights,
-        mapper: &LayerMapper,
-    ) -> LlmResult<Self> {
+    pub fn from_adapter(adapter: &AdapterWeights, mapper: &LayerMapper) -> LlmResult<Self> {
         let mut layer_mappings = HashMap::new();
         let mut total_tensors = 0;
 
@@ -289,7 +286,8 @@ impl MergePlan {
 
     /// Get all model paths that will be modified, sorted for determinism.
     pub fn all_model_paths(&self) -> Vec<String> {
-        let mut paths: Vec<String> = self.layer_mappings
+        let mut paths: Vec<String> = self
+            .layer_mappings
             .values()
             .flat_map(|paths| paths.iter().cloned())
             .collect();
@@ -345,10 +343,7 @@ impl DeltaCanonical {
         delta_f32: &[f32],
     ) -> Self {
         // Canonicalize delta bytes as little-endian f32
-        let delta_bytes: Vec<u8> = delta_f32
-            .iter()
-            .flat_map(|f| f.to_le_bytes())
-            .collect();
+        let delta_bytes: Vec<u8> = delta_f32.iter().flat_map(|f| f.to_le_bytes()).collect();
 
         Self {
             tensor_path: tensor_path.into(),
@@ -463,17 +458,13 @@ impl MergeArtifactBuilder {
     /// Build the merge artifact with sorted paths and hashes.
     pub fn build(mut self) -> MergeArtifact {
         // Sort deltas by tensor path for deterministic ordering
-        self.deltas.sort_by(|a, b| a.tensor_path.cmp(&b.tensor_path));
+        self.deltas
+            .sort_by(|a, b| a.tensor_path.cmp(&b.tensor_path));
 
-        let affected_tensors: Vec<String> = self.deltas
-            .iter()
-            .map(|d| d.tensor_path.clone())
-            .collect();
+        let affected_tensors: Vec<String> =
+            self.deltas.iter().map(|d| d.tensor_path.clone()).collect();
 
-        let delta_hashes: Vec<String> = self.deltas
-            .iter()
-            .map(|d| d.compute_hash())
-            .collect();
+        let delta_hashes: Vec<String> = self.deltas.iter().map(|d| d.compute_hash()).collect();
 
         // Compute overall merge hash (hash of all delta hashes)
         let merge_hash = {
@@ -565,20 +556,35 @@ pub enum MergeVerificationError {
     /// Merge hashes don't match
     HashMismatch { expected: String, actual: String },
     /// Affected tensor lists don't match
-    TensorListMismatch { expected: Vec<String>, actual: Vec<String> },
+    TensorListMismatch {
+        expected: Vec<String>,
+        actual: Vec<String>,
+    },
 }
 
 impl std::fmt::Display for MergeVerificationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::AdapterMismatch { expected, actual } => {
-                write!(f, "Adapter mismatch: expected '{}', got '{}'", expected, actual)
+                write!(
+                    f,
+                    "Adapter mismatch: expected '{}', got '{}'",
+                    expected, actual
+                )
             }
             Self::HashMismatch { expected, actual } => {
-                write!(f, "Merge hash mismatch: expected '{}', got '{}'", expected, actual)
+                write!(
+                    f,
+                    "Merge hash mismatch: expected '{}', got '{}'",
+                    expected, actual
+                )
             }
             Self::TensorListMismatch { expected, actual } => {
-                write!(f, "Tensor list mismatch: expected {:?}, got {:?}", expected, actual)
+                write!(
+                    f,
+                    "Tensor list mismatch: expected {:?}, got {:?}",
+                    expected, actual
+                )
             }
         }
     }
@@ -603,9 +609,7 @@ mod tests {
         let alpha = 16.0;
         let rank = 2;
 
-        let delta = compute_lora_delta::<TestBackend>(
-            &lora_a, &lora_b, 4, 4, rank, alpha, &device,
-        );
+        let delta = compute_lora_delta::<TestBackend>(&lora_a, &lora_b, 4, 4, rank, alpha, &device);
 
         let [rows, cols] = delta.dims();
         assert_eq!(rows, 4);
@@ -619,10 +623,7 @@ mod tests {
         // Base weight: 4x4 identity-ish
         let base_data = burn::tensor::TensorData::new(
             vec![
-                1.0f32, 0.0, 0.0, 0.0,
-                0.0, 1.0, 0.0, 0.0,
-                0.0, 0.0, 1.0, 0.0,
-                0.0, 0.0, 0.0, 1.0,
+                1.0f32, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
             ],
             [4, 4],
         );
@@ -806,15 +807,7 @@ mod tests {
     fn test_delta_canonical_roundtrip() {
         let original = vec![0.1f32, 0.2, 0.3, 0.4, 0.5, 0.6];
 
-        let canonical = DeltaCanonical::new(
-            "test",
-            [2, 3],
-            "adapter",
-            "model",
-            16.0,
-            8,
-            &original,
-        );
+        let canonical = DeltaCanonical::new("test", [2, 3], "adapter", "model", 16.0, 8, &original);
 
         // Roundtrip through canonical form
         let recovered = canonical.delta_as_f32();
@@ -823,12 +816,8 @@ mod tests {
 
     #[test]
     fn test_merge_artifact_builder_sorts_paths() {
-        let mut builder = MergeArtifactBuilder::new(
-            "adapter/test@1.0+sha256:abc",
-            "llama3:8b",
-            16.0,
-            8,
-        );
+        let mut builder =
+            MergeArtifactBuilder::new("adapter/test@1.0+sha256:abc", "llama3:8b", 16.0, 8);
 
         // Add in non-sorted order
         builder.add_delta("layers.2.attention.wq.weight", [4, 4], &vec![0.1f32; 16]);
@@ -869,7 +858,10 @@ mod tests {
 
         // Different adapter should fail
         let result = artifact1.verify_matches(&artifact2);
-        assert!(matches!(result, Err(MergeVerificationError::AdapterMismatch { .. })));
+        assert!(matches!(
+            result,
+            Err(MergeVerificationError::AdapterMismatch { .. })
+        ));
     }
 
     #[test]
@@ -907,14 +899,10 @@ mod tests {
         let lora_b = vec![0.2f32; 8 * 64];
 
         // First "merge" simulation
-        let delta1 = compute_lora_delta::<TestBackend>(
-            &lora_a, &lora_b, 64, 64, 8, 16.0, &device,
-        );
+        let delta1 = compute_lora_delta::<TestBackend>(&lora_a, &lora_b, 64, 64, 8, 16.0, &device);
 
         // Second "merge" simulation with identical inputs
-        let delta2 = compute_lora_delta::<TestBackend>(
-            &lora_a, &lora_b, 64, 64, 8, 16.0, &device,
-        );
+        let delta2 = compute_lora_delta::<TestBackend>(&lora_a, &lora_b, 64, 64, 8, 16.0, &device);
 
         // Compare tensor values
         let data1: Vec<f32> = delta1.to_data().to_vec().unwrap();
@@ -925,7 +913,8 @@ mod tests {
             assert!(
                 (a - b).abs() < 1e-6,
                 "Delta values should be identical for same inputs: {} vs {}",
-                a, b
+                a,
+                b
             );
         }
     }
@@ -939,12 +928,8 @@ mod tests {
         let delta_f32 = vec![0.1f32; 16];
 
         // Base artifact
-        let mut builder1 = MergeArtifactBuilder::new(
-            "llm/adapter@1.0.0+sha256:abc",
-            "llama3-8b",
-            16.0,
-            8,
-        );
+        let mut builder1 =
+            MergeArtifactBuilder::new("llm/adapter@1.0.0+sha256:abc", "llama3-8b", 16.0, 8);
         builder1.add_delta("layer.0.wq.weight", [4, 4], &delta_f32);
         let artifact1 = builder1.build();
 
@@ -957,7 +942,10 @@ mod tests {
         );
         builder2.add_delta("layer.0.wq.weight", [4, 4], &delta_f32);
         let artifact2 = builder2.build();
-        assert_ne!(artifact1.merge_hash, artifact2.merge_hash, "Different adapter_id should change hash");
+        assert_ne!(
+            artifact1.merge_hash, artifact2.merge_hash,
+            "Different adapter_id should change hash"
+        );
 
         // Different base_model_id
         let mut builder3 = MergeArtifactBuilder::new(
@@ -968,7 +956,10 @@ mod tests {
         );
         builder3.add_delta("layer.0.wq.weight", [4, 4], &delta_f32);
         let artifact3 = builder3.build();
-        assert_ne!(artifact1.merge_hash, artifact3.merge_hash, "Different base_model_id should change hash");
+        assert_ne!(
+            artifact1.merge_hash, artifact3.merge_hash,
+            "Different base_model_id should change hash"
+        );
 
         // Different alpha
         let mut builder4 = MergeArtifactBuilder::new(
@@ -979,7 +970,10 @@ mod tests {
         );
         builder4.add_delta("layer.0.wq.weight", [4, 4], &delta_f32);
         let artifact4 = builder4.build();
-        assert_ne!(artifact1.merge_hash, artifact4.merge_hash, "Different alpha should change hash");
+        assert_ne!(
+            artifact1.merge_hash, artifact4.merge_hash,
+            "Different alpha should change hash"
+        );
 
         // Different rank
         let mut builder5 = MergeArtifactBuilder::new(
@@ -990,19 +984,21 @@ mod tests {
         );
         builder5.add_delta("layer.0.wq.weight", [4, 4], &delta_f32);
         let artifact5 = builder5.build();
-        assert_ne!(artifact1.merge_hash, artifact5.merge_hash, "Different rank should change hash");
+        assert_ne!(
+            artifact1.merge_hash, artifact5.merge_hash,
+            "Different rank should change hash"
+        );
 
         // Different data
         let different_delta = vec![0.2f32; 16];
-        let mut builder6 = MergeArtifactBuilder::new(
-            "llm/adapter@1.0.0+sha256:abc",
-            "llama3-8b",
-            16.0,
-            8,
-        );
+        let mut builder6 =
+            MergeArtifactBuilder::new("llm/adapter@1.0.0+sha256:abc", "llama3-8b", 16.0, 8);
         builder6.add_delta("layer.0.wq.weight", [4, 4], &different_delta);
         let artifact6 = builder6.build();
-        assert_ne!(artifact1.merge_hash, artifact6.merge_hash, "Different delta data should change hash");
+        assert_ne!(
+            artifact1.merge_hash, artifact6.merge_hash,
+            "Different delta data should change hash"
+        );
     }
 
     /// Truth: Merge weights function produces stable results.
@@ -1026,12 +1022,8 @@ mod tests {
         let lora_b = vec![0.01f32; rank * 64];
 
         // Merge multiple times using the correct signature
-        let result1 = merge_weights::<TestBackend>(
-            base.clone(), &lora_a, &lora_b, alpha, rank,
-        );
-        let result2 = merge_weights::<TestBackend>(
-            base.clone(), &lora_a, &lora_b, alpha, rank,
-        );
+        let result1 = merge_weights::<TestBackend>(base.clone(), &lora_a, &lora_b, alpha, rank);
+        let result2 = merge_weights::<TestBackend>(base.clone(), &lora_a, &lora_b, alpha, rank);
 
         // Results should be identical
         let data1: Vec<f32> = result1.to_data().to_vec().unwrap();
@@ -1082,9 +1074,8 @@ mod tests {
         let lora_b: Vec<f32> = (0..rank * 64).map(|i| ((i % 100) as f32) * 0.001).collect();
 
         // Compute delta once (reused for unmerge)
-        let delta = compute_lora_delta::<TestBackend>(
-            &lora_a, &lora_b, 64, 64, rank, alpha, &device,
-        );
+        let delta =
+            compute_lora_delta::<TestBackend>(&lora_a, &lora_b, 64, 64, rank, alpha, &device);
 
         const CYCLES: usize = 100;
 
@@ -1103,7 +1094,11 @@ mod tests {
                     assert!(
                         diff < 1e-4,
                         "Cycle {}: Weight drift at index {}: original={}, current={}, diff={}",
-                        cycle, i, orig, curr, diff
+                        cycle,
+                        i,
+                        orig,
+                        curr,
+                        diff
                     );
                 }
             }
@@ -1111,7 +1106,8 @@ mod tests {
 
         // Final verification
         let final_data: Vec<f32> = current.to_data().to_vec().unwrap();
-        let max_diff: f32 = original_data.iter()
+        let max_diff: f32 = original_data
+            .iter()
             .zip(final_data.iter())
             .map(|(a, b)| (a - b).abs())
             .fold(0.0, f32::max);
@@ -1119,7 +1115,8 @@ mod tests {
         assert!(
             max_diff < 1e-4,
             "After {} cycles, max weight drift is {} (should be < 1e-4)",
-            CYCLES, max_diff
+            CYCLES,
+            max_diff
         );
     }
 
@@ -1147,8 +1144,10 @@ mod tests {
         let lora_a_B: Vec<f32> = vec![0.2; 64 * rank];
         let lora_b_B: Vec<f32> = vec![-0.1; rank * 64];
 
-        let delta_A = compute_lora_delta::<TestBackend>(&lora_a_A, &lora_b_A, 64, 64, rank, alpha, &device);
-        let delta_B = compute_lora_delta::<TestBackend>(&lora_a_B, &lora_b_B, 64, 64, rank, alpha, &device);
+        let delta_A =
+            compute_lora_delta::<TestBackend>(&lora_a_A, &lora_b_A, 64, 64, rank, alpha, &device);
+        let delta_B =
+            compute_lora_delta::<TestBackend>(&lora_a_B, &lora_b_B, 64, 64, rank, alpha, &device);
 
         const CYCLES: usize = 50;
 
@@ -1165,7 +1164,8 @@ mod tests {
 
         // Verify original restored
         let final_data: Vec<f32> = current.to_data().to_vec().unwrap();
-        let max_diff: f32 = original_data.iter()
+        let max_diff: f32 = original_data
+            .iter()
             .zip(final_data.iter())
             .map(|(a, b)| (a - b).abs())
             .fold(0.0, f32::max);
@@ -1173,7 +1173,8 @@ mod tests {
         assert!(
             max_diff < 1e-4,
             "After {} adapter A/B cycles, max drift is {} (should be < 1e-4)",
-            CYCLES, max_diff
+            CYCLES,
+            max_diff
         );
     }
 
@@ -1219,7 +1220,9 @@ mod tests {
             assert!(
                 (original_sums[i] - restored_sum).abs() < 1e-5,
                 "Layer {} sum mismatch: original={}, restored={}",
-                name, original_sums[i], restored_sum
+                name,
+                original_sums[i],
+                restored_sum
             );
         }
     }
@@ -1354,12 +1357,23 @@ mod tests {
         }
 
         // Must track adapter and base model
-        assert_eq!(artifact.adapter_id, "llm/grounded@1.2.0+sha256:adapter_hash");
+        assert_eq!(
+            artifact.adapter_id,
+            "llm/grounded@1.2.0+sha256:adapter_hash"
+        );
         assert_eq!(artifact.base_model_id, "llama3-8b+sha256:model_hash");
 
         // Must list affected tensors
-        assert!(artifact.affected_tensors.contains(&"layers.0.wq.weight".to_string()));
-        assert!(artifact.affected_tensors.contains(&"layers.0.wv.weight".to_string()));
+        assert!(
+            artifact
+                .affected_tensors
+                .contains(&"layers.0.wq.weight".to_string())
+        );
+        assert!(
+            artifact
+                .affected_tensors
+                .contains(&"layers.0.wv.weight".to_string())
+        );
     }
 
     /// Truth: Replay can be declared invalid explicitly.
@@ -1382,6 +1396,9 @@ mod tests {
 
         // Verification should fail with hash mismatch
         let result = original.verify_matches(&replay_attempt);
-        assert!(matches!(result, Err(MergeVerificationError::HashMismatch { .. })));
+        assert!(matches!(
+            result,
+            Err(MergeVerificationError::HashMismatch { .. })
+        ));
     }
 }

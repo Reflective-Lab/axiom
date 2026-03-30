@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Aprio One AB
 // Author: Kenneth Pernyer, kenneth@pernyer.se
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use converge_core::{Agent, AgentEffect, Context, ContextKey, Fact, ProposedFact};
 use polars::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -114,7 +114,7 @@ impl Agent for FeatureAgent {
                     ContextKey::Diagnostic,
                     "feature-agent-error",
                     e.to_string(),
-                ))
+                ));
             }
         };
 
@@ -141,7 +141,10 @@ impl Agent for FeatureAgent {
     }
 }
 
-fn compute_features_from_df(df: &DataFrame, columns: Option<&FeatureColumns>) -> Result<FeatureVector> {
+fn compute_features_from_df(
+    df: &DataFrame,
+    columns: Option<&FeatureColumns>,
+) -> Result<FeatureVector> {
     let (left, right) = if let Some(columns) = columns {
         let left = df
             .column(&columns.left)
@@ -199,12 +202,10 @@ fn load_dataframe(path: &PathBuf) -> Result<DataFrame> {
             let pl_path = PlPath::from_str(path_str);
             Ok(LazyFrame::scan_parquet(pl_path, Default::default())?.collect()?)
         }
-        "csv" => Ok(
-            CsvReadOptions::default()
-                .with_has_header(true)
-                .try_into_reader_with_file_path(Some(path.to_path_buf()))?
-                .finish()?,
-        ),
+        "csv" => Ok(CsvReadOptions::default()
+            .with_has_header(true)
+            .try_into_reader_with_file_path(Some(path.to_path_buf()))?
+            .finish()?),
         _ => Err(anyhow!(
             "unsupported data format for path {:?} (expected .csv or .parquet)",
             path
@@ -369,7 +370,15 @@ mod tests {
     fn polars_groupby_sum_matches_naive() {
         let rows = 10_000;
         let keys: Vec<&str> = (0..rows)
-            .map(|i| if i % 3 == 0 { "alpha" } else if i % 3 == 1 { "beta" } else { "gamma" })
+            .map(|i| {
+                if i % 3 == 0 {
+                    "alpha"
+                } else if i % 3 == 1 {
+                    "beta"
+                } else {
+                    "gamma"
+                }
+            })
             .collect();
         let values: Vec<f32> = (0..rows).map(|i| (i % 7) as f32).collect();
         let df = df![
@@ -446,7 +455,17 @@ mod tests {
     fn polars_groupby_is_fast() {
         let rows = 200_000;
         let keys: Vec<&str> = (0..rows)
-            .map(|i| if i % 4 == 0 { "alpha" } else if i % 4 == 1 { "beta" } else if i % 4 == 2 { "gamma" } else { "delta" })
+            .map(|i| {
+                if i % 4 == 0 {
+                    "alpha"
+                } else if i % 4 == 1 {
+                    "beta"
+                } else if i % 4 == 2 {
+                    "gamma"
+                } else {
+                    "delta"
+                }
+            })
             .collect();
         let values: Vec<f32> = (0..rows).map(|i| (i % 9) as f32).collect();
         let df = df![

@@ -252,7 +252,8 @@ impl ManifestBuilder {
                     .insert("intent.outcome".to_string(), outcome.clone());
             }
             if let Some(goal) = &intent.goal {
-                self.metadata.insert("intent.goal".to_string(), goal.clone());
+                self.metadata
+                    .insert("intent.goal".to_string(), goal.clone());
             }
         }
 
@@ -286,8 +287,10 @@ impl ManifestBuilder {
 
         if let Some(constraint) = &governance.constraint {
             if !constraint.budget.is_empty() {
-                self.metadata
-                    .insert("constraint.budget".to_string(), constraint.budget.join(" | "));
+                self.metadata.insert(
+                    "constraint.budget".to_string(),
+                    constraint.budget.join(" | "),
+                );
             }
             if !constraint.cost_limit.is_empty() {
                 self.metadata.insert(
@@ -331,8 +334,10 @@ impl ManifestBuilder {
                 );
             }
             if !exception.requires.is_empty() {
-                self.metadata
-                    .insert("exception.requires".to_string(), exception.requires.join(" | "));
+                self.metadata.insert(
+                    "exception.requires".to_string(),
+                    exception.requires.join(" | "),
+                );
             }
         }
 

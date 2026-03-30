@@ -37,8 +37,8 @@
 //! }
 //! ```
 
-pub mod hungarian;
 pub mod auction;
+pub mod hungarian;
 
 use crate::{Cost, Error, Result, SolverParams, SolverStats, SolverStatus};
 use serde::{Deserialize, Serialize};
@@ -130,7 +130,11 @@ impl AssignmentSolution {
 /// Trait for assignment solvers
 pub trait AssignmentSolver {
     /// Solve the assignment problem
-    fn solve(&self, problem: &AssignmentProblem, params: &SolverParams) -> Result<AssignmentSolution>;
+    fn solve(
+        &self,
+        problem: &AssignmentProblem,
+        params: &SolverParams,
+    ) -> Result<AssignmentSolution>;
 
     /// Solver name
     fn name(&self) -> &'static str;
@@ -142,7 +146,10 @@ pub fn solve(problem: &AssignmentProblem) -> Result<AssignmentSolution> {
 }
 
 /// Solve an assignment problem with custom parameters
-pub fn solve_with_params(problem: &AssignmentProblem, params: &SolverParams) -> Result<AssignmentSolution> {
+pub fn solve_with_params(
+    problem: &AssignmentProblem,
+    params: &SolverParams,
+) -> Result<AssignmentSolution> {
     problem.validate()?;
     hungarian::HungarianSolver.solve(problem, params)
 }
@@ -153,11 +160,8 @@ mod tests {
 
     #[test]
     fn test_simple_assignment() {
-        let problem = AssignmentProblem::from_costs(vec![
-            vec![10, 5, 13],
-            vec![3, 9, 18],
-            vec![14, 8, 7],
-        ]);
+        let problem =
+            AssignmentProblem::from_costs(vec![vec![10, 5, 13], vec![3, 9, 18], vec![14, 8, 7]]);
 
         let solution = solve(&problem).unwrap();
         assert_eq!(solution.status, SolverStatus::Optimal);

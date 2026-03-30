@@ -116,8 +116,8 @@ impl ProblemSpecBuilder {
 
     /// Set inputs from a serializable type
     pub fn inputs<T: Serialize>(mut self, inputs: &T) -> crate::Result<Self> {
-        self.inputs = serde_json::to_value(inputs)
-            .map_err(|e| crate::Error::invalid_input(e.to_string()))?;
+        self.inputs =
+            serde_json::to_value(inputs).map_err(|e| crate::Error::invalid_input(e.to_string()))?;
         Ok(self)
     }
 
@@ -221,7 +221,9 @@ impl ProposedPlan {
     ) -> crate::Result<Self> {
         let plan = serde_json::to_value(payload)
             .map_err(|e| crate::Error::invalid_input(e.to_string()))?;
-        Ok(Self::new(plan_id, pack, summary, plan, confidence, trace_link))
+        Ok(Self::new(
+            plan_id, pack, summary, plan, confidence, trace_link,
+        ))
     }
 
     /// Deserialize plan payload to typed struct

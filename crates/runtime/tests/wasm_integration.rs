@@ -602,14 +602,18 @@ fn module_replacement_on_same_name() {
 
     // Upload v1
     let wat_v1 = structural_ok_wat();
-    let desc_v1 = store.upload("test-tenant", wat_v1.as_bytes(), None).unwrap();
+    let desc_v1 = store
+        .upload("test-tenant", wat_v1.as_bytes(), None)
+        .unwrap();
     store.validate(&desc_v1.id, "test-tenant").unwrap();
     store.activate(&desc_v1.id).unwrap();
 
     // Upload v2 with same name but slightly different bytes
     // We append a comment to make the bytes different
     let wat_v2 = format!("{}\n;; v2", structural_ok_wat());
-    let desc_v2 = store.upload("test-tenant", wat_v2.as_bytes(), None).unwrap();
+    let desc_v2 = store
+        .upload("test-tenant", wat_v2.as_bytes(), None)
+        .unwrap();
     store.validate(&desc_v2.id, "test-tenant").unwrap();
     store.activate(&desc_v2.id).unwrap();
 

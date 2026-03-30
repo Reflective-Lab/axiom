@@ -1,9 +1,9 @@
 //! Solver for Budget Allocation pack
 
 use super::types::*;
+use crate::Result;
 use crate::gate::{ProblemSpec, ReplayEnvelope, SolverReport, StopReason};
 use crate::packs::PackSolver;
-use crate::Result;
 
 /// Efficiency-based solver for budget allocation
 ///
@@ -33,12 +33,8 @@ impl EfficiencySolver {
         if qualifying.is_empty() {
             let output = BudgetAllocationOutput::empty(input.total_budget);
             let replay = ReplayEnvelope::minimal(seed);
-            let report = SolverReport::infeasible(
-                "efficiency-v1",
-                vec![],
-                StopReason::NoFeasible,
-                replay,
-            );
+            let report =
+                SolverReport::infeasible("efficiency-v1", vec![], StopReason::NoFeasible, replay);
             return Ok((output, report));
         }
 

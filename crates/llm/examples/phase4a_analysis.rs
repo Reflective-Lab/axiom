@@ -5,33 +5,39 @@
 //!
 //! Run with: cargo run --example phase4a_analysis --no-default-features --features ndarray
 
+use converge_llm::LlmResult;
 use converge_llm::adversarial::{AdversarialHarness, ScenarioCategory};
 use converge_llm::chain::{ChainConfig, ChainEngine, ChainExecutor};
 use converge_llm::contract_stress::run_output_stress_tests;
 use converge_llm::inference::InferenceEnvelope;
 use converge_llm::prompt::PromptStack;
-use converge_llm::LlmResult;
 
 /// Mock engine for contract testing (deterministic outputs based on input patterns)
 struct MockContractEngine;
 
 impl ChainEngine for MockContractEngine {
-    fn generate(&mut self, stack: &PromptStack, _envelope: &InferenceEnvelope) -> LlmResult<String> {
+    fn generate(
+        &mut self,
+        stack: &PromptStack,
+        _envelope: &InferenceEnvelope,
+    ) -> LlmResult<String> {
         let rendered = stack.render();
 
         // Analyze the state injection to determine response
         let is_contradictory = rendered.contains("contradictory")
-            || (rendered.contains("mae") && rendered.contains("success_ratio")
-                && rendered.contains("0.01") && rendered.contains("0.1"));
+            || (rendered.contains("mae")
+                && rendered.contains("success_ratio")
+                && rendered.contains("0.01")
+                && rendered.contains("0.1"));
 
-        let is_underspecified = rendered.contains("underspecified")
-            || rendered.contains("missing");
+        let is_underspecified = rendered.contains("underspecified") || rendered.contains("missing");
 
         let is_boundary = rendered.contains("boundary")
-            || rendered.contains("0.7499") || rendered.contains("0.7500");
+            || rendered.contains("0.7499")
+            || rendered.contains("0.7500");
 
-        let is_extreme = rendered.contains("extreme")
-            || rendered.contains("-0.5") || rendered.contains("999");
+        let is_extreme =
+            rendered.contains("extreme") || rendered.contains("-0.5") || rendered.contains("999");
 
         let is_semantic_adversarial = rendered.contains("semantic")
             || rendered.contains("negative") && rendered.contains("mae");
@@ -43,7 +49,10 @@ impl ChainEngine for MockContractEngine {
                     Step 3: These metrics contradict each other - low error but low success. \
                     UNCERTAIN: Cannot determine deployment readiness due to conflicting signals.".into())
             } else if is_underspecified {
-                Ok("UNCERTAIN: Insufficient data to complete analysis. Missing critical metrics.".into())
+                Ok(
+                    "UNCERTAIN: Insufficient data to complete analysis. Missing critical metrics."
+                        .into(),
+                )
             } else if is_extreme {
                 Ok("Step 1: Detected extreme values in input. Step 2: Values outside normal operating range. \
                     UNCERTAIN: Cannot reason about extreme inputs without calibration data.".into())
@@ -54,51 +63,74 @@ impl ChainEngine for MockContractEngine {
                 Ok("Step 1: Value is exactly at decision boundary. Step 2: Small perturbation could flip decision. \
                     CONCLUSION: Recommend conservative approach due to boundary proximity.".into())
             } else {
-                Ok("Step 1: Analyzing provided metrics. Step 2: All values within normal ranges. \
-                    CONCLUSION: System is operating normally.".into())
+                Ok(
+                    "Step 1: Analyzing provided metrics. Step 2: All values within normal ranges. \
+                    CONCLUSION: System is operating normally."
+                        .into(),
+                )
             }
         } else if rendered.contains("Evaluation") || rendered.contains("evaluate") {
             if is_contradictory {
-                Ok("Score: 0.5 (confidence: 0.3). The conflicting metrics make it difficult to \
+                Ok(
+                    "Score: 0.5 (confidence: 0.3). The conflicting metrics make it difficult to \
                     assess overall system health. Low confidence due to contradictory signals \
-                    between error metrics and success ratios.".into())
+                    between error metrics and success ratios."
+                        .into(),
+                )
             } else if is_underspecified {
-                Ok("Score: 0.0 (confidence: 0.1). Cannot evaluate without required metrics. \
-                    Insufficient data prevents meaningful assessment of deployment readiness.".into())
+                Ok(
+                    "Score: 0.0 (confidence: 0.1). Cannot evaluate without required metrics. \
+                    Insufficient data prevents meaningful assessment of deployment readiness."
+                        .into(),
+                )
             } else if is_extreme {
                 Ok("Score: 0.2 (confidence: 0.4). Extreme values detected suggest system anomaly. \
                     Cannot provide high confidence evaluation with outlier data present.".into())
             } else if is_semantic_adversarial {
-                Ok("Score: 0.0 (confidence: 0.9). Invalid input data detected (negative MAE). \
-                    High confidence that this data should not be used for deployment decisions.".into())
+                Ok(
+                    "Score: 0.0 (confidence: 0.9). Invalid input data detected (negative MAE). \
+                    High confidence that this data should not be used for deployment decisions."
+                        .into(),
+                )
             } else if is_boundary {
-                Ok("Score: 0.75 (confidence: 0.6). Value is at decision boundary threshold. \
-                    Moderate confidence due to proximity to critical threshold value.".into())
+                Ok(
+                    "Score: 0.75 (confidence: 0.6). Value is at decision boundary threshold. \
+                    Moderate confidence due to proximity to critical threshold value."
+                        .into(),
+                )
             } else {
-                Ok("Score: 0.85 (confidence: 0.9). Metrics indicate healthy system operation. \
-                    High confidence in positive assessment based on consistent indicators.".into())
+                Ok(
+                    "Score: 0.85 (confidence: 0.9). Metrics indicate healthy system operation. \
+                    High confidence in positive assessment based on consistent indicators."
+                        .into(),
+                )
             }
         } else if rendered.contains("Planning") || rendered.contains("plan") {
             if is_contradictory {
                 Ok("1. Investigate conflicting metrics before proceeding\n\
                     2. Run diagnostic checks on data pipeline\n\
-                    3. Delay deployment decision until signals align".into())
+                    3. Delay deployment decision until signals align"
+                    .into())
             } else if is_underspecified {
                 Ok("1. Gather missing metric data\n\
                     2. Re-evaluate once data is complete\n\
-                    3. Do not proceed without full information".into())
+                    3. Do not proceed without full information"
+                    .into())
             } else if is_extreme || is_semantic_adversarial {
                 Ok("1. Flag input as anomalous\n\
                     2. Escalate to human review\n\
-                    3. Do not automate decision on this input".into())
+                    3. Do not automate decision on this input"
+                    .into())
             } else if is_boundary {
                 Ok("1. Apply conservative threshold interpretation\n\
                     2. Request additional validation data\n\
-                    3. Proceed with caution if confirmed".into())
+                    3. Proceed with caution if confirmed"
+                    .into())
             } else {
                 Ok("1. Proceed with standard deployment\n\
                     2. Monitor for 24 hours\n\
-                    3. Confirm stable operation".into())
+                    3. Confirm stable operation"
+                    .into())
             }
         } else {
             Ok("Step 1: Processing. CONCLUSION: Complete.".into())

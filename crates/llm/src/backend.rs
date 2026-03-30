@@ -38,13 +38,22 @@ use crate::error::LlmResult;
 // Re-export kernel boundary types from converge-core
 // These are the constitutional types shared across all kernels
 pub use converge_core::kernel_boundary::{
-    // TraceLink types
-    TraceLink, LocalTraceLink, RemoteTraceLink, Replayability,
-    AdapterTrace, SamplerParams, RecallTrace, ExecutionEnv,
+    AdapterTrace,
+    ContentKind,
+    DataClassification,
+    ExecutionEnv,
+    LocalTraceLink,
     // Proposal types
-    ProposedContent, ContentKind,
+    ProposedContent,
+    RecallTrace,
+    RemoteTraceLink,
+    Replayability,
     // Routing types (already in core)
-    RiskTier, DataClassification, RoutingPolicy,
+    RiskTier,
+    RoutingPolicy,
+    SamplerParams,
+    // TraceLink types
+    TraceLink,
 };
 
 // Re-export backend types from converge-core
@@ -52,15 +61,25 @@ pub use converge_core::kernel_boundary::{
 // NOTE: We do NOT re-export the deprecated CoreLlmBackend trait.
 // Use the LlmBackend trait defined in this module instead.
 pub use converge_core::backend::{
-    // Error types
-    BackendError, BackendResult,
+    BackendAdapterPolicy,
+    BackendBudgets,
     // Capabilities
     BackendCapability,
+    BackendContractResult,
+    // Error types
+    BackendError,
+    BackendPrompt,
+    BackendRecallPolicy,
     // Request types
-    BackendRequest, BackendPrompt, Message, MessageRole,
-    ContractSpec, BackendBudgets, BackendRecallPolicy, BackendAdapterPolicy,
+    BackendRequest,
     // Response types
-    BackendResponse, ContractReport, BackendContractResult, BackendUsage,
+    BackendResponse,
+    BackendResult,
+    BackendUsage,
+    ContractReport,
+    ContractSpec,
+    Message,
+    MessageRole,
 };
 
 // ============================================================================
@@ -167,18 +186,15 @@ mod tests {
             default_backend: "local".to_string(),
         };
 
-        policy.truth_preferences.insert(
-            "grounded-answering".to_string(),
-            "local".to_string(),
-        );
-        policy.risk_tier_backends.insert(
-            RiskTier::Critical,
-            vec!["local".to_string()],
-        );
-        policy.data_classification_backends.insert(
-            DataClassification::Restricted,
-            vec!["local".to_string()],
-        );
+        policy
+            .truth_preferences
+            .insert("grounded-answering".to_string(), "local".to_string());
+        policy
+            .risk_tier_backends
+            .insert(RiskTier::Critical, vec!["local".to_string()]);
+        policy
+            .data_classification_backends
+            .insert(DataClassification::Restricted, vec!["local".to_string()]);
 
         // Truth preference wins
         assert_eq!(
@@ -419,14 +435,12 @@ mod tests {
     #[test]
     fn test_routing_policy_truth_preferences() {
         let mut policy = RoutingPolicy::default();
-        policy.truth_preferences.insert(
-            "grounded-answering".to_string(),
-            "local".to_string(),
-        );
-        policy.truth_preferences.insert(
-            "frontier-reasoning".to_string(),
-            "anthropic".to_string(),
-        );
+        policy
+            .truth_preferences
+            .insert("grounded-answering".to_string(), "local".to_string());
+        policy
+            .truth_preferences
+            .insert("frontier-reasoning".to_string(), "anthropic".to_string());
 
         // Grounded answering -> local
         assert_eq!(
@@ -489,8 +503,14 @@ mod tests {
         });
 
         // Key differences
-        assert!(local_trace.is_replay_eligible(), "Local trace IS replay-eligible");
-        assert!(!remote_trace.is_replay_eligible(), "Remote trace is NOT replay-eligible");
+        assert!(
+            local_trace.is_replay_eligible(),
+            "Local trace IS replay-eligible"
+        );
+        assert!(
+            !remote_trace.is_replay_eligible(),
+            "Remote trace is NOT replay-eligible"
+        );
 
         assert_eq!(local_trace.replayability(), Replayability::Deterministic);
         assert_eq!(remote_trace.replayability(), Replayability::BestEffort);

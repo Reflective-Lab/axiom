@@ -27,12 +27,12 @@
 //! ```
 
 use crate::{
+    SolverParams,
     assignment::{self, AssignmentProblem},
     gate::{ProblemSpec, PromotionGate, ProposedPlan, SolverReport},
-    knapsack::{self, KnapsackProblem},
     graph::dijkstra,
+    knapsack::{self, KnapsackProblem},
     packs::{InvariantResult, PackRegistry},
-    SolverParams,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -157,15 +157,17 @@ impl OptimizationProvider {
     /// Solve an optimization problem
     pub fn solve(&self, request: OptimizationRequest) -> OptimizationResponse {
         match request {
-            OptimizationRequest::Assignment { costs } => {
-                self.solve_assignment(costs)
-            }
-            OptimizationRequest::Knapsack { weights, values, capacity } => {
-                self.solve_knapsack(weights, values, capacity)
-            }
-            OptimizationRequest::ShortestPath { edges, source, target } => {
-                self.solve_shortest_path(edges, source, target)
-            }
+            OptimizationRequest::Assignment { costs } => self.solve_assignment(costs),
+            OptimizationRequest::Knapsack {
+                weights,
+                values,
+                capacity,
+            } => self.solve_knapsack(weights, values, capacity),
+            OptimizationRequest::ShortestPath {
+                edges,
+                source,
+                target,
+            } => self.solve_shortest_path(edges, source, target),
         }
     }
 
@@ -182,7 +184,12 @@ impl OptimizationProvider {
         }
     }
 
-    fn solve_knapsack(&self, weights: Vec<i64>, values: Vec<i64>, capacity: i64) -> OptimizationResponse {
+    fn solve_knapsack(
+        &self,
+        weights: Vec<i64>,
+        values: Vec<i64>,
+        capacity: i64,
+    ) -> OptimizationResponse {
         match KnapsackProblem::new(weights, values, capacity) {
             Ok(problem) => match knapsack::solve(&problem) {
                 Ok(solution) => OptimizationResponse::Knapsack {
@@ -210,7 +217,8 @@ impl OptimizationProvider {
 
         // Build graph
         let mut graph: DiGraph<(), i64> = DiGraph::new();
-        let max_node = edges.iter()
+        let max_node = edges
+            .iter()
             .flat_map(|(a, b, _)| [*a, *b])
             .max()
             .unwrap_or(0);
@@ -395,10 +403,7 @@ mod tests {
     fn test_assignment_provider() {
         let provider = OptimizationProvider::new(OptimizationType::Assignment);
         let request = OptimizationRequest::Assignment {
-            costs: vec![
-                vec![10, 5],
-                vec![3, 8],
-            ],
+            costs: vec![vec![10, 5], vec![3, 8]],
         };
 
         let response = provider.solve(request);

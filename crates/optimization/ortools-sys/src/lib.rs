@@ -113,7 +113,8 @@ extern "C" {
         coeffs: *const i64,
         num_vars: usize,
     );
-    pub fn cpmodel_solve(model: *mut CpModelBuilder, time_limit: c_double) -> *mut CpSolverResponse;
+    pub fn cpmodel_solve(model: *mut CpModelBuilder, time_limit: c_double)
+    -> *mut CpSolverResponse;
     pub fn cpresponse_status(response: *const CpSolverResponse) -> OrtoolsStatus;
     pub fn cpresponse_objective_value(response: *const CpSolverResponse) -> i64;
     pub fn cpresponse_value(response: *const CpSolverResponse, var_index: i32) -> i64;

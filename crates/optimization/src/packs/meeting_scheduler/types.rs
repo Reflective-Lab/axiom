@@ -1,7 +1,7 @@
 //! Types for Meeting Scheduler pack
 
-use crate::packs::PackSchema;
 use crate::Result;
+use crate::packs::PackSchema;
 use serde::{Deserialize, Serialize};
 
 /// Input for meeting scheduler
@@ -93,7 +93,9 @@ impl TimeSlot {
             return Err(crate::Error::invalid_input("slot start must be before end"));
         }
         if self.capacity == 0 {
-            return Err(crate::Error::invalid_input("slot capacity must be positive"));
+            return Err(crate::Error::invalid_input(
+                "slot capacity must be positive",
+            ));
         }
         Ok(())
     }
@@ -249,10 +251,7 @@ impl ConflictInfo {
 
     /// Create a "not available" conflict
     pub fn not_available(attendee_id: impl Into<String>, slot_id: &str) -> Self {
-        Self::new(
-            attendee_id,
-            format!("Not available for slot {}", slot_id),
-        )
+        Self::new(attendee_id, format!("Not available for slot {}", slot_id))
     }
 }
 

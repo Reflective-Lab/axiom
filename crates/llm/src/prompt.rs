@@ -560,10 +560,14 @@ impl OutputContract {
                         hints.push("Show your reasoning steps".to_string());
                     }
                     StepFormat::StepNColon => {
-                        hints.push("Use format: Step 1: <reasoning>, Step 2: <reasoning>, ...".to_string());
+                        hints.push(
+                            "Use format: Step 1: <reasoning>, Step 2: <reasoning>, ...".to_string(),
+                        );
                     }
                     StepFormat::NumberedList => {
-                        hints.push("Use numbered list: 1. <reasoning>, 2. <reasoning>, ...".to_string());
+                        hints.push(
+                            "Use numbered list: 1. <reasoning>, 2. <reasoning>, ...".to_string(),
+                        );
                     }
                 }
 
@@ -571,7 +575,10 @@ impl OutputContract {
                     hints.push("End with CONCLUSION: <your conclusion>".to_string());
                 }
                 if *allows_uncertainty {
-                    hints.push("If information is insufficient, state UNCERTAIN: <one-line reason>".to_string());
+                    hints.push(
+                        "If information is insufficient, state UNCERTAIN: <one-line reason>"
+                            .to_string(),
+                    );
                 }
                 if let Some(max) = max_steps {
                     hints.push(format!("Use at most {max} reasoning steps"));
@@ -884,7 +891,10 @@ impl StateInjection {
         self.scalars.is_empty()
             && self.lists.is_empty()
             && self.records.is_empty()
-            && self.recall_context.as_ref().map_or(true, |r: &crate::recall::RecallContext| r.is_empty())
+            && self
+                .recall_context
+                .as_ref()
+                .map_or(true, |r: &crate::recall::RecallContext| r.is_empty())
     }
 
     /// Add recall context to the state.
@@ -929,9 +939,8 @@ impl StateInjection {
 
     /// Render recall context with explicit "NOT EVIDENCE" marker.
     fn render_recall_context(recall: &crate::recall::RecallContext) -> String {
-        let mut lines = vec![
-            "RECALL_CONTEXT (informational only - NOT citable as evidence):".to_string(),
-        ];
+        let mut lines =
+            vec!["RECALL_CONTEXT (informational only - NOT citable as evidence):".to_string()];
 
         if !recall.similar_failures.is_empty() {
             lines.push("  similar_failures:".to_string());
@@ -1212,7 +1221,9 @@ impl PromptStackBuilder {
     pub fn build(self) -> PromptStack {
         PromptStack {
             version: self.version.unwrap_or(PromptVersion::reasoning_v1_llama3()),
-            priming: self.priming.unwrap_or_else(ModelPriming::reasoning_component),
+            priming: self
+                .priming
+                .unwrap_or_else(ModelPriming::reasoning_component),
             policy: self.policy.unwrap_or_default(),
             task_frame: self.task_frame.unwrap_or_default(),
             state: self.state.unwrap_or_default(),
@@ -1457,13 +1468,19 @@ mod tests {
     #[test]
     fn test_task_frame_includes_contract() {
         let frame = TaskFrame::evaluate();
-        assert!(matches!(frame.contract(), OutputContract::Evaluation { .. }));
+        assert!(matches!(
+            frame.contract(),
+            OutputContract::Evaluation { .. }
+        ));
 
         let frame = TaskFrame::plan();
         assert!(matches!(frame.contract(), OutputContract::Planning { .. }));
 
         let frame = TaskFrame::classify();
-        assert!(matches!(frame.contract(), OutputContract::Classification { .. }));
+        assert!(matches!(
+            frame.contract(),
+            OutputContract::Classification { .. }
+        ));
     }
 
     #[test]
@@ -1495,6 +1512,9 @@ mod tests {
         let frame = TaskFrame::custom("extract_metrics", contract);
 
         assert_eq!(frame.task, "extract_metrics");
-        assert!(matches!(frame.contract(), OutputContract::Extraction { .. }));
+        assert!(matches!(
+            frame.contract(),
+            OutputContract::Extraction { .. }
+        ));
     }
 }

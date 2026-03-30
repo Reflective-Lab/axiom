@@ -192,9 +192,9 @@ fn parse_block(
 }
 
 fn parse_field_line(trimmed: &str) -> Result<(&str, &str), ValidationError> {
-    let (field, value) = trimmed
-        .split_once(':')
-        .ok_or_else(|| ValidationError::ParseError(format!("invalid declaration line: {trimmed}")))?;
+    let (field, value) = trimmed.split_once(':').ok_or_else(|| {
+        ValidationError::ParseError(format!("invalid declaration line: {trimmed}"))
+    })?;
 
     let value = value.trim();
     if value.is_empty() {
@@ -246,7 +246,9 @@ fn apply_field(
             }
         }
         BlockKind::Evidence => {
-            let block = governance.evidence.get_or_insert_with(EvidenceBlock::default);
+            let block = governance
+                .evidence
+                .get_or_insert_with(EvidenceBlock::default);
             match field {
                 "Requires" => block.requires.push(value.to_string()),
                 "Provenance" => block.provenance.push(value.to_string()),
@@ -366,7 +368,10 @@ mod tests {
 "#;
 
         let err = parse_truth_document(content).unwrap_err();
-        assert!(err.to_string().contains("unknown Converge Truths block header"));
+        assert!(
+            err.to_string()
+                .contains("unknown Converge Truths block header")
+        );
     }
 
     #[test]
@@ -402,7 +407,10 @@ mod tests {
 "#;
 
         let err = parse_truth_document(content).unwrap_err();
-        assert!(err.to_string().contains("duplicate Converge Truths block: Intent"));
+        assert!(
+            err.to_string()
+                .contains("duplicate Converge Truths block: Intent")
+        );
     }
 
     #[test]

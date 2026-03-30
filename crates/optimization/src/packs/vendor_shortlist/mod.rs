@@ -20,17 +20,17 @@
 //! 3. Calculate composite score for each vendor
 //! 4. Rank by composite score, take top N
 
-mod types;
-mod solver;
 mod invariants;
+mod solver;
+mod types;
 
-pub use types::*;
-pub use solver::*;
 pub use invariants::*;
+pub use solver::*;
+pub use types::*;
 
-use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
-use crate::packs::{default_gate_evaluation, InvariantDef, InvariantResult, Pack, PackSolveResult};
 use crate::Result;
+use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
+use crate::packs::{InvariantDef, InvariantResult, Pack, PackSolveResult, default_gate_evaluation};
 
 /// Vendor Shortlist Pack
 pub struct VendorShortlistPack;
@@ -173,7 +173,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-001", "test-tenant")
             .objective(ObjectiveSpec::maximize("score"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -192,7 +193,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-002", "test-tenant")
             .objective(ObjectiveSpec::maximize("score"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -211,7 +213,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-003", "test-tenant")
             .objective(ObjectiveSpec::maximize("score"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -230,14 +233,16 @@ mod tests {
 
         let spec1 = ProblemSpec::builder("test-a", "tenant")
             .objective(ObjectiveSpec::maximize("score"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(99999)
             .build()
             .unwrap();
 
         let spec2 = ProblemSpec::builder("test-b", "tenant")
             .objective(ObjectiveSpec::maximize("score"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(99999)
             .build()
             .unwrap();

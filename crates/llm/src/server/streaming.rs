@@ -144,13 +144,11 @@ mod tests {
 
     #[test]
     fn test_format_chat_template_basic() {
-        let messages = vec![
-            proto::ChatMessage {
-                role: proto::ChatRole::User.into(),
-                content: "Hello".to_string(),
-                tool_call_id: None,
-            },
-        ];
+        let messages = vec![proto::ChatMessage {
+            role: proto::ChatRole::User.into(),
+            content: "Hello".to_string(),
+            tool_call_id: None,
+        }];
 
         let result = format_chat_template(&messages, Some("You are helpful."));
         assert!(result.contains("<|begin_of_text|>"));

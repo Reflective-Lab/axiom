@@ -30,7 +30,10 @@ pub fn get_invariants() -> Vec<InvariantDef> {
 pub const INVARIANTS: &[InvariantDef] = &[];
 
 /// Check all invariants
-pub fn check_all_invariants(output: &BudgetAllocationOutput, total_budget: f64) -> Vec<InvariantResult> {
+pub fn check_all_invariants(
+    output: &BudgetAllocationOutput,
+    total_budget: f64,
+) -> Vec<InvariantResult> {
     vec![
         check_budget_not_exceeded(output, total_budget),
         check_allocations_non_negative(output),
@@ -39,7 +42,10 @@ pub fn check_all_invariants(output: &BudgetAllocationOutput, total_budget: f64) 
     ]
 }
 
-fn check_budget_not_exceeded(output: &BudgetAllocationOutput, total_budget: f64) -> InvariantResult {
+fn check_budget_not_exceeded(
+    output: &BudgetAllocationOutput,
+    total_budget: f64,
+) -> InvariantResult {
     let invariant = "budget_not_exceeded";
 
     if output.total_allocated <= total_budget * 1.001 {
@@ -114,10 +120,7 @@ fn check_budget_utilized(output: &BudgetAllocationOutput, total_budget: f64) -> 
         let violation = Violation::new(
             invariant,
             0.3,
-            format!(
-                "Only {:.1}% of budget utilized",
-                utilization * 100.0
-            ),
+            format!("Only {:.1}% of budget utilized", utilization * 100.0),
         );
         InvariantResult::fail(invariant, violation)
     }

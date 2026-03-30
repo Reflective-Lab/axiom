@@ -29,7 +29,11 @@ impl KnapsackProblem {
         if weights.len() != values.len() {
             return Err(Error::dimension_mismatch(weights.len(), values.len()));
         }
-        Ok(Self { weights, values, capacity })
+        Ok(Self {
+            weights,
+            values,
+            capacity,
+        })
     }
 
     /// Number of items
@@ -118,7 +122,7 @@ fn solve_dp(problem: &KnapsackProblem) -> Result<KnapsackSolution> {
     // Check for overflow potential
     if capacity > 10_000_000 {
         return Err(Error::invalid_input(
-            "capacity too large for DP (use branch-and-bound instead)"
+            "capacity too large for DP (use branch-and-bound instead)",
         ));
     }
 
@@ -155,9 +159,7 @@ fn solve_dp(problem: &KnapsackProblem) -> Result<KnapsackSolution> {
     selected.reverse();
 
     let total_value = dp[capacity];
-    let total_weight: Weight = selected.iter()
-        .map(|&i| problem.weights[i])
-        .sum();
+    let total_weight: Weight = selected.iter().map(|&i| problem.weights[i]).sum();
 
     let elapsed = start.elapsed().as_secs_f64();
 
@@ -181,11 +183,7 @@ mod tests {
 
     #[test]
     fn test_simple_knapsack() {
-        let problem = KnapsackProblem::new(
-            vec![10, 20, 30],
-            vec![60, 100, 120],
-            50,
-        ).unwrap();
+        let problem = KnapsackProblem::new(vec![10, 20, 30], vec![60, 100, 120], 50).unwrap();
 
         let solution = solve(&problem).unwrap();
 

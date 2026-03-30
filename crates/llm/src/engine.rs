@@ -319,12 +319,8 @@ impl<B: Backend> LlamaEngine<B> {
         max_seq_len: usize,
         device: &burn::tensor::Device<B>,
     ) -> Result<Self, String> {
-        let llama = LlamaConfig::load_llama3_8b(
-            checkpoint_path,
-            tokenizer_path,
-            max_seq_len,
-            device,
-        )?;
+        let llama =
+            LlamaConfig::load_llama3_8b(checkpoint_path, tokenizer_path, max_seq_len, device)?;
 
         // Generate tokenizer hash from path
         use std::hash::{Hash, Hasher};
@@ -563,7 +559,8 @@ impl<B: Backend> LlamaEngine<B> {
 
         if restore_failed {
             Err(LlmError::AdapterError(
-                "Adapter detached but weight restoration failed - model may be inconsistent".to_string()
+                "Adapter detached but weight restoration failed - model may be inconsistent"
+                    .to_string(),
             ))
         } else {
             Ok(())
@@ -657,7 +654,10 @@ impl<B: Backend> LlamaEngine<B> {
 
         let mut report = MergeReport::new(
             adapter_id.to_canonical(),
-            format!("{}:{}", self.fingerprint.model_family, self.fingerprint.tokenizer_hash),
+            format!(
+                "{}:{}",
+                self.fingerprint.model_family, self.fingerprint.tokenizer_hash
+            ),
         );
 
         let scale = weights.scale();
@@ -704,7 +704,9 @@ impl<B: Backend> LlamaEngine<B> {
                         // Model paths are like "layers.0.attention.wq"
                         // Snapshot paths include ".weight" suffix
                         if path.contains(model_path) && path.ends_with(".weight") {
-                            if let Some((lora_a, lora_b)) = adapter_layers.get(adapter_layer.as_str()) {
+                            if let Some((lora_a, lora_b)) =
+                                adapter_layers.get(adapter_layer.as_str())
+                            {
                                 // Get the original tensor data
                                 if let Ok(data) = snapshot.to_data() {
                                     let shape = &data.shape;
@@ -715,7 +717,8 @@ impl<B: Backend> LlamaEngine<B> {
                                         let out_features = shape[1];
 
                                         // Create the original tensor
-                                        let original: Tensor<B, 2> = Tensor::from_data(data.clone(), &self.device);
+                                        let original: Tensor<B, 2> =
+                                            Tensor::from_data(data.clone(), &self.device);
 
                                         // Compute LoRA delta
                                         let delta = crate::lora_merge::compute_lora_delta::<B>(
@@ -734,7 +737,8 @@ impl<B: Backend> LlamaEngine<B> {
                                         // Compute hash of delta for audit trail
                                         let delta_hash = format!("{:x}", {
                                             use std::hash::{Hash, Hasher};
-                                            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                                            let mut hasher =
+                                                std::collections::hash_map::DefaultHasher::new();
                                             path.hash(&mut hasher);
                                             weights.rank.hash(&mut hasher);
                                             (weights.alpha as u32).hash(&mut hasher);
@@ -818,7 +822,10 @@ impl<B: Backend> LlamaEngine<B> {
     ) -> LlmResult<MergeReport> {
         let mut report = MergeReport::new(
             adapter_id.to_canonical(),
-            format!("{}:{}", self.fingerprint.model_family, self.fingerprint.tokenizer_hash),
+            format!(
+                "{}:{}",
+                self.fingerprint.model_family, self.fingerprint.tokenizer_hash
+            ),
         );
 
         tracing::debug!(
@@ -1069,7 +1076,9 @@ impl<B: Backend> LlamaEngine<B> {
 
         // Reset and generate
         self.llama.reset();
-        Ok(self.llama.generate(prompt, max_tokens, temperature, &mut sampler))
+        Ok(self
+            .llama
+            .generate(prompt, max_tokens, temperature, &mut sampler))
     }
 
     /// Create a sampler based on the envelope settings.
@@ -1225,7 +1234,9 @@ impl<B: Backend> TinyLlamaEngine<B> {
         };
 
         self.llama.reset();
-        Ok(self.llama.generate(prompt, max_tokens, temperature, &mut sampler))
+        Ok(self
+            .llama
+            .generate(prompt, max_tokens, temperature, &mut sampler))
     }
 
     /// Create a sampler based on the envelope settings.
@@ -1390,14 +1401,24 @@ mod tests {
         assert!(AdapterLifecycleState::Detached.can_transition_to(AdapterLifecycleState::Loading));
         assert!(AdapterLifecycleState::Loading.can_transition_to(AdapterLifecycleState::Attached));
         assert!(AdapterLifecycleState::Loading.can_transition_to(AdapterLifecycleState::Detached));
-        assert!(AdapterLifecycleState::Attached.can_transition_to(AdapterLifecycleState::Detaching));
-        assert!(AdapterLifecycleState::Detaching.can_transition_to(AdapterLifecycleState::Detached));
+        assert!(
+            AdapterLifecycleState::Attached.can_transition_to(AdapterLifecycleState::Detaching)
+        );
+        assert!(
+            AdapterLifecycleState::Detaching.can_transition_to(AdapterLifecycleState::Detached)
+        );
 
         // Test invalid transitions
-        assert!(!AdapterLifecycleState::Detached.can_transition_to(AdapterLifecycleState::Attached));
-        assert!(!AdapterLifecycleState::Detached.can_transition_to(AdapterLifecycleState::Detaching));
+        assert!(
+            !AdapterLifecycleState::Detached.can_transition_to(AdapterLifecycleState::Attached)
+        );
+        assert!(
+            !AdapterLifecycleState::Detached.can_transition_to(AdapterLifecycleState::Detaching)
+        );
         assert!(!AdapterLifecycleState::Attached.can_transition_to(AdapterLifecycleState::Loading));
-        assert!(!AdapterLifecycleState::Loading.can_transition_to(AdapterLifecycleState::Detaching));
+        assert!(
+            !AdapterLifecycleState::Loading.can_transition_to(AdapterLifecycleState::Detaching)
+        );
     }
 
     #[test]
@@ -1521,23 +1542,31 @@ mod tests {
         };
 
         // Compatible
-        assert!(manifest
-            .validate_compatibility("llama3", "tiktoken_abc", 4096)
-            .is_ok());
+        assert!(
+            manifest
+                .validate_compatibility("llama3", "tiktoken_abc", 4096)
+                .is_ok()
+        );
 
         // Incompatible model family
-        assert!(manifest
-            .validate_compatibility("llama2", "tiktoken_abc", 4096)
-            .is_err());
+        assert!(
+            manifest
+                .validate_compatibility("llama2", "tiktoken_abc", 4096)
+                .is_err()
+        );
 
         // Incompatible tokenizer
-        assert!(manifest
-            .validate_compatibility("llama3", "tiktoken_xyz", 4096)
-            .is_err());
+        assert!(
+            manifest
+                .validate_compatibility("llama3", "tiktoken_xyz", 4096)
+                .is_err()
+        );
 
         // Context too small
-        assert!(manifest
-            .validate_compatibility("llama3", "tiktoken_abc", 2048)
-            .is_err());
+        assert!(
+            manifest
+                .validate_compatibility("llama3", "tiktoken_abc", 2048)
+                .is_err()
+        );
     }
 }

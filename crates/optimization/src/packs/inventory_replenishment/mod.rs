@@ -34,9 +34,9 @@ pub use invariants::*;
 pub use solver::*;
 pub use types::*;
 
-use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
-use crate::packs::{default_gate_evaluation, InvariantDef, InvariantResult, Pack, PackSolveResult};
 use crate::Result;
+use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
+use crate::packs::{InvariantDef, InvariantResult, Pack, PackSolveResult, default_gate_evaluation};
 
 /// Inventory Replenishment Pack
 pub struct InventoryReplenishmentPack;
@@ -99,7 +99,10 @@ impl Pack for InventoryReplenishmentPack {
     }
 }
 
-fn calculate_confidence(output: &InventoryReplenishmentOutput, input: &InventoryReplenishmentInput) -> f64 {
+fn calculate_confidence(
+    output: &InventoryReplenishmentOutput,
+    input: &InventoryReplenishmentInput,
+) -> f64 {
     // Start with base confidence
     let mut confidence: f64 = 0.5;
 

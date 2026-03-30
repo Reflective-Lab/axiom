@@ -203,10 +203,7 @@ fn check_safety_stock_adequate(output: &InventoryReplenishmentOutput) -> Invaria
         let violation = Violation::new(
             invariant,
             0.5, // Advisory but more serious
-            format!(
-                "High stockout risk detected for: {}",
-                products.join(", ")
-            ),
+            format!("High stockout risk detected for: {}", products.join(", ")),
         );
         InvariantResult::fail(invariant, violation)
     }
@@ -298,8 +295,7 @@ mod tests {
             assert!(
                 result.passed,
                 "Invariant {} failed: {:?}",
-                result.invariant,
-                result.violation
+                result.invariant, result.violation
             );
         }
     }

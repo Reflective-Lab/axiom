@@ -32,17 +32,17 @@
 //! - load_balanced: Lead assignments should be reasonably balanced across reps
 //! - fit_score_acceptable: Average fit score should meet minimum threshold
 
-mod types;
-mod solver;
 mod invariants;
+mod solver;
+mod types;
 
-pub use types::*;
-pub use solver::*;
 pub use invariants::*;
+pub use solver::*;
+pub use types::*;
 
-use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
-use crate::packs::{default_gate_evaluation, InvariantDef, InvariantResult, Pack, PackSolveResult};
 use crate::Result;
+use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
+use crate::packs::{InvariantDef, InvariantResult, Pack, PackSolveResult, default_gate_evaluation};
 
 /// Lead Routing Pack
 pub struct LeadRoutingPack;
@@ -95,33 +95,42 @@ impl Pack for LeadRoutingPack {
         // For now, create a minimal input for invariant checking
         // In a full implementation, the input would be stored in the plan or spec
         let input = LeadRoutingInput {
-            leads: output.assignments.iter().map(|a| Lead {
-                id: a.lead_id.clone(),
-                score: 0.0,
-                territory: String::new(),
-                segment: String::new(),
-                required_skills: vec![],
-                estimated_value: 0.0,
-                priority: 5,
-            }).chain(output.unassigned.iter().map(|u| Lead {
-                id: u.lead_id.clone(),
-                score: 0.0,
-                territory: String::new(),
-                segment: String::new(),
-                required_skills: vec![],
-                estimated_value: 0.0,
-                priority: 5,
-            })).collect(),
-            reps: output.rep_utilization.iter().map(|r| SalesRep {
-                id: r.rep_id.clone(),
-                name: r.rep_name.clone(),
-                capacity: r.capacity,
-                current_load: r.total_load - r.new_assignments,
-                territories: vec![],
-                segments: vec![],
-                skills: vec![],
-                performance_score: 50.0,
-            }).collect(),
+            leads: output
+                .assignments
+                .iter()
+                .map(|a| Lead {
+                    id: a.lead_id.clone(),
+                    score: 0.0,
+                    territory: String::new(),
+                    segment: String::new(),
+                    required_skills: vec![],
+                    estimated_value: 0.0,
+                    priority: 5,
+                })
+                .chain(output.unassigned.iter().map(|u| Lead {
+                    id: u.lead_id.clone(),
+                    score: 0.0,
+                    territory: String::new(),
+                    segment: String::new(),
+                    required_skills: vec![],
+                    estimated_value: 0.0,
+                    priority: 5,
+                }))
+                .collect(),
+            reps: output
+                .rep_utilization
+                .iter()
+                .map(|r| SalesRep {
+                    id: r.rep_id.clone(),
+                    name: r.rep_name.clone(),
+                    capacity: r.capacity,
+                    current_load: r.total_load - r.new_assignments,
+                    territories: vec![],
+                    segments: vec![],
+                    skills: vec![],
+                    performance_score: 50.0,
+                })
+                .collect(),
             config: RoutingConfig::default(),
         };
 
@@ -168,11 +177,8 @@ fn calculate_confidence(output: &LeadRoutingOutput, _input: &LeadRoutingInput) -
             .map(|u| u.utilization_pct)
             .collect();
         let avg: f64 = utilizations.iter().sum::<f64>() / utilizations.len() as f64;
-        let variance: f64 = utilizations
-            .iter()
-            .map(|u| (u - avg).powi(2))
-            .sum::<f64>()
-            / utilizations.len() as f64;
+        let variance: f64 =
+            utilizations.iter().map(|u| (u - avg).powi(2)).sum::<f64>() / utilizations.len() as f64;
         let std_dev = variance.sqrt();
 
         if std_dev <= 15.0 {
@@ -281,7 +287,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-001", "test-tenant")
             .objective(ObjectiveSpec::maximize("conversion"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -302,7 +309,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-002", "test-tenant")
             .objective(ObjectiveSpec::maximize("conversion"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -329,7 +337,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-003", "test-tenant")
             .objective(ObjectiveSpec::maximize("conversion"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -340,8 +349,9 @@ mod tests {
         // All invariants should pass for a valid solution
         let critical_pass = invariants
             .iter()
-            .filter(|r| r.invariant == "all_leads_assigned"
-                || r.invariant == "capacity_not_exceeded")
+            .filter(|r| {
+                r.invariant == "all_leads_assigned" || r.invariant == "capacity_not_exceeded"
+            })
             .all(|r| r.passed);
         assert!(critical_pass);
     }
@@ -353,7 +363,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-004", "test-tenant")
             .objective(ObjectiveSpec::maximize("conversion"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -373,14 +384,16 @@ mod tests {
 
         let spec1 = ProblemSpec::builder("test-a", "tenant")
             .objective(ObjectiveSpec::maximize("conversion"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(99999)
             .build()
             .unwrap();
 
         let spec2 = ProblemSpec::builder("test-b", "tenant")
             .objective(ObjectiveSpec::maximize("conversion"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(99999)
             .build()
             .unwrap();
@@ -418,7 +431,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-005", "test-tenant")
             .objective(ObjectiveSpec::maximize("conversion"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -448,7 +462,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-006", "test-tenant")
             .objective(ObjectiveSpec::maximize("conversion"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -469,7 +484,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-007", "test-tenant")
             .objective(ObjectiveSpec::maximize("conversion"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();

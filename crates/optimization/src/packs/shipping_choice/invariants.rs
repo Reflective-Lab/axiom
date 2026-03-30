@@ -161,7 +161,10 @@ mod tests {
         let output = ShippingChoiceOutput::no_carrier("No carriers available");
         let results = check_all_invariants(&output);
 
-        let carrier_result = results.iter().find(|r| r.invariant == "carrier_selected").unwrap();
+        let carrier_result = results
+            .iter()
+            .find(|r| r.invariant == "carrier_selected")
+            .unwrap();
         assert!(!carrier_result.passed);
     }
 

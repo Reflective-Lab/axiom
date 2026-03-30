@@ -60,16 +60,14 @@ pub fn dijkstra<N, E>(
             let edge_weight = edge_cost(edge.weight());
             if edge_weight < 0 {
                 return Err(Error::invalid_input(
-                    "Dijkstra requires non-negative edge weights"
+                    "Dijkstra requires non-negative edge weights",
                 ));
             }
 
             let next = edge.target();
             let next_cost = cost + edge_weight;
 
-            let is_better = distances
-                .get(&next)
-                .map_or(true, |&d| next_cost < d);
+            let is_better = distances.get(&next).map_or(true, |&d| next_cost < d);
 
             if is_better {
                 distances.insert(next, next_cost);
@@ -105,16 +103,14 @@ pub fn dijkstra_with_paths<N, E>(
             let edge_weight = edge_cost(edge.weight());
             if edge_weight < 0 {
                 return Err(Error::invalid_input(
-                    "Dijkstra requires non-negative edge weights"
+                    "Dijkstra requires non-negative edge weights",
                 ));
             }
 
             let next = edge.target();
             let next_cost = cost + edge_weight;
 
-            let is_better = distances
-                .get(&next)
-                .map_or(true, |&d| next_cost < d);
+            let is_better = distances.get(&next).map_or(true, |&d| next_cost < d);
 
             if is_better {
                 distances.insert(next, next_cost);
@@ -148,7 +144,10 @@ pub fn reconstruct_path(
     }
 
     path.reverse();
-    Path { nodes: path, cost: total_cost }
+    Path {
+        nodes: path,
+        cost: total_cost,
+    }
 }
 
 #[cfg(test)]

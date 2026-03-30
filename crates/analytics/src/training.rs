@@ -1,12 +1,12 @@
 // Copyright (c) 2026 Aprio One AB
 // Author: Kenneth Pernyer, kenneth@pernyer.se
 
-use anyhow::{anyhow, Context as _, Result};
+use anyhow::{Context as _, Result, anyhow};
 use converge_core::{Agent, AgentEffect, Context, ContextKey, Fact};
 use polars::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fs::{create_dir_all, File};
+use std::fs::{File, create_dir_all};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -206,7 +206,7 @@ impl Agent for DataValidationAgent {
                     ContextKey::Diagnostic,
                     "data-validation-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -217,7 +217,7 @@ impl Agent for DataValidationAgent {
                     ContextKey::Diagnostic,
                     "data-validation-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -301,7 +301,7 @@ impl Agent for FeatureEngineeringAgent {
                     ContextKey::Diagnostic,
                     "feature-engineering-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -312,7 +312,7 @@ impl Agent for FeatureEngineeringAgent {
                     ContextKey::Diagnostic,
                     "feature-engineering-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -323,12 +323,11 @@ impl Agent for FeatureEngineeringAgent {
                     ContextKey::Diagnostic,
                     "feature-engineering-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
-        let (numeric_features, categorical_features) =
-            split_feature_columns(&df, &target_column);
+        let (numeric_features, categorical_features) = split_feature_columns(&df, &target_column);
 
         let mut interactions = Vec::new();
         if numeric_features.len() >= 2 {
@@ -395,7 +394,7 @@ impl Agent for HyperparameterSearchAgent {
                     ContextKey::Diagnostic,
                     "hyperparam-search-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -423,8 +422,7 @@ impl Agent for HyperparameterSearchAgent {
         let mut best_params = HashMap::new();
         best_params.insert("learning_rate".to_string(), 0.01);
         best_params.insert("hidden_size".to_string(), 16.0);
-        let score = (1.0 - training_plan.quality_threshold)
-            * plan.max_trials as f64
+        let score = (1.0 - training_plan.quality_threshold) * plan.max_trials as f64
             / plan.iteration.max(1) as f64;
         let result = HyperparameterSearchResult {
             kind: "hyperparam_result".to_string(),
@@ -498,7 +496,7 @@ impl Agent for DatasetAgent {
                     ContextKey::Diagnostic,
                     "dataset-agent-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -616,7 +614,7 @@ impl Agent for ModelTrainingAgent {
                     ContextKey::Diagnostic,
                     "model-training-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -635,7 +633,7 @@ impl Agent for ModelTrainingAgent {
                     ContextKey::Diagnostic,
                     "model-training-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -648,7 +646,7 @@ impl Agent for ModelTrainingAgent {
                         ContextKey::Diagnostic,
                         "model-training-error",
                         format!("feature spec application failed: {}", err),
-                    ))
+                    ));
                 }
             },
             None => raw_train_df,
@@ -661,7 +659,7 @@ impl Agent for ModelTrainingAgent {
                     ContextKey::Diagnostic,
                     "model-training-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -672,7 +670,7 @@ impl Agent for ModelTrainingAgent {
                     ContextKey::Diagnostic,
                     "model-training-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -751,7 +749,7 @@ impl Agent for ModelRegistryAgent {
                     ContextKey::Diagnostic,
                     "model-registry-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -921,7 +919,7 @@ impl Agent for ModelEvaluationAgent {
                     ContextKey::Diagnostic,
                     "model-eval-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -932,7 +930,7 @@ impl Agent for ModelEvaluationAgent {
                     ContextKey::Diagnostic,
                     "model-eval-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -943,7 +941,7 @@ impl Agent for ModelEvaluationAgent {
                     ContextKey::Diagnostic,
                     "model-eval-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -960,7 +958,7 @@ impl Agent for ModelEvaluationAgent {
                     ContextKey::Diagnostic,
                     "model-eval-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -971,7 +969,7 @@ impl Agent for ModelEvaluationAgent {
                     ContextKey::Diagnostic,
                     "model-eval-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -982,7 +980,7 @@ impl Agent for ModelEvaluationAgent {
                     ContextKey::Diagnostic,
                     "model-eval-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -1048,7 +1046,7 @@ impl Agent for SampleInferenceAgent {
                     ContextKey::Diagnostic,
                     "model-infer-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -1059,7 +1057,7 @@ impl Agent for SampleInferenceAgent {
                     ContextKey::Diagnostic,
                     "model-infer-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -1070,7 +1068,7 @@ impl Agent for SampleInferenceAgent {
                     ContextKey::Diagnostic,
                     "model-infer-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -1081,7 +1079,7 @@ impl Agent for SampleInferenceAgent {
                     ContextKey::Diagnostic,
                     "model-infer-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -1096,7 +1094,7 @@ impl Agent for SampleInferenceAgent {
                     ContextKey::Diagnostic,
                     "model-infer-error",
                     err.to_string(),
-                ))
+                ));
             }
         };
 
@@ -1149,12 +1147,10 @@ fn load_dataframe(path: &Path) -> Result<DataFrame> {
             let pl_path = PlPath::from_str(path_str);
             Ok(LazyFrame::scan_parquet(pl_path, Default::default())?.collect()?)
         }
-        "csv" => Ok(
-            CsvReadOptions::default()
-                .with_has_header(true)
-                .try_into_reader_with_file_path(Some(path.to_path_buf()))?
-                .finish()?,
-        ),
+        "csv" => Ok(CsvReadOptions::default()
+            .with_has_header(true)
+            .try_into_reader_with_file_path(Some(path.to_path_buf()))?
+            .finish()?),
         _ => Err(anyhow!(
             "unsupported data format for path {:?} (expected .csv or .parquet)",
             path
@@ -1287,7 +1283,10 @@ fn has_feature_spec_for_iteration(ctx: &dyn converge_core::ContextView, iteratio
     })
 }
 
-fn has_hyperparam_result_for_iteration(ctx: &dyn converge_core::ContextView, iteration: usize) -> bool {
+fn has_hyperparam_result_for_iteration(
+    ctx: &dyn converge_core::ContextView,
+    iteration: usize,
+) -> bool {
     ctx.get(ContextKey::Evaluations).iter().any(|fact| {
         serde_json::from_str::<HyperparameterSearchResult>(&fact.content)
             .map(|result| result.iteration == iteration)
@@ -1295,7 +1294,10 @@ fn has_hyperparam_result_for_iteration(ctx: &dyn converge_core::ContextView, ite
     })
 }
 
-fn has_registry_record_for_iteration(ctx: &dyn converge_core::ContextView, iteration: usize) -> bool {
+fn has_registry_record_for_iteration(
+    ctx: &dyn converge_core::ContextView,
+    iteration: usize,
+) -> bool {
     ctx.get(ContextKey::Strategies).iter().any(|fact| {
         serde_json::from_str::<ModelRegistryRecord>(&fact.content)
             .map(|record| record.iteration == iteration)
@@ -1303,7 +1305,10 @@ fn has_registry_record_for_iteration(ctx: &dyn converge_core::ContextView, itera
     })
 }
 
-fn has_monitoring_report_for_iteration(ctx: &dyn converge_core::ContextView, iteration: usize) -> bool {
+fn has_monitoring_report_for_iteration(
+    ctx: &dyn converge_core::ContextView,
+    iteration: usize,
+) -> bool {
     ctx.get(ContextKey::Evaluations).iter().any(|fact| {
         serde_json::from_str::<MonitoringReport>(&fact.content)
             .map(|report| report.iteration == iteration)
@@ -1311,7 +1316,10 @@ fn has_monitoring_report_for_iteration(ctx: &dyn converge_core::ContextView, ite
     })
 }
 
-fn has_deployment_decision_for_iteration(ctx: &dyn converge_core::ContextView, iteration: usize) -> bool {
+fn has_deployment_decision_for_iteration(
+    ctx: &dyn converge_core::ContextView,
+    iteration: usize,
+) -> bool {
     ctx.get(ContextKey::Strategies).iter().any(|fact| {
         serde_json::from_str::<DeploymentDecision>(&fact.content)
             .map(|decision| decision.iteration == iteration)
@@ -1319,7 +1327,10 @@ fn has_deployment_decision_for_iteration(ctx: &dyn converge_core::ContextView, i
     })
 }
 
-fn latest_evaluation_report(ctx: &dyn converge_core::ContextView, iteration: usize) -> Option<EvaluationReport> {
+fn latest_evaluation_report(
+    ctx: &dyn converge_core::ContextView,
+    iteration: usize,
+) -> Option<EvaluationReport> {
     let mut latest: Option<EvaluationReport> = None;
     for fact in ctx.get(ContextKey::Evaluations) {
         if let Ok(report) = serde_json::from_str::<EvaluationReport>(&fact.content) {
@@ -1336,11 +1347,7 @@ fn latest_evaluation_report(ctx: &dyn converge_core::ContextView, iteration: usi
             }
         }
     }
-    if iteration > 0 {
-        None
-    } else {
-        latest
-    }
+    if iteration > 0 { None } else { latest }
 }
 
 fn latest_data_quality_before_iteration(
@@ -1538,7 +1545,10 @@ fn is_numeric_dtype(dtype: &DataType) -> bool {
 }
 
 /// Read the latest FeatureSpec from context for a given iteration
-fn read_feature_spec_from_ctx(ctx: &dyn converge_core::ContextView, iteration: usize) -> Option<FeatureSpec> {
+fn read_feature_spec_from_ctx(
+    ctx: &dyn converge_core::ContextView,
+    iteration: usize,
+) -> Option<FeatureSpec> {
     ctx.get(ContextKey::Constraints).iter().find_map(|fact| {
         serde_json::from_str::<FeatureSpec>(&fact.content)
             .ok()

@@ -59,7 +59,10 @@ impl ValidationResult {
     /// This structural enforcement prevents LLM hallucination from being
     /// accidentally treated as grounded evidence.
     #[must_use]
-    pub fn check_recall_citation_violation(output: &str, recall_ids: &[String]) -> Option<ValidationFailure> {
+    pub fn check_recall_citation_violation(
+        output: &str,
+        recall_ids: &[String],
+    ) -> Option<ValidationFailure> {
         let output_lower = output.to_lowercase();
 
         for id in recall_ids {
@@ -78,11 +81,14 @@ impl ValidationResult {
 
             for pattern in &citation_patterns {
                 if output_lower.contains(pattern) {
-                    return Some(ValidationFailure::new(
-                        "recall_cited_as_evidence",
-                        format!("Recall candidate '{}' improperly cited as evidence", id),
-                        "Recall context is informational only and cannot be cited as evidence",
-                    ).with_found(format!("Found citation pattern: {}", pattern)));
+                    return Some(
+                        ValidationFailure::new(
+                            "recall_cited_as_evidence",
+                            format!("Recall candidate '{}' improperly cited as evidence", id),
+                            "Recall context is informational only and cannot be cited as evidence",
+                        )
+                        .with_found(format!("Found citation pattern: {}", pattern)),
+                    );
                 }
             }
         }
@@ -105,7 +111,11 @@ pub struct ValidationFailure {
 }
 
 impl ValidationFailure {
-    fn new(check: impl Into<String>, reason: impl Into<String>, expected: impl Into<String>) -> Self {
+    fn new(
+        check: impl Into<String>,
+        reason: impl Into<String>,
+        expected: impl Into<String>,
+    ) -> Self {
         Self {
             check: check.into(),
             reason: reason.into(),
@@ -234,11 +244,17 @@ fn validate_reasoning(
             StepFormat::NumberedList => "At least one step in format: 1. <text>",
         };
         failed.push(
-            ValidationFailure::new("requires_reasoning_steps", "No reasoning steps found", expected)
-                .with_found("No reasoning steps detected"),
+            ValidationFailure::new(
+                "requires_reasoning_steps",
+                "No reasoning steps found",
+                expected,
+            )
+            .with_found("No reasoning steps detected"),
         );
     } else if step_count > 0 {
-        passed.push(format!("Has {step_count} reasoning step(s) ({step_format:?} format)"));
+        passed.push(format!(
+            "Has {step_count} reasoning step(s) ({step_format:?} format)"
+        ));
     } else if uncertainty_is_valid_without_steps {
         passed.push("UNCERTAIN allows omitting reasoning steps".to_string());
     }
@@ -355,8 +371,15 @@ fn validate_planning(
             // Check for "CAPABILITY:" format
             if line_lower.contains("capability:") {
                 if let Some(idx) = line_lower.find("capability:") {
-                    let cap_name = line[idx + 11..].trim().split_whitespace().next().unwrap_or("");
-                    if !allowed_capabilities.iter().any(|c| c.eq_ignore_ascii_case(cap_name)) {
+                    let cap_name = line[idx + 11..]
+                        .trim()
+                        .split_whitespace()
+                        .next()
+                        .unwrap_or("");
+                    if !allowed_capabilities
+                        .iter()
+                        .any(|c| c.eq_ignore_ascii_case(cap_name))
+                    {
                         unknown_capabilities.push(cap_name.to_string());
                     }
                 }
@@ -371,7 +394,10 @@ fn validate_planning(
                     if !cap_name.is_empty()
                         && cap_name.chars().all(|c| c.is_alphanumeric() || c == '_')
                     {
-                        if !allowed_capabilities.iter().any(|c| c.eq_ignore_ascii_case(cap_name)) {
+                        if !allowed_capabilities
+                            .iter()
+                            .any(|c| c.eq_ignore_ascii_case(cap_name))
+                        {
                             unknown_capabilities.push(cap_name.to_string());
                         }
                     }
@@ -387,12 +413,18 @@ fn validate_planning(
                 ValidationFailure::new(
                     "requires_capability_refs",
                     "No valid capabilities referenced",
-                    format!("Must reference at least one of: {}", allowed_capabilities.join(", ")),
+                    format!(
+                        "Must reference at least one of: {}",
+                        allowed_capabilities.join(", ")
+                    ),
                 )
                 .with_found("No capability references found"),
             );
         } else {
-            passed.push(format!("References capabilities: {}", found_capabilities.join(", ")));
+            passed.push(format!(
+                "References capabilities: {}",
+                found_capabilities.join(", ")
+            ));
         }
 
         if !unknown_capabilities.is_empty() {
@@ -466,7 +498,11 @@ fn validate_evaluation(
         match cardinality {
             ScoreCardinality::AtLeast(n) => {
                 if scores.len() >= n {
-                    passed.push(format!("Score count ({}) meets minimum ({})", scores.len(), n));
+                    passed.push(format!(
+                        "Score count ({}) meets minimum ({})",
+                        scores.len(),
+                        n
+                    ));
                 } else {
                     failed.push(
                         ValidationFailure::new(
@@ -480,7 +516,11 @@ fn validate_evaluation(
             }
             ScoreCardinality::Exactly(n) => {
                 if scores.len() == n {
-                    passed.push(format!("Score count ({}) matches required ({})", scores.len(), n));
+                    passed.push(format!(
+                        "Score count ({}) matches required ({})",
+                        scores.len(),
+                        n
+                    ));
                 } else {
                     failed.push(
                         ValidationFailure::new(
@@ -550,12 +590,22 @@ fn validate_evaluation(
                 ValidationFailure::new(
                     "grounding_refs",
                     "Justification lacks grounding references",
-                    format!("Must reference at least one of: {}", grounding_refs.join(", ")),
+                    format!(
+                        "Must reference at least one of: {}",
+                        grounding_refs.join(", ")
+                    ),
                 )
                 .with_found("No grounding references found"),
             );
         } else {
-            passed.push(format!("Grounded in: {}", found_refs.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ")));
+            passed.push(format!(
+                "Grounded in: {}",
+                found_refs
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
         }
     }
 
@@ -731,7 +781,14 @@ fn count_steps_by_format(output: &str, format: StepFormat) -> usize {
 
 /// Loose step counting: keywords anywhere in text.
 fn count_reasoning_steps_loose(output: &str) -> usize {
-    let step_patterns = ["step ", "first,", "second,", "then,", "finally,", "therefore,"];
+    let step_patterns = [
+        "step ",
+        "first,",
+        "second,",
+        "then,",
+        "finally,",
+        "therefore,",
+    ];
     let output_lower = output.to_lowercase();
 
     step_patterns
@@ -889,7 +946,8 @@ mod tests {
 
     #[test]
     fn test_validate_planning_with_steps() {
-        let output = "1. First, gather requirements\n2. Then, design the solution\n3. Finally, implement";
+        let output =
+            "1. First, gather requirements\n2. Then, design the solution\n3. Finally, implement";
         let contract = OutputContract::Planning {
             requires_ordered_steps: true,
             max_steps: 10,
@@ -952,7 +1010,11 @@ mod tests {
     fn test_validate_classification() {
         let output = "CATEGORY: positive (confidence: 0.92)";
         let contract = OutputContract::Classification {
-            valid_categories: vec!["positive".to_string(), "negative".to_string(), "neutral".to_string()],
+            valid_categories: vec![
+                "positive".to_string(),
+                "negative".to_string(),
+                "neutral".to_string(),
+            ],
             confidence_required: true,
             multi_label: false,
         };

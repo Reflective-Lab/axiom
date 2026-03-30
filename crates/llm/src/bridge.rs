@@ -340,7 +340,12 @@ impl MetricsBuilder {
 
     /// Add data quality flags.
     #[must_use]
-    pub fn data_quality(mut self, has_nulls: bool, has_outliers: bool, drift_detected: bool) -> Self {
+    pub fn data_quality(
+        mut self,
+        has_nulls: bool,
+        has_outliers: bool,
+        drift_detected: bool,
+    ) -> Self {
         self.metrics
             .flags
             .insert("has_nulls".to_string(), has_nulls);
@@ -456,9 +461,7 @@ mod tests {
     fn test_integration_with_prompt_stack() {
         use crate::prompt::{PromptStackBuilder, UserIntent};
 
-        let metrics = MetricsBuilder::new()
-            .evaluation(0.12, 0.88)
-            .build_state();
+        let metrics = MetricsBuilder::new().evaluation(0.12, 0.88).build_state();
 
         let stack = PromptStackBuilder::new()
             .state(metrics)

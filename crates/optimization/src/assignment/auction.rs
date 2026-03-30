@@ -29,7 +29,11 @@ impl Default for AuctionSolver {
 }
 
 impl AssignmentSolver for AuctionSolver {
-    fn solve(&self, problem: &AssignmentProblem, params: &SolverParams) -> Result<AssignmentSolution> {
+    fn solve(
+        &self,
+        problem: &AssignmentProblem,
+        params: &SolverParams,
+    ) -> Result<AssignmentSolution> {
         solve_auction(problem, params, self.epsilon)
     }
 
@@ -61,13 +65,17 @@ fn solve_auction(
     }
 
     // Convert to benefits (negate costs for maximization)
-    let max_cost: i64 = problem.costs.iter()
+    let max_cost: i64 = problem
+        .costs
+        .iter()
         .flat_map(|row| row.iter())
         .max()
         .copied()
         .unwrap_or(0);
 
-    let benefit: Vec<Vec<i64>> = problem.costs.iter()
+    let benefit: Vec<Vec<i64>> = problem
+        .costs
+        .iter()
         .map(|row| row.iter().map(|&c| max_cost - c).collect())
         .collect();
 
@@ -133,7 +141,8 @@ fn solve_auction(
 
     // Convert assignment to solution
     let assignments: Vec<usize> = assignment.iter().map(|&t| t as usize).collect();
-    let total_cost: Cost = assignments.iter()
+    let total_cost: Cost = assignments
+        .iter()
         .enumerate()
         .map(|(agent, &task)| problem.costs[agent][task])
         .sum();
@@ -159,21 +168,15 @@ mod tests {
 
     #[test]
     fn test_3x3_auction() {
-        let problem = AssignmentProblem::from_costs(vec![
-            vec![10, 5, 13],
-            vec![3, 9, 18],
-            vec![14, 8, 7],
-        ]);
+        let problem =
+            AssignmentProblem::from_costs(vec![vec![10, 5, 13], vec![3, 9, 18], vec![14, 8, 7]]);
         let solution = solve(&problem).unwrap();
         assert_eq!(solution.total_cost, 15);
     }
 
     #[test]
     fn test_2x2_auction() {
-        let problem = AssignmentProblem::from_costs(vec![
-            vec![1, 2],
-            vec![3, 4],
-        ]);
+        let problem = AssignmentProblem::from_costs(vec![vec![1, 2], vec![3, 4]]);
         let solution = solve(&problem).unwrap();
         assert_eq!(solution.total_cost, 5);
     }

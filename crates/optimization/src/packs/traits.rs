@@ -1,8 +1,8 @@
 //! Pack traits and core abstractions
 
-use crate::gate::{ProblemSpec, PromotionGate, ProposedPlan, SolverReport, Violation};
 use crate::Result;
-use serde::{de::DeserializeOwned, Serialize};
+use crate::gate::{ProblemSpec, PromotionGate, ProposedPlan, SolverReport, Violation};
+use serde::{Serialize, de::DeserializeOwned};
 
 /// A domain pack for the solver gate
 ///
@@ -173,7 +173,8 @@ pub trait PackSchema: Sized + Serialize + DeserializeOwned {
 
     /// Parse from JSON value
     fn from_json(value: &serde_json::Value) -> Result<Self> {
-        serde_json::from_value(value.clone()).map_err(|e| crate::Error::invalid_input(e.to_string()))
+        serde_json::from_value(value.clone())
+            .map_err(|e| crate::Error::invalid_input(e.to_string()))
     }
 }
 
@@ -239,10 +240,7 @@ mod tests {
         assert!(pass.passed);
         assert!(pass.violation.is_none());
 
-        let fail = InvariantResult::fail(
-            "test",
-            Violation::new("test", 1.0, "failed"),
-        );
+        let fail = InvariantResult::fail("test", Violation::new("test", 1.0, "failed"));
         assert!(!fail.passed);
         assert!(fail.violation.is_some());
     }
@@ -293,7 +291,10 @@ mod tests {
         // Advisory failure only
         let results = vec![
             InvariantResult::pass("must_pass"),
-            InvariantResult::fail("nice_to_have", Violation::new("nice_to_have", 0.5, "failed")),
+            InvariantResult::fail(
+                "nice_to_have",
+                Violation::new("nice_to_have", 0.5, "failed"),
+            ),
         ];
         let gate = default_gate_evaluation(&results, &invariants);
         assert!(gate.requires_escalation());

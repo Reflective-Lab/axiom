@@ -1,9 +1,9 @@
 //! Solver for Capacity Planning pack
 
 use super::types::*;
+use crate::Result;
 use crate::gate::{ProblemSpec, ReplayEnvelope, SolverReport, StopReason};
 use crate::packs::PackSolver;
-use crate::Result;
 use std::collections::HashMap;
 
 /// Match-based allocation solver for capacity planning
@@ -39,18 +39,17 @@ impl MatchAllocationSolver {
             .collect();
 
         // Track allocations per team
-        let mut team_allocated: HashMap<String, f64> = input
-            .teams
-            .iter()
-            .map(|t| (t.id.clone(), 0.0))
-            .collect();
+        let mut team_allocated: HashMap<String, f64> =
+            input.teams.iter().map(|t| (t.id.clone(), 0.0)).collect();
 
         // Sort demands by priority
         let mut sorted_demands: Vec<&DemandForecast> = input.demand_forecasts.iter().collect();
         sorted_demands.sort_by(|a, b| {
             a.priority.cmp(&b.priority).then_with(|| {
                 // Tie-break by demand_units (higher demand first)
-                b.demand_units.partial_cmp(&a.demand_units).unwrap_or(std::cmp::Ordering::Equal)
+                b.demand_units
+                    .partial_cmp(&a.demand_units)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             })
         });
 
@@ -91,7 +90,9 @@ impl MatchAllocationSolver {
             matching_teams.sort_by(|a, b| {
                 let cap_a = team_remaining.get(&a.id).unwrap_or(&0.0);
                 let cap_b = team_remaining.get(&b.id).unwrap_or(&0.0);
-                cap_b.partial_cmp(cap_a).unwrap_or(std::cmp::Ordering::Equal)
+                cap_b
+                    .partial_cmp(cap_a)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
 
             // Apply deterministic tie-breaking for teams with similar capacity
@@ -110,7 +111,9 @@ impl MatchAllocationSolver {
                     // Sort by ID for deterministic selection
                     let mut sorted = similar_cap.clone();
                     sorted.sort_by(|a, b| a.id.cmp(&b.id));
-                    if let Some(selected) = tie_break.select_by(&sorted, seed, |a, b| a.id.cmp(&b.id)) {
+                    if let Some(selected) =
+                        tie_break.select_by(&sorted, seed, |a, b| a.id.cmp(&b.id))
+                    {
                         // Move selected to front
                         matching_teams.retain(|t| t.id != selected.id);
                         matching_teams.insert(0, selected);
@@ -130,7 +133,9 @@ impl MatchAllocationSolver {
                 let allocate = remaining_demand.min(*available);
 
                 if allocate > 0.0 {
-                    let cost_per_unit = resource_costs.get(demand.resource_type.as_str()).unwrap_or(&0.0);
+                    let cost_per_unit = resource_costs
+                        .get(demand.resource_type.as_str())
+                        .unwrap_or(&0.0);
                     let cost = allocate * cost_per_unit;
 
                     assignments.push(ResourceAssignment {
@@ -208,7 +213,8 @@ impl MatchAllocationSolver {
                                 .demand_forecasts
                                 .iter()
                                 .find(|d| {
-                                    format!("demand-{}-{}", d.period_id, d.required_skill) == *demand_id
+                                    format!("demand-{}-{}", d.period_id, d.required_skill)
+                                        == *demand_id
                                 })
                                 .map(|d| d.required_skill.clone())
                                 .unwrap_or_default();
@@ -245,12 +251,18 @@ impl MatchAllocationSolver {
             1.0
         };
         let average_utilization = if !team_utilization.is_empty() {
-            team_utilization.iter().map(|t| t.utilization_ratio).sum::<f64>()
+            team_utilization
+                .iter()
+                .map(|t| t.utilization_ratio)
+                .sum::<f64>()
                 / team_utilization.len() as f64
         } else {
             0.0
         };
-        let teams_over_capacity = team_utilization.iter().filter(|t| t.is_over_utilized).count();
+        let teams_over_capacity = team_utilization
+            .iter()
+            .filter(|t| t.is_over_utilized)
+            .count();
         let unmet_demands_count = period_fulfillment
             .iter()
             .map(|p| p.unmet_demands.len())
@@ -298,12 +310,7 @@ impl MatchAllocationSolver {
                 replay,
             )
         } else {
-            SolverReport::infeasible(
-                "match-alloc-v1",
-                vec![],
-                StopReason::NoFeasible,
-                replay,
-            )
+            SolverReport::infeasible("match-alloc-v1", vec![], StopReason::NoFeasible, replay)
         };
 
         Ok((output, report))
@@ -558,8 +565,14 @@ mod tests {
         // Should have fulfillment records for both periods
         assert!(output.period_fulfillment.len() >= 2);
 
-        let q1 = output.period_fulfillment.iter().find(|p| p.period_id == "Q1-2024");
-        let q2 = output.period_fulfillment.iter().find(|p| p.period_id == "Q2-2024");
+        let q1 = output
+            .period_fulfillment
+            .iter()
+            .find(|p| p.period_id == "Q1-2024");
+        let q2 = output
+            .period_fulfillment
+            .iter()
+            .find(|p| p.period_id == "Q2-2024");
 
         assert!(q1.is_some());
         assert!(q2.is_some());

@@ -35,9 +35,7 @@ use sha2::{Digest, Sha256};
 
 use super::contract::*;
 use super::engine::{CompiledModule, WasmEngine};
-use super::signing::{
-    verify_module_with_policy, ModuleSignature, SignaturePolicy, TrustedKeySet,
-};
+use super::signing::{ModuleSignature, SignaturePolicy, TrustedKeySet, verify_module_with_policy};
 
 /// Module store managing the lifecycle of WASM modules.
 ///
@@ -981,13 +979,15 @@ mod tests {
     fn enforce_policy_rejects_unsigned_upload() {
         let engine = make_engine();
         let trusted = TrustedKeySet::empty();
-        let mut store =
-            ModuleStore::with_signing(engine, SignaturePolicy::Enforce, trusted);
+        let mut store = ModuleStore::with_signing(engine, SignaturePolicy::Enforce, trusted);
 
         let wat = invariant_ok_wat();
         let result = store.upload("tenant-1", wat.as_bytes(), None);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), WasmError::SignatureMissing(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            WasmError::SignatureMissing(_)
+        ));
     }
 
     #[test]
@@ -1003,8 +1003,7 @@ mod tests {
         trusted.add_key(verifying_key);
 
         let engine = make_engine();
-        let mut store =
-            ModuleStore::with_signing(engine, SignaturePolicy::Enforce, trusted);
+        let mut store = ModuleStore::with_signing(engine, SignaturePolicy::Enforce, trusted);
 
         let wat = invariant_ok_wat();
         let sig = sign_module(wat.as_bytes(), &signing_key);
@@ -1025,8 +1024,7 @@ mod tests {
         trusted.add_key(verifying_key);
 
         let engine = make_engine();
-        let mut store =
-            ModuleStore::with_signing(engine, SignaturePolicy::Enforce, trusted);
+        let mut store = ModuleStore::with_signing(engine, SignaturePolicy::Enforce, trusted);
 
         let wat = invariant_ok_wat();
         let sig = sign_module(wat.as_bytes(), &signing_key);
@@ -1037,7 +1035,10 @@ mod tests {
 
         let result = store.upload("tenant-1", &tampered, Some(&sig));
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), WasmError::SignatureInvalid(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            WasmError::SignatureInvalid(_)
+        ));
     }
 
     #[test]
@@ -1057,15 +1058,17 @@ mod tests {
         trusted.add_key(verifying_key_b);
 
         let engine = make_engine();
-        let mut store =
-            ModuleStore::with_signing(engine, SignaturePolicy::Enforce, trusted);
+        let mut store = ModuleStore::with_signing(engine, SignaturePolicy::Enforce, trusted);
 
         let wat = invariant_ok_wat();
         let sig = sign_module(wat.as_bytes(), &signing_key_a);
 
         let result = store.upload("tenant-1", wat.as_bytes(), Some(&sig));
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), WasmError::SignatureInvalid(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            WasmError::SignatureInvalid(_)
+        ));
     }
 
     #[test]

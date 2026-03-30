@@ -20,17 +20,17 @@
 //! 3. Respect dependency ordering
 //! 4. Mark items within capacity as included
 
-mod types;
-mod solver;
 mod invariants;
+mod solver;
+mod types;
 
-pub use types::*;
-pub use solver::*;
 pub use invariants::*;
+pub use solver::*;
+pub use types::*;
 
-use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
-use crate::packs::{default_gate_evaluation, InvariantDef, InvariantResult, Pack, PackSolveResult};
 use crate::Result;
+use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
+use crate::packs::{InvariantDef, InvariantResult, Pack, PackSolveResult, default_gate_evaluation};
 
 /// Backlog Prioritization Pack
 pub struct BacklogPrioritizationPack;
@@ -90,7 +90,10 @@ impl Pack for BacklogPrioritizationPack {
     }
 }
 
-fn calculate_confidence(output: &BacklogPrioritizationOutput, input: &BacklogPrioritizationInput) -> f64 {
+fn calculate_confidence(
+    output: &BacklogPrioritizationOutput,
+    input: &BacklogPrioritizationInput,
+) -> f64 {
     if output.ranked_items.is_empty() {
         return 0.0;
     }
@@ -173,7 +176,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-001", "test-tenant")
             .objective(ObjectiveSpec::maximize("value"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -192,7 +196,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-002", "test-tenant")
             .objective(ObjectiveSpec::maximize("value"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -211,7 +216,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-003", "test-tenant")
             .objective(ObjectiveSpec::maximize("value"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -230,14 +236,16 @@ mod tests {
 
         let spec1 = ProblemSpec::builder("test-a", "tenant")
             .objective(ObjectiveSpec::maximize("value"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(99999)
             .build()
             .unwrap();
 
         let spec2 = ProblemSpec::builder("test-b", "tenant")
             .objective(ObjectiveSpec::maximize("value"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(99999)
             .build()
             .unwrap();

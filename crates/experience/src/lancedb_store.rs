@@ -199,10 +199,9 @@ impl LanceDbExperienceStore {
                 Arc::new(StringArray::from(vec![event.envelope.event_id.as_str()])),
                 Arc::new(StringArray::from(vec![event.envelope.occurred_at.as_str()])),
                 Arc::new(StringArray::from(vec![event.envelope.tenant_id.as_deref()])),
-                Arc::new(StringArray::from(vec![event
-                    .envelope
-                    .correlation_id
-                    .as_deref()])),
+                Arc::new(StringArray::from(vec![
+                    event.envelope.correlation_id.as_deref(),
+                ])),
                 Arc::new(StringArray::from(vec![kind_str.as_str()])),
                 Arc::new(StringArray::from(vec![event_json.as_str()])),
                 Arc::new(vector_array),

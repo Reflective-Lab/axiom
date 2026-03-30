@@ -22,7 +22,9 @@ impl LeadRoutingInput {
             return Err(crate::Error::invalid_input("At least one lead is required"));
         }
         if self.reps.is_empty() {
-            return Err(crate::Error::invalid_input("At least one sales rep is required"));
+            return Err(crate::Error::invalid_input(
+                "At least one sales rep is required",
+            ));
         }
 
         // Check for duplicate lead IDs
@@ -30,7 +32,8 @@ impl LeadRoutingInput {
         for lead in &self.leads {
             if !seen_leads.insert(&lead.id) {
                 return Err(crate::Error::invalid_input(format!(
-                    "Duplicate lead ID: {}", lead.id
+                    "Duplicate lead ID: {}",
+                    lead.id
                 )));
             }
         }
@@ -40,7 +43,8 @@ impl LeadRoutingInput {
         for rep in &self.reps {
             if !seen_reps.insert(&rep.id) {
                 return Err(crate::Error::invalid_input(format!(
-                    "Duplicate rep ID: {}", rep.id
+                    "Duplicate rep ID: {}",
+                    rep.id
                 )));
             }
             if rep.capacity < rep.current_load {
@@ -67,7 +71,9 @@ impl LeadRoutingInput {
     /// Get reps that can handle a specific territory
     pub fn reps_for_territory(&self, territory: &str) -> impl Iterator<Item = &SalesRep> {
         let territory = territory.to_string();
-        self.reps.iter().filter(move |r| r.covers_territory(&territory))
+        self.reps
+            .iter()
+            .filter(move |r| r.covers_territory(&territory))
     }
 }
 
@@ -100,7 +106,9 @@ fn default_priority() -> i32 {
 impl Lead {
     /// Check if a rep can handle this lead based on skills
     pub fn rep_has_required_skills(&self, rep: &SalesRep) -> bool {
-        self.required_skills.iter().all(|skill| rep.skills.contains(skill))
+        self.required_skills
+            .iter()
+            .all(|skill| rep.skills.contains(skill))
     }
 
     /// Calculate fit score with a rep (higher is better)
@@ -119,7 +127,8 @@ impl Lead {
 
         // Skills match: up to +20 points
         if !self.required_skills.is_empty() {
-            let matched = self.required_skills
+            let matched = self
+                .required_skills
                 .iter()
                 .filter(|s| rep.skills.contains(*s))
                 .count();

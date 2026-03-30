@@ -7,9 +7,7 @@
 //! Partners use this pattern to integrate their own model backends.
 
 use async_trait::async_trait;
-use converge_provider::provider_api::{
-    LlmProvider, LlmRequest, LlmResponse, ProviderError,
-};
+use converge_provider::provider_api::{LlmProvider, LlmRequest, LlmResponse, ProviderError};
 use converge_traits::{Backend, BackendKind, Capability};
 
 /// A mock provider that echoes prompts — replace with your real API client.
@@ -70,7 +68,10 @@ async fn main() {
     match provider.generate(&request).await {
         Ok(response) => {
             println!("Response: {}", response.text);
-            println!("Tokens:   {} in / {} out", response.input_tokens, response.output_tokens);
+            println!(
+                "Tokens:   {} in / {} out",
+                response.input_tokens, response.output_tokens
+            );
         }
         Err(e) => println!("Error: {e}"),
     }

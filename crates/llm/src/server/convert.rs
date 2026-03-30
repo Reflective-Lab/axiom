@@ -9,7 +9,7 @@
 use std::collections::HashMap;
 
 use crate::kernel::{
-    self as kernel_types, ContractResult, ContextFact, KernelContext, KernelIntent, KernelPolicy,
+    self as kernel_types, ContextFact, ContractResult, KernelContext, KernelIntent, KernelPolicy,
     KernelTraceLink, ProposalKind, ProposalRecallMetadata, RecallImpact, Replayability,
     ReplayabilityDowngradeReason,
 };
@@ -96,9 +96,7 @@ impl From<kernel_types::KernelProposal> for proto::KernelProposal {
             id: r.id,
             kind: rust_proposal_kind_to_proto(r.kind).into(),
             payload: r.payload,
-            structured_payload: r
-                .structured_payload
-                .map(|v| json_to_prost_struct(&v)),
+            structured_payload: r.structured_payload.map(|v| json_to_prost_struct(&v)),
             trace_link: Some(r.trace_link.into()),
             contract_results: r.contract_results.into_iter().map(Into::into).collect(),
             requires_human: r.requires_human,
@@ -199,9 +197,7 @@ fn rust_recall_impact_to_proto(impact: RecallImpact) -> proto::RecallImpact {
         RecallImpact::None => proto::RecallImpact::None,
         RecallImpact::Unknown => proto::RecallImpact::Unknown,
         RecallImpact::ReducedIterations => proto::RecallImpact::ReducedIterations,
-        RecallImpact::ReducedValidationFailures => {
-            proto::RecallImpact::ReducedValidationFailures
-        }
+        RecallImpact::ReducedValidationFailures => proto::RecallImpact::ReducedValidationFailures,
         RecallImpact::ProvidedContext => proto::RecallImpact::ProvidedContext,
     }
 }
@@ -214,11 +210,9 @@ fn rust_recall_impact_to_proto(impact: RecallImpact) -> proto::RecallImpact {
 pub fn prost_value_to_json(value: prost_types::Value) -> serde_json::Value {
     match value.kind {
         Some(prost_types::value::Kind::NullValue(_)) => serde_json::Value::Null,
-        Some(prost_types::value::Kind::NumberValue(n)) => {
-            serde_json::Value::Number(serde_json::Number::from_f64(n).unwrap_or_else(|| {
-                serde_json::Number::from(0)
-            }))
-        }
+        Some(prost_types::value::Kind::NumberValue(n)) => serde_json::Value::Number(
+            serde_json::Number::from_f64(n).unwrap_or_else(|| serde_json::Number::from(0)),
+        ),
         Some(prost_types::value::Kind::StringValue(s)) => serde_json::Value::String(s),
         Some(prost_types::value::Kind::BoolValue(b)) => serde_json::Value::Bool(b),
         Some(prost_types::value::Kind::StructValue(s)) => prost_struct_to_json(&s),

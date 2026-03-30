@@ -219,7 +219,7 @@ pub use deepseek::DeepSeekProvider;
 pub use factory::{
     can_create_provider, create_provider, create_provider_with_secrets, create_tool_aware_provider,
 };
-pub use fallback::{try_with_fallback, FallbackLlmProvider};
+pub use fallback::{FallbackLlmProvider, try_with_fallback};
 #[cfg(feature = "gemini")]
 pub use gemini::GeminiProvider;
 #[cfg(feature = "grok")]

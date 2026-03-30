@@ -6,10 +6,10 @@
 //! Demonstrates: swarms, consensus/aggregation, multi-criteria scoring.
 
 use converge_core::{
-    gates::hitl::GateDecision,
-    gates::{TimeoutAction, TimeoutPolicy},
     Agent, AgentEffect, Context, ContextKey, Engine, EngineHitlPolicy, Fact, ProposedFact,
     RunResult,
+    gates::hitl::GateDecision,
+    gates::{TimeoutAction, TimeoutPolicy},
 };
 
 struct VendorDataAgent;

@@ -53,10 +53,14 @@ impl SolveBudgets {
             return Err(crate::Error::invalid_input("time_limit must be positive"));
         }
         if self.iteration_limit == 0 {
-            return Err(crate::Error::invalid_input("iteration_limit must be positive"));
+            return Err(crate::Error::invalid_input(
+                "iteration_limit must be positive",
+            ));
         }
         if self.candidate_cap == 0 {
-            return Err(crate::Error::invalid_input("candidate_cap must be positive"));
+            return Err(crate::Error::invalid_input(
+                "candidate_cap must be positive",
+            ));
         }
         Ok(())
     }

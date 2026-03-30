@@ -85,7 +85,9 @@ impl PromotionGate {
     pub fn requires_human(&self) -> bool {
         matches!(
             self.authority,
-            AuthorityPolicy::HumanRequired | AuthorityPolicy::RoleRequired { .. } | AuthorityPolicy::MultiApproval { .. }
+            AuthorityPolicy::HumanRequired
+                | AuthorityPolicy::RoleRequired { .. }
+                | AuthorityPolicy::MultiApproval { .. }
         )
     }
 }
@@ -147,7 +149,10 @@ impl AuthorityPolicy {
     }
 
     /// Create multi-approval authority
-    pub fn multi_approval(count: usize, roles: impl IntoIterator<Item = impl Into<String>>) -> Self {
+    pub fn multi_approval(
+        count: usize,
+        roles: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
         Self::MultiApproval {
             count,
             roles: roles.into_iter().map(Into::into).collect(),
@@ -216,10 +221,7 @@ mod tests {
 
     #[test]
     fn test_serde_roundtrip() {
-        let gate = PromotionGate::requires_review(
-            vec!["truth1".to_string()],
-            "needs review",
-        );
+        let gate = PromotionGate::requires_review(vec!["truth1".to_string()], "needs review");
         let json = serde_json::to_string(&gate).unwrap();
         let restored: PromotionGate = serde_json::from_str(&json).unwrap();
         assert_eq!(restored.required_truths, gate.required_truths);

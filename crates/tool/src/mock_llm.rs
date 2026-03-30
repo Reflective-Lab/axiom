@@ -9,7 +9,9 @@
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
-use converge_core::llm::{FinishReason, LlmError, LlmProvider, LlmRequest, LlmResponse, TokenUsage};
+use converge_core::llm::{
+    FinishReason, LlmError, LlmProvider, LlmRequest, LlmResponse, TokenUsage,
+};
 
 #[derive(Debug)]
 pub struct StaticLlmProvider {

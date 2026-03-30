@@ -91,9 +91,7 @@ pub fn extract_temporal_features(
     let with_deltas = events
         .clone()
         .sort([ec, tc], Default::default())
-        .with_columns([
-            (col(tc) - col(tc).shift(lit(1)).over([col(ec)])).alias("delta_s"),
-        ])
+        .with_columns([(col(tc) - col(tc).shift(lit(1)).over([col(ec)])).alias("delta_s")])
         .filter(col("delta_s").is_not_null())
         .group_by([col(ec)])
         .agg([
@@ -125,9 +123,24 @@ pub fn extract_temporal_features(
     // Join all feature sets.
     let features = aggregates
         .lazy()
-        .join(with_deltas.lazy(), [col(ec)], [col(ec)], JoinArgs::new(JoinType::Left))
-        .join(entropy.lazy(), [col(ec)], [col(ec)], JoinArgs::new(JoinType::Left))
-        .join(night.lazy(), [col(ec)], [col(ec)], JoinArgs::new(JoinType::Left))
+        .join(
+            with_deltas.lazy(),
+            [col(ec)],
+            [col(ec)],
+            JoinArgs::new(JoinType::Left),
+        )
+        .join(
+            entropy.lazy(),
+            [col(ec)],
+            [col(ec)],
+            JoinArgs::new(JoinType::Left),
+        )
+        .join(
+            night.lazy(),
+            [col(ec)],
+            [col(ec)],
+            JoinArgs::new(JoinType::Left),
+        )
         .with_columns([
             col("mean_delta_s").fill_null(lit(0.0)),
             col("min_delta_s").fill_null(lit(0.0)),
@@ -174,12 +187,19 @@ fn compute_type_entropy_polars(events: &LazyFrame, ec: &str, tyc: &str) -> Resul
 
     let with_prob = counts
         .lazy()
-        .join(totals.lazy(), [col(ec)], [col(ec)], JoinArgs::new(JoinType::Left))
+        .join(
+            totals.lazy(),
+            [col(ec)],
+            [col(ec)],
+            JoinArgs::new(JoinType::Left),
+        )
         .with_columns([(col("type_count").cast(DataType::Float64)
             / col("total_count").cast(DataType::Float64))
         .alias("prob")])
-        .with_columns([(col("prob") * col("prob").log(lit(std::f64::consts::E)) * lit(-1.0))
-            .alias("entropy_contrib")])
+        .with_columns([
+            (col("prob") * col("prob").log(lit(std::f64::consts::E)) * lit(-1.0))
+                .alias("entropy_contrib"),
+        ])
         .group_by([col(ec)])
         .agg([col("entropy_contrib").sum().alias("type_entropy")])
         .collect()?;

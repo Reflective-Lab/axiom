@@ -1,9 +1,9 @@
 //! Solver for Anomaly Triage pack
 
 use super::types::*;
+use crate::Result;
 use crate::gate::{ProblemSpec, ReplayEnvelope, SolverReport, StopReason};
 use crate::packs::PackSolver;
-use crate::Result;
 
 /// Threshold-based solver for anomaly triage
 ///
@@ -90,7 +90,9 @@ impl ThresholdSolver {
 
         for (priority, (anomaly, severity, z)) in final_order.into_iter().enumerate() {
             let policy = input.get_policy(severity);
-            let escalate = policy.map(|p| p.auto_escalate).unwrap_or(severity == "critical");
+            let escalate = policy
+                .map(|p| p.auto_escalate)
+                .unwrap_or(severity == "critical");
 
             if escalate {
                 escalation_count += 1;
@@ -208,14 +210,12 @@ mod tests {
                 },
             ],
             thresholds: SeverityThresholds::default(),
-            escalation_policies: vec![
-                EscalationPolicy {
-                    severity_level: "critical".to_string(),
-                    auto_escalate: true,
-                    notify_channels: vec!["pagerduty".to_string(), "slack-oncall".to_string()],
-                    response_sla_minutes: 15,
-                },
-            ],
+            escalation_policies: vec![EscalationPolicy {
+                severity_level: "critical".to_string(),
+                auto_escalate: true,
+                notify_channels: vec!["pagerduty".to_string(), "slack-oncall".to_string()],
+                response_sla_minutes: 15,
+            }],
         }
     }
 

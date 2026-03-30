@@ -6,10 +6,10 @@
 //! Demonstrates: long-running workflows, humans in the loop, multi-tier approvals.
 
 use converge_core::{
-    gates::hitl::GateDecision,
-    gates::{TimeoutAction, TimeoutPolicy},
     Agent, AgentEffect, Context, ContextKey, Engine, EngineHitlPolicy, Fact, ProposedFact,
     RunResult,
+    gates::hitl::GateDecision,
+    gates::{TimeoutAction, TimeoutPolicy},
 };
 
 const MANAGER_THRESHOLD: f64 = 1_000.0;

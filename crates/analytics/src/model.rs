@@ -167,8 +167,8 @@ pub fn run_batch_inference(
     let model: Model<B> = config.init(&device);
 
     let n = features.rows();
-    let input =
-        Tensor::<B, 1>::from_floats(features.data.as_slice(), &device).reshape([n, config.input_size]);
+    let input = Tensor::<B, 1>::from_floats(features.data.as_slice(), &device)
+        .reshape([n, config.input_size]);
     let output = model.forward(input);
     let values: Vec<f32> = output.into_data().to_vec::<f32>().unwrap_or_default();
     Ok(values)

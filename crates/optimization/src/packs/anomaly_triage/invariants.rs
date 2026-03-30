@@ -44,11 +44,12 @@ fn check_all_anomalies_triaged(output: &AnomalyTriageOutput) -> InvariantResult 
 
     // This would need input count to validate fully
     // For now, just check that we have results if we're supposed to
-    if !output.triaged.is_empty() ||
-       (output.severity_summary.critical == 0 &&
-        output.severity_summary.high == 0 &&
-        output.severity_summary.medium == 0 &&
-        output.severity_summary.low == 0) {
+    if !output.triaged.is_empty()
+        || (output.severity_summary.critical == 0
+            && output.severity_summary.high == 0
+            && output.severity_summary.medium == 0
+            && output.severity_summary.low == 0)
+    {
         InvariantResult::pass(invariant)
     } else {
         let violation = Violation::new(
@@ -74,7 +75,9 @@ fn check_priorities_sequential(output: &AnomalyTriageOutput) -> InvariantResult 
                 1.0,
                 format!(
                     "Anomaly {} has priority {} but should be {}",
-                    item.anomaly_id, item.priority, i + 1
+                    item.anomaly_id,
+                    item.priority,
+                    i + 1
                 ),
             );
             return InvariantResult::fail(invariant, violation);
@@ -96,7 +99,10 @@ fn check_critical_escalated(output: &AnomalyTriageOutput) -> InvariantResult {
     if unescalated_critical.is_empty() {
         InvariantResult::pass(invariant)
     } else {
-        let ids: Vec<_> = unescalated_critical.iter().map(|t| t.anomaly_id.as_str()).collect();
+        let ids: Vec<_> = unescalated_critical
+            .iter()
+            .map(|t| t.anomaly_id.as_str())
+            .collect();
         let violation = Violation::new(
             invariant,
             0.7,
@@ -118,7 +124,10 @@ fn check_recommendations_provided(output: &AnomalyTriageOutput) -> InvariantResu
     if missing_recommendations.is_empty() {
         InvariantResult::pass(invariant)
     } else {
-        let ids: Vec<_> = missing_recommendations.iter().map(|t| t.anomaly_id.as_str()).collect();
+        let ids: Vec<_> = missing_recommendations
+            .iter()
+            .map(|t| t.anomaly_id.as_str())
+            .collect();
         let violation = Violation::new(
             invariant,
             0.3,

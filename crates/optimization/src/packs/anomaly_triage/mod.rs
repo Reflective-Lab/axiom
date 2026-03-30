@@ -20,17 +20,17 @@
 //! 3. Apply escalation policies
 //! 4. Assign sequential priorities
 
-mod types;
-mod solver;
 mod invariants;
+mod solver;
+mod types;
 
-pub use types::*;
-pub use solver::*;
 pub use invariants::*;
+pub use solver::*;
+pub use types::*;
 
-use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
-use crate::packs::{default_gate_evaluation, InvariantDef, InvariantResult, Pack, PackSolveResult};
 use crate::Result;
+use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
+use crate::packs::{InvariantDef, InvariantResult, Pack, PackSolveResult, default_gate_evaluation};
 
 /// Anomaly Triage Pack
 pub struct AnomalyTriagePack;
@@ -98,13 +98,17 @@ fn calculate_confidence(output: &AnomalyTriageOutput) -> f64 {
     let mut confidence: f64 = 0.6;
 
     // Higher confidence if all anomalies have recommendations
-    let all_have_recommendations = output.triaged.iter().all(|t| !t.recommended_actions.is_empty());
+    let all_have_recommendations = output
+        .triaged
+        .iter()
+        .all(|t| !t.recommended_actions.is_empty());
     if all_have_recommendations {
         confidence += 0.2;
     }
 
     // Higher confidence if critical items are escalated
-    let critical_escalated = output.triaged
+    let critical_escalated = output
+        .triaged
         .iter()
         .filter(|t| t.severity == "critical")
         .all(|t| t.escalate);
@@ -139,14 +143,12 @@ mod tests {
                 },
             ],
             thresholds: SeverityThresholds::default(),
-            escalation_policies: vec![
-                EscalationPolicy {
-                    severity_level: "critical".to_string(),
-                    auto_escalate: true,
-                    notify_channels: vec!["pagerduty".to_string()],
-                    response_sla_minutes: 15,
-                },
-            ],
+            escalation_policies: vec![EscalationPolicy {
+                severity_level: "critical".to_string(),
+                auto_escalate: true,
+                notify_channels: vec!["pagerduty".to_string()],
+                response_sla_minutes: 15,
+            }],
         }
     }
 
@@ -172,7 +174,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-001", "test-tenant")
             .objective(ObjectiveSpec::minimize("risk"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -191,7 +194,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-002", "test-tenant")
             .objective(ObjectiveSpec::minimize("risk"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -210,7 +214,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-003", "test-tenant")
             .objective(ObjectiveSpec::minimize("risk"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -229,14 +234,16 @@ mod tests {
 
         let spec1 = ProblemSpec::builder("test-a", "tenant")
             .objective(ObjectiveSpec::minimize("risk"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(99999)
             .build()
             .unwrap();
 
         let spec2 = ProblemSpec::builder("test-b", "tenant")
             .objective(ObjectiveSpec::minimize("risk"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(99999)
             .build()
             .unwrap();

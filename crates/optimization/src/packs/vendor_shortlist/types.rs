@@ -16,7 +16,9 @@ impl VendorShortlistInput {
     /// Validate the input
     pub fn validate(&self) -> Result<()> {
         if self.vendors.is_empty() {
-            return Err(crate::Error::invalid_input("At least one vendor is required"));
+            return Err(crate::Error::invalid_input(
+                "At least one vendor is required",
+            ));
         }
         if self.requirements.max_vendors == 0 {
             return Err(crate::Error::invalid_input("max_vendors must be positive"));

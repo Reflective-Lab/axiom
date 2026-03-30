@@ -244,17 +244,12 @@ impl<E> ChainExecutor<E> {
 /// (real LlamaEngine or mock engines for testing).
 pub trait ChainEngine {
     /// Generate output for a prompt stack with the given envelope.
-    fn generate(&mut self, stack: &PromptStack, envelope: &InferenceEnvelope)
-        -> LlmResult<String>;
+    fn generate(&mut self, stack: &PromptStack, envelope: &InferenceEnvelope) -> LlmResult<String>;
 }
 
 #[cfg(feature = "llama3")]
 impl<B: burn::tensor::backend::Backend> ChainEngine for crate::engine::LlamaEngine<B> {
-    fn generate(
-        &mut self,
-        stack: &PromptStack,
-        envelope: &InferenceEnvelope,
-    ) -> LlmResult<String> {
+    fn generate(&mut self, stack: &PromptStack, envelope: &InferenceEnvelope) -> LlmResult<String> {
         let result = self.run(stack, envelope)?;
         Ok(result.text)
     }
@@ -284,12 +279,8 @@ impl<E: ChainEngine> ChainExecutor<E> {
         let mut chain = DecisionChain::new(generate_chain_id());
 
         // Step 1: Reasoning
-        let reasoning_result = self.run_reasoning_step(
-            initial_state,
-            envelope,
-            config,
-            &mut chain,
-        )?;
+        let reasoning_result =
+            self.run_reasoning_step(initial_state, envelope, config, &mut chain)?;
 
         if !reasoning_result.valid {
             chain.fail_at(DecisionStep::Reasoning);
@@ -297,21 +288,15 @@ impl<E: ChainEngine> ChainExecutor<E> {
         }
 
         // Extract signals for next step
-        let reasoning_signals = reasoning_result
-            .signals
-            .unwrap_or_else(StepSignals::empty);
+        let reasoning_signals = reasoning_result.signals.unwrap_or_else(StepSignals::empty);
 
         // Step 2: Evaluation
         let evaluation_state = initial_state
             .clone()
             .merge(&reasoning_signals.to_state_injection());
 
-        let evaluation_result = self.run_evaluation_step(
-            &evaluation_state,
-            envelope,
-            config,
-            &mut chain,
-        )?;
+        let evaluation_result =
+            self.run_evaluation_step(&evaluation_state, envelope, config, &mut chain)?;
 
         if !evaluation_result.valid {
             chain.fail_at(DecisionStep::Evaluation);
@@ -319,19 +304,13 @@ impl<E: ChainEngine> ChainExecutor<E> {
         }
 
         // Extract signals for next step
-        let evaluation_signals = evaluation_result
-            .signals
-            .unwrap_or_else(StepSignals::empty);
+        let evaluation_signals = evaluation_result.signals.unwrap_or_else(StepSignals::empty);
 
         // Step 3: Planning
         let planning_state = evaluation_state.merge(&evaluation_signals.to_state_injection());
 
-        let planning_result = self.run_planning_step(
-            &planning_state,
-            envelope,
-            config,
-            &mut chain,
-        )?;
+        let planning_result =
+            self.run_planning_step(&planning_state, envelope, config, &mut chain)?;
 
         if !planning_result.valid {
             chain.fail_at(DecisionStep::Planning);
@@ -377,21 +356,15 @@ impl<E: ChainEngine> ChainExecutor<E> {
 
         // Step 1: Reasoning
         let reasoning_step = &steps[0];
-        let reasoning_result = self.run_step_with_plan(
-            initial_state,
-            envelope,
-            reasoning_step,
-            &mut chain,
-        )?;
+        let reasoning_result =
+            self.run_step_with_plan(initial_state, envelope, reasoning_step, &mut chain)?;
 
         if !reasoning_result.valid {
             chain.fail_at(DecisionStep::Reasoning);
             return Ok(chain);
         }
 
-        let reasoning_signals = reasoning_result
-            .signals
-            .unwrap_or_else(StepSignals::empty);
+        let reasoning_signals = reasoning_result.signals.unwrap_or_else(StepSignals::empty);
 
         // Step 2: Evaluation
         let evaluation_step = &steps[1];
@@ -399,32 +372,22 @@ impl<E: ChainEngine> ChainExecutor<E> {
             .clone()
             .merge(&reasoning_signals.to_state_injection());
 
-        let evaluation_result = self.run_step_with_plan(
-            &evaluation_state,
-            envelope,
-            evaluation_step,
-            &mut chain,
-        )?;
+        let evaluation_result =
+            self.run_step_with_plan(&evaluation_state, envelope, evaluation_step, &mut chain)?;
 
         if !evaluation_result.valid {
             chain.fail_at(DecisionStep::Evaluation);
             return Ok(chain);
         }
 
-        let evaluation_signals = evaluation_result
-            .signals
-            .unwrap_or_else(StepSignals::empty);
+        let evaluation_signals = evaluation_result.signals.unwrap_or_else(StepSignals::empty);
 
         // Step 3: Planning
         let planning_step = &steps[2];
         let planning_state = evaluation_state.merge(&evaluation_signals.to_state_injection());
 
-        let planning_result = self.run_step_with_plan(
-            &planning_state,
-            envelope,
-            planning_step,
-            &mut chain,
-        )?;
+        let planning_result =
+            self.run_step_with_plan(&planning_state, envelope, planning_step, &mut chain)?;
 
         if !planning_result.valid {
             chain.fail_at(DecisionStep::Planning);
@@ -909,7 +872,11 @@ mod tests {
         let eval_output = "Score: 0.85 with high confidence";
         let signals = extract_evaluation_signals(eval_output);
         assert!(!signals.scores.is_empty());
-        assert!(signals.observations.contains(&"high_confidence".to_string()));
+        assert!(
+            signals
+                .observations
+                .contains(&"high_confidence".to_string())
+        );
     }
 
     #[test]

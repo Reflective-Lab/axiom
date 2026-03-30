@@ -8,8 +8,8 @@
 use converge_core::{Context, ContextKey, Engine, Fact};
 use converge_domain::{
     AvailabilityRetrievalAgent, ConflictDetectionAgent, RequireParticipantAvailability,
-    RequirePositiveDuration, RequireValidSlot, SlotOptimizationAgent,
-    TimeZoneNormalizationAgent, WorkingHoursConstraintAgent,
+    RequirePositiveDuration, RequireValidSlot, SlotOptimizationAgent, TimeZoneNormalizationAgent,
+    WorkingHoursConstraintAgent,
 };
 
 fn main() {

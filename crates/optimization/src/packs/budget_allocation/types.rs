@@ -21,7 +21,9 @@ impl BudgetAllocationInput {
             return Err(crate::Error::invalid_input("Total budget must be positive"));
         }
         if self.categories.is_empty() {
-            return Err(crate::Error::invalid_input("At least one category is required"));
+            return Err(crate::Error::invalid_input(
+                "At least one category is required",
+            ));
         }
 
         // Check minimum allocations don't exceed budget

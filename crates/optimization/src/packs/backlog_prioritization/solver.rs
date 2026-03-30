@@ -1,9 +1,9 @@
 //! Solver for Backlog Prioritization pack
 
 use super::types::*;
+use crate::Result;
 use crate::gate::{ProblemSpec, ReplayEnvelope, SolverReport, StopReason};
 use crate::packs::PackSolver;
-use crate::Result;
 
 /// WSJF-based solver for backlog prioritization
 ///
@@ -30,9 +30,7 @@ impl WsjfSolver {
             .collect();
 
         // Sort by WSJF descending
-        scored_items.sort_by(|a, b| {
-            b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
-        });
+        scored_items.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Apply tie-breaking for equal scores
         let _tie_break = &spec.determinism.tie_break;
@@ -95,7 +93,10 @@ impl WsjfSolver {
                         ranking_reason: if item.dependencies.is_empty() {
                             format!("WSJF score: {:.2}", wsjf)
                         } else {
-                            format!("WSJF: {:.2}, after dependencies: {:?}", wsjf, item.dependencies)
+                            format!(
+                                "WSJF: {:.2}, after dependencies: {:?}",
+                                wsjf, item.dependencies
+                            )
                         },
                     });
 
@@ -122,14 +123,20 @@ impl WsjfSolver {
                         wsjf_score: wsjf,
                         included_in_capacity: false,
                         cumulative_effort: 0,
-                        ranking_reason: format!("Dependency cycle detected: {:?}", item.dependencies),
+                        ranking_reason: format!(
+                            "Dependency cycle detected: {:?}",
+                            item.dependencies
+                        ),
                     });
                     rank += 1;
                 }
             }
         }
 
-        let included_count = ranked_items.iter().filter(|r| r.included_in_capacity).count();
+        let included_count = ranked_items
+            .iter()
+            .filter(|r| r.included_in_capacity)
+            .count();
         let excluded_count = ranked_items.len() - included_count;
 
         let output = BacklogPrioritizationOutput {
@@ -245,8 +252,18 @@ mod tests {
         let (output, _) = solver.solve_backlog(&input, &spec).unwrap();
 
         // Find positions
-        let feat1_rank = output.ranked_items.iter().find(|r| r.item_id == "feat-1").unwrap().rank;
-        let feat3_rank = output.ranked_items.iter().find(|r| r.item_id == "feat-3").unwrap().rank;
+        let feat1_rank = output
+            .ranked_items
+            .iter()
+            .find(|r| r.item_id == "feat-1")
+            .unwrap()
+            .rank;
+        let feat3_rank = output
+            .ranked_items
+            .iter()
+            .find(|r| r.item_id == "feat-3")
+            .unwrap()
+            .rank;
 
         // feat-1 must come before feat-3
         assert!(feat1_rank < feat3_rank);

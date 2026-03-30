@@ -119,8 +119,7 @@ impl CaseKnowledge {
 }
 
 /// Access pattern indicating how the knowledge is currently being used.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum AccessPattern {
     /// Currently being actively referenced.
     ActiveUse,
@@ -143,7 +142,6 @@ impl AccessPattern {
         }
     }
 }
-
 
 /// Contextual knowledge that supports understanding but isn't directly actionable.
 ///
@@ -208,8 +206,7 @@ impl BackgroundKnowledge {
 }
 
 /// How stable or permanent the knowledge is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Permanence {
     /// Always valid knowledge (math, physics, fundamental concepts).
     #[default]
@@ -236,7 +233,6 @@ impl Permanence {
         }
     }
 }
-
 
 /// Classified knowledge type.
 #[derive(Debug, Clone, Serialize, Deserialize)]

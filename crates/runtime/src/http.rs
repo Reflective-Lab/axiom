@@ -5,9 +5,9 @@
 
 //! HTTP server implementation using Axum.
 
-use axum::{Json, Router, routing::get};
 #[cfg(feature = "auth")]
 use axum::middleware::from_fn;
+use axum::{Json, Router, routing::get};
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::{compression::CompressionLayer, cors::CorsLayer, trace::TraceLayer};

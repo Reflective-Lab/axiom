@@ -2,9 +2,8 @@
 
 use converge_mcp::{
     CallToolRequest, CallToolResult, InitializeResult, JsonRpcRequest, JsonRpcResponse,
-    ListResourcesResult, ListToolsResult, ReadResourceResult, Resource,
-    ResourceContent, ServerCapabilities, ServerInfo, Tool, ToolContent,
-    server::McpRequestHandler,
+    ListResourcesResult, ListToolsResult, ReadResourceResult, Resource, ResourceContent,
+    ServerCapabilities, ServerInfo, Tool, ToolContent, server::McpRequestHandler,
 };
 
 use crate::core::{KnowledgeBase, KnowledgeEntry, SearchOptions};
@@ -414,9 +413,7 @@ impl KnowledgeHandler {
 
                 JsonRpcResponse::success(id, serde_json::to_value(result).unwrap())
             }
-            None => {
-                JsonRpcResponse::error(id, -32602, format!("Entry not found: {entry_id}"))
-            }
+            None => JsonRpcResponse::error(id, -32602, format!("Entry not found: {entry_id}")),
         }
     }
 }

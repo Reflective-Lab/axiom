@@ -52,8 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| "4096".to_string())
         .parse()
         .expect("MAX_SEQ_LEN must be a valid integer");
-    let model_variant =
-        std::env::var("MODEL_VARIANT").unwrap_or_else(|_| "llama3-8b".to_string());
+    let model_variant = std::env::var("MODEL_VARIANT").unwrap_or_else(|_| "llama3-8b".to_string());
 
     info!("converge-llm-server starting");
     info!("  bind_addr: {bind_addr}");
@@ -91,9 +90,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tls_cert = std::env::var("TLS_CERT_PATH")
         .ok()
         .filter(|v| !v.is_empty());
-    let tls_key = std::env::var("TLS_KEY_PATH")
-        .ok()
-        .filter(|v| !v.is_empty());
+    let tls_key = std::env::var("TLS_KEY_PATH").ok().filter(|v| !v.is_empty());
 
     match (&tls_cert, &tls_key) {
         (Some(cert_path), Some(key_path)) => {
@@ -110,9 +107,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .ok()
                 .filter(|v| !v.is_empty());
             if let Some(ca_path) = &client_ca {
-                let ca_pem = std::fs::read(ca_path).map_err(|e| {
-                    format!("failed to read TLS_CLIENT_CA_PATH ({ca_path}): {e}")
-                })?;
+                let ca_pem = std::fs::read(ca_path)
+                    .map_err(|e| format!("failed to read TLS_CLIENT_CA_PATH ({ca_path}): {e}"))?;
                 tls_config = tls_config.client_ca_root(Certificate::from_pem(ca_pem));
                 info!("Serving on {addr} with mTLS");
                 info!("  cert:      {cert_path}");
@@ -177,16 +173,13 @@ fn backend_name() -> &'static str {
 
 fn load_engine(
     max_seq_len: usize,
-) -> Result<
-    converge_llm::LlamaEngine<ServerBackend>,
-    Box<dyn std::error::Error>,
-> {
+) -> Result<converge_llm::LlamaEngine<ServerBackend>, Box<dyn std::error::Error>> {
     let device = burn::tensor::Device::<ServerBackend>::default();
 
     let model_path = std::env::var("MODEL_PATH")
         .expect("MODEL_PATH environment variable is required (path to model checkpoint)");
-    let tokenizer_path = std::env::var("TOKENIZER_PATH")
-        .unwrap_or_else(|_| format!("{model_path}/tokenizer.model"));
+    let tokenizer_path =
+        std::env::var("TOKENIZER_PATH").unwrap_or_else(|_| format!("{model_path}/tokenizer.model"));
 
     info!("  model_path: {model_path}");
     info!("  tokenizer_path: {tokenizer_path}");

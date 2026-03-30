@@ -335,15 +335,14 @@ impl MarkdownIngester {
                     if recursive {
                         dirs_to_process.push(path);
                     }
-                } else if file_type.is_file()
-                    && self.is_markdown_file(&path) {
-                        match self.ingest_file(&path).await {
-                            Ok(doc) => documents.push(doc),
-                            Err(e) => {
-                                warn!(path = %path.display(), error = %e, "Failed to ingest file");
-                            }
+                } else if file_type.is_file() && self.is_markdown_file(&path) {
+                    match self.ingest_file(&path).await {
+                        Ok(doc) => documents.push(doc),
+                        Err(e) => {
+                            warn!(path = %path.display(), error = %e, "Failed to ingest file");
                         }
                     }
+                }
             }
         }
 

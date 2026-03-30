@@ -5,13 +5,11 @@ use crate::gate::Violation;
 use crate::packs::{InvariantDef, InvariantResult};
 
 /// Invariant definitions for inventory rebalancing
-pub const INVARIANTS: &[InvariantDef] = &[
-    InvariantDef {
-        name: String::new(),
-        description: String::new(),
-        critical: true,
-    },
-];
+pub const INVARIANTS: &[InvariantDef] = &[InvariantDef {
+    name: String::new(),
+    description: String::new(),
+    critical: true,
+}];
 
 /// Get invariant definitions (with proper String values)
 pub fn get_invariants() -> Vec<InvariantDef> {
@@ -68,10 +66,7 @@ fn check_no_negative_inventory(output: &InventoryRebalancingOutput) -> Invariant
         let violation = Violation::new(
             invariant,
             1.0,
-            format!(
-                "Negative inventory at: {}",
-                negative_locations.join(", ")
-            ),
+            format!("Negative inventory at: {}", negative_locations.join(", ")),
         )
         .with_affected_all(negative_locations.iter().map(|s| s.to_string()));
         InvariantResult::fail(invariant, violation)
@@ -94,11 +89,7 @@ fn check_within_budget(output: &InventoryRebalancingOutput) -> InvariantResult {
     // Budget check happens in solver - if we have output, it's within budget
     // This is a validation that could be enhanced with budget info in output
     if output.total_cost < 0.0 {
-        let violation = Violation::new(
-            invariant,
-            1.0,
-            "Invalid negative cost",
-        );
+        let violation = Violation::new(invariant, 1.0, "Invalid negative cost");
         return InvariantResult::fail(invariant, violation);
     }
 
@@ -206,7 +197,11 @@ mod tests {
         let results = check_all_invariants(&output);
 
         for result in &results {
-            assert!(result.passed, "Invariant {} should pass for empty output", result.invariant);
+            assert!(
+                result.passed,
+                "Invariant {} should pass for empty output",
+                result.invariant
+            );
         }
     }
 

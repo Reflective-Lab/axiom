@@ -43,8 +43,8 @@
 //! ```
 
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 // ============================================================================
@@ -391,7 +391,8 @@ impl MetricsRecorder for InMemoryMetrics {
 
         match finish_reason {
             FinishReason::MaxTokens => {
-                self.inference_max_tokens_hits.fetch_add(1, Ordering::Relaxed);
+                self.inference_max_tokens_hits
+                    .fetch_add(1, Ordering::Relaxed);
             }
             FinishReason::Eos => {
                 self.inference_eos_hits.fetch_add(1, Ordering::Relaxed);
@@ -465,7 +466,8 @@ impl MetricsRecorder for InMemoryMetrics {
                 self.adapter_load_time_ms
                     .fetch_add(latency_ms, Ordering::Relaxed);
                 if success {
-                    self.adapter_successful_loads.fetch_add(1, Ordering::Relaxed);
+                    self.adapter_successful_loads
+                        .fetch_add(1, Ordering::Relaxed);
                 } else {
                     self.adapter_failed_loads.fetch_add(1, Ordering::Relaxed);
                 }
@@ -531,7 +533,8 @@ impl MetricsRecorder for InMemoryMetrics {
         self.inference_latency_ms.store(0, Ordering::Relaxed);
         self.inference_max_tokens_hits.store(0, Ordering::Relaxed);
         self.inference_eos_hits.store(0, Ordering::Relaxed);
-        self.inference_stop_sequence_hits.store(0, Ordering::Relaxed);
+        self.inference_stop_sequence_hits
+            .store(0, Ordering::Relaxed);
 
         self.recall_queries.store(0, Ordering::Relaxed);
         self.recall_candidates.store(0, Ordering::Relaxed);

@@ -282,7 +282,7 @@ pub struct BraveSearchProvider {
 impl std::fmt::Debug for BraveSearchProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("BraveSearchProvider")
-            .field("api_key", &self.api_key)  // SecretString redacts automatically
+            .field("api_key", &self.api_key) // SecretString redacts automatically
             .field("base_url", &self.base_url)
             .finish()
     }

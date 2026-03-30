@@ -11,7 +11,6 @@ use crate::common::{
 };
 use crate::provider_api::{LlmError, LlmProvider, LlmRequest, LlmResponse};
 
-
 /// Perplexity AI API provider.
 ///
 /// # Example

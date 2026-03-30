@@ -1,10 +1,10 @@
 //! Benchmarks for graph algorithms
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
 use converge_optimization::graph::dijkstra;
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use petgraph::graph::DiGraph;
-use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
 fn random_graph(nodes: usize, edges: usize, seed: u64) -> DiGraph<(), i64> {
     let mut rng = StdRng::seed_from_u64(seed);
@@ -31,11 +31,9 @@ fn bench_dijkstra(c: &mut Criterion) {
         let graph = random_graph(*nodes, *edges, 42);
         let source = graph.node_indices().next().unwrap();
 
-        group.bench_with_input(
-            BenchmarkId::new("nodes", nodes),
-            &graph,
-            |b, g| b.iter(|| dijkstra::dijkstra(black_box(g), source, |&w| w)),
-        );
+        group.bench_with_input(BenchmarkId::new("nodes", nodes), &graph, |b, g| {
+            b.iter(|| dijkstra::dijkstra(black_box(g), source, |&w| w))
+        });
     }
 
     group.finish();

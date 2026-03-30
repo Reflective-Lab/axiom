@@ -190,7 +190,8 @@ pub struct PromptTemplate {
 impl Default for PromptTemplate {
     fn default() -> Self {
         Self {
-            system: "You are a helpful assistant that reasons about facts and generates insights.".to_string(),
+            system: "You are a helpful assistant that reasons about facts and generates insights."
+                .to_string(),
             context_keys: vec![ContextKey::Seeds, ContextKey::Signals],
             instruction: "Based on the context above, provide your analysis.".to_string(),
         }
@@ -222,9 +223,12 @@ impl PromptTemplate {
     #[must_use]
     pub fn evaluation() -> Self {
         Self {
-            system: "You are an evaluation agent. Score and critique the proposed strategies.".to_string(),
+            system: "You are an evaluation agent. Score and critique the proposed strategies."
+                .to_string(),
             context_keys: vec![ContextKey::Hypotheses, ContextKey::Strategies],
-            instruction: "Evaluate each strategy. Assign a score from 1-10 and explain your reasoning.".to_string(),
+            instruction:
+                "Evaluate each strategy. Assign a score from 1-10 and explain your reasoning."
+                    .to_string(),
         }
     }
 }

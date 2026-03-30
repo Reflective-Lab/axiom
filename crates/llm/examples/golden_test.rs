@@ -147,7 +147,10 @@ fn run_golden_test<B: burn::tensor::backend::Backend>(
                     } else {
                         println!("  ✗ Output differs! Non-deterministic behavior detected.");
                         println!("    First:  {}", &result.text[..50.min(result.text.len())]);
-                        println!("    Second: {}", &result2.text[..50.min(result2.text.len())]);
+                        println!(
+                            "    Second: {}",
+                            &result2.text[..50.min(result2.text.len())]
+                        );
                     }
                 }
                 Err(e) => {

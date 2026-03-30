@@ -124,10 +124,7 @@ fn print_system_info() {
 
 // TinyLlama inference (smallest model, ideal for laptops)
 #[cfg(all(feature = "tiny", feature = "pretrained"))]
-fn run_inference(
-    stack: &converge_llm::PromptStack,
-    envelope: &converge_llm::InferenceEnvelope,
-) {
+fn run_inference(stack: &converge_llm::PromptStack, envelope: &converge_llm::InferenceEnvelope) {
     use converge_llm::TinyLlamaEngine;
     use std::time::Instant;
 
@@ -186,10 +183,7 @@ fn run_inference(
 
 // Llama 3 inference (larger models)
 #[cfg(all(feature = "llama3", feature = "pretrained", not(feature = "tiny")))]
-fn run_inference(
-    stack: &converge_llm::PromptStack,
-    envelope: &converge_llm::InferenceEnvelope,
-) {
+fn run_inference(stack: &converge_llm::PromptStack, envelope: &converge_llm::InferenceEnvelope) {
     use converge_llm::LlamaEngine;
     use std::time::Instant;
 
@@ -251,14 +245,13 @@ fn run_inference(
     all(feature = "tiny", feature = "pretrained"),
     all(feature = "llama3", feature = "pretrained", not(feature = "tiny"))
 )))]
-fn run_inference(
-    stack: &converge_llm::PromptStack,
-    _envelope: &converge_llm::InferenceEnvelope,
-) {
+fn run_inference(stack: &converge_llm::PromptStack, _envelope: &converge_llm::InferenceEnvelope) {
     println!("⚠️  Model loading not available with current features.");
     println!();
     println!("To run actual inference, use:");
-    println!("  cargo run --example local_inference --features \"wgpu,llama3,pretrained\" --release");
+    println!(
+        "  cargo run --example local_inference --features \"wgpu,llama3,pretrained\" --release"
+    );
     println!();
     println!("Or for quick testing with tiny model:");
     println!("  cargo run --example local_inference --features \"wgpu,tiny,pretrained\" --release");

@@ -327,8 +327,18 @@ mod tests {
         let normalizer = RecallNormalizer::new();
 
         let results = vec![
-            RawRecallResult::new("id-1", "Summary 1", 0.9, CandidateSourceType::SimilarFailure),
-            RawRecallResult::new("id-2", "Summary 2", 0.7, CandidateSourceType::SimilarSuccess),
+            RawRecallResult::new(
+                "id-1",
+                "Summary 1",
+                0.9,
+                CandidateSourceType::SimilarFailure,
+            ),
+            RawRecallResult::new(
+                "id-2",
+                "Summary 2",
+                0.7,
+                CandidateSourceType::SimilarSuccess,
+            ),
             RawRecallResult::new("id-3", "Summary 3", 0.5, CandidateSourceType::Runbook),
         ];
 
@@ -344,9 +354,24 @@ mod tests {
         let normalizer = RecallNormalizer::new();
 
         let results = vec![
-            RawRecallResult::new("id-1", "Summary 1", 0.9, CandidateSourceType::SimilarFailure),
-            RawRecallResult::new("id-2", "Summary 2", 0.8, CandidateSourceType::SimilarFailure),
-            RawRecallResult::new("id-3", "Summary 3", 0.7, CandidateSourceType::SimilarFailure),
+            RawRecallResult::new(
+                "id-1",
+                "Summary 1",
+                0.9,
+                CandidateSourceType::SimilarFailure,
+            ),
+            RawRecallResult::new(
+                "id-2",
+                "Summary 2",
+                0.8,
+                CandidateSourceType::SimilarFailure,
+            ),
+            RawRecallResult::new(
+                "id-3",
+                "Summary 3",
+                0.7,
+                CandidateSourceType::SimilarFailure,
+            ),
         ];
 
         let normalized = normalizer.normalize_batch(results, make_trace_link(), 2);
@@ -360,9 +385,24 @@ mod tests {
         let normalizer = RecallNormalizer::new();
 
         let results = vec![
-            RawRecallResult::new("id-1", "Summary 1", 0.9, CandidateSourceType::SimilarFailure),
-            RawRecallResult::new("id-2", "Summary 2", 0.8, CandidateSourceType::SimilarSuccess),
-            RawRecallResult::new("id-3", "Summary 3", 0.7, CandidateSourceType::SimilarFailure),
+            RawRecallResult::new(
+                "id-1",
+                "Summary 1",
+                0.9,
+                CandidateSourceType::SimilarFailure,
+            ),
+            RawRecallResult::new(
+                "id-2",
+                "Summary 2",
+                0.8,
+                CandidateSourceType::SimilarSuccess,
+            ),
+            RawRecallResult::new(
+                "id-3",
+                "Summary 3",
+                0.7,
+                CandidateSourceType::SimilarFailure,
+            ),
         ];
 
         let normalized = normalizer.normalize_batch(results, make_trace_link(), 10);
@@ -376,9 +416,24 @@ mod tests {
         let normalizer = RecallNormalizer::new();
 
         let results = vec![
-            RawRecallResult::new("id-1", "Summary 1", 0.9, CandidateSourceType::SimilarFailure),
-            RawRecallResult::new("id-2", "Summary 2", 0.6, CandidateSourceType::SimilarFailure),
-            RawRecallResult::new("id-3", "Summary 3", 0.3, CandidateSourceType::SimilarFailure),
+            RawRecallResult::new(
+                "id-1",
+                "Summary 1",
+                0.9,
+                CandidateSourceType::SimilarFailure,
+            ),
+            RawRecallResult::new(
+                "id-2",
+                "Summary 2",
+                0.6,
+                CandidateSourceType::SimilarFailure,
+            ),
+            RawRecallResult::new(
+                "id-3",
+                "Summary 3",
+                0.3,
+                CandidateSourceType::SimilarFailure,
+            ),
         ];
 
         let normalized = normalizer.normalize_batch(results, make_trace_link(), 10);

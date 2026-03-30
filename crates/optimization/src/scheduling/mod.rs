@@ -147,10 +147,7 @@ pub fn list_schedule(problem: &SchedulingProblem) -> Result<SchedulingSolution> 
         }
     }
 
-    let makespan = schedule.iter()
-        .map(|s| s.end())
-        .max()
-        .unwrap_or(0);
+    let makespan = schedule.iter().map(|s| s.end()).max().unwrap_or(0);
 
     Ok(SchedulingSolution { schedule, makespan })
 }

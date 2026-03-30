@@ -1,9 +1,9 @@
 //! Benchmarks for assignment algorithms
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use converge_optimization::assignment::{AssignmentProblem, hungarian, auction};
-use rand::{Rng, SeedableRng};
+use converge_optimization::assignment::{AssignmentProblem, auction, hungarian};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
 fn random_costs(n: usize, seed: u64) -> Vec<Vec<i64>> {
     let mut rng = StdRng::seed_from_u64(seed);
@@ -19,11 +19,9 @@ fn bench_hungarian(c: &mut Criterion) {
         let costs = random_costs(*size, 42);
         let problem = AssignmentProblem::from_costs(costs);
 
-        group.bench_with_input(
-            BenchmarkId::from_parameter(size),
-            &problem,
-            |b, p| b.iter(|| hungarian::solve(black_box(p))),
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(size), &problem, |b, p| {
+            b.iter(|| hungarian::solve(black_box(p)))
+        });
     }
 
     group.finish();
@@ -36,11 +34,9 @@ fn bench_auction(c: &mut Criterion) {
         let costs = random_costs(*size, 42);
         let problem = AssignmentProblem::from_costs(costs);
 
-        group.bench_with_input(
-            BenchmarkId::from_parameter(size),
-            &problem,
-            |b, p| b.iter(|| auction::solve(black_box(p))),
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(size), &problem, |b, p| {
+            b.iter(|| auction::solve(black_box(p)))
+        });
     }
 
     group.finish();

@@ -19,10 +19,7 @@ pub fn get_invariants() -> Vec<InvariantDef> {
             "competitive_position",
             "Pricing should achieve competitive positioning goals",
         ),
-        InvariantDef::advisory(
-            "price_stability",
-            "Price changes should be reasonable",
-        ),
+        InvariantDef::advisory("price_stability", "Price changes should be reasonable"),
     ]
 }
 
@@ -92,7 +89,10 @@ fn check_within_bounds(output: &PricingGuardrailsOutput) -> InvariantResult {
         let violation = Violation::new(
             invariant,
             1.0,
-            format!("Products outside price bounds: {}", out_of_bounds.join(", ")),
+            format!(
+                "Products outside price bounds: {}",
+                out_of_bounds.join(", ")
+            ),
         );
         InvariantResult::fail(invariant, violation)
     }
@@ -278,12 +278,14 @@ mod tests {
         let result = check_price_stability(&output);
         assert!(!result.passed);
         assert!(result.violation.as_ref().unwrap().severity < 1.0); // Advisory
-        assert!(result
-            .violation
-            .as_ref()
-            .unwrap()
-            .explanation
-            .contains("Large price changes"));
+        assert!(
+            result
+                .violation
+                .as_ref()
+                .unwrap()
+                .explanation
+                .contains("Large price changes")
+        );
     }
 
     #[test]
@@ -301,10 +303,16 @@ mod tests {
         let results = check_all_invariants(&output);
 
         // Most invariants should pass with empty data
-        let margin_result = results.iter().find(|r| r.invariant == "margin_maintained").unwrap();
+        let margin_result = results
+            .iter()
+            .find(|r| r.invariant == "margin_maintained")
+            .unwrap();
         assert!(margin_result.passed);
 
-        let bounds_result = results.iter().find(|r| r.invariant == "within_bounds").unwrap();
+        let bounds_result = results
+            .iter()
+            .find(|r| r.invariant == "within_bounds")
+            .unwrap();
         assert!(bounds_result.passed);
     }
 
@@ -315,19 +323,31 @@ mod tests {
         assert_eq!(invariants.len(), 4);
 
         // Check margin_maintained is critical
-        let margin_inv = invariants.iter().find(|i| i.name == "margin_maintained").unwrap();
+        let margin_inv = invariants
+            .iter()
+            .find(|i| i.name == "margin_maintained")
+            .unwrap();
         assert!(margin_inv.critical);
 
         // Check within_bounds is critical
-        let bounds_inv = invariants.iter().find(|i| i.name == "within_bounds").unwrap();
+        let bounds_inv = invariants
+            .iter()
+            .find(|i| i.name == "within_bounds")
+            .unwrap();
         assert!(bounds_inv.critical);
 
         // Check competitive_position is advisory
-        let comp_inv = invariants.iter().find(|i| i.name == "competitive_position").unwrap();
+        let comp_inv = invariants
+            .iter()
+            .find(|i| i.name == "competitive_position")
+            .unwrap();
         assert!(!comp_inv.critical);
 
         // Check price_stability is advisory
-        let stability_inv = invariants.iter().find(|i| i.name == "price_stability").unwrap();
+        let stability_inv = invariants
+            .iter()
+            .find(|i| i.name == "price_stability")
+            .unwrap();
         assert!(!stability_inv.critical);
     }
 }

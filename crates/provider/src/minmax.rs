@@ -11,7 +11,6 @@ use crate::common::{
 };
 use crate::provider_api::{LlmError, LlmProvider, LlmRequest, LlmResponse};
 
-
 /// `MinMax` AI API provider.
 ///
 /// # Example

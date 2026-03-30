@@ -229,7 +229,10 @@ impl Violation {
     }
 
     /// Add multiple affected entities
-    pub fn with_affected_all(mut self, entities: impl IntoIterator<Item = impl Into<String>>) -> Self {
+    pub fn with_affected_all(
+        mut self,
+        entities: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
         for e in entities {
             self.affected_entities.push(e.into());
         }

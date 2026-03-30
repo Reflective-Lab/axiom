@@ -33,8 +33,8 @@ use std::collections::HashMap;
 // Re-export governance types from converge-core for backward compatibility
 // These are the portable, capability-agnostic governance semantics
 pub use converge_core::governed_artifact::{
-    GovernedArtifactState, InvalidStateTransition, LifecycleEvent,
-    RollbackImpact, RollbackSeverity, validate_transition,
+    GovernedArtifactState, InvalidStateTransition, LifecycleEvent, RollbackImpact,
+    RollbackSeverity, validate_transition,
 };
 
 // ============================================================================
@@ -289,9 +289,9 @@ impl AdapterId {
             .ok_or_else(|| LlmError::AdapterError("Missing '/' in adapter ID".to_string()))?;
 
         // Split version_hash by '+sha256:' to get version and hash
-        let (version, hash) = version_hash
-            .split_once("+sha256:")
-            .ok_or_else(|| LlmError::AdapterError("Missing '+sha256:' in adapter ID".to_string()))?;
+        let (version, hash) = version_hash.split_once("+sha256:").ok_or_else(|| {
+            LlmError::AdapterError("Missing '+sha256:' in adapter ID".to_string())
+        })?;
 
         Ok(Self {
             namespace: namespace.to_string(),
@@ -769,24 +769,32 @@ mod tests {
         };
 
         // Compatible
-        assert!(manifest
-            .validate_compatibility("llama3", "tok123", 8192)
-            .is_ok());
+        assert!(
+            manifest
+                .validate_compatibility("llama3", "tok123", 8192)
+                .is_ok()
+        );
 
         // Model family mismatch
-        assert!(manifest
-            .validate_compatibility("llama2", "tok123", 8192)
-            .is_err());
+        assert!(
+            manifest
+                .validate_compatibility("llama2", "tok123", 8192)
+                .is_err()
+        );
 
         // Tokenizer mismatch
-        assert!(manifest
-            .validate_compatibility("llama3", "different", 8192)
-            .is_err());
+        assert!(
+            manifest
+                .validate_compatibility("llama3", "different", 8192)
+                .is_err()
+        );
 
         // Context too small
-        assert!(manifest
-            .validate_compatibility("llama3", "tok123", 2048)
-            .is_err());
+        assert!(
+            manifest
+                .validate_compatibility("llama3", "tok123", 2048)
+                .is_err()
+        );
     }
 
     #[test]
@@ -838,14 +846,18 @@ mod tests {
         };
 
         // Full precision adapter on full precision model - OK
-        assert!(manifest
-            .validate_compatibility_strict("llama3", "tok123", 8192, None, None)
-            .is_ok());
+        assert!(
+            manifest
+                .validate_compatibility_strict("llama3", "tok123", 8192, None, None)
+                .is_ok()
+        );
 
         // Full precision adapter on quantized model - OK (with warning)
-        assert!(manifest
-            .validate_compatibility_strict("llama3", "tok123", 8192, Some("int8"), None)
-            .is_ok());
+        assert!(
+            manifest
+                .validate_compatibility_strict("llama3", "tok123", 8192, Some("int8"), None)
+                .is_ok()
+        );
 
         // Now test quantized adapter
         let quant_manifest = AdapterManifest {
@@ -854,19 +866,25 @@ mod tests {
         };
 
         // Quantized adapter on full precision model - ERROR
-        assert!(quant_manifest
-            .validate_compatibility_strict("llama3", "tok123", 8192, None, None)
-            .is_err());
+        assert!(
+            quant_manifest
+                .validate_compatibility_strict("llama3", "tok123", 8192, None, None)
+                .is_err()
+        );
 
         // Quantized adapter on matching quantized model - OK
-        assert!(quant_manifest
-            .validate_compatibility_strict("llama3", "tok123", 8192, Some("int8"), None)
-            .is_ok());
+        assert!(
+            quant_manifest
+                .validate_compatibility_strict("llama3", "tok123", 8192, Some("int8"), None)
+                .is_ok()
+        );
 
         // Quantized adapter on different quantized model - ERROR
-        assert!(quant_manifest
-            .validate_compatibility_strict("llama3", "tok123", 8192, Some("int4"), None)
-            .is_err());
+        assert!(
+            quant_manifest
+                .validate_compatibility_strict("llama3", "tok123", 8192, Some("int4"), None)
+                .is_err()
+        );
     }
 
     #[test]
@@ -891,19 +909,25 @@ mod tests {
         };
 
         // Matching base model hash - OK
-        assert!(manifest
-            .validate_compatibility_strict("llama3", "tok123", 8192, None, Some("expected123"))
-            .is_ok());
+        assert!(
+            manifest
+                .validate_compatibility_strict("llama3", "tok123", 8192, None, Some("expected123"))
+                .is_ok()
+        );
 
         // Mismatched base model hash - ERROR
-        assert!(manifest
-            .validate_compatibility_strict("llama3", "tok123", 8192, None, Some("different456"))
-            .is_err());
+        assert!(
+            manifest
+                .validate_compatibility_strict("llama3", "tok123", 8192, None, Some("different456"))
+                .is_err()
+        );
 
         // No base model hash provided - OK (can't verify)
-        assert!(manifest
-            .validate_compatibility_strict("llama3", "tok123", 8192, None, None)
-            .is_ok());
+        assert!(
+            manifest
+                .validate_compatibility_strict("llama3", "tok123", 8192, None, None)
+                .is_ok()
+        );
     }
 
     #[test]
@@ -940,13 +964,21 @@ mod tests {
         expected_shapes.insert("v_proj".to_string(), (64, 64));
 
         // Matching shapes - OK
-        assert!(manifest.validate_layer_shapes(&weights, &expected_shapes).is_ok());
+        assert!(
+            manifest
+                .validate_layer_shapes(&weights, &expected_shapes)
+                .is_ok()
+        );
 
         // Wrong expected shape
         let mut wrong_shapes = std::collections::HashMap::new();
         wrong_shapes.insert("q_proj".to_string(), (128, 64)); // Wrong input dim
 
-        assert!(manifest.validate_layer_shapes(&weights, &wrong_shapes).is_err());
+        assert!(
+            manifest
+                .validate_layer_shapes(&weights, &wrong_shapes)
+                .is_err()
+        );
     }
 
     // ========================================================================
@@ -976,7 +1008,10 @@ mod tests {
 
     #[test]
     fn test_lifecycle_state_default() {
-        assert_eq!(GovernedArtifactState::default(), GovernedArtifactState::Draft);
+        assert_eq!(
+            GovernedArtifactState::default(),
+            GovernedArtifactState::Draft
+        );
     }
 
     #[test]
@@ -1000,28 +1035,85 @@ mod tests {
     #[test]
     fn test_lifecycle_valid_transitions() {
         // Draft → Approved
-        assert!(validate_transition(GovernedArtifactState::Draft, GovernedArtifactState::Approved).is_ok());
+        assert!(
+            validate_transition(
+                GovernedArtifactState::Draft,
+                GovernedArtifactState::Approved
+            )
+            .is_ok()
+        );
         // Draft → Deprecated (abandoned)
-        assert!(validate_transition(GovernedArtifactState::Draft, GovernedArtifactState::Deprecated).is_ok());
+        assert!(
+            validate_transition(
+                GovernedArtifactState::Draft,
+                GovernedArtifactState::Deprecated
+            )
+            .is_ok()
+        );
         // Approved → Active
-        assert!(validate_transition(GovernedArtifactState::Approved, GovernedArtifactState::Active).is_ok());
+        assert!(
+            validate_transition(
+                GovernedArtifactState::Approved,
+                GovernedArtifactState::Active
+            )
+            .is_ok()
+        );
         // Approved → RolledBack
-        assert!(validate_transition(GovernedArtifactState::Approved, GovernedArtifactState::RolledBack).is_ok());
+        assert!(
+            validate_transition(
+                GovernedArtifactState::Approved,
+                GovernedArtifactState::RolledBack
+            )
+            .is_ok()
+        );
         // Active → Deprecated
-        assert!(validate_transition(GovernedArtifactState::Active, GovernedArtifactState::Deprecated).is_ok());
+        assert!(
+            validate_transition(
+                GovernedArtifactState::Active,
+                GovernedArtifactState::Deprecated
+            )
+            .is_ok()
+        );
         // Active → RolledBack
-        assert!(validate_transition(GovernedArtifactState::Active, GovernedArtifactState::RolledBack).is_ok());
+        assert!(
+            validate_transition(
+                GovernedArtifactState::Active,
+                GovernedArtifactState::RolledBack
+            )
+            .is_ok()
+        );
     }
 
     #[test]
     fn test_lifecycle_invalid_transitions() {
         // Cannot skip states
-        assert!(validate_transition(GovernedArtifactState::Draft, GovernedArtifactState::Active).is_err());
+        assert!(
+            validate_transition(GovernedArtifactState::Draft, GovernedArtifactState::Active)
+                .is_err()
+        );
         // Cannot go backwards
-        assert!(validate_transition(GovernedArtifactState::Active, GovernedArtifactState::Approved).is_err());
+        assert!(
+            validate_transition(
+                GovernedArtifactState::Active,
+                GovernedArtifactState::Approved
+            )
+            .is_err()
+        );
         // Cannot transition from terminal states
-        assert!(validate_transition(GovernedArtifactState::Deprecated, GovernedArtifactState::Active).is_err());
-        assert!(validate_transition(GovernedArtifactState::RolledBack, GovernedArtifactState::Draft).is_err());
+        assert!(
+            validate_transition(
+                GovernedArtifactState::Deprecated,
+                GovernedArtifactState::Active
+            )
+            .is_err()
+        );
+        assert!(
+            validate_transition(
+                GovernedArtifactState::RolledBack,
+                GovernedArtifactState::Draft
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -1033,13 +1125,17 @@ mod tests {
         assert!(!record.can_use_in_production());
 
         // Approve
-        record.approve("reviewer@example.com", "Passed quality review").unwrap();
+        record
+            .approve("reviewer@example.com", "Passed quality review")
+            .unwrap();
         assert_eq!(record.state, GovernedArtifactState::Approved);
         assert!(record.can_use_in_production());
         assert_eq!(record.lifecycle_events.len(), 1);
 
         // Activate
-        record.activate("deploy-system", "Production deployment v1.0").unwrap();
+        record
+            .activate("deploy-system", "Production deployment v1.0")
+            .unwrap();
         assert_eq!(record.state, GovernedArtifactState::Active);
         assert!(record.can_use_in_production());
         assert_eq!(record.lifecycle_events.len(), 2);
@@ -1068,12 +1164,14 @@ mod tests {
             affected_tenants: vec![],
         };
 
-        record.rollback(
-            "incident-commander@example.com",
-            "Grounding failure detected in production",
-            impact,
-            Some("merge-hash-abc123".to_string()),
-        ).unwrap();
+        record
+            .rollback(
+                "incident-commander@example.com",
+                "Grounding failure detected in production",
+                impact,
+                Some("merge-hash-abc123".to_string()),
+            )
+            .unwrap();
 
         assert_eq!(record.state, GovernedArtifactState::RolledBack);
         assert!(record.was_rolled_back());
@@ -1086,7 +1184,10 @@ mod tests {
         let rollback = record.rollback.as_ref().unwrap();
         assert_eq!(rollback.previous_state, GovernedArtifactState::Active);
         assert_eq!(rollback.impact.severity, RollbackSeverity::High);
-        assert_eq!(rollback.active_merge_hash, Some("merge-hash-abc123".to_string()));
+        assert_eq!(
+            rollback.active_merge_hash,
+            Some("merge-hash-abc123".to_string())
+        );
     }
 
     #[test]
@@ -1103,8 +1204,12 @@ mod tests {
     fn test_lifecycle_event_audit_trail() {
         let mut record = AdapterRecord::new(test_manifest());
 
-        record.approve("alice@example.com", "Initial review complete").unwrap();
-        record.activate("deploy-bot", "Canary deployment successful").unwrap();
+        record
+            .approve("alice@example.com", "Initial review complete")
+            .unwrap();
+        record
+            .activate("deploy-bot", "Canary deployment successful")
+            .unwrap();
 
         // Verify audit trail
         assert_eq!(record.lifecycle_events.len(), 2);

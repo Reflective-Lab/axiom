@@ -214,7 +214,8 @@ impl DeterminismContract {
                         }
                     }
                     DeterminismVerdict::Failed {
-                        reason: "Hash mismatch with identical elements (floating-point edge case)".to_string(),
+                        reason: "Hash mismatch with identical elements (floating-point edge case)"
+                            .to_string(),
                     }
                 }
             }
@@ -410,11 +411,7 @@ impl EmbeddingResult {
     #[must_use]
     pub fn embedding_hash(&self) -> String {
         // Convert to little-endian bytes
-        let bytes: Vec<u8> = self
-            .vector
-            .iter()
-            .flat_map(|f| f.to_le_bytes())
-            .collect();
+        let bytes: Vec<u8> = self.vector.iter().flat_map(|f| f.to_le_bytes()).collect();
 
         let hash = blake3::hash(&bytes);
         hash.to_hex().to_string()
@@ -591,8 +588,14 @@ mod tests {
     #[test]
     fn test_determinism_level_display() {
         assert_eq!(format!("{}", DeterminismLevel::BitExact), "bit-exact");
-        assert_eq!(format!("{}", DeterminismLevel::SamePlatform), "same-platform");
-        assert_eq!(format!("{}", DeterminismLevel::ToleranceBased), "tolerance-based");
+        assert_eq!(
+            format!("{}", DeterminismLevel::SamePlatform),
+            "same-platform"
+        );
+        assert_eq!(
+            format!("{}", DeterminismLevel::ToleranceBased),
+            "tolerance-based"
+        );
         assert_eq!(format!("{}", DeterminismLevel::AuditOnly), "audit-only");
     }
 

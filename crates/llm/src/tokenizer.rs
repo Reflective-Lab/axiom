@@ -96,7 +96,12 @@ impl Tokenizer {
     /// # Errors
     ///
     /// Returns an error if tokenization fails.
-    pub fn encode_with_special(&self, text: &str, add_bos: bool, add_eos: bool) -> LlmResult<Vec<u32>> {
+    pub fn encode_with_special(
+        &self,
+        text: &str,
+        add_bos: bool,
+        add_eos: bool,
+    ) -> LlmResult<Vec<u32>> {
         let mut tokens = Vec::new();
 
         if add_bos {
@@ -139,7 +144,7 @@ impl Tokenizer {
     #[must_use]
     pub fn vocab_size(&self) -> usize {
         match self.config.tokenizer_type {
-            TokenizerType::Tiktoken => 128256, // Llama 3 vocab size
+            TokenizerType::Tiktoken => 128256,     // Llama 3 vocab size
             TokenizerType::SentencePiece => 32000, // Llama 2 default
         }
     }

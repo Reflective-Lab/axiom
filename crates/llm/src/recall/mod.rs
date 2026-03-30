@@ -53,10 +53,14 @@ mod provider_persistent;
 // Core types (always available)
 pub use corpus::{CorpusFingerprint, CorpusFingerprintBuilder, TenantPolicy};
 pub use embedder::{
-    // Embedder trait and result types
-    Embedder, EmbedderSettings, EmbeddingResult,
     // Determinism contract types
-    DeterminismContract, DeterminismLevel, DeterminismVerdict,
+    DeterminismContract,
+    DeterminismLevel,
+    DeterminismVerdict,
+    // Embedder trait and result types
+    Embedder,
+    EmbedderSettings,
+    EmbeddingResult,
 };
 pub use embedder_hash::HashEmbedder;
 
@@ -65,19 +69,34 @@ pub use embedder_hash::HashEmbedder;
 pub use embedder_semantic::SemanticEmbedder;
 
 // Persistent provider (requires persistent-recall feature)
-#[cfg(feature = "persistent-recall")]
-pub use provider_persistent::{
-    CorpusMetadata, PersistentRecallProvider, RecallFilter,
-};
 pub use normalizer::{NormalizedRecall, RawRecallResult, RecallNormalizer};
-pub use pii::{canonicalize_for_embedding, contains_pii, count_pii_patterns, embedding_input_hash, redact_pii};
+pub use pii::{
+    canonicalize_for_embedding, contains_pii, count_pii_patterns, embedding_input_hash, redact_pii,
+};
 pub use provider::{MockRecallProvider, RecallProvider, RecallResponse};
+#[cfg(feature = "persistent-recall")]
+pub use provider_persistent::{CorpusMetadata, PersistentRecallProvider, RecallFilter};
 pub use types::{
-    CandidateScore, CandidateSourceType, DecisionOutcome, DecisionRecord, RecallBudgets,
-    RecallCandidate, RecallConfig, RecallContext, RecallHint, RecallPerStep, RecallPolicy,
-    RecallProvenanceEnvelope, RecallQuery, RecallTraceLink, RecallTrigger, StopReason,
+    CandidateScore,
+    CandidateSourceType,
+    DecisionOutcome,
+    DecisionRecord,
+    RecallBudgets,
+    RecallCandidate,
+    RecallConfig,
+    RecallConsumer,
+    RecallContext,
+    RecallHint,
+    RecallPerStep,
+    RecallPolicy,
+    RecallProvenanceEnvelope,
+    RecallQuery,
+    RecallTraceLink,
+    RecallTrigger,
     // Recall Use/Consumer types (Recall ≠ Training boundary)
-    RecallUse, RecallConsumer, recall_use_allowed,
+    RecallUse,
+    StopReason,
+    recall_use_allowed,
 };
 
 #[cfg(test)]

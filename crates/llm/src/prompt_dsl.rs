@@ -312,13 +312,11 @@ mod tests {
         let mut ctx = PromptContext::new();
         ctx.add_facts(
             ContextKey::Signals,
-            vec![
-                Fact {
-                    key: ContextKey::Signals,
-                    id: "s1".to_string(),
-                    content: "Revenue +15% Q3".to_string(),
-                },
-            ],
+            vec![Fact {
+                key: ContextKey::Signals,
+                id: "s1".to_string(),
+                content: "Revenue +15% Q3".to_string(),
+            }],
         );
 
         let prompt = AgentPrompt::new(

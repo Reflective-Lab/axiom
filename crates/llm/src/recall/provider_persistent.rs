@@ -113,11 +113,7 @@ impl RecallFilter {
 
     /// Filter by time window.
     #[must_use]
-    pub fn with_time_window(
-        mut self,
-        start: impl Into<String>,
-        end: impl Into<String>,
-    ) -> Self {
+    pub fn with_time_window(mut self, start: impl Into<String>, end: impl Into<String>) -> Self {
         self.time_start = Some(start.into());
         self.time_end = Some(end.into());
         self
@@ -259,7 +255,9 @@ impl StoredRecord {
     ) -> Self {
         let source_type = match record.outcome {
             DecisionOutcome::Success => CandidateSourceType::SimilarSuccess,
-            DecisionOutcome::Failure | DecisionOutcome::Partial => CandidateSourceType::SimilarFailure,
+            DecisionOutcome::Failure | DecisionOutcome::Partial => {
+                CandidateSourceType::SimilarFailure
+            }
         };
 
         Self {
@@ -607,11 +605,9 @@ impl<E: Embedder> PersistentRecallProvider<E> {
         let candidates_searched = scored.len();
 
         // Sort by score descending, then by ID ascending (deterministic tie-breaker)
-        scored.sort_by(|a, b| {
-            match b.0.partial_cmp(&a.0) {
-                Some(std::cmp::Ordering::Equal) | None => a.1.id.cmp(&b.1.id),
-                Some(ord) => ord,
-            }
+        scored.sort_by(|a, b| match b.0.partial_cmp(&a.0) {
+            Some(std::cmp::Ordering::Equal) | None => a.1.id.cmp(&b.1.id),
+            Some(ord) => ord,
         });
 
         // Take top_k
@@ -1102,7 +1098,10 @@ mod tests {
         let query = RecallQuery::new("Test", 5);
         let response = provider.recall(&query).unwrap();
 
-        assert!(response.candidates.is_empty(), "Should return no candidates");
+        assert!(
+            response.candidates.is_empty(),
+            "Should return no candidates"
+        );
         assert_eq!(
             response.stop_reason,
             Some(StopReason::TenantScopeMissing),

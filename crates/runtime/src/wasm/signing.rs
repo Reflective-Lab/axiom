@@ -174,12 +174,10 @@ pub fn verify_module(
     }
 
     // 4. Parse and verify the ed25519 signature
-    let sig_bytes = hex::decode(&signature.signature_hex).map_err(|_| {
-        WasmError::SignatureInvalid("signature hex is malformed".to_string())
-    })?;
-    let sig = Signature::from_slice(&sig_bytes).map_err(|_| {
-        WasmError::SignatureInvalid("invalid ed25519 signature bytes".to_string())
-    })?;
+    let sig_bytes = hex::decode(&signature.signature_hex)
+        .map_err(|_| WasmError::SignatureInvalid("signature hex is malformed".to_string()))?;
+    let sig = Signature::from_slice(&sig_bytes)
+        .map_err(|_| WasmError::SignatureInvalid("invalid ed25519 signature bytes".to_string()))?;
 
     signer_key.verify(&actual_digest, &sig).map_err(|_| {
         WasmError::SignatureInvalid("ed25519 signature verification failed".to_string())

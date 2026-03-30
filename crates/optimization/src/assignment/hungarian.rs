@@ -19,7 +19,11 @@ use std::time::Instant;
 pub struct HungarianSolver;
 
 impl AssignmentSolver for HungarianSolver {
-    fn solve(&self, problem: &AssignmentProblem, params: &SolverParams) -> Result<AssignmentSolution> {
+    fn solve(
+        &self,
+        problem: &AssignmentProblem,
+        params: &SolverParams,
+    ) -> Result<AssignmentSolution> {
         solve_hungarian(problem, params)
     }
 
@@ -33,7 +37,10 @@ pub fn solve(problem: &AssignmentProblem) -> Result<AssignmentSolution> {
     solve_hungarian(problem, &SolverParams::default())
 }
 
-fn solve_hungarian(problem: &AssignmentProblem, params: &SolverParams) -> Result<AssignmentSolution> {
+fn solve_hungarian(
+    problem: &AssignmentProblem,
+    params: &SolverParams,
+) -> Result<AssignmentSolution> {
     let start = Instant::now();
 
     let n = problem.num_agents;
@@ -48,7 +55,9 @@ fn solve_hungarian(problem: &AssignmentProblem, params: &SolverParams) -> Result
     let mut cost = vec![vec![0i64; size]; size];
 
     // Copy costs (use large value for padding)
-    let large = problem.costs.iter()
+    let large = problem
+        .costs
+        .iter()
         .flat_map(|row| row.iter())
         .max()
         .copied()
@@ -172,11 +181,8 @@ mod tests {
 
     #[test]
     fn test_3x3() {
-        let problem = AssignmentProblem::from_costs(vec![
-            vec![10, 5, 13],
-            vec![3, 9, 18],
-            vec![14, 8, 7],
-        ]);
+        let problem =
+            AssignmentProblem::from_costs(vec![vec![10, 5, 13], vec![3, 9, 18], vec![14, 8, 7]]);
         let solution = solve(&problem).unwrap();
         assert_eq!(solution.total_cost, 15);
         assert_eq!(solution.status, SolverStatus::Optimal);
@@ -192,10 +198,7 @@ mod tests {
 
     #[test]
     fn test_2x2() {
-        let problem = AssignmentProblem::from_costs(vec![
-            vec![1, 2],
-            vec![3, 4],
-        ]);
+        let problem = AssignmentProblem::from_costs(vec![vec![1, 2], vec![3, 4]]);
         let solution = solve(&problem).unwrap();
         // Optimal: (0,0)=1 + (1,1)=4 = 5, or (0,1)=2 + (1,0)=3 = 5
         assert_eq!(solution.total_cost, 5);
@@ -203,10 +206,7 @@ mod tests {
 
     #[test]
     fn test_negative_costs() {
-        let problem = AssignmentProblem::from_costs(vec![
-            vec![-1, -2],
-            vec![-3, -4],
-        ]);
+        let problem = AssignmentProblem::from_costs(vec![vec![-1, -2], vec![-3, -4]]);
         let solution = solve(&problem).unwrap();
         // Optimal: minimize -> most negative = -1 + -4 = -5 or -2 + -3 = -5
         assert_eq!(solution.total_cost, -5);

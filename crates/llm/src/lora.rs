@@ -491,7 +491,8 @@ mod tests {
         let lora_config = LoraConfig::default();
         let lora = LoraLinear::new(base, &lora_config, &device);
 
-        let input: Tensor<TestBackend, 2> = Tensor::random([4, 64], Distribution::Normal(0.0, 1.0), &device);
+        let input: Tensor<TestBackend, 2> =
+            Tensor::random([4, 64], Distribution::Normal(0.0, 1.0), &device);
         let output = lora.forward(input);
 
         assert_eq!(output.dims(), [4, 32]);
@@ -522,7 +523,8 @@ mod tests {
         let lora_config = LoraConfig::default();
         let mut lora = LoraLinear::new(base, &lora_config, &device);
 
-        let input: Tensor<TestBackend, 2> = Tensor::random([4, 64], Distribution::Normal(0.0, 1.0), &device);
+        let input: Tensor<TestBackend, 2> =
+            Tensor::random([4, 64], Distribution::Normal(0.0, 1.0), &device);
 
         // Get output with LoRA enabled
         let output_enabled = lora.forward(input.clone());

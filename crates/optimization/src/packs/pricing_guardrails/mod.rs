@@ -22,17 +22,17 @@
 //! 3. Enforce price bounds (guardrails)
 //! 4. Generate recommendations with compliance analysis
 
-mod types;
-mod solver;
 mod invariants;
+mod solver;
+mod types;
 
-pub use types::*;
-pub use solver::*;
 pub use invariants::*;
+pub use solver::*;
+pub use types::*;
 
-use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
-use crate::packs::{default_gate_evaluation, InvariantDef, InvariantResult, Pack, PackSolveResult};
 use crate::Result;
+use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
+use crate::packs::{InvariantDef, InvariantResult, Pack, PackSolveResult, default_gate_evaluation};
 
 /// Pricing Guardrails Pack
 pub struct PricingGuardrailsPack;
@@ -134,13 +134,11 @@ mod tests {
                         min_price: 90.0,
                         max_price: 150.0,
                     }),
-                    competitor_prices: vec![
-                        CompetitorPrice {
-                            competitor_id: "comp1".to_string(),
-                            price: 110.0,
-                            as_of_date: None,
-                        },
-                    ],
+                    competitor_prices: vec![CompetitorPrice {
+                        competitor_id: "comp1".to_string(),
+                        price: 110.0,
+                        as_of_date: None,
+                    }],
                     category: Some("widgets".to_string()),
                 },
                 Product {
@@ -196,7 +194,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-001", "test-tenant")
             .objective(ObjectiveSpec::maximize("margin"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -216,7 +215,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-002", "test-tenant")
             .objective(ObjectiveSpec::maximize("margin"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -235,7 +235,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-003", "test-tenant")
             .objective(ObjectiveSpec::maximize("margin"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -255,14 +256,16 @@ mod tests {
 
         let spec1 = ProblemSpec::builder("test-a", "tenant")
             .objective(ObjectiveSpec::maximize("margin"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(99999)
             .build()
             .unwrap();
 
         let spec2 = ProblemSpec::builder("test-b", "tenant")
             .objective(ObjectiveSpec::maximize("margin"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(99999)
             .build()
             .unwrap();
@@ -274,7 +277,11 @@ mod tests {
         let output2: PricingGuardrailsOutput = result2.plan.plan_as().unwrap();
 
         assert_eq!(output1.recommendations.len(), output2.recommendations.len());
-        for (r1, r2) in output1.recommendations.iter().zip(output2.recommendations.iter()) {
+        for (r1, r2) in output1
+            .recommendations
+            .iter()
+            .zip(output2.recommendations.iter())
+        {
             assert_eq!(r1.product_id, r2.product_id);
             assert!((r1.recommended_price - r2.recommended_price).abs() < 0.01);
         }
@@ -290,7 +297,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-margin", "test-tenant")
             .objective(ObjectiveSpec::maximize("margin"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -324,7 +332,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-bounds", "test-tenant")
             .objective(ObjectiveSpec::maximize("margin"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();
@@ -346,7 +355,8 @@ mod tests {
 
         let spec = ProblemSpec::builder("test-competitive", "test-tenant")
             .objective(ObjectiveSpec::maximize("margin"))
-            .inputs(&input).unwrap()
+            .inputs(&input)
+            .unwrap()
             .seed(42)
             .build()
             .unwrap();

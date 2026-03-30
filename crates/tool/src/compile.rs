@@ -199,8 +199,8 @@ impl WasmCompiler {
         let source_hash = content_hash(content.as_bytes());
 
         // Parse Gherkin
-        let document =
-            parse_truth_document(&content).map_err(|e| CompileError::GherkinParse(e.to_string()))?;
+        let document = parse_truth_document(&content)
+            .map_err(|e| CompileError::GherkinParse(e.to_string()))?;
         let feature = gherkin::Feature::parse(&document.gherkin, gherkin::GherkinEnv::default())
             .map_err(|e| CompileError::GherkinParse(format!("{e}")))?;
 

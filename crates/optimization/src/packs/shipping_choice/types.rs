@@ -18,7 +18,9 @@ impl ShippingChoiceInput {
     /// Validate the input
     pub fn validate(&self) -> Result<()> {
         if self.carriers.is_empty() {
-            return Err(crate::Error::invalid_input("At least one carrier is required"));
+            return Err(crate::Error::invalid_input(
+                "At least one carrier is required",
+            ));
         }
         if self.sla_days <= 0 {
             return Err(crate::Error::invalid_input("SLA days must be positive"));
@@ -31,7 +33,9 @@ impl ShippingChoiceInput {
 
     /// Get carriers that meet the SLA requirement
     pub fn carriers_meeting_sla(&self) -> impl Iterator<Item = &CarrierOption> {
-        self.carriers.iter().filter(|c| c.estimated_days <= self.sla_days)
+        self.carriers
+            .iter()
+            .filter(|c| c.estimated_days <= self.sla_days)
     }
 
     /// Check if order is hazmat

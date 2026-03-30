@@ -29,8 +29,8 @@
 //! let response = provider.complete(&request)?;
 //! ```
 
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::provider_api::{LlmError, LlmProvider, LlmRequest, LlmResponse};
 
@@ -72,7 +72,10 @@ pub fn try_with_fallback<T, R, E>(
     }
 
     // All candidates exhausted
-    (Err(last_error.expect("at least one candidate must exist")), idx % n)
+    (
+        Err(last_error.expect("at least one candidate must exist")),
+        idx % n,
+    )
 }
 
 // ── FallbackLlmProvider ──────────────────────────────────────────────
@@ -98,7 +101,10 @@ impl FallbackLlmProvider {
     ///
     /// Panics if `candidates` is empty.
     pub fn new(candidates: Vec<Arc<dyn LlmProvider>>) -> Self {
-        assert!(!candidates.is_empty(), "FallbackLlmProvider requires at least one candidate");
+        assert!(
+            !candidates.is_empty(),
+            "FallbackLlmProvider requires at least one candidate"
+        );
         Self {
             candidates,
             current: AtomicUsize::new(0),
@@ -175,11 +181,14 @@ impl std::fmt::Debug for FallbackLlmProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let active = self.current.load(Ordering::Relaxed);
         f.debug_struct("FallbackLlmProvider")
-            .field("active", &format_args!(
-                "{}/{}",
-                self.candidates[active].name(),
-                self.candidates[active].model()
-            ))
+            .field(
+                "active",
+                &format_args!(
+                    "{}/{}",
+                    self.candidates[active].name(),
+                    self.candidates[active].model()
+                ),
+            )
             .field("candidates", &self.describe_candidates())
             .finish()
     }

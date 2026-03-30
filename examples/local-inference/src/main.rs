@@ -53,10 +53,7 @@ fn main() {
 }
 
 #[cfg(all(feature = "tiny", feature = "pretrained"))]
-fn run_inference(
-    stack: &converge_llm::PromptStack,
-    envelope: &converge_llm::InferenceEnvelope,
-) {
+fn run_inference(stack: &converge_llm::PromptStack, envelope: &converge_llm::InferenceEnvelope) {
     use converge_llm::TinyLlamaEngine;
     use std::time::Instant;
 
@@ -87,10 +84,7 @@ fn run_inference(
 }
 
 #[cfg(all(feature = "llama3", feature = "pretrained", not(feature = "tiny")))]
-fn run_inference(
-    stack: &converge_llm::PromptStack,
-    envelope: &converge_llm::InferenceEnvelope,
-) {
+fn run_inference(stack: &converge_llm::PromptStack, envelope: &converge_llm::InferenceEnvelope) {
     use converge_llm::LlamaEngine;
     use std::time::Instant;
 
@@ -124,11 +118,10 @@ fn run_inference(
     all(feature = "tiny", feature = "pretrained"),
     all(feature = "llama3", feature = "pretrained", not(feature = "tiny"))
 )))]
-fn run_inference(
-    stack: &converge_llm::PromptStack,
-    _envelope: &converge_llm::InferenceEnvelope,
-) {
+fn run_inference(stack: &converge_llm::PromptStack, _envelope: &converge_llm::InferenceEnvelope) {
     println!("No model backend enabled.");
-    println!("Run with: cargo run -p example-local-inference --features \"wgpu,tiny,pretrained\" --release");
+    println!(
+        "Run with: cargo run -p example-local-inference --features \"wgpu,tiny,pretrained\" --release"
+    );
     println!("\nPrompt stack validated: version={}", stack.version);
 }

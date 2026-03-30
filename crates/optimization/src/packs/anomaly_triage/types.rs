@@ -37,7 +37,9 @@ impl AnomalyTriageInput {
 
     /// Get applicable escalation policy for a severity level
     pub fn get_policy(&self, severity: &str) -> Option<&EscalationPolicy> {
-        self.escalation_policies.iter().find(|p| p.severity_level == severity)
+        self.escalation_policies
+            .iter()
+            .find(|p| p.severity_level == severity)
     }
 }
 

@@ -314,7 +314,12 @@ impl MinCostFlowProblem {
     }
 
     /// Create a simple source-sink min cost flow problem
-    pub fn source_sink(network: FlowNetwork, source: usize, sink: usize, flow_demand: i64) -> Result<Self> {
+    pub fn source_sink(
+        network: FlowNetwork,
+        source: usize,
+        sink: usize,
+        flow_demand: i64,
+    ) -> Result<Self> {
         let mut supplies = vec![0i64; network.num_nodes];
         supplies[source] = flow_demand;
         supplies[sink] = -flow_demand;
@@ -375,7 +380,7 @@ pub fn min_cost_flow(problem: &MinCostFlowProblem) -> Result<MinCostFlowResult> 
                         // No path from s to t - check if problem is feasible
                         if supply.iter().any(|&s| s != 0) {
                             return Err(Error::infeasible(
-                                "no augmenting path but unsatisfied supply/demand"
+                                "no augmenting path but unsatisfied supply/demand",
                             ));
                         }
                         break;

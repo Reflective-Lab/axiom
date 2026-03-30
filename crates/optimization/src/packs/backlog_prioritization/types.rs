@@ -47,9 +47,10 @@ impl BacklogPrioritizationInput {
             let before_len = remaining.len();
 
             remaining.retain(|item| {
-                let deps_satisfied = item.dependencies.iter().all(|dep| {
-                    result.iter().any(|i: &&BacklogItem| i.id == *dep)
-                });
+                let deps_satisfied = item
+                    .dependencies
+                    .iter()
+                    .all(|dep| result.iter().any(|i: &&BacklogItem| i.id == *dep));
                 if deps_satisfied {
                     result.push(*item);
                     false
@@ -98,7 +99,9 @@ impl BacklogItem {
 
     /// Check if dependencies are satisfied
     pub fn dependencies_satisfied(&self, completed: &[&str]) -> bool {
-        self.dependencies.iter().all(|d| completed.contains(&d.as_str()))
+        self.dependencies
+            .iter()
+            .all(|d| completed.contains(&d.as_str()))
     }
 }
 

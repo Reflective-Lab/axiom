@@ -13,8 +13,8 @@ use std::collections::HashMap;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint, Identity};
 
 use crate::backend::{
-    BackendCapability, BackendResponse, BackendUsage, ContractReport, LlmBackend,
-    ProposedContent, ContentKind, RemoteTraceLink, Replayability, TraceLink, BackendRequest,
+    BackendCapability, BackendRequest, BackendResponse, BackendUsage, ContentKind, ContractReport,
+    LlmBackend, ProposedContent, RemoteTraceLink, Replayability, TraceLink,
 };
 use crate::error::{LlmError, LlmResult};
 
@@ -39,11 +39,9 @@ fn prost_struct_to_json(s: &prost_types::Struct) -> serde_json::Value {
 fn prost_value_to_json(value: prost_types::Value) -> serde_json::Value {
     match value.kind {
         Some(prost_types::value::Kind::NullValue(_)) => serde_json::Value::Null,
-        Some(prost_types::value::Kind::NumberValue(n)) => {
-            serde_json::Value::Number(serde_json::Number::from_f64(n).unwrap_or_else(|| {
-                serde_json::Number::from(0)
-            }))
-        }
+        Some(prost_types::value::Kind::NumberValue(n)) => serde_json::Value::Number(
+            serde_json::Number::from_f64(n).unwrap_or_else(|| serde_json::Number::from(0)),
+        ),
         Some(prost_types::value::Kind::StringValue(s)) => serde_json::Value::String(s),
         Some(prost_types::value::Kind::BoolValue(b)) => serde_json::Value::Bool(b),
         Some(prost_types::value::Kind::StructValue(s)) => prost_struct_to_json(&s),
@@ -157,10 +155,7 @@ impl GrpcBackend {
     }
 
     /// Run a kernel request over gRPC.
-    async fn run_kernel_async(
-        &self,
-        request: &BackendRequest,
-    ) -> LlmResult<BackendResponse> {
+    async fn run_kernel_async(&self, request: &BackendRequest) -> LlmResult<BackendResponse> {
         let mut client = self.client.clone();
 
         // Convert BackendRequest to proto RunKernelRequest
@@ -184,7 +179,10 @@ impl GrpcBackend {
                 tenant_id: None,
             }),
             policy: Some(proto::KernelPolicy {
-                adapter_id: request.adapter_policy.as_ref().and_then(|p| p.adapter_id.clone()),
+                adapter_id: request
+                    .adapter_policy
+                    .as_ref()
+                    .and_then(|p| p.adapter_id.clone()),
                 recall_enabled: request.recall_policy.as_ref().is_some_and(|p| p.enabled),
                 recall_max_candidates: request
                     .recall_policy
@@ -287,9 +285,7 @@ impl LlmBackend for GrpcBackend {
         // Create a runtime for the blocking call
         // This is safe because LlmBackend::execute is sync
         let rt = tokio::runtime::Handle::try_current().map_err(|_| {
-            LlmError::InferenceError(
-                "GrpcBackend::execute requires a tokio runtime".to_string(),
-            )
+            LlmError::InferenceError("GrpcBackend::execute requires a tokio runtime".to_string())
         })?;
 
         rt.block_on(self.run_kernel_async(request))

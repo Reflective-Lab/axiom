@@ -1,9 +1,9 @@
 //! Solver for Shipping Choice pack
 
 use super::types::*;
+use crate::Result;
 use crate::gate::{ProblemSpec, ReplayEnvelope, SolverReport, StopReason};
 use crate::packs::PackSolver;
-use crate::Result;
 
 /// Cost-minimizing solver for shipping choice
 ///
@@ -31,15 +31,14 @@ impl CostMinimizingSolver {
             .collect();
 
         if valid_carriers.is_empty() {
-            let output = ShippingChoiceOutput::no_carrier(
-                if input.is_hazmat() {
-                    "No carriers support hazmat shipping"
-                } else {
-                    "No carriers available"
-                }
-            );
+            let output = ShippingChoiceOutput::no_carrier(if input.is_hazmat() {
+                "No carriers support hazmat shipping"
+            } else {
+                "No carriers available"
+            });
             let replay = ReplayEnvelope::minimal(seed);
-            let report = SolverReport::infeasible("cost-min-v1", vec![], StopReason::NoFeasible, replay);
+            let report =
+                SolverReport::infeasible("cost-min-v1", vec![], StopReason::NoFeasible, replay);
             return Ok((output, report));
         }
 
@@ -57,7 +56,9 @@ impl CostMinimizingSolver {
         };
 
         candidates.sort_by(|a, b| {
-            a.cost.partial_cmp(&b.cost).unwrap_or(std::cmp::Ordering::Equal)
+            a.cost
+                .partial_cmp(&b.cost)
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         // Apply tie-breaking for equal costs

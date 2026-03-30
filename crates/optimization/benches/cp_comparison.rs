@@ -2,7 +2,7 @@
 //!
 //! Run with: cargo bench --features sat,ffi -- cp_comparison
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
 #[cfg(feature = "sat")]
 mod native {
@@ -93,8 +93,8 @@ mod native {
 
 #[cfg(feature = "ffi")]
 mod ffi {
-    use ortools_sys::safe::*;
     use ortools_sys::OrtoolsStatus;
+    use ortools_sys::safe::*;
 
     pub fn solve_linear_eq(n: usize) -> (OrtoolsStatus, i64) {
         let mut model = CpModel::new();
@@ -138,13 +138,9 @@ fn bench_cp_comparison(c: &mut Criterion) {
 
     // Benchmark satisfaction problems
     for n in [3, 4, 5, 6] {
-        group.bench_with_input(
-            BenchmarkId::new("native/all_different", n),
-            &n,
-            |b, &n| {
-                b.iter(|| native::solve_simple_satisfaction(n));
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("native/all_different", n), &n, |b, &n| {
+            b.iter(|| native::solve_simple_satisfaction(n));
+        });
 
         group.bench_with_input(BenchmarkId::new("ffi/all_different", n), &n, |b, &n| {
             b.iter(|| ffi::solve_simple_satisfaction(n));

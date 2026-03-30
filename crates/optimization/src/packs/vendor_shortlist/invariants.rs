@@ -69,7 +69,9 @@ fn check_ranking_valid(output: &VendorShortlistOutput) -> InvariantResult {
                 1.0,
                 format!(
                     "Invalid ranking: vendor {} has rank {} but should be {}",
-                    vendor.vendor_id, vendor.rank, i + 1
+                    vendor.vendor_id,
+                    vendor.rank,
+                    i + 1
                 ),
             );
             return InvariantResult::fail(invariant, violation);
@@ -173,7 +175,10 @@ mod tests {
         let output = VendorShortlistOutput::empty("No vendors met requirements");
         let results = check_all_invariants(&output);
 
-        let shortlist_result = results.iter().find(|r| r.invariant == "shortlist_not_empty").unwrap();
+        let shortlist_result = results
+            .iter()
+            .find(|r| r.invariant == "shortlist_not_empty")
+            .unwrap();
         assert!(!shortlist_result.passed);
     }
 

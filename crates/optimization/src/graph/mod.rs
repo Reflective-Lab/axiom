@@ -31,9 +31,11 @@ pub mod flow;
 pub mod matching;
 
 // Re-export main types
-pub use flow::{FlowNetwork, MaxFlowResult, MinCostFlowResult, MinCostFlowProblem, max_flow, min_cost_flow};
+pub use flow::{
+    FlowNetwork, MaxFlowResult, MinCostFlowProblem, MinCostFlowResult, max_flow, min_cost_flow,
+};
 
-use petgraph::graph::{DiGraph, NodeIndex, EdgeIndex};
+use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 use serde::{Deserialize, Serialize};
 
 /// Node identifier
@@ -59,7 +61,11 @@ pub struct FlowEdge {
 impl FlowEdge {
     /// Create a new flow edge
     pub fn new(capacity: i64, cost: i64) -> Self {
-        Self { capacity, cost, flow: 0 }
+        Self {
+            capacity,
+            cost,
+            flow: 0,
+        }
     }
 
     /// Create an edge with only capacity (zero cost)
@@ -85,7 +91,10 @@ pub struct Path {
 impl Path {
     /// Create an empty path
     pub fn empty() -> Self {
-        Self { nodes: Vec::new(), cost: 0 }
+        Self {
+            nodes: Vec::new(),
+            cost: 0,
+        }
     }
 
     /// Check if path is empty

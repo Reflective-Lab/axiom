@@ -1,9 +1,9 @@
 //! Solver for Inventory Replenishment pack
 
 use super::types::*;
+use crate::Result;
 use crate::gate::{ProblemSpec, ReplayEnvelope, SolverReport, StopReason};
 use crate::packs::PackSolver;
-use crate::Result;
 
 /// EOQ-based solver for inventory replenishment
 ///
@@ -51,9 +51,9 @@ impl EoqSolver {
             } else {
                 if !urgency_group.is_empty() {
                     urgency_group.sort_by(|a, b| a.product.id.cmp(&b.product.id));
-                    if let Some(selected) = tie_break.select_by(&urgency_group, seed, |a, b| {
-                        a.product.id.cmp(&b.product.id)
-                    }) {
+                    if let Some(selected) = tie_break
+                        .select_by(&urgency_group, seed, |a, b| a.product.id.cmp(&b.product.id))
+                    {
                         sorted_candidates.push(selected.clone());
                     } else {
                         sorted_candidates.extend(urgency_group.drain(..));
@@ -438,8 +438,8 @@ impl PackSolver for EoqSolver {
     fn solve(&self, spec: &ProblemSpec) -> Result<(serde_json::Value, SolverReport)> {
         let input: InventoryReplenishmentInput = spec.inputs_as()?;
         let (output, report) = self.solve_replenishment(&input, spec)?;
-        let json =
-            serde_json::to_value(&output).map_err(|e| crate::Error::invalid_input(e.to_string()))?;
+        let json = serde_json::to_value(&output)
+            .map_err(|e| crate::Error::invalid_input(e.to_string()))?;
         Ok((json, report))
     }
 
@@ -474,9 +474,9 @@ mod tests {
     fn create_test_input() -> InventoryReplenishmentInput {
         InventoryReplenishmentInput {
             products: vec![
-                create_test_product("p1", 50, 10.0),  // Low inventory, high demand
-                create_test_product("p2", 200, 5.0),  // Good inventory
-                create_test_product("p3", 20, 15.0),  // Critical - very low
+                create_test_product("p1", 50, 10.0), // Low inventory, high demand
+                create_test_product("p2", 200, 5.0), // Good inventory
+                create_test_product("p3", 20, 15.0), // Critical - very low
             ],
             constraints: ReplenishmentConstraints {
                 budget: 10000.0,

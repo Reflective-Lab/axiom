@@ -39,9 +39,9 @@ pub use invariants::*;
 pub use solver::*;
 pub use types::*;
 
-use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
-use crate::packs::{default_gate_evaluation, InvariantDef, InvariantResult, Pack, PackSolveResult};
 use crate::Result;
+use crate::gate::{KernelTraceLink, ProblemSpec, PromotionGate, ProposedPlan};
+use crate::packs::{InvariantDef, InvariantResult, Pack, PackSolveResult, default_gate_evaluation};
 
 /// Capacity Planning Pack
 pub struct CapacityPlanningPack;
@@ -133,7 +133,8 @@ fn calculate_confidence(output: &CapacityPlanningOutput, input: &CapacityPlannin
 
         if !utils.is_empty() {
             let mean = utils.iter().sum::<f64>() / utils.len() as f64;
-            let variance = utils.iter().map(|u| (u - mean).powi(2)).sum::<f64>() / utils.len() as f64;
+            let variance =
+                utils.iter().map(|u| (u - mean).powi(2)).sum::<f64>() / utils.len() as f64;
             let std_dev = variance.sqrt();
 
             if std_dev < 0.15 {
@@ -359,9 +360,7 @@ mod tests {
         let output2: CapacityPlanningOutput = result2.plan.plan_as().unwrap();
 
         assert_eq!(output1.assignments.len(), output2.assignments.len());
-        assert!(
-            (output1.summary.total_allocated - output2.summary.total_allocated).abs() < 0.01
-        );
+        assert!((output1.summary.total_allocated - output2.summary.total_allocated).abs() < 0.01);
     }
 
     #[test]

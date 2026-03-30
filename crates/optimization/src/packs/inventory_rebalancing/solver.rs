@@ -1,11 +1,11 @@
 //! Solver for Inventory Rebalancing pack
 
 use super::types::*;
+use crate::Result;
 use crate::gate::{
     Diagnostic, DiagnosticKind, ProblemSpec, ReplayEnvelope, SolverReport, StopReason,
 };
 use crate::packs::PackSolver;
-use crate::Result;
 use std::collections::HashMap;
 
 /// Greedy solver for inventory rebalancing
@@ -68,7 +68,8 @@ impl GreedyRebalancingSolver {
                 // Check budget constraint
                 if total_cost + transfer_cost > input.constraints.max_total_cost {
                     // Try smaller quantity
-                    let affordable = ((input.constraints.max_total_cost - total_cost) / cost_per_unit) as i64;
+                    let affordable =
+                        ((input.constraints.max_total_cost - total_cost) / cost_per_unit) as i64;
                     if affordable <= 0 {
                         continue;
                     }
@@ -136,7 +137,11 @@ impl GreedyRebalancingSolver {
         };
 
         let report = SolverReport::feasible("greedy-v1", -total_cost, stop_reason, replay)
-            .with_diagnostic(Diagnostic::performance("rebalancing", elapsed_ms, iterations))
+            .with_diagnostic(Diagnostic::performance(
+                "rebalancing",
+                elapsed_ms,
+                iterations,
+            ))
             .with_diagnostic(Diagnostic::with_data(
                 DiagnosticKind::ScoringBreakdown,
                 format!(
@@ -165,7 +170,9 @@ impl GreedyRebalancingSolver {
         product_id: &str,
         max_qty: i64,
     ) -> Option<(String, i64, f64, i64)> {
-        let dest_level = state.levels.get(&(dest_loc.to_string(), product_id.to_string()))?;
+        let dest_level = state
+            .levels
+            .get(&(dest_loc.to_string(), product_id.to_string()))?;
         let needed = (dest_level.target_quantity - dest_level.quantity).max(0);
         let space_available = dest_level.available_space();
 
@@ -245,7 +252,9 @@ impl GreedyRebalancingSolver {
             let initial_deficit = (inv.target_quantity - inv.quantity).max(0);
             initial_deficit_sum += initial_deficit;
 
-            if let Some(level) = state.levels.get(&(inv.location_id.clone(), inv.product_id.clone()))
+            if let Some(level) = state
+                .levels
+                .get(&(inv.location_id.clone(), inv.product_id.clone()))
             {
                 let final_deficit = (level.target_quantity - level.quantity).max(0);
                 final_deficit_sum += final_deficit;
@@ -328,7 +337,10 @@ impl WorkingState {
 
     fn apply_transfer(&mut self, from: &str, to: &str, product: &str, qty: i64) {
         // Decrease source
-        if let Some(level) = self.levels.get_mut(&(from.to_string(), product.to_string())) {
+        if let Some(level) = self
+            .levels
+            .get_mut(&(from.to_string(), product.to_string()))
+        {
             level.quantity -= qty;
         }
         // Increase destination

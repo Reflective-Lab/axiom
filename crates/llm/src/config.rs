@@ -107,9 +107,7 @@ impl LlmConfig {
         // Check special tokens are valid for tokenizer
         if self.tokenizer.tokenizer_type == TokenizerType::Tiktoken {
             // Llama 3 tiktoken vocab is 128256
-            if self.tokenizer.bos_token_id >= 128256
-                || self.tokenizer.eos_token_id >= 128256
-            {
+            if self.tokenizer.bos_token_id >= 128256 || self.tokenizer.eos_token_id >= 128256 {
                 return Err(ConfigValidationError::InvalidSpecialTokens {
                     reason: "Token IDs exceed tiktoken vocab size (128256)".to_string(),
                 });
@@ -256,7 +254,9 @@ pub enum ConfigValidationError {
     #[error("Precision {precision} is incompatible: {reason}")]
     IncompatiblePrecision { precision: String, reason: String },
 
-    #[error("Context length {requested} is too large for {model} (recommended max: {recommended_max})")]
+    #[error(
+        "Context length {requested} is too large for {model} (recommended max: {recommended_max})"
+    )]
     ContextTooLarge {
         requested: usize,
         recommended_max: usize,

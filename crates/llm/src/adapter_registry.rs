@@ -92,11 +92,7 @@ impl FilesystemRegistry {
     /// # Errors
     ///
     /// Returns an error if the adapter cannot be saved.
-    pub fn save(
-        &self,
-        manifest: &AdapterManifest,
-        weights: &AdapterWeights,
-    ) -> LlmResult<()> {
+    pub fn save(&self, manifest: &AdapterManifest, weights: &AdapterWeights) -> LlmResult<()> {
         let id = &manifest.adapter_id;
         let adapter_dir = self.adapter_path(id);
 
@@ -320,7 +316,9 @@ fn serialize_weights(weights: &AdapterWeights) -> LlmResult<Vec<u8>> {
 /// Deserialize adapter weights from bytes.
 fn deserialize_weights(data: &[u8]) -> LlmResult<AdapterWeights> {
     if data.len() < 4 {
-        return Err(LlmError::AdapterLoadError("Invalid weights file".to_string()));
+        return Err(LlmError::AdapterLoadError(
+            "Invalid weights file".to_string(),
+        ));
     }
 
     let mut cursor = 0;

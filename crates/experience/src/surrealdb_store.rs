@@ -7,9 +7,9 @@
 //! SurrealDB-backed experience store implementation.
 
 use serde::{Deserialize, Serialize};
+use surrealdb::Surreal;
 use surrealdb::engine::remote::ws::Ws;
 use surrealdb::opt::auth::Root;
-use surrealdb::Surreal;
 use tokio::runtime::Runtime;
 
 use converge_core::{

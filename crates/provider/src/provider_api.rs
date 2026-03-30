@@ -228,8 +228,7 @@ pub trait LlmProvider: Send + Sync {
     /// Returns `LlmError` if the provider is unreachable, the key is invalid,
     /// or the quota is exhausted.
     fn health_check(&self) -> Result<(), LlmError> {
-        let request = LlmRequest::new("Say OK")
-            .with_max_tokens(1);
+        let request = LlmRequest::new("Say OK").with_max_tokens(1);
         self.complete(&request).map(|_| ())
     }
 }
