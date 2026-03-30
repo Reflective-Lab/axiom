@@ -6,7 +6,7 @@
 //!
 //! Capabilities describe *what a backend can do*, independent of its kind.
 //! A single backend may support multiple capabilities (e.g., a multimodal
-//! LLM supports TextGeneration + Vision + CodeGeneration).
+//! LLM supports `TextGeneration` + Vision + `CodeGeneration`).
 //!
 //! # Design
 //!
@@ -113,8 +113,8 @@ pub enum Capability {
 impl std::fmt::Display for Capability {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Other(name) => write!(f, "other:{}", name),
-            other => write!(f, "{:?}", other),
+            Self::Other(name) => write!(f, "other:{name}"),
+            other => write!(f, "{other:?}"),
         }
     }
 }

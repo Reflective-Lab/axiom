@@ -129,10 +129,10 @@ impl BackendError {
 
     /// Capability not supported.
     #[must_use]
-    pub fn unsupported(capability: Capability) -> Self {
+    pub fn unsupported(capability: &Capability) -> Self {
         Self::new(
             BackendErrorKind::UnsupportedCapability,
-            format!("capability not supported: {}", capability),
+            format!("capability not supported: {capability}"),
         )
     }
 

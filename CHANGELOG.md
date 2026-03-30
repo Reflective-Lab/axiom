@@ -26,7 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Infrastructure
 - Dockerfile, compose.yaml, deploy scripts for GCP Cloud Run
 - GitHub CI, security workflows, dependabot
-- Copyright updated to Reflective Labs
+- Copyright updated to Reflective Labs (kenneth@reflective.se)
+- All SPDX headers normalized to MIT
+- Version bumped to 2.0.0 (breaking: ProposedFact, AgentEffect, Agent trait signatures)
 
 ## [1.1.0] - 2024-03-20
 

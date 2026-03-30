@@ -43,7 +43,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "1.1.0"
+version = "2.0.0"
 edition = "2024"
 rust-version = "1.94.0"
 license = "MIT"
@@ -52,22 +52,22 @@ publish = false
 
 [workspace.dependencies]
 # Internal crates — path (local dev) + version (crates.io publish)
-converge-traits = { path = "crates/traits", version = "1.1.0", features = ["strum"] }
-converge-core = { path = "crates/core", version = "1.1.0" }
-converge-provider = { path = "crates/provider", version = "1.1.0" }
-converge-domain = { path = "crates/domain", version = "1.1.0" }
-converge-experience = { path = "crates/experience", version = "1.1.0" }
-converge-knowledge = { path = "crates/knowledge", version = "1.1.0" }
-converge-optimization = { path = "crates/optimization", version = "1.1.0" }
-ortools-sys = { path = "crates/optimization/ortools-sys", version = "1.1.0" }
-converge-analytics = { path = "crates/analytics", version = "1.1.0" }
-converge-llm = { path = "crates/llm", version = "1.1.0" }
-converge-policy = { path = "crates/policy", version = "1.1.0" }
-converge-runtime = { path = "crates/runtime", version = "1.1.0" }
-converge-remote = { path = "crates/remote", version = "1.1.0" }
-converge-tool = { path = "crates/tool", version = "1.1.0" }
-converge-mcp = { path = "crates/mcp", version = "1.1.0", default-features = false }
-converge-application = { path = "crates/application", version = "1.1.0" }
+converge-traits = { path = "crates/traits", version = "2.0.0", features = ["strum"] }
+converge-core = { path = "crates/core", version = "2.0.0" }
+converge-provider = { path = "crates/provider", version = "2.0.0" }
+converge-domain = { path = "crates/domain", version = "2.0.0" }
+converge-experience = { path = "crates/experience", version = "2.0.0" }
+converge-knowledge = { path = "crates/knowledge", version = "2.0.0" }
+converge-optimization = { path = "crates/optimization", version = "2.0.0" }
+ortools-sys = { path = "crates/optimization/ortools-sys", version = "2.0.0" }
+converge-analytics = { path = "crates/analytics", version = "2.0.0" }
+converge-llm = { path = "crates/llm", version = "2.0.0" }
+converge-policy = { path = "crates/policy", version = "2.0.0" }
+converge-runtime = { path = "crates/runtime", version = "2.0.0" }
+converge-remote = { path = "crates/remote", version = "2.0.0" }
+converge-tool = { path = "crates/tool", version = "2.0.0" }
+converge-mcp = { path = "crates/mcp", version = "2.0.0", default-features = false }
+converge-application = { path = "crates/application", version = "2.0.0" }
 
 # Shared dependencies
 anyhow = "1"

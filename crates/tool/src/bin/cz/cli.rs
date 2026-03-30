@@ -1,5 +1,5 @@
-// Copyright 2024-2025 Aprio One AB, Sweden
-// SPDX-License-Identifier: LicenseRef-Proprietary
+// Copyright 2024-2026 Reflective Labs
+// SPDX-License-Identifier: MIT
 
 //! CLI definition for cz - the Converge Zone workspace orchestrator.
 
@@ -11,7 +11,7 @@ use clap::{Parser, Subcommand};
 /// tests, manages services, and enforces governance (gates, policies, audit trails).
 #[derive(Parser, Debug)]
 #[command(name = "cz")]
-#[command(author = "Aprio One AB")]
+#[command(author = "Reflective Labs")]
 #[command(version)]
 #[command(about = "Converge Zone - workspace orchestrator", long_about = None)]
 #[command(propagate_version = true)]

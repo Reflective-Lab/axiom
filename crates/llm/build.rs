@@ -1,6 +1,5 @@
-// Copyright (c) 2026 Aprio One AB
-// Author: Kenneth Pernyer, kenneth@pernyer.se
-// SPDX-License-Identifier: LicenseRef-Proprietary
+// Copyright 2024-2026 Reflective Labs
+// SPDX-License-Identifier: MIT
 
 //! Build script for protobuf code generation.
 //!

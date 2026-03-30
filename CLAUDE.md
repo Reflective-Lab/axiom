@@ -16,7 +16,7 @@ just example hello-convergence  # run an example
 
 ## Workspace Layout
 All crates live under `crates/`. Examples live under `examples/`. The workspace root `Cargo.toml` centralizes:
-- **Versions**: all crates at `1.1.0`
+- **Versions**: all crates at `2.0.0`
 - **Dependencies**: shared dep versions in `[workspace.dependencies]`
 - **Lints**: clippy pedantic with allowed exceptions in `[workspace.lints]`
 - **Profiles**: quick-release, ci, release, bench

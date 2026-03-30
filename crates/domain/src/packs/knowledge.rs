@@ -1,4 +1,4 @@
-// Copyright 2024-2025 Aprio One AB, Sweden
+// Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 
 //! Knowledge Pack agents for organizational learning and innovation.

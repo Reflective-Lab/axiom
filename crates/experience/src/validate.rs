@@ -1,5 +1,5 @@
-// Copyright 2024-2025 Aprio One AB, Sweden
-// SPDX-License-Identifier: LicenseRef-Proprietary
+// Copyright 2024-2026 Reflective Labs
+// SPDX-License-Identifier: MIT
 
 //! Input validation for experience events at the write boundary.
 //!

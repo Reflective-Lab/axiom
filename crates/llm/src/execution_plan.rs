@@ -1,5 +1,4 @@
-// Copyright (c) 2026 Aprio One AB
-// Author: Kenneth Pernyer, kenneth@pernyer.se
+// Copyright 2024-2026 Reflective Labs
 
 //! Execution Plan — Compiled policy that cannot be overridden.
 //!

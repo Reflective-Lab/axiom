@@ -1,5 +1,4 @@
-// Copyright (c) 2026 Aprio One AB
-// Author: Kenneth Pernyer, kenneth@pernyer.se
+// Copyright 2024-2026 Reflective Labs
 
 //! Real inference engine using llama-burn with LoRA adapter support.
 //!

@@ -138,9 +138,9 @@ The workspace uses Cargo features so consumers only pull what they need.
 
 **Individual crates** (library consumers):
 ```toml
-converge-core = "1.1"                                        # minimal
-converge-provider = { version = "1.1", features = ["anthropic"] }  # + LLM
-converge-knowledge = { version = "1.1", features = ["mcp"] }      # + knowledge + MCP
+converge-core = "2"                                        # minimal
+converge-provider = { version = "2", features = ["anthropic"] }  # + LLM
+converge-knowledge = { version = "2", features = ["mcp"] }      # + knowledge + MCP
 ```
 
 **Umbrella binary** (`converge-application`):

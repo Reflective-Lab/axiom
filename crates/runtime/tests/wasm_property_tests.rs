@@ -1,7 +1,5 @@
-// Copyright 2024-2026 Aprio One AB, Sweden
-// Author: Kenneth Pernyer, kenneth@aprio.one
-// SPDX-License-Identifier: LicenseRef-Proprietary
-// All rights reserved.
+// Copyright 2024-2026 Reflective Labs
+// SPDX-License-Identifier: MIT
 
 //! Property-based tests for the WASM runtime contract types, module store,
 //! and invariant adapter.

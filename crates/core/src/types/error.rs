@@ -1,8 +1,5 @@
-// Copyright 2024-2025 Aprio One AB, Sweden
-// Author: Kenneth Pernyer, kenneth@aprio.one
-// SPDX-License-Identifier: LicenseRef-Proprietary
-// All rights reserved. This source code is proprietary and confidential.
-// Unauthorized copying, modification, or distribution is strictly prohibited.
+// Copyright 2024-2026 Reflective Labs
+// SPDX-License-Identifier: MIT
 
 //! Consolidated error types for the types module.
 //!

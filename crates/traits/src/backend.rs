@@ -26,7 +26,7 @@ use crate::capability::Capability;
 pub enum BackendKind {
     /// Large language model — cloud or local inference.
     ///
-    /// Examples: Anthropic Claude, OpenAI GPT, local llama-burn.
+    /// Examples: Anthropic Claude, `OpenAI` GPT, local `llama-burn`.
     Llm,
 
     /// Policy engine — rule evaluation and access control.
@@ -41,17 +41,17 @@ pub enum BackendKind {
 
     /// Analytics and ML — embeddings, classification, regression.
     ///
-    /// Examples: Burn, LanceDB, Polars.
+    /// Examples: Burn, `LanceDB`, Polars.
     Analytics,
 
     /// Search — vector similarity, full-text, semantic.
     ///
-    /// Examples: LanceDB (vector), Qdrant, Meilisearch.
+    /// Examples: `LanceDB` (vector), Qdrant, Meilisearch.
     Search,
 
     /// Storage — persistence, event sourcing, document store.
     ///
-    /// Examples: SurrealDB, PostgreSQL, SQLite.
+    /// Examples: `SurrealDB`, `PostgreSQL`, `SQLite`.
     Storage,
 
     /// Extension point for future or domain-specific backends.
@@ -67,7 +67,7 @@ impl std::fmt::Display for BackendKind {
             Self::Analytics => write!(f, "analytics"),
             Self::Search => write!(f, "search"),
             Self::Storage => write!(f, "storage"),
-            Self::Other(name) => write!(f, "other:{}", name),
+            Self::Other(name) => write!(f, "other:{name}"),
         }
     }
 }

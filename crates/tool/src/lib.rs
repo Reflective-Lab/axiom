@@ -1,5 +1,4 @@
-// Copyright 2024-2025 Aprio One AB, Sweden
-// Author: Kenneth Pernyer, kenneth@aprio.one
+// Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 // See LICENSE file in the project root for full license information.
 #![allow(deprecated)] // converge_core::llm::LlmProvider is deprecated upstream

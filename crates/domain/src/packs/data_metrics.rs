@@ -1,4 +1,4 @@
-// Copyright 2024-2025 Aprio One AB, Sweden
+// Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 
 //! Data & Metrics Pack agents for single source of truth measurements.

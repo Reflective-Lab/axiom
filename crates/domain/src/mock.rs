@@ -1,5 +1,5 @@
-// Copyright 2024-2025 Aprio One AB, Sweden
-// SPDX-License-Identifier: LicenseRef-Proprietary
+// Copyright 2024-2026 Reflective Labs
+// SPDX-License-Identifier: MIT
 //
 // Mock LLM provider for domain testing.
 // Extracted from converge-core (removed in 1.0.2) for use in converge-domain tests.
