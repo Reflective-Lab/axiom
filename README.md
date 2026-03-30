@@ -6,10 +6,12 @@ Agents collaborate through shared context, not by calling each other. The engine
 
 ## Design Principles
 
-1. **Agents suggest, engines decide.** `ProposedFact` is not `Fact`.
-2. **Context is the API.** Agents communicate through shared context.
+1. **Agents suggest, engines decide.** `ProposedFact` is not `Fact`. Every proposal carries confidence and provenance. The promotion gate validates before promoting.
+2. **Context is the API.** Agents communicate through shared context, never by calling each other.
 3. **Append-only truth.** Facts are never mutated; corrections are new facts.
-4. **Safety by construction.** `unsafe_code = "forbid"` everywhere.
+4. **Convergence is observable.** `CriterionEvaluator` checks success conditions. `CriterionResult::Blocked` triggers honest stopping with `HumanInterventionRequired`.
+5. **Truths are typed.** `TruthDefinition` declares jobs, policies, and invariants with success criteria, constraints, and pack participation — not string descriptions.
+6. **Safety by construction.** `unsafe_code = "forbid"` everywhere. Type-state enforcement on proposals → facts.
 
 ## Quick Start
 

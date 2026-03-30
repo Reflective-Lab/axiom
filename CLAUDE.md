@@ -63,6 +63,17 @@ Crates marked `publish = false`: analytics, llm, policy, runtime, remote, applic
 - Internal path deps include both `path` and `version` for crates.io compatibility
 - Examples are standalone crates under `examples/` with `publish = false`
 
+## Type Protocol — The Rules
+- `ProposedFact` carries `confidence: f64` and `provenance: String` — always
+- `AgentEffect` is a struct `{ facts, proposals }` — agents can emit both in one execution
+- `Agent::accepts` and `Agent::execute` take `&dyn ContextView`, not `&Context`
+- `Agent::dependencies` returns `&[ContextKey]`, not `Vec<&str>`
+- `CriterionResult` is four-way: `Met { evidence }`, `Blocked { reason, approval_ref }`, `Unmet { reason }`, `Indeterminate`
+- `CriterionEvaluator::evaluate` takes one `&Criterion` at a time, not a list
+- `TypesRootIntent` uses the builder pattern: `TypesRootIntent::builder().id(...).kind(...).build()`
+- `ContextKey::Seeds`, `ContextKey::Evaluations`, `ContextKey::Diagnostic` — not `Seed`/`Derived`
+- converge-traits owns the canonical types; converge-core re-exports them
+
 ## Git Workflow
 - Use `just worktree <branch>` for parallel work (git worktrees)
 - Use `jj` (Jujutsu) for version control when available

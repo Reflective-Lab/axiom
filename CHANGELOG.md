@@ -7,21 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Initial project structure with 15 crates
-- Core agent runtime with context-driven execution
-- LLM inference using Burn framework
-- Multiple backend support (LanceDB, SurrealDB)
-- gRPC and HTTP APIs
-- Comprehensive testing suite
+### Added — Platform Primitives (bb94361)
+- **Truth execution framework**: `TruthDefinition`, `TruthKind { Job, Policy, Invariant }`, `TruthCatalog` trait — typed specifications for jobs, policies, and invariants that applications declare and the runtime executes
+- **Criterion evaluation**: `CriterionEvaluator` trait, `CriterionResult { Met { evidence }, Blocked { reason, approval_ref }, Unmet { reason }, Indeterminate }`, `CriterionOutcome` — four-way typed results with structured evidence, replacing boolean success checks
+- **Pack-scoped execution**: `engine.register_in_pack(pack_id, agent)`, `TypesRootIntent.active_packs` — agents belong to packs, intents activate specific packs per truth
+- **`run_with_types_intent_and_hooks()`** — single entry point for application-level truth execution with criterion evaluation and event observation
+- **`StopReason::HumanInterventionRequired { criteria, approval_refs }`** — honest stopping when the system needs human input, with typed references to what's blocked
+- **`ContextStore` trait** (GAT async) — durable context persistence across runs with `load_context`/`save_context`, plus `DynContextStore` for runtime polymorphism
+- **`ExperienceEventObserver`** — run-scoped event capture without requiring a full ExperienceStore
 
-### Changed
-- Updated all crates to version 1.1.0
-- Improved error handling across all modules
-- Enhanced observability with OpenTelemetry
+### Changed — Type System Reconciliation (5c34d8c)
+- **`ProposedFact`**: added `confidence: f64` and `provenance: String` — every proposal now carries confidence and origin for the promotion gate
+- **`AgentEffect`**: changed from enum (`AddFacts | Propose | Nothing`) to struct `{ facts, proposals }` — agents can emit both validated facts and proposals in a single execution
+- **`TryFrom<ProposedFact> for Fact`**: type-safe promotion with validation (rejects NaN/out-of-range confidence)
+- **Agent trait signatures**: `accepts(&self, ctx: &dyn ContextView)` instead of `&Context` — agents work against a trait, not a concrete type
+- **converge-traits** is now the canonical type owner; converge-core re-exports and provides concrete implementations
 
-### Fixed
-- Various bug fixes in the initial implementation
+### Infrastructure
+- Dockerfile, compose.yaml, deploy scripts for GCP Cloud Run
+- GitHub CI, security workflows, dependabot
+- Copyright updated to Reflective Labs
 
 ## [1.1.0] - 2024-03-20
 

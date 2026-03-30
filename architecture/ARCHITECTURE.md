@@ -89,23 +89,48 @@ converge-application     → core, provider, domain, tool, mcp, knowledge, …
 
 ## Execution Model
 
+### Basic convergence loop
 ```
 initialize context from RootIntent
 
 repeat
-  determine eligible agents   (pure, side-effect free)
-  execute eligible agents     (parallel, read-only context)
-  collect effects             (buffered, not applied)
-  merge effects into context  (serialized, deterministic)
-  apply pruning rules
+  determine eligible agents     (pure, side-effect free)
+  filter by active packs        (only agents in activated packs run)
+  execute eligible agents       (parallel, read-only context via ContextView)
+  collect AgentEffects          (buffered facts + proposals)
+  promote proposals → facts     (promotion gate validates confidence, provenance)
+  merge effects into context    (serialized, deterministic)
+  evaluate criteria             (CriterionEvaluator checks success conditions)
 until convergence or termination
+```
+
+### Application-level truth execution
+```
+Application builds TypesRootIntent from TruthDefinition
+  → intent carries: active_packs, success_criteria, budget, constraints
+
+Application creates Engine, registers agents in packs
+  → engine.register_in_pack("compliance-pack", screener_agent)
+
+Application calls run_with_types_intent_and_hooks()
+  → engine runs convergence loop
+  → CriterionEvaluator checks each criterion after convergence
+  → ExperienceEventObserver captures events during the run
+
+Engine returns ConvergeResult
+  → context: final state with all facts
+  → criteria_outcomes: per-criterion Met/Unmet/Blocked/Indeterminate
+  → stop_reason: Converged | CriteriaMet | HumanInterventionRequired | BudgetExhausted
+
+Application projects ConvergeResult into domain state
+  → reads facts from context, writes to its own storage
 ```
 
 **Convergence**: `Contextₙ₊₁ == Contextₙ` — no new facts, no new intents, no state change.
 
-**Termination**: convergence reached, budgets exhausted, or invariants violated.
+**Termination**: convergence reached, criteria met, budgets exhausted, invariants violated, or human intervention required.
 
-**Guarantees**: determinism, termination (budgets), isolation (agents can't affect each other), auditability (full provenance).
+**Guarantees**: determinism, termination (budgets), isolation (agents can't affect each other), auditability (full provenance on every fact and proposal).
 
 ## Feature Gates
 
@@ -132,25 +157,111 @@ converge-knowledge = { version = "1.1", features = ["mcp"] }      # + knowledge 
 ## API Surface
 
 ### Engine
-- `Engine::new()` → create engine
-- `engine.register(agent)` → register an agent
-- `engine.run(context)` → execute until convergence
+```rust
+let mut engine = Engine::new();
+engine.register(agent);                          // global agent
+engine.register_in_pack("pack-id", agent);       // pack-scoped agent
+engine.run(context);                             // basic convergence
+engine.run_with_types_intent_and_hooks(          // application-level truth execution
+    context, &intent, TypesRunHooks {
+        criterion_evaluator: Some(evaluator),
+        event_observer: Some(observer),
+    },
+);
+```
 
 ### Context
-- `Context::new()` → empty context
-- `context.has(key)` → check key existence
-- `context.get(key)` → retrieve facts
+```rust
+let context = Context::new();
+context.has(ContextKey::Seeds);
+context.get(ContextKey::Seeds);          // → iterator of &Fact
+context.get(ContextKey::Evaluations);
+context.get(ContextKey::Diagnostic);
+context.add_fact(fact);
+```
 
 ### Agent trait
 ```rust
 trait Agent {
-    fn accepts(&self, ctx: &Context) -> bool;
-    fn dependencies(&self) -> Vec<ContextKey>;
-    fn execute(&self, ctx: &Context) -> AgentEffect;
+    fn name(&self) -> &str;
+    fn dependencies(&self) -> &[ContextKey];
+    fn accepts(&self, ctx: &dyn ContextView) -> bool;
+    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect;
 }
 ```
 
 Agents never call other agents. Agents never mutate context directly. Agents only emit effects.
+
+### AgentEffect
+```rust
+// An agent can emit facts AND proposals in a single execution
+AgentEffect {
+    facts: vec![...],       // validated, authoritative
+    proposals: vec![...],   // need promotion gate validation
+}
+AgentEffect::with_proposal(proposed_fact)  // convenience
+AgentEffect::with_fact(fact)               // convenience
+AgentEffect::empty()                       // nothing to contribute
+```
+
+### ProposedFact
+```rust
+ProposedFact {
+    key: ContextKey::Evaluations,
+    id: "compliance:screen:acme".into(),
+    content: payload_json,
+    confidence: 0.85,           // how confident the agent is (0.0–1.0)
+    provenance: "agent:screener".into(),  // who proposed it
+}
+```
+
+### Truth Execution
+```rust
+// Application declares truths
+trait TruthCatalog {
+    fn list_truths(&self) -> Vec<TruthDefinition>;
+    fn find_truth(&self, key: &str) -> Option<TruthDefinition>;
+}
+
+// Application evaluates criteria
+trait CriterionEvaluator {
+    fn evaluate(&self, criterion: &Criterion, context: &Context) -> CriterionResult;
+}
+
+// Four-way typed result
+enum CriterionResult {
+    Met { evidence: Vec<FactId> },
+    Blocked { reason: String, approval_ref: Option<String> },
+    Unmet { reason: String },
+    Indeterminate,
+}
+
+// Durable context across runs
+trait ContextStore {
+    fn load_context(&self, scope_id: &str) -> impl Future<Output = Result<Option<Context>>>;
+    fn save_context(&self, scope_id: &str, context: &Context) -> impl Future<Output = Result<()>>;
+}
+```
+
+### ConvergeResult
+```rust
+ConvergeResult {
+    context: Context,              // final state
+    cycles: u32,                   // how many cycles ran
+    converged: bool,               // did it reach a fixed point?
+    stop_reason: StopReason,       // why it stopped
+    criteria_outcomes: Vec<CriterionOutcome>,  // per-criterion results
+}
+
+enum StopReason {
+    Converged,
+    CriteriaMet { .. },
+    HumanInterventionRequired { criteria, approval_refs },
+    CycleBudgetExhausted { .. },
+    FactBudgetExhausted { .. },
+    // ...
+}
+```
 
 ## Schema
 
