@@ -1,10 +1,11 @@
 [package]
 name = "converge-optimization"
 version.workspace = true
+publish = true
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
-license = "Apache-2.0"
+license.workspace = true
 description = "Optimization algorithms for converge.zone - Rust reimplementation of OR-Tools subset"
 keywords = ["optimization", "constraint", "graph", "scheduling", "assignment"]
 categories = ["algorithms", "mathematics", "science"]

@@ -1,10 +1,11 @@
 [package]
 name = "ortools-sys"
 version.workspace = true
+publish = true
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
-license = "Apache-2.0"
+license.workspace = true
 description = "FFI bindings to Google OR-Tools C++ library"
 build = "build.rs"
 links = "ortools"
