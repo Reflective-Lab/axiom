@@ -9,6 +9,18 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_VERSION: "1.94.0"
+  # Crates that need protoc or external system deps
+  EXCLUDES: >-
+    --exclude converge-runtime
+    --exclude converge-remote
+    --exclude example-custom-agent
+    --exclude example-meeting-scheduler
+    --exclude example-custom-provider
+    --exclude example-local-inference
+    --exclude example-expense-approval
+    --exclude example-vendor-selection
+    --exclude example-loan-application
+    --exclude example-hello-convergence
 
 jobs:
   check:
@@ -21,7 +33,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Check workspace
-        run: cargo check --workspace --exclude converge-runtime --exclude converge-remote
+        run: cargo check --workspace ${{ env.EXCLUDES }}
 
   test:
     name: Test
@@ -34,7 +46,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --workspace --exclude example-custom-agent --exclude example-meeting-scheduler --exclude example-custom-provider --exclude example-local-inference --exclude converge-runtime
+        run: cargo test --workspace ${{ env.EXCLUDES }}
 
   lint:
     name: Lint
@@ -48,7 +60,7 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - name: Clippy
-        run: cargo clippy --workspace --exclude example-custom-agent --exclude example-meeting-scheduler --exclude example-custom-provider --exclude example-local-inference --exclude converge-runtime
+        run: cargo clippy --workspace ${{ env.EXCLUDES }}
 
   format:
     name: Format

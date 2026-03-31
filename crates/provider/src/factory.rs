@@ -18,8 +18,6 @@ use crate::GeminiProvider;
 use crate::GrokProvider;
 #[cfg(feature = "kimi")]
 use crate::KimiProvider;
-#[cfg(feature = "kong")]
-use crate::kong::{KongProvider, KongRoute};
 #[cfg(feature = "minmax")]
 use crate::MinMaxProvider;
 #[cfg(feature = "mistral")]
@@ -30,6 +28,8 @@ use crate::PerplexityProvider;
 use crate::QwenProvider;
 #[cfg(feature = "zhipu")]
 use crate::ZhipuProvider;
+#[cfg(feature = "kong")]
+use crate::kong::{KongProvider, KongRoute};
 use crate::provider_api::{LlmError, LlmProvider};
 use crate::secret::SecretProvider;
 use crate::tools::{ToolAwareProvider, ToolFormat, ToolRegistry};

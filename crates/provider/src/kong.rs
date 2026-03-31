@@ -10,9 +10,7 @@
 //! The provider uses the OpenAI-compatible chat completions API that Kong exposes,
 //! regardless of which upstream model is configured behind the route.
 
-use crate::common::{
-    ChatCompletionRequest, ChatCompletionResponse, chat_response_to_llm_response,
-};
+use crate::common::{ChatCompletionRequest, ChatCompletionResponse, chat_response_to_llm_response};
 use crate::model_selection::ModelMetadata;
 use crate::provider_api::{
     CostClass, DataSovereignty, LlmError, LlmProvider, LlmRequest, LlmResponse,
@@ -183,16 +181,22 @@ impl KongRoute {
     /// Converts this route into a `ModelMetadata` entry for the model selector.
     #[must_use]
     pub fn to_model_metadata(&self) -> ModelMetadata {
-        ModelMetadata::new("kong", &self.name, self.cost_class, self.typical_latency_ms, self.quality)
-            .with_reasoning(self.has_reasoning)
-            .with_tool_use(self.supports_tool_use)
-            .with_vision(self.supports_vision)
-            .with_structured_output(self.supports_structured_output)
-            .with_code(self.supports_code)
-            .with_web_search(self.supports_web_search)
-            .with_multilingual(self.supports_multilingual)
-            .with_context_tokens(self.context_tokens)
-            .with_data_sovereignty(self.data_sovereignty)
+        ModelMetadata::new(
+            "kong",
+            &self.name,
+            self.cost_class,
+            self.typical_latency_ms,
+            self.quality,
+        )
+        .with_reasoning(self.has_reasoning)
+        .with_tool_use(self.supports_tool_use)
+        .with_vision(self.supports_vision)
+        .with_structured_output(self.supports_structured_output)
+        .with_code(self.supports_code)
+        .with_web_search(self.supports_web_search)
+        .with_multilingual(self.supports_multilingual)
+        .with_context_tokens(self.context_tokens)
+        .with_data_sovereignty(self.data_sovereignty)
     }
 }
 
@@ -478,8 +482,14 @@ mod tests {
     #[test]
     fn gateway_builds_urls() {
         let gw = KongGateway::new("https://kong.example.com", "key");
-        assert_eq!(gw.mcp_url("vendor-registry"), "https://kong.example.com/mcp/vendor-registry");
-        assert_eq!(gw.api_url("vendors/v1/list"), "https://kong.example.com/vendors/v1/list");
+        assert_eq!(
+            gw.mcp_url("vendor-registry"),
+            "https://kong.example.com/mcp/vendor-registry"
+        );
+        assert_eq!(
+            gw.api_url("vendors/v1/list"),
+            "https://kong.example.com/vendors/v1/list"
+        );
         assert_eq!(gw.auth_header().0, "x-api-key");
     }
 

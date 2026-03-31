@@ -51,7 +51,11 @@ fn main() {
 
     let provider = EchoProvider::new("echo-v1");
 
-    println!("Provider: {} (model: {})", provider.name(), provider.model());
+    println!(
+        "Provider: {} (model: {})",
+        provider.name(),
+        provider.model()
+    );
 
     let request = LlmRequest::new("What is the convergence model?");
 
