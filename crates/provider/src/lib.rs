@@ -162,7 +162,7 @@ mod grok;
 #[cfg(feature = "kimi")]
 mod kimi;
 #[cfg(feature = "kong")]
-mod kong;
+pub mod kong;
 #[cfg(feature = "minmax")]
 mod minmax;
 #[cfg(feature = "mistral")]
@@ -231,7 +231,7 @@ pub use grok::GrokProvider;
 #[cfg(feature = "kimi")]
 pub use kimi::KimiProvider;
 #[cfg(feature = "kong")]
-pub use kong::KongProvider;
+pub use kong::{KongGateway, KongProvider, KongRoute};
 #[cfg(feature = "minmax")]
 pub use minmax::MinMaxProvider;
 #[cfg(feature = "mistral")]

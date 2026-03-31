@@ -19,7 +19,7 @@ use crate::GrokProvider;
 #[cfg(feature = "kimi")]
 use crate::KimiProvider;
 #[cfg(feature = "kong")]
-use crate::KongProvider;
+use crate::kong::{KongProvider, KongRoute};
 #[cfg(feature = "minmax")]
 use crate::MinMaxProvider;
 #[cfg(feature = "mistral")]
@@ -125,7 +125,8 @@ pub fn create_provider(
         }
         #[cfg(feature = "kong")]
         "kong" => {
-            let provider = KongProvider::from_env(model_id)?;
+            let route = KongRoute::new(model_id);
+            let provider = KongProvider::from_env(route)?;
             Ok(Arc::new(provider))
         }
         _ => Err(LlmError::provider(format!(
