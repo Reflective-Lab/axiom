@@ -18,6 +18,8 @@ use crate::GeminiProvider;
 use crate::GrokProvider;
 #[cfg(feature = "kimi")]
 use crate::KimiProvider;
+#[cfg(feature = "kong")]
+use crate::KongProvider;
 #[cfg(feature = "minmax")]
 use crate::MinMaxProvider;
 #[cfg(feature = "mistral")]
@@ -121,6 +123,11 @@ pub fn create_provider(
             let provider = ApertusProvider::from_env(model_id)?;
             Ok(Arc::new(provider))
         }
+        #[cfg(feature = "kong")]
+        "kong" => {
+            let provider = KongProvider::from_env(model_id)?;
+            Ok(Arc::new(provider))
+        }
         _ => Err(LlmError::provider(format!(
             "Unknown or disabled provider: {provider_name}"
         ))),
@@ -202,6 +209,10 @@ pub fn can_create_provider(provider_name: &str) -> bool {
         "kimi" => std::env::var("KIMI_API_KEY").is_ok(),
         #[cfg(feature = "apertus")]
         "apertus" => std::env::var("APERTUS_API_KEY").is_ok(),
+        #[cfg(feature = "kong")]
+        "kong" => {
+            std::env::var("KONG_AI_GATEWAY_URL").is_ok() && std::env::var("KONG_API_KEY").is_ok()
+        }
         _ => false,
     }
 }

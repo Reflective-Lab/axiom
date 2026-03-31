@@ -52,6 +52,9 @@
 //! - [`KimiProvider`] - Kimi (Moonshot AI)
 //! - [`ApertusProvider`] - Apertus (Switzerland, EU digital sovereignty)
 //!
+//! ## Gateway Providers
+//! - [`KongProvider`] - Kong AI Gateway (routes to any upstream model with governance)
+//!
 //! ## Local Providers
 //! - [`OllamaProvider`] - Local models via Ollama (Qwen, Llama, Mistral, etc.)
 //!
@@ -158,6 +161,8 @@ mod gemini;
 mod grok;
 #[cfg(feature = "kimi")]
 mod kimi;
+#[cfg(feature = "kong")]
+mod kong;
 #[cfg(feature = "minmax")]
 mod minmax;
 #[cfg(feature = "mistral")]
@@ -225,6 +230,8 @@ pub use gemini::GeminiProvider;
 pub use grok::GrokProvider;
 #[cfg(feature = "kimi")]
 pub use kimi::KimiProvider;
+#[cfg(feature = "kong")]
+pub use kong::KongProvider;
 #[cfg(feature = "minmax")]
 pub use minmax::MinMaxProvider;
 #[cfg(feature = "mistral")]
