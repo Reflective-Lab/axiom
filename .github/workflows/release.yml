@@ -9,68 +9,16 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  create-release:
-    name: Create Release
+  verify:
+    name: Verify
     runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-
-  build-release:
-    name: Build Release
-    needs: create-release
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          - x86_64-apple-darwin
-          - x86_64-pc-windows-msvc
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust
-        run: rustup override set 1.90.0 && rustup target add ${{ matrix.target }}
-      - name: Build
-        run: cargo build --workspace --release --target ${{ matrix.target }}
-      - name: Package
-        run: |
-          cd target/${{ matrix.target }}/release
-          tar czvf ../../../converge-${{ matrix.target }}.tar.gz *
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./converge-${{ matrix.target }}.tar.gz
-          asset_name: converge-${{ matrix.target }}.tar.gz
-          asset_content_type: application/gzip
-
-  publish-crates:
-    name: Publish Crates
-    needs: create-release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust
-        run: rustup override set 1.90.0
-      - name: Login to crates.io
-        run: echo "${{ secrets.CRATES_IO_TOKEN }}" > ~/.cargo/credentials
-      - name: Publish crates
-        run: |
-          for crate in crates/*/; do
-            if [ -f "$crate/Cargo.toml" ]; then
-              cargo publish --manifest-path "$crate/Cargo.toml" || true
-            fi
-          done
+          toolchain: "1.94.0"
+      - uses: Swatinem/rust-cache@v2
+      - name: Check workspace
+        run: cargo check --workspace
+      - name: Run tests
+        run: cargo test --workspace --exclude example-custom-agent --exclude example-meeting-scheduler --exclude example-custom-provider --exclude example-local-inference --exclude converge-runtime

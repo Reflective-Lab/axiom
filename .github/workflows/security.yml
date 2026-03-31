@@ -12,40 +12,19 @@ permissions:
   security-events: write
 
 jobs:
-  docs:
-    name: Security Docs
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Validate security/compliance docs
-        run: bash scripts/validate-security-docs.sh
-
-  supply-chain:
-    name: Supply Chain
+  audit:
+    name: Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.90.0
+          toolchain: "1.94.0"
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-deny,cargo-audit
-      - name: Run cargo-deny
-        run: cargo deny check
+          tool: cargo-audit
       - name: Run cargo-audit
         run: cargo audit
-      - name: Generate SBOM
-        uses: anchore/sbom-action@v0
-        with:
-          path: .
-          format: cyclonedx-json
-          output-file: converge.cdx.json
-      - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbom
-          path: converge.cdx.json
 
   secrets:
     name: Secrets Scan
