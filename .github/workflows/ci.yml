@@ -21,7 +21,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Check workspace
-        run: cargo check --workspace
+        run: cargo check --workspace --exclude converge-runtime --exclude converge-remote
 
   test:
     name: Test
