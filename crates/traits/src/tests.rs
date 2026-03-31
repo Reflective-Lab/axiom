@@ -203,7 +203,7 @@ fn error_retryable_classification() {
     assert!(!BackendError::auth("bad key").is_retryable());
     assert!(!BackendError::invalid_request("missing field").is_retryable());
     assert!(!BackendError::parse("bad json").is_retryable());
-    assert!(!BackendError::unsupported(Capability::Reasoning).is_retryable());
+    assert!(!BackendError::unsupported(&Capability::Reasoning).is_retryable());
 }
 
 #[test]
