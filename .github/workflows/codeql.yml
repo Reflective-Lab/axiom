@@ -34,3 +34,5 @@ jobs:
         run: cargo check -p converge-traits -p converge-core -p converge-provider -p converge-domain
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v3
+        with:
+          upload-database: false
