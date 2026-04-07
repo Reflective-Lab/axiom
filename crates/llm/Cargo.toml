@@ -60,6 +60,9 @@ converge-core.workspace = true
 converge-domain.workspace = true
 converge-provider = { workspace = true, optional = true }
 
+# Object storage (optional)
+converge-storage = { workspace = true, optional = true, features = ["local"] }
+
 [build-dependencies]
 tonic-build = { workspace = true, optional = true }
 
@@ -94,6 +97,8 @@ lora = ["dep:llama-burn"]
 # Import weights from other formats
 import = ["dep:llama-burn", "llama-burn/import", "dep:burn-store"]
 pretrained = ["dep:llama-burn", "llama-burn/pretrained"]
+# Object storage for remote adapter registry
+storage = ["dep:converge-storage"]
 # Remote backend providers
 anthropic = ["dep:converge-provider"]
 # gRPC server

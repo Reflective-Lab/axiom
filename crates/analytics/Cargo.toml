@@ -19,11 +19,23 @@ proptest.workspace = true
 rand.workspace = true
 reqwest.workspace = true
 bincode.workspace = true
+tokio.workspace = true
+tracing.workspace = true
 
 # Converge platform dependencies
 converge-core.workspace = true
 converge-domain.workspace = true
 converge-provider.workspace = true
+
+# Object storage (optional)
+converge-storage = { workspace = true, optional = true, features = ["local"] }
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[features]
+default = []
+storage = ["dep:converge-storage"]
 
 [lints]
 workspace = true

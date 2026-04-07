@@ -313,7 +313,7 @@ fn serialize_weights(weights: &AdapterWeights) -> LlmResult<Vec<u8>> {
 }
 
 /// Deserialize adapter weights from bytes.
-fn deserialize_weights(data: &[u8]) -> LlmResult<AdapterWeights> {
+pub(crate) fn deserialize_weights(data: &[u8]) -> LlmResult<AdapterWeights> {
     if data.len() < 4 {
         return Err(LlmError::AdapterLoadError(
             "Invalid weights file".to_string(),

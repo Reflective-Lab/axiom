@@ -72,6 +72,10 @@ pub mod tokenizer;
 pub mod trace;
 pub mod validation;
 
+// Object store adapter registry (feature-gated)
+#[cfg(feature = "storage")]
+pub mod storage_registry;
+
 // Remote backend providers (feature-gated)
 #[cfg(feature = "anthropic")]
 pub mod anthropic;
