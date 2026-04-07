@@ -7,7 +7,7 @@
 //! loop. It runs registered evals when their dependencies change and stores
 //! results as facts in context.
 
-use converge_core::{Agent, AgentEffect, Context, ContextKey, Eval, EvalId, EvalRegistry, Fact};
+use converge_core::{Agent, AgentEffect, ContextKey, Eval, EvalId, EvalRegistry, Fact};
 
 /// Agent that executes evals and stores results in context.
 ///
@@ -123,6 +123,7 @@ impl Agent for EvalExecutionAgent {
 mod tests {
     use super::*;
     use crate::evals::MeetingScheduleFeasibilityEval;
+    use converge_core::Context;
 
     #[test]
     fn eval_agent_executes_registered_evals() {

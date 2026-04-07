@@ -62,7 +62,7 @@
 // Agent trait returns &str, but we return literals. This is fine.
 #![allow(clippy::unnecessary_literal_bound)]
 
-use converge_core::{Agent, AgentEffect, Context, ContextKey, Fact};
+use converge_core::{Agent, AgentEffect, ContextKey, Fact};
 
 /// Agent that retrieves availability for participants.
 ///
@@ -560,6 +560,7 @@ impl Invariant for RequirePositiveDuration {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use converge_core::Context;
     use converge_core::Engine;
     use converge_core::agents::SeedAgent;
 

@@ -161,9 +161,13 @@ mod tests {
     use super::*;
 
     // Marker types for testing object safety
+    #[allow(dead_code)]
     struct TestIntent;
+    #[allow(dead_code)]
     struct TestProposal;
+    #[allow(dead_code)]
     struct TestValidated;
+    #[allow(dead_code)]
     struct TestFact;
 
     // The trait should be object-safe for these simple types

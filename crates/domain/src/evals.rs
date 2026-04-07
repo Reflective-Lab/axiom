@@ -19,7 +19,7 @@
 //! - Evals are business semantics, not implementation details
 //! - Evals are the competitive moat (most systems can't define them clearly)
 
-use converge_core::{Context, ContextKey, Eval, EvalOutcome, EvalResult};
+use converge_core::{ContextKey, Eval, EvalOutcome, EvalResult};
 
 /// Eval: Meeting schedule feasibility
 ///

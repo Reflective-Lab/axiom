@@ -18,7 +18,7 @@
 //! distinguished by their ID prefixes (session:, audit:, compliance:, etc.).
 
 use converge_core::{
-    Agent, AgentEffect, Context, ContextKey, Fact,
+    Agent, AgentEffect, ContextKey, Fact,
     invariant::{Invariant, InvariantClass, InvariantResult, Violation},
 };
 
@@ -583,6 +583,7 @@ impl Invariant for LegalActionsAuditedInvariant {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use converge_core::Context;
 
     #[test]
     fn agents_have_correct_names() {

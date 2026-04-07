@@ -82,6 +82,7 @@ pub struct AuthorityGrant {
     scope: Option<AuthorityScope>,
 }
 
+#[allow(dead_code)]
 impl AuthorityGrant {
     /// Create a system authority grant (pub(crate) - internal use only).
     pub(crate) fn system() -> Self {

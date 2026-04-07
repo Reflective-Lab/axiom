@@ -35,7 +35,7 @@
 #![allow(clippy::unnecessary_literal_bound)]
 
 use crate::agent::Agent;
-use crate::context::{Context, ContextKey, Fact, ProposedFact};
+use crate::context::{ContextKey, Fact, ProposedFact};
 use crate::effect::AgentEffect;
 
 /// Configuration for the validation agent.
@@ -297,6 +297,7 @@ pub fn encode_proposal(proposal: &ProposedFact) -> Fact {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::Context;
     use crate::engine::Engine;
 
     #[test]

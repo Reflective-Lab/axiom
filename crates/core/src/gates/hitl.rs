@@ -213,6 +213,7 @@ impl ContextItem {
 
 impl GateRequest {
     /// Create a new gate request from a proposal.
+    #[allow(dead_code)]
     pub(crate) fn new(
         proposal: &Proposal<Draft>,
         agent_id: impl Into<String>,
@@ -400,6 +401,7 @@ impl GateEvent {
 /// Stored in the engine when convergence pauses. Contains everything
 /// needed to resume after a human decision.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub(crate) struct PendingGate {
     /// The gate request that was emitted.
     pub request: GateRequest,
@@ -417,6 +419,7 @@ pub(crate) struct PendingGate {
 
 /// Generate a simple pseudo-UUID from timestamp.
 /// Good enough for gate IDs; not cryptographic.
+#[allow(dead_code)]
 fn pseudo_uuid() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
 

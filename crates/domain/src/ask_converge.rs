@@ -7,7 +7,7 @@
 //! This pack enforces grounded answering with explicit recall-only sources.
 
 use converge_core::invariant::{Invariant, InvariantClass, InvariantResult, Violation};
-use converge_core::{Agent, AgentEffect, Context, ContextKey, Fact};
+use converge_core::{Agent, AgentEffect, ContextKey, Fact};
 use serde::Deserialize;
 
 const QUESTION_SEED_ID: &str = "ask:question";

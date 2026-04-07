@@ -32,7 +32,7 @@
 //! distinguished by their ID prefixes (invoice:, payment:, ledger:, etc.).
 
 use converge_core::{
-    Agent, AgentEffect, Context, ContextKey, Fact,
+    Agent, AgentEffect, ContextKey, Fact,
     invariant::{Invariant, InvariantClass, InvariantResult, Violation},
 };
 
@@ -223,7 +223,7 @@ impl Agent for ReconciliationMatcherAgent {
         let mut facts = Vec::new();
 
         for txn in bank_txns.iter() {
-            for invoice in invoices.iter() {
+            if let Some(invoice) = invoices.first() {
                 facts.push(Fact {
                     key: ContextKey::Proposals,
                     id: format!("{}{}->{}", LEDGER_PREFIX, txn.id, invoice.id),
@@ -236,7 +236,6 @@ impl Agent for ReconciliationMatcherAgent {
                     })
                     .to_string(),
                 });
-                break; // One match per transaction
             }
         }
 
@@ -438,6 +437,7 @@ impl Invariant for ClosedPeriodReadonlyInvariant {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use converge_core::Context;
     use converge_core::Engine;
 
     #[test]

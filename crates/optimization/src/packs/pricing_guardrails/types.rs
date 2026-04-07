@@ -421,7 +421,7 @@ mod tests {
 
     #[test]
     fn test_price_bounds_validation() {
-        let mut input = PricingGuardrailsInput {
+        let input = PricingGuardrailsInput {
             products: vec![Product {
                 product_id: "p1".to_string(),
                 name: "Product 1".to_string(),

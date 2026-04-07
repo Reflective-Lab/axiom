@@ -198,7 +198,7 @@ pub trait LlmProvider: Send + Sync {
 // =============================================================================
 
 use crate::agent::Agent;
-use crate::context::{Context, ContextKey, ProposedFact};
+use crate::context::{ContextKey, ProposedFact};
 use crate::effect::AgentEffect;
 use crate::validation::encode_proposal;
 use std::sync::Arc;

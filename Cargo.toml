@@ -45,7 +45,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "2.1.0"
+version = "2.1.1"
 edition = "2024"
 rust-version = "1.94.0"
 license = "MIT"
@@ -54,23 +54,23 @@ publish = false
 
 [workspace.dependencies]
 # Internal crates — path (local dev) + version (crates.io publish)
-converge-traits = { path = "crates/traits", version = "2.1.0", features = ["strum"] }
-converge-core = { path = "crates/core", version = "2.1.0" }
-converge-provider = { path = "crates/provider", version = "2.1.0" }
-converge-domain = { path = "crates/domain", version = "2.1.0" }
-converge-experience = { path = "crates/experience", version = "2.1.0" }
-converge-knowledge = { path = "crates/knowledge", version = "2.1.0" }
-converge-optimization = { path = "crates/optimization", version = "2.1.0" }
-ortools-sys = { path = "crates/optimization/ortools-sys", version = "2.1.0" }
-converge-analytics = { path = "crates/analytics", version = "2.1.0" }
-converge-llm = { path = "crates/llm", version = "2.1.0" }
-converge-policy = { path = "crates/policy", version = "2.1.0" }
-converge-runtime = { path = "crates/runtime", version = "2.1.0" }
-converge-remote = { path = "crates/remote", version = "2.1.0" }
-converge-tool = { path = "crates/tool", version = "2.1.0" }
-converge-mcp = { path = "crates/mcp", version = "2.1.0", default-features = false }
-converge-application = { path = "crates/application", version = "2.1.0" }
-converge-storage = { path = "crates/storage", version = "2.1.0", default-features = false }
+converge-traits = { path = "crates/traits", version = "2.1.1", features = ["strum"] }
+converge-core = { path = "crates/core", version = "2.1.1" }
+converge-provider = { path = "crates/provider", version = "2.1.1" }
+converge-domain = { path = "crates/domain", version = "2.1.1" }
+converge-experience = { path = "crates/experience", version = "2.1.1" }
+converge-knowledge = { path = "crates/knowledge", version = "2.1.1" }
+converge-optimization = { path = "crates/optimization", version = "2.1.1" }
+ortools-sys = { path = "crates/optimization/ortools-sys", version = "2.1.1" }
+converge-analytics = { path = "crates/analytics", version = "2.1.1" }
+converge-llm = { path = "crates/llm", version = "2.1.1" }
+converge-policy = { path = "crates/policy", version = "2.1.1" }
+converge-runtime = { path = "crates/runtime", version = "2.1.1" }
+converge-remote = { path = "crates/remote", version = "2.1.1" }
+converge-tool = { path = "crates/tool", version = "2.1.1" }
+converge-mcp = { path = "crates/mcp", version = "2.1.1", default-features = false }
+converge-application = { path = "crates/application", version = "2.1.1" }
+converge-storage = { path = "crates/storage", version = "2.1.1", default-features = false }
 
 # Shared dependencies
 anyhow = "1"
@@ -171,6 +171,7 @@ zeroize = "1"
 # Workspace lints — inherited by all crates via [lints] workspace = true
 [workspace.lints.rust]
 unsafe_code = "forbid"
+deprecated = "allow"                 # BOUNDARY.md trait migration in progress
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
@@ -188,13 +189,69 @@ module_name_repetitions = "allow"    # Common naming pattern
 vec_init_then_push = "allow"         # Clear construction pattern
 cast_possible_truncation = "allow"   # Domain indices are small
 cast_possible_wrap = "allow"         # Domain indices are small
+cast_sign_loss = "allow"             # Domain indices are non-negative
+cast_lossless = "allow"              # Explicit casts are clearer
+cast_precision_loss = "allow"        # f64 precision loss acceptable for metrics
 comparison_chain = "allow"           # if-else is sometimes clearer
 if_same_then_else = "allow"          # Intentional for clarity
 unused_self = "allow"                # Methods may be extended later
-cast_precision_loss = "allow"        # f64 precision loss acceptable for metrics
 manual_let_else = "allow"            # if-let is sometimes clearer
 if_not_else = "allow"                # Negation is sometimes clearer
 map_unwrap_or = "allow"              # map().unwrap_or_else() is clearer
+# Stylistic pedantic noise from clippy 1.94+
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+doc_markdown = "allow"
+uninlined_format_args = "allow"
+unreadable_literal = "allow"
+unnecessary_literal_bound = "allow"
+explicit_iter_loop = "allow"
+return_self_not_must_use = "allow"
+redundant_closure_for_method_calls = "allow"
+needless_raw_string_hashes = "allow"
+needless_pass_by_value = "allow"
+match_same_arms = "allow"
+struct_field_names = "allow"
+struct_excessive_bools = "allow"
+ref_option = "allow"
+ref_option_ref = "allow"
+format_collect = "allow"
+format_push_string = "allow"
+field_reassign_with_default = "allow"
+default_trait_access = "allow"
+derivable_impls = "allow"
+enum_glob_use = "allow"
+wildcard_imports = "allow"
+ignored_unit_patterns = "allow"
+implicit_hasher = "allow"
+implicit_clone = "allow"
+many_single_char_names = "allow"
+elidable_lifetime_names = "allow"
+assigning_clones = "allow"
+cloned_instead_of_copied = "allow"
+default_constructed_unit_structs = "allow"
+manual_is_multiple_of = "allow"
+manual_midpoint = "allow"
+manual_range_contains = "allow"
+manual_string_new = "allow"
+needless_borrow = "allow"
+needless_range_loop = "allow"
+no_effect_underscore_binding = "allow"
+should_implement_trait = "allow"
+single_char_pattern = "allow"
+too_many_arguments = "allow"
+trivially_copy_pass_by_ref = "allow"
+unnecessary_map_or = "allow"
+unused_async = "allow"
+collapsible_if = "allow"
+float_cmp = "allow"                  # Test fixtures use exact float comparison
+large_enum_variant = "allow"         # Domain enums are intentionally large
+extend_with_drain = "allow"
+manual_clamp = "allow"
+neg_multiply = "allow"
+len_zero = "allow"
+missing_fields_in_debug = "allow"
 
 # Release optimized but without as many dependencies, suitable for incremental development
 [profile.quick-release]

@@ -507,7 +507,7 @@ mod tests {
         // Task B: y = -x (conflicting with Task A)
         for _ in 0..50 {
             let x = rand::random::<f32>();
-            let y = -1.0 * x;
+            let y = -x;
             learner.update(&[x], y);
         }
 

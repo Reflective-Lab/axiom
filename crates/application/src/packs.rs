@@ -155,12 +155,6 @@ pub fn available_packs() -> Vec<String> {
         "novelty-search".to_string(),
     ];
 
-    #[cfg(feature = "growth-strategy")]
-    packs.push("growth-strategy".to_string());
-
-    #[cfg(feature = "sdr-pipeline")]
-    packs.push("sdr-pipeline".to_string());
-
     // Deduplicate
     packs.sort();
     packs.dedup();

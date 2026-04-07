@@ -73,7 +73,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::context::{Context, ContextKey, Fact};
+use crate::context::{ContextKey, Fact};
 
 /// The outcome of an eval execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -321,6 +321,7 @@ impl EvalRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::Context;
 
     /// Eval that checks if at least one seed exists.
     struct RequireSeedsEval;

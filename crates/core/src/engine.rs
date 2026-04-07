@@ -152,6 +152,7 @@ pub struct ConvergeResult {
 /// The hosting application should notify the human and call
 /// `Engine::resume()` with the decision.
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct HitlPause {
     /// The gate request to present to the human.
     pub request: GateRequest,

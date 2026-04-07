@@ -5,7 +5,7 @@
 //!
 //! Seeds -> Signals (research notes) -> Strategies (draft output)
 
-use converge_core::{Agent, AgentEffect, Context, ContextKey, Fact};
+use converge_core::{Agent, AgentEffect, ContextKey, Fact};
 
 const DRAFT_RESEARCH_PREFIX: &str = "drafting_research:";
 const DRAFT_OUTPUT_PREFIX: &str = "drafting_output:";

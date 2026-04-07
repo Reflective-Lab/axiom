@@ -283,7 +283,7 @@ impl std::fmt::Debug for BraveSearchProvider {
         f.debug_struct("BraveSearchProvider")
             .field("api_key", &self.api_key) // SecretString redacts automatically
             .field("base_url", &self.base_url)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

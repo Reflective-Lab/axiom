@@ -18,7 +18,7 @@
 //! distinguished by their ID prefixes (metric:, source:, pipeline:, etc.).
 
 use converge_core::{
-    Agent, AgentEffect, Context, ContextKey, Fact,
+    Agent, AgentEffect, ContextKey, Fact,
     invariant::{Invariant, InvariantClass, InvariantResult, Violation},
 };
 

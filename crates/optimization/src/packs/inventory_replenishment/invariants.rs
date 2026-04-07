@@ -323,7 +323,7 @@ mod tests {
 
     #[test]
     fn test_eoq_deviation_warning() {
-        let input = create_test_input();
+        let _input = create_test_input();
         let mut output = create_valid_output();
         output.orders[0].quantity = 50; // Very low compared to EOQ of 220
         output.orders[0].eoq = 220.0;
@@ -335,7 +335,7 @@ mod tests {
 
     #[test]
     fn test_high_stockout_risk_warning() {
-        let input = create_test_input();
+        let _input = create_test_input();
         let mut output = create_valid_output();
         output.projections.push(InventoryProjection {
             product_id: "p1".to_string(),

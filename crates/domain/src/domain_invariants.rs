@@ -1,4 +1,4 @@
-use converge_core::{Context, ContextKey, Invariant, InvariantClass, InvariantResult, Violation};
+use converge_core::{ContextKey, Invariant, InvariantClass, InvariantResult, Violation};
 
 /// Invariant: Access must be explicitly granted by an authority.
 /// Derived from @authority_required in trust.feature.

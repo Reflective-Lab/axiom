@@ -27,7 +27,7 @@
 //! ```
 
 use crate::agent::Agent;
-use crate::context::{Context, ContextKey, Fact};
+use crate::context::{ContextKey, Fact};
 use crate::effect::AgentEffect;
 
 /// An agent that emits an initial seed fact once.
@@ -129,6 +129,7 @@ impl Agent for ReactOnceAgent {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::Context;
     use crate::engine::Engine;
 
     #[test]

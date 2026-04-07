@@ -10,7 +10,7 @@ use converge_core::traits::{
     ChatBackend, ChatMessage, ChatRequest, ChatResponse, ChatRole, DynChatBackend, FinishReason,
     LlmError, TokenUsage,
 };
-use converge_core::{Agent, AgentEffect, Context, ContextKey, Fact};
+use converge_core::{Agent, AgentEffect, ContextKey, Fact};
 use std::fmt::Write;
 use std::sync::Arc;
 
@@ -471,6 +471,7 @@ impl ChatBackend for MockRiskProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use converge_core::Context;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn strategic_insight_agent_parses_numbered_list() {

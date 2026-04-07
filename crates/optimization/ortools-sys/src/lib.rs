@@ -6,6 +6,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
+#[allow(unused_imports)]
 use std::os::raw::{c_char, c_double, c_int};
 
 // ============================================================================

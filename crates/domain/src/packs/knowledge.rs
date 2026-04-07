@@ -24,7 +24,7 @@
 //! - Success metrics defined before experiment starts
 
 use converge_core::{
-    Agent, AgentEffect, Context, ContextKey, Fact,
+    Agent, AgentEffect, ContextKey, Fact,
     invariant::{Invariant, InvariantClass, InvariantResult, Violation},
 };
 

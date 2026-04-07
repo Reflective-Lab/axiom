@@ -177,7 +177,7 @@ impl std::fmt::Debug for ValidationReport {
             .field("checks", &self.checks)
             .field("policy_version", &self.policy_version)
             .field("validated_at", &self.validated_at)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

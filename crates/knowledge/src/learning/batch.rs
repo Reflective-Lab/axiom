@@ -883,8 +883,7 @@ impl BatchScheduler {
             .read()
             .await
             .iter()
-            .filter(|r| r.job_type == job_type)
-            .next_back()
+            .rfind(|r| r.job_type == job_type)
             .cloned()
     }
 
