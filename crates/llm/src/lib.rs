@@ -36,7 +36,7 @@
 //!
 //! Inside the kernel (not public API):
 //! - **ChainExecutor**: 3-step reasoning pipeline
-//! - **LlamaEngine/TinyLlamaEngine**: Actual inference
+//! - **LlamaEngine/TinyLlamaEngine/GemmaEngine**: Actual inference
 //! - **Recall**: Context retrieval and injection
 //! - **Adapters/LoRA**: Model customization
 //! - **Contracts**: Output validation
@@ -61,6 +61,8 @@ pub mod contract_stress;
 #[cfg(any(feature = "llama3", feature = "tiny"))]
 pub mod engine;
 pub mod error;
+#[cfg(feature = "gemma")]
+pub mod gemma;
 pub mod inference;
 pub mod lora;
 pub mod lora_merge;
@@ -208,6 +210,8 @@ pub use engine::TinyLlamaEngine;
 pub use engine::{
     AdapterLifecycleState, AdapterState, GoldenTestResult, LlamaEngine, MergeReport, golden_test,
 };
+#[cfg(feature = "gemma")]
+pub use gemma::{GemmaConfig, GemmaEngine};
 
 // Anthropic (Remote Claude backend)
 #[cfg(feature = "anthropic")]

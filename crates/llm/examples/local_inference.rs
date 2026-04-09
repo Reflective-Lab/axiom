@@ -35,9 +35,11 @@
 use converge_llm::{InferenceEnvelope, PromptStackBuilder, StateInjection, UserIntent};
 
 // Backend selection based on features
+#[cfg(any(feature = "llama3", feature = "tiny"))]
 #[cfg(feature = "wgpu")]
 type Backend = burn::backend::Wgpu;
 
+#[cfg(any(feature = "llama3", feature = "tiny"))]
 #[cfg(all(feature = "ndarray", not(feature = "wgpu")))]
 type Backend = burn::backend::NdArray;
 
@@ -100,6 +102,9 @@ fn main() {
 fn print_system_info() {
     println!("System Information:");
 
+    #[cfg(feature = "gemma")]
+    println!("  Backend: embedded llama.cpp (GGUF)");
+
     #[cfg(feature = "wgpu")]
     println!("  Backend: wgpu (Metal on macOS)");
 
@@ -108,6 +113,9 @@ fn print_system_info() {
 
     #[cfg(feature = "tiny")]
     println!("  Model: Tiny (test model)");
+
+    #[cfg(feature = "gemma")]
+    println!("  Model: Gemma GGUF");
 
     #[cfg(all(feature = "llama3", not(feature = "tiny")))]
     println!("  Model: Llama 3");
@@ -119,6 +127,72 @@ fn print_system_info() {
     println!("  Platform: {}", std::env::consts::OS);
 
     println!();
+}
+
+#[cfg(feature = "gemma")]
+fn run_inference(stack: &converge_llm::PromptStack, envelope: &converge_llm::InferenceEnvelope) {
+    use converge_llm::{GemmaConfig, GemmaEngine};
+    use std::time::Instant;
+
+    println!("Loading Gemma GGUF (embedded llama.cpp)...");
+    let start = Instant::now();
+
+    let config = match GemmaConfig::from_env() {
+        Ok(config) => config,
+        Err(error) => {
+            println!("✗ Gemma configuration failed: {error}");
+            println!();
+            println!("Set CONVERGE_GEMMA_MODEL_PATH to a local Gemma Q4 GGUF file.");
+            println!(
+                "Example: CONVERGE_GEMMA_MODEL_PATH=~/models/gemma-7b-it-Q4_K_M.gguf cargo run --example local_inference --features \"gemma\" --release"
+            );
+            return;
+        }
+    };
+
+    match GemmaEngine::load_from_gguf(config) {
+        Ok(mut engine) => {
+            let load_time = start.elapsed();
+            println!("✓ Gemma loaded in {:.2}s", load_time.as_secs_f64());
+            println!();
+
+            println!("Generating response...");
+            let gen_start = Instant::now();
+
+            match engine.run(stack, envelope) {
+                Ok(result) => {
+                    let gen_time = gen_start.elapsed();
+
+                    println!();
+                    println!("Generated Output:");
+                    println!("─────────────────────────────────────────────────────────────────");
+                    println!("{}", result.text);
+                    println!("─────────────────────────────────────────────────────────────────");
+                    println!();
+                    println!("Performance Metrics:");
+                    println!("  Input tokens:  {}", result.input_tokens);
+                    println!("  Output tokens: {}", result.output_tokens);
+                    println!("  Generation time: {:.2}s", gen_time.as_secs_f64());
+                    println!(
+                        "  Tokens/second: {:.1}",
+                        result.output_tokens as f64 / gen_time.as_secs_f64()
+                    );
+                    println!("  Finish reason: {:?}", result.finish_reason);
+                }
+                Err(error) => {
+                    println!("✗ Generation failed: {:?}", error);
+                }
+            }
+        }
+        Err(error) => {
+            println!("✗ Model loading failed: {}", error);
+            println!();
+            println!("Troubleshooting:");
+            println!("  1. Download a local Gemma GGUF file");
+            println!("  2. Prefer a Q4 variant for MacBook local inference");
+            println!("  3. Set CONVERGE_GEMMA_MODEL_PATH to that file");
+        }
+    }
 }
 
 // TinyLlama inference (smallest model, ideal for laptops)
@@ -241,6 +315,7 @@ fn run_inference(stack: &converge_llm::PromptStack, envelope: &converge_llm::Inf
 
 // No model features enabled
 #[cfg(not(any(
+    feature = "gemma",
     all(feature = "tiny", feature = "pretrained"),
     all(feature = "llama3", feature = "pretrained", not(feature = "tiny"))
 )))]
@@ -249,7 +324,7 @@ fn run_inference(stack: &converge_llm::PromptStack, _envelope: &converge_llm::In
     println!();
     println!("To run actual inference, use:");
     println!(
-        "  cargo run --example local_inference --features \"wgpu,llama3,pretrained\" --release"
+        "  CONVERGE_GEMMA_MODEL_PATH=/path/to/gemma-7b-it-Q4_K_M.gguf cargo run --example local_inference --features \"gemma\" --release"
     );
     println!();
     println!("Or for quick testing with tiny model:");

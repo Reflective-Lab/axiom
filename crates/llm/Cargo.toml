@@ -6,9 +6,9 @@ rust-version.workspace = true
 repository.workspace = true
 license = "LicenseRef-Proprietary"
 publish = false
-description = "LLM inference and training for Converge agents using Burn"
+description = "LLM inference and training for Converge agents using Burn and llama.cpp"
 documentation = "https://docs.rs/converge-llm"
-keywords = ["llm", "agent", "burn", "llama", "inference"]
+keywords = ["llm", "agent", "burn", "llama", "gguf"]
 categories = ["machine-learning", "text-processing"]
 
 [dependencies]
@@ -20,6 +20,9 @@ burn-store = { workspace = true, optional = true }
 
 # Llama implementation from tracel-ai (optional)
 llama-burn = { workspace = true, optional = true }
+
+# In-process GGUF inference for Gemma on laptops
+llama-cpp-2 = { workspace = true, optional = true }
 
 # Tokenization
 tiktoken-rs.workspace = true
@@ -92,6 +95,7 @@ tch-gpu = ["dep:llama-burn", "llama-burn/tch-gpu"]
 # Model variants
 llama3 = ["dep:llama-burn", "llama-burn/llama3"]
 tiny = ["dep:llama-burn", "llama-burn/tiny"]
+gemma = ["dep:llama-cpp-2"]
 # Training support
 lora = ["dep:llama-burn"]
 # Import weights from other formats

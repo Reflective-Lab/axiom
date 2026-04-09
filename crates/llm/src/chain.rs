@@ -254,6 +254,14 @@ impl<B: burn::tensor::backend::Backend> ChainEngine for crate::engine::LlamaEngi
     }
 }
 
+#[cfg(feature = "gemma")]
+impl ChainEngine for crate::gemma::GemmaEngine {
+    fn generate(&mut self, stack: &PromptStack, envelope: &InferenceEnvelope) -> LlmResult<String> {
+        let result = self.run(stack, envelope)?;
+        Ok(result.text)
+    }
+}
+
 impl<E: ChainEngine> ChainExecutor<E> {
     /// Execute a full decision chain.
     ///

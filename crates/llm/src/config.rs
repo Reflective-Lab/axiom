@@ -63,6 +63,8 @@ impl LlmConfig {
         match (&self.tokenizer.tokenizer_type, self.model_id.as_str()) {
             // Llama 3 uses tiktoken
             (TokenizerType::Tiktoken, id) if id.contains("llama3") => {}
+            // Gemma uses SentencePiece
+            (TokenizerType::SentencePiece, id) if id.contains("gemma") => {}
             // Llama 2 uses SentencePiece
             (TokenizerType::SentencePiece, id) if id.contains("llama2") => {}
             // TinyLlama uses SentencePiece
@@ -304,6 +306,14 @@ mod tests {
     #[test]
     fn test_validate_medium_config() {
         let config = LlmConfig::medium();
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_gemma_sentencepiece_config() {
+        let mut config = LlmConfig::medium();
+        config.model_id = "gemma-7b-it-q4".to_string();
+        config.tokenizer.tokenizer_type = TokenizerType::SentencePiece;
         assert!(config.validate().is_ok());
     }
 
