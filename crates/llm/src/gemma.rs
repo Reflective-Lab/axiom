@@ -241,7 +241,10 @@ impl GemmaEngine {
 
         // Set n_batch large enough to hold the full prompt so get_one works
         // in a single decode pass (positions are auto-assigned correctly).
-        let effective_batch = prompt_tokens.len().max(self.config.batch_size).min(max_context);
+        let effective_batch = prompt_tokens
+            .len()
+            .max(self.config.batch_size)
+            .min(max_context);
         let ctx_params = LlamaContextParams::default()
             .with_n_ctx(Some(non_zero_u32(
                 "context length",
@@ -377,9 +380,8 @@ impl GemmaEngine {
 
         // Standard Gemma instruction format (works for Gemma 2 and 4).
         // BOS is prepended by llama.cpp via AddBos::Always.
-        let prompt = format!(
-            "<start_of_turn>user\n{rendered}<end_of_turn>\n<start_of_turn>model\n"
-        );
+        let prompt =
+            format!("<start_of_turn>user\n{rendered}<end_of_turn>\n<start_of_turn>model\n");
         (prompt, AddBos::Always)
     }
 
