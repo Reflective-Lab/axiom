@@ -185,6 +185,9 @@
   },
   "active": "d188e36b6b0b4b6e",
   "lastOpenFiles": [
+    "Architecture/Audits/2026-04-11 Security Review.md",
+    "Architecture/Audits/2026-04-11 KB Accuracy Rerun.md",
+    "Architecture/Audits/2026-04-11 Drift Rerun.md",
     "Architecture/Security Review Plan.md",
     "Workflow/Working with Gemini.md",
     "Workflow/Working with Codex.md",
@@ -217,9 +220,6 @@
     "Governance/strategic/README.md",
     "Governance/strategic/LENS_PACKS.md",
     "Governance/strategic/LENSES.md",
-    "Governance/strategic/DRIFT.md",
-    "Governance/schemas/escalation-examples/denied-example.md",
-    "Governance/schemas/escalation-examples/need-more-info-example.md",
-    "Governance/schemas/escalation-examples/approved-example.md"
+    "Governance/strategic/DRIFT.md"
   ]
 }
