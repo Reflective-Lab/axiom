@@ -19,7 +19,7 @@ The primary transport. Full duplex — clients send commands, servers push event
 |---|---|
 | `SubmitJobRequest` | Start a convergence run |
 | `CancelJobRequest` | Cancel a running job |
-| `InjectFactRequest` | Inject a fact mid-run |
+| `SubmitObservationRequest` | Submit a human or system observation into the truth pipeline |
 | `ApproveProposalRequest` | HITL approval |
 | `RejectProposalRequest` | HITL rejection |
 | `PauseRunRequest` / `ResumeRunRequest` | Flow control |

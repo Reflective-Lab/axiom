@@ -26,14 +26,15 @@ Converge follows hexagonal architecture (ports and adapters). The core engine ha
         │                                                      │
         │   Engine ─── Context ─── Facts ─── Invariants        │
         │       │                                              │
-        │   Agents ─── Proposals ─── Promotion Gate            │
+        │   Suggestors ─── Proposals ─── Promotion Gate        │
         │       │                                              │
         │   RootIntent ─── Budget ─── Criteria                 │
         │                                                      │
         │            ── PORTS (traits) ──                       │
-        │   Backend · LlmProvider · ExperienceStore            │
+        │   Backend · LlmProvider · ExperienceAppender         │
         │   BackendSelector · VectorRecall · Embedding         │
-        │   Invariant · Agent · StreamingCallback              │
+        │   Invariant · Suggestor · ExperienceReplayer         │
+        │   StreamingCallback                                  │
         │                                                      │
         └──┬──────────┬──────────┬──────────┬─────────────┬───┘
            │          │          │          │             │
@@ -62,7 +63,7 @@ Think of Converge as a decision-making engine with pluggable sensors and actuato
 
 ### For Users
 
-You author packs against `converge-pack`. Your suggestor receives a `&dyn ReadContext` and returns proposals. If it needs an LLM, it takes an `Arc<dyn LlmProvider>` — not an `Arc<AnthropicProvider>`. At construction time, you inject the concrete provider. Your code never changes when you switch providers. See [[Architecture/API Surfaces]] for which crate to depend on.
+You author packs against `converge-pack`. Your suggestor receives a `&dyn Context` and returns proposals. If it needs external capabilities, inject traits at the application or adapter boundary — not concrete provider types. Your pack should depend on the public contract crates, not on runtime or provider internals. See [[Architecture/API Surfaces]] for which crate to depend on.
 
 ### For Contributors
 
@@ -79,7 +80,7 @@ The dependency arrow always points inward. `converge-pack` and `converge-provide
 
 **Driven adapters** (right side) — things Converge calls out to:
 - LLM providers (cloud and local)
-- Storage backends (SurrealDB, LanceDB, S3)
+- Experience/event stores (SurrealDB, LanceDB, S3)
 - Search engines (vector, full-text)
 - Optimization solvers (OR-Tools)
 - Analytics engines (Burn, Polars)

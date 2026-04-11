@@ -53,7 +53,7 @@ Cycle 4:
 
 **Correctness**: The system doesn't stop because someone told it to. It stops because there is genuinely nothing more to learn. Or it stops because the budget ran out and tells you honestly.
 
-**Determinism**: Same inputs, same agents, same result. Agents execute in parallel but effects merge serially in name-sorted order. No race conditions. No non-deterministic interleaving.
+**Determinism**: Same inputs, same registration order, same result. Core execution is sequential today, and effects merge serially in registration order. No hidden interleaving in the core engine.
 
 **Auditability**: Every fact traces back to the agent that proposed it, the cycle it was promoted in, and the confidence score it carried. You can replay exactly how the system reached its conclusion.
 
@@ -71,12 +71,12 @@ If the budget is exhausted before convergence, the run terminates with `StopReas
 
 Each cycle, the engine:
 1. Checks which context keys changed since last cycle
-2. For each agent, calls `dependencies()` — which keys does it watch?
+2. For each suggestor, calls `dependencies()` — which keys does it watch?
 3. If any watched key changed, calls `accepts()` — pure predicate
-4. If `accepts()` returns true, calls `execute()` — agent reads context, returns proposals
+4. If `accepts()` returns true, calls `execute()` — suggestor reads context, returns proposals
 5. Engine promotes proposals through the governance gate
 6. If no new facts were promoted → fixed point → convergence
 
-Agents with no dependencies run on cycle 1. Agents that depend on Seeds run when Seeds changes. This is how the cascade works — without agents calling each other.
+Suggestors with no dependencies run on cycle 1. Suggestors that depend on Seeds run when Seeds changes. This is how the cascade works — without suggestors calling each other.
 
 See also: [[Philosophy/Nine Axioms]], [[Concepts/Agents]], [[Concepts/Context and Facts]]

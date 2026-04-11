@@ -309,8 +309,7 @@ impl CapabilityRegistry {
             Arc::new(crate::vector::InMemoryVectorStore::new()),
         );
 
-        // Add in-memory graph store
-        registry.add_graph_store("default", Arc::new(crate::graph::InMemoryGraphStore::new()));
+        // Graph store moved to organism-intelligence crate
 
         // Try to add Brave Search if available
         registry.try_add_brave_from_env();

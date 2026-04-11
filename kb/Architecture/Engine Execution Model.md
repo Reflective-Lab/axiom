@@ -11,16 +11,16 @@ The engine runs an 8-phase cycle until convergence or termination.
 Context from [[Concepts/Root Intent|RootIntent]]. Seeds populated, budgets set, invariants registered.
 
 ### 2. Eligibility
-For each agent: check `dependencies()` against changed keys, then call `accepts()`. Pure, deterministic.
+For each suggestor: check `dependencies()` against changed keys, then call `accepts()`. Pure, deterministic.
 
-### 3. Parallel Execution
-All eligible agents execute concurrently via Rayon. Agents read context immutably. No mutation, no coordination between agents.
+### 3. Execution
+In `converge-core`, eligible suggestors execute sequentially. Higher-level runtimes may provide parallel execution through a separate executor surface. Suggestors read context immutably. No mutation, no coordination between suggestors.
 
 ### 4. Effect Buffering
-Each agent returns an `AgentEffect`. The engine collects all effects without applying them.
+Each suggestor returns an `AgentEffect`. The engine collects all effects without applying them.
 
 ### 5. Serialized Merge
-Effects merge **one agent at a time**, in **name-sorted order**. This is the determinism guarantee ([[Philosophy/Nine Axioms#6. Transparent Determinism|Axiom 6]]). Same agents, same context, same merge order, same result.
+Effects merge **one suggestor at a time**, in **registration order** (`SuggestorId`). This is the current determinism guarantee ([[Philosophy/Nine Axioms#6. Transparent Determinism|Axiom 6]]). Same registration order, same context, same merge order, same result.
 
 ### 6. Pruning
 Dominated facts and irrelevant agents removed. Structural [[Concepts/Invariants|invariants]] checked on every merge.
@@ -43,17 +43,17 @@ Stop if:
 
 ## Determinism Guarantees
 
-1. Agent eligibility is pure — same context, same decision
-2. Agents execute in parallel but merge serially in name-sorted order
+1. Suggestor eligibility is pure — same context, same decision
+2. Core execution is deterministic and merge happens serially in registration order
 3. Conflict detection is deterministic
 4. No randomness, no implicit retries, no shadow work ([[Philosophy/Nine Axioms#8. No Hidden Work|Axiom 8]])
 
-## Parallelism Model
+## Execution Model
 
-- Agents execute in parallel (Rayon)
-- Agents read context concurrently (immutable borrows)
-- Merge happens serially (one agent's effect at a time)
+- Core executes suggestors sequentially
+- Runtimes may execute suggestors in parallel through an external executor surface
+- Merge happens serially (one suggestor's effect at a time)
 
-Parallel execution, serial commitment. This is how Converge runs agents in parallel while guaranteeing convergence.
+Sequential core execution, serial commitment. This keeps `converge-core` deterministic and lets runtime crates own execution strategy.
 
 See also: [[Philosophy/Convergence Explained]], [[Concepts/Agents]], [[Concepts/Invariants]]

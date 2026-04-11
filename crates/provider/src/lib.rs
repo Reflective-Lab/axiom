@@ -169,7 +169,8 @@ mod minmax;
 #[cfg(feature = "mistral")]
 mod mistral;
 mod model_selection;
-pub mod ocr;
+// Moved to organism-intelligence crate
+// pub mod ocr;
 #[cfg(feature = "ollama")]
 mod ollama;
 #[cfg(feature = "openai")]
@@ -184,20 +185,21 @@ mod qwen;
 #[cfg(feature = "zhipu")]
 mod zhipu;
 
-// Patent providers
-#[cfg(feature = "patent")]
-pub mod patent;
+// Patent providers — moved to organism-intelligence crate
+// #[cfg(feature = "patent")]
+// pub mod patent;
 
 // Tool integration (MCP, OpenAPI, GraphQL)
 pub mod tools;
 
-// LinkedIn providers
-#[cfg(feature = "linkedin")]
-mod linkedin;
+// LinkedIn providers — moved to organism-intelligence crate
+// #[cfg(feature = "linkedin")]
+// mod linkedin;
 
 // Capability providers
 pub mod embedding;
-pub mod graph;
+// Graph store — moved to organism-intelligence crate
+// pub mod graph;
 #[cfg(feature = "registry")]
 pub mod registry_loader;
 pub mod reranker;
@@ -287,18 +289,9 @@ pub use contract::{
 #[cfg(feature = "anthropic")]
 pub use llm::AnthropicBackend;
 
-// Patent providers
-#[cfg(feature = "patent")]
-pub use patent::{
-    CompositePatentProvider, PatentOperator, PatentSearchProvider, PatentSearchRequest,
-    PatentSearchResponse, PatentSearchResult, StubPatentProvider,
-};
+// Patent providers — moved to organism-intelligence crate
 
-// LinkedIn providers
-#[cfg(feature = "linkedin")]
-pub use linkedin::{
-    LinkedInApiProvider, LinkedInGetRequest, LinkedInProvider, StubLinkedInProvider,
-};
+// LinkedIn providers — moved to organism-intelligence crate
 
 // Search providers
 #[cfg(feature = "brave")]
@@ -307,33 +300,7 @@ pub use brave::{
     BraveSearchResponse, BraveSearchResult,
 };
 
-// OCR / Document AI providers
-pub use ocr::{
-    DeepSeekOcrProvider,
-    LightOnOcrProvider,
-    // Cloud providers
-    MistralOcrProvider,
-    OcrConfidence,
-    OcrError,
-    OcrImage,
-    OcrInput,
-    OcrOutputFormat,
-    OcrPreprocessing,
-    // Provenance & tracing
-    OcrProvenance,
-    // Core types
-    OcrProvider,
-    OcrRequest,
-    OcrResult,
-    OcrSpan,
-    OcrTable,
-    TesseractConfig,
-    // Local providers (stubs for now)
-    TesseractOcrProvider,
-    TesseractOutputFormat,
-    compute_hash,
-    with_trace_hashes,
-};
+// OCR / Document AI — moved to organism-intelligence crate
 
 // Tool integration
 pub use tools::{

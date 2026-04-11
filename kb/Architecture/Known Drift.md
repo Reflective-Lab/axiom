@@ -23,21 +23,18 @@ Split into `converge-pack` (authoring) and `converge-provider-api` (capability r
 `Fact::new()` and `Fact::with_promotion()` are `kernel-authority` gated and not re-exported through `converge-core`. Compile-fail test proves external converge-core consumers cannot construct facts.
 
 ### Warning Drift — CLOSED
-`cargo check --workspace` is clean (zero warnings, excluding redis future-incompat).
+`cargo check --workspace` is clean (zero warnings).
+
+### Merge Order Documentation (Axiom 6) — CLOSED
+Live docs now match the implementation: core merges in registration order by `SuggestorId`.
 
 ## Open
 
 ### Medium: SystemTime in Core (Axiom 6)
 
-`SystemTime::now()` is called in locations within `converge-core` for timestamps. This breaks replay determinism.
+Core still sources wall-clock time internally through both `SystemTime::now()` and `Timestamp::now()`. This breaks replay determinism.
 
 **Resolution:** Replace with an injectable `Clock` trait at the kernel/application boundary.
-
-### Medium: Merge Order Documentation (Axiom 6)
-
-Docs say "name-sorted order." Engine sorts by `SuggestorId` (registration order).
-
-**Resolution:** Either sort by `agent.name()` or update documentation.
 
 ### Low: RetryPolicy in Core (Axiom 8)
 

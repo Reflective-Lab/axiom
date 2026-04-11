@@ -27,7 +27,7 @@ Invalid states are unrepresentable. Type-state patterns enforce the lifecycle: D
 
 ## 6. Transparent Determinism
 
-All execution is deterministic and reproducible. Agents execute in parallel, but effects merge serially in name-sorted order. The distinction between replay-eligible (LocalTrace) and audit-only (RemoteRef) provenance is explicit.
+All execution is deterministic and reproducible. The current core engine executes suggestors sequentially and merges effects serially in registration order. The distinction between replay-eligible (LocalTrace) and audit-only (RemoteRef) provenance is explicit.
 
 ## 7. Human Authority First-Class
 
