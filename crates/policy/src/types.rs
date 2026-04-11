@@ -64,8 +64,6 @@ pub struct DecideRequest {
     /// Action: propose, validate, promote, commit, `advance_phase`
     pub action: String,
     pub context: Option<ContextIn>,
-    /// If true, record the decision in the event store
-    pub observe: Option<bool>,
     /// Optional delegation token for fast-path elevated authority
     pub delegation_b64: Option<String>,
 }

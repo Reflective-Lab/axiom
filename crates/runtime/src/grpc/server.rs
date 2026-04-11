@@ -160,6 +160,44 @@ impl ConvergeServiceImpl {
             .unwrap_or_default()
             .as_nanos() as u64
     }
+
+    #[cfg(feature = "auth")]
+    fn extract_bearer_token<T>(request: &Request<T>) -> Result<Option<String>, Status> {
+        let auth_header = match request.metadata().get("authorization") {
+            Some(value) => value,
+            None => return Ok(None),
+        };
+
+        let auth_value = auth_header
+            .to_str()
+            .map_err(|_| Status::unauthenticated("Invalid authorization header encoding"))?;
+
+        let token = auth_value
+            .strip_prefix("Bearer ")
+            .or_else(|| auth_value.strip_prefix("bearer "))
+            .ok_or_else(|| Status::unauthenticated("Authorization header must be Bearer token"))?;
+
+        Ok(Some(token.to_string()))
+    }
+
+    #[cfg(feature = "auth")]
+    async fn authenticate(method: &str, bearer_token: Option<String>) -> Result<(), Status> {
+        if method == "/converge.ConvergeService/GetCapabilities" {
+            return Ok(());
+        }
+
+        let token =
+            bearer_token.ok_or_else(|| Status::unauthenticated("Missing bearer token"))?;
+
+        crate::http_auth::validate_token(&token)
+            .await
+            .map(|_| ())
+            .map_err(|err| match err {
+                RuntimeError::Authentication(message) => Status::unauthenticated(message),
+                RuntimeError::Config(message) => Status::failed_precondition(message),
+                _ => Status::internal("Authentication failed"),
+            })
+    }
 }
 
 #[tonic::async_trait]
@@ -171,6 +209,13 @@ impl ConvergeService for ConvergeServiceImpl {
         &self,
         request: Request<Streaming<ClientMessage>>,
     ) -> Result<Response<Self::StreamStream>, Status> {
+        #[cfg(feature = "auth")]
+        Self::authenticate(
+            "/converge.ConvergeService/Stream",
+            Self::extract_bearer_token(&request)?,
+        )
+        .await?;
+
         let mut in_stream = request.into_inner();
         let (tx, rx) = mpsc::channel(128);
 
@@ -231,6 +276,13 @@ impl ConvergeService for ConvergeServiceImpl {
         &self,
         request: Request<SubmitJobRequest>,
     ) -> Result<Response<SubmitJobResponse>, Status> {
+        #[cfg(feature = "auth")]
+        Self::authenticate(
+            "/converge.ConvergeService/SubmitJob",
+            Self::extract_bearer_token(&request)?,
+        )
+        .await?;
+
         use crate::execution::JobExecutor;
         use converge_core::Budget;
 
@@ -313,6 +365,13 @@ impl ConvergeService for ConvergeServiceImpl {
         &self,
         request: Request<GetJobRequest>,
     ) -> Result<Response<GetJobResponse>, Status> {
+        #[cfg(feature = "auth")]
+        Self::authenticate(
+            "/converge.ConvergeService/GetJob",
+            Self::extract_bearer_token(&request)?,
+        )
+        .await?;
+
         let req = request.into_inner();
 
         // TODO: Lookup actual job status
@@ -334,6 +393,13 @@ impl ConvergeService for ConvergeServiceImpl {
         &self,
         request: Request<GetEventsRequest>,
     ) -> Result<Response<GetEventsResponse>, Status> {
+        #[cfg(feature = "auth")]
+        Self::authenticate(
+            "/converge.ConvergeService/GetEvents",
+            Self::extract_bearer_token(&request)?,
+        )
+        .await?;
+
         let _req = request.into_inner();
 
         // TODO: Return actual events from storage
@@ -349,6 +415,13 @@ impl ConvergeService for ConvergeServiceImpl {
         &self,
         request: Request<GetCapabilitiesRequest>,
     ) -> Result<Response<GetCapabilitiesResponse>, Status> {
+        #[cfg(feature = "auth")]
+        Self::authenticate(
+            "/converge.ConvergeService/GetCapabilities",
+            Self::extract_bearer_token(&request)?,
+        )
+        .await?;
+
         use crate::execution::PackRegistry;
 
         let req = request.into_inner();

@@ -48,7 +48,7 @@ pub struct HttpConfig {
 impl Default for HttpConfig {
     fn default() -> Self {
         Self {
-            bind: "0.0.0.0:8080".parse().expect("valid default address"),
+            bind: "127.0.0.1:8080".parse().expect("valid default address"),
             max_body_size: 10 * 1024 * 1024, // 10 MB
         }
     }
@@ -66,7 +66,7 @@ pub struct GrpcConfig {
 impl Default for GrpcConfig {
     fn default() -> Self {
         Self {
-            bind: "0.0.0.0:50051".parse().expect("valid default address"),
+            bind: "127.0.0.1:50051".parse().expect("valid default address"),
         }
     }
 }
@@ -239,16 +239,19 @@ impl Config {
     ///
     /// Environment variables:
     /// - `HTTP_PORT` or `PORT` - HTTP server port (default: 8080)
-    /// - `HTTP_BIND` - Full bind address (default: 0.0.0.0:8080)
+    /// - `HTTP_BIND` - Full bind address (default: 127.0.0.1:8080)
+    /// - `SECURITY_CERT_PATH`, `SECURITY_KEY_PATH`, `SECURITY_CA_PATH` - TLS paths
+    /// - `SECURITY_SERVICE_ID` - explicit service identifier
+    /// - `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE` - JWT validation config
     /// - `STRIPE_API_KEY` - Stripe secret key (billing feature)
     /// - `STRIPE_WEBHOOK_SECRET` - Stripe webhook signing secret (billing feature)
     pub fn load() -> anyhow::Result<Self> {
         let http_bind = if let Ok(bind) = std::env::var("HTTP_BIND") {
             bind.parse()?
         } else if let Ok(port) = std::env::var("HTTP_PORT").or_else(|_| std::env::var("PORT")) {
-            format!("0.0.0.0:{port}").parse()?
+            format!("127.0.0.1:{port}").parse()?
         } else {
-            "0.0.0.0:8080".parse()?
+            "127.0.0.1:8080".parse()?
         };
 
         Ok(Self {
@@ -256,7 +259,7 @@ impl Config {
                 bind: http_bind,
                 ..HttpConfig::default()
             },
-            security: None,
+            security: load_security_config(),
             nats: None,
             #[cfg(feature = "billing")]
             billing: std::env::var("STRIPE_API_KEY")
@@ -276,6 +279,54 @@ impl Config {
     }
 }
 
+fn load_security_config() -> Option<SecurityConfig> {
+    let cert_path = std::env::var("SECURITY_CERT_PATH").ok().map(PathBuf::from);
+    let key_path = std::env::var("SECURITY_KEY_PATH").ok().map(PathBuf::from);
+    let ca_path = std::env::var("SECURITY_CA_PATH").ok().map(PathBuf::from);
+    let service_id = std::env::var("SECURITY_SERVICE_ID").ok();
+    let identity_source =
+        std::env::var("SECURITY_IDENTITY_SOURCE").unwrap_or_else(|_| default_identity_source());
+
+    let jwt_secret = std::env::var("JWT_SECRET")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+    let jwt_issuer = std::env::var("JWT_ISSUER")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+    let jwt_audience = std::env::var("JWT_AUDIENCE")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
+    let jwt = if jwt_secret.is_some() || jwt_issuer.is_some() || jwt_audience.is_some() {
+        Some(JwtConfig {
+            secret: jwt_secret,
+            issuer: jwt_issuer,
+            audience: jwt_audience,
+        })
+    } else {
+        None
+    };
+
+    let has_security = cert_path.is_some()
+        || key_path.is_some()
+        || ca_path.is_some()
+        || service_id.is_some()
+        || jwt.is_some()
+        || identity_source != default_identity_source();
+
+    has_security.then_some(SecurityConfig {
+        identity_source,
+        cert_path,
+        key_path,
+        ca_path,
+        service_id,
+        jwt,
+    })
+}
+
 // =============================================================================
 // Tests
 // =============================================================================
@@ -292,7 +343,7 @@ mod tests {
     fn test_http_config_default_bind_address() {
         let config = HttpConfig::default();
         assert_eq!(config.bind.port(), 8080);
-        assert_eq!(config.bind.ip().to_string(), "0.0.0.0");
+        assert_eq!(config.bind.ip().to_string(), "127.0.0.1");
     }
 
     #[test]
@@ -396,7 +447,7 @@ mod tests {
     fn test_grpc_config_default() {
         let config = GrpcConfig::default();
         assert_eq!(config.bind.port(), 50051);
-        assert_eq!(config.bind.ip().to_string(), "0.0.0.0");
+        assert_eq!(config.bind.ip().to_string(), "127.0.0.1");
     }
 
     #[cfg(feature = "grpc")]

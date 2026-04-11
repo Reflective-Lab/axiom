@@ -9,7 +9,9 @@ use axum::middleware::from_fn;
 use axum::{Json, Router, routing::get};
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
-use tower_http::{compression::CompressionLayer, cors::CorsLayer, trace::TraceLayer};
+use tower_http::{
+    compression::CompressionLayer, limit::RequestBodyLimitLayer, trace::TraceLayer,
+};
 use tracing::{Level, info};
 
 use utoipa::OpenApi;
@@ -63,7 +65,7 @@ impl HttpServer {
                                     Level::INFO,
                                     "http_request",
                                     method = %_request.method(),
-                                    uri = %_request.uri(),
+                                    path = %_request.uri().path(),
                                 )
                             })
                             .on_response(
@@ -79,8 +81,8 @@ impl HttpServer {
                                 },
                             ),
                     )
+                    .layer(RequestBodyLimitLayer::new(self.config.max_body_size))
                     .layer(CompressionLayer::new())
-                    .layer(CorsLayer::permissive()),
             );
 
         // Start listening

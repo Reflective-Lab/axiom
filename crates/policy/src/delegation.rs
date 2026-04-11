@@ -74,6 +74,30 @@ pub fn issue(
     signing_key: &SigningKey,
     req: IssueDelegationReq,
 ) -> Result<IssueDelegationResp, String> {
+    if req.sub.trim().is_empty() {
+        return Err("delegation subject cannot be empty".to_string());
+    }
+    if req.issuer.trim().is_empty() {
+        return Err("delegation issuer cannot be empty".to_string());
+    }
+    if req.actions.is_empty() {
+        return Err("delegation must include at least one action".to_string());
+    }
+    if req.resource_pattern.trim().is_empty() {
+        return Err("delegation resource_pattern cannot be empty".to_string());
+    }
+    if req.jti.trim().is_empty() {
+        return Err("delegation jti cannot be empty".to_string());
+    }
+    if req.exp_epoch <= req.nbf_epoch {
+        return Err("delegation exp_epoch must be later than nbf_epoch".to_string());
+    }
+    if let Some(max_amount) = req.max_amount {
+        if max_amount < 0 {
+            return Err("delegation max_amount cannot be negative".to_string());
+        }
+    }
+
     let mut del = Delegation {
         sub: req.sub,
         issuer: req.issuer,

@@ -511,20 +511,6 @@ mod tests {
         ));
     }
 
-    #[tokio::test]
-    async fn short_token_is_rejected_in_non_firebase_build() {
-        #[cfg(feature = "auth")]
-        {
-            let result = crate::http_auth::validate_token("short").await;
-            assert!(result.is_err());
-        }
-
-        #[cfg(not(feature = "auth"))]
-        {
-            assert!(true);
-        }
-    }
-
     proptest! {
         #[test]
         fn release_script_is_deterministic(

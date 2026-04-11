@@ -363,7 +363,12 @@ mod tests {
     use super::*;
     use crate::auth::jwt::{JwtValidator, JwtValidatorConfig};
 
+    fn install_crypto_provider() {
+        let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+    }
+
     fn test_config() -> TokenIssuerConfig {
+        install_crypto_provider();
         TokenIssuerConfig::new("test-secret-key-32-chars-long!!", "https://auth.test.com")
             .with_audience("test-service")
     }
@@ -445,6 +450,7 @@ mod tests {
 
     #[test]
     fn test_custom_token_lifetime() {
+        install_crypto_provider();
         let config = TokenIssuerConfig::new("secret", "issuer")
             .with_token_lifetime(Duration::from_secs(300))
             .with_refresh_lifetime(Duration::from_secs(86400));

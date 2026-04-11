@@ -247,7 +247,12 @@ mod tests {
     use super::*;
     use jsonwebtoken::{EncodingKey, Header, encode};
 
+    fn install_crypto_provider() {
+        let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+    }
+
     fn create_test_token(claims: &Claims, secret: &str) -> String {
+        install_crypto_provider();
         encode(
             &Header::default(),
             claims,

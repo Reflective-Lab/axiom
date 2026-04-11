@@ -90,8 +90,11 @@ Knowledge base for the Converge platform — a correctness-first, context-driven
 
 - [[Architecture/Audits/2026-04-11 Drift Report]] — baseline: philosophy vs implementation
 - [[Architecture/Audits/2026-04-11 KB Accuracy Report]] — baseline: documentation vs code
+- [[Architecture/Audits/2026-04-11 Drift Rerun]] — current state after contract hardening
+- [[Architecture/Audits/2026-04-11 KB Accuracy Rerun]] — current state after KB correction pass
+- [[Architecture/Audits/2026-04-11 Security Review]] — runtime and policy control-surface audit
 
-Re-run both when the public contract changes.
+Re-run these audits when the public contract or control surfaces change.
 
 ## Governance
 

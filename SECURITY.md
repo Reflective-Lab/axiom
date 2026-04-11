@@ -51,6 +51,35 @@ Please include the following information in your report:
 - Secrets handled via `zeroize` (opt-in `secure` feature on `converge-provider`)
 - Ed25519 signed delegation tokens in `converge-policy`
 
+## Current Security Baseline
+
+The current runtime and policy control-surface baseline is recorded in
+[kb/Architecture/Audits/2026-04-11 Security Review.md](kb/Architecture/Audits/2026-04-11%20Security%20Review.md).
+
+That review is the source of truth for the latest closed findings and the
+expected fail-closed posture on authority, authentication, logging, and
+transport defaults.
+
+## Security Regression Gate
+
+Changes touching policy, runtime, auth, transport, or public control surfaces
+must pass:
+
+```bash
+just security-gate
+```
+
+The gate currently runs:
+
+```bash
+cargo check --workspace
+cargo test -p converge-policy
+cargo test -p converge-runtime --lib
+cargo test -p converge-pack --test compile_fail
+cargo test -p converge-core --test compile_fail --test truth_pipeline --test negative --test properties
+cargo test -p converge-client --test messages
+```
+
 ## Shared Responsibility
 
 This repository provides a secure development baseline and reference runtime

@@ -72,7 +72,40 @@ async fn main() -> Result<()> {
 
     // Load configuration
     let config = Config::load()?;
-    info!(?config, "Configuration loaded");
+    #[cfg(feature = "billing")]
+    info!(
+        http_bind = %config.http.bind,
+        http_max_body_size = config.http.max_body_size,
+        security_configured = config.security.is_some(),
+        billing_configured = config.billing.is_some(),
+        "Configuration loaded"
+    );
+    #[cfg(not(feature = "billing"))]
+    info!(
+        http_bind = %config.http.bind,
+        http_max_body_size = config.http.max_body_size,
+        security_configured = config.security.is_some(),
+        "Configuration loaded"
+    );
+
+    #[cfg(feature = "auth")]
+    {
+        let firebase_configured = std::env::var("FIREBASE_PROJECT_ID")
+            .or_else(|_| std::env::var("GOOGLE_CLOUD_PROJECT"))
+            .or_else(|_| std::env::var("GCP_PROJECT_ID"))
+            .map(|value| !value.trim().is_empty())
+            .unwrap_or(false);
+        let jwt_configured = config
+            .security
+            .as_ref()
+            .and_then(|security| security.jwt.as_ref())
+            .is_some();
+        info!(
+            jwt_configured,
+            firebase_configured,
+            "Protected routes require configured authentication"
+        );
+    }
 
     // Initialize application state
     #[cfg(feature = "gcp")]
@@ -135,7 +168,20 @@ async fn main() -> Result<()> {
     #[cfg(feature = "grpc")]
     {
         let grpc_config = config.grpc();
-        let grpc_server = grpc::GrpcServer::new(grpc_config);
+        let grpc_server = {
+            #[cfg(feature = "security")]
+            {
+                if let Some(security_config) = config.security.clone() {
+                    grpc::GrpcServer::with_security(grpc_config, security_config)
+                } else {
+                    grpc::GrpcServer::new(grpc_config)
+                }
+            }
+            #[cfg(not(feature = "security"))]
+            {
+                grpc::GrpcServer::new(grpc_config)
+            }
+        };
         let grpc_handle = tokio::spawn(async move {
             if let Err(e) = grpc_server.start().await {
                 tracing::error!(error = %e, "gRPC server failed");

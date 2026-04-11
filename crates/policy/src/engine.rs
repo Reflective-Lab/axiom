@@ -210,7 +210,6 @@ mod tests {
                 human_approval_present: Some(human_approval),
                 required_gates_met: Some(true),
             }),
-            observe: None,
             delegation_b64: None,
         }
     }

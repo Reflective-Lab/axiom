@@ -43,16 +43,12 @@ tracing-subscriber.workspace = true
 
 # Delegation tokens
 ed25519-dalek.workspace = true
-rand.workspace = true
 ciborium.workspace = true
 base64.workspace = true
 
-# State (optional, for decision tracking)
-redis = { version = "0.25", features = ["tokio-comp"], optional = true }
-
-[features]
-default = ["redis-tracking"]
-redis-tracking = ["redis"]
-
 [lints]
 workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+tower.workspace = true

@@ -58,10 +58,16 @@ just compliance-check
 1. Fork the repository and create your branch from `main`
 2. Make your changes with clear commit messages
 3. Ensure all tests pass
-4. Update documentation if needed
-5. If data handling, security posture, or policy boundaries changed, update `docs/security/`
-6. Submit a pull request to the `main` branch
-7. Wait for code review and address feedback
+4. If you touch policy, runtime, auth, transport, or other public control surfaces, run:
+
+```bash
+just security-gate
+```
+
+5. Update documentation if needed
+6. If data handling, security posture, or policy boundaries changed, update `docs/security/` and the relevant KB audit or plan pages
+7. Submit a pull request to the `main` branch
+8. Wait for code review and address feedback
 
 ### Code Style
 

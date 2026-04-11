@@ -90,6 +90,15 @@ deny-advisories:
 compliance-check:
     bash scripts/validate-security-docs.sh
 
+# Security regression gate for policy, runtime, and public control surfaces
+security-gate:
+    cargo check --workspace
+    cargo test -p converge-policy
+    cargo test -p converge-runtime --lib
+    cargo test -p converge-pack --test compile_fail
+    cargo test -p converge-core --test compile_fail --test truth_pipeline --test negative --test properties
+    cargo test -p converge-client --test messages
+
 INFRA_ENV := "infra/environments/prod/converge-runtime"
 
 # Start local runtime, preferring native Rust if available

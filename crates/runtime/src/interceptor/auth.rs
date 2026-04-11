@@ -33,7 +33,7 @@ impl Default for AuthInterceptorConfig {
     fn default() -> Self {
         Self {
             jwt: None,
-            require_user_auth: false,
+            require_user_auth: true,
             unauthenticated_methods: vec![
                 // Capability negotiation doesn't require auth
                 "/converge.ConvergeService/GetCapabilities".to_string(),
@@ -122,22 +122,12 @@ impl AuthInterceptor {
     /// Extract service identity from request.
     ///
     /// In a real mTLS setup, this would extract from the TLS connection.
-    /// For now, we check for a custom header as a fallback.
+    /// Header-based identity is intentionally not trusted here.
     fn extract_service_identity<T>(&self, request: &Request<T>) -> Option<ServiceIdentity> {
         // Try to get from TLS peer certificate (would be set by tonic-tls)
         // This is a placeholder - actual implementation depends on how tonic
         // exposes peer certificate info.
-
-        // Fallback: check for X-Service-Id header (for testing/development)
-        if let Some(service_id) = request.metadata().get("x-service-id") {
-            if let Ok(id) = service_id.to_str() {
-                debug!(service_id = %id, "Service identity from header");
-                return Some(ServiceIdentity::new(id));
-            }
-        }
-
-        // In production without mTLS, we might reject requests
-        // For now, allow with a default service identity
+        let _ = request;
         None
     }
 
@@ -198,25 +188,12 @@ impl AuthInterceptor {
         // Build verified identity
         let verified = match (service_identity, user_identity) {
             (Some(svc), Some(user)) => VerifiedIdentity::with_user(svc, user),
-            (Some(svc), None) => {
-                if self.config.require_user_auth {
-                    return Err(Status::unauthenticated("User authentication required"));
-                }
-                VerifiedIdentity::service_only(svc)
-            }
             (None, Some(user)) => {
-                // User auth present but no service auth - create anonymous service
-                let svc = ServiceIdentity::new("anonymous");
+                let svc = ServiceIdentity::new("jwt-authenticated-client");
                 VerifiedIdentity::with_user(svc, user)
             }
-            (None, None) => {
-                if self.config.require_user_auth {
-                    return Err(Status::unauthenticated("Authentication required"));
-                }
-                // Allow with anonymous identity for development
-                let svc = ServiceIdentity::new("anonymous");
-                VerifiedIdentity::service_only(svc)
-            }
+            (Some(svc), None) => VerifiedIdentity::service_only(svc),
+            (None, None) => return Err(Status::unauthenticated("Authentication required")),
         };
 
         debug!(
@@ -279,6 +256,10 @@ mod tests {
     use super::*;
     use tonic::metadata::MetadataValue;
 
+    fn install_crypto_provider() {
+        let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+    }
+
     fn test_jwt_config() -> JwtValidatorConfig {
         JwtValidatorConfig::new("test-secret-key-32-chars-long!!", "https://auth.test.com")
             .with_audience("converge-runtime")
@@ -287,7 +268,7 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = AuthInterceptorConfig::default();
-        assert!(!config.require_user_auth);
+        assert!(config.require_user_auth);
         assert!(
             config
                 .unauthenticated_methods
@@ -305,35 +286,51 @@ mod tests {
     }
 
     #[test]
-    fn test_authenticate_with_service_header() {
-        let config = AuthInterceptorConfig::default();
+    fn test_authenticate_with_valid_jwt() {
+        install_crypto_provider();
+        let config = AuthInterceptorConfig::with_jwt(test_jwt_config());
         let interceptor = AuthInterceptor::new(config);
 
         let mut request = Request::new(());
-        request
-            .metadata_mut()
-            .insert("x-service-id", MetadataValue::from_static("test-service"));
+        let claims = crate::auth::Claims {
+            sub: "user-123".to_string(),
+            iss: Some("https://auth.test.com".to_string()),
+            aud: Some(crate::auth::Audience::Single("converge-runtime".to_string())),
+            exp: Some(u64::MAX / 2),
+            nbf: None,
+            iat: None,
+            jti: None,
+            email: None,
+            roles: None,
+            org_id: None,
+        };
+        let token = jsonwebtoken::encode(
+            &jsonwebtoken::Header::default(),
+            &claims,
+            &jsonwebtoken::EncodingKey::from_secret("test-secret-key-32-chars-long!!".as_bytes()),
+        )
+        .unwrap();
+        request.metadata_mut().insert(
+            "authorization",
+            MetadataValue::try_from(format!("Bearer {token}")).unwrap(),
+        );
 
         let result = interceptor.authenticate(request);
         assert!(result.is_ok());
 
         let request = result.unwrap();
         let identity = request.identity().unwrap();
-        assert_eq!(identity.service.service_id, "test-service");
+        assert_eq!(identity.principal(), "user-123");
     }
 
     #[test]
-    fn test_authenticate_unauthenticated_method() {
-        let config = AuthInterceptorConfig::default();
+    fn test_authenticate_without_credentials_fails_closed() {
+        let config = AuthInterceptorConfig::with_jwt(test_jwt_config());
         let interceptor = AuthInterceptor::new(config);
 
-        let mut request = Request::new(());
-        // Simulate the method path
-        // Note: In real usage, the URI is set by tonic
-
-        // This test would need more setup to properly test URI-based method checking
+        let request = Request::new(());
         let result = interceptor.authenticate(request);
-        assert!(result.is_ok());
+        assert!(result.is_err());
     }
 
     #[test]
@@ -341,10 +338,7 @@ mod tests {
         let config = AuthInterceptorConfig::default().require_user_auth();
         let interceptor = AuthInterceptor::new(config);
 
-        let mut request = Request::new(());
-        request
-            .metadata_mut()
-            .insert("x-service-id", MetadataValue::from_static("test-service"));
+        let request = Request::new(());
 
         let result = interceptor.authenticate(request);
         assert!(result.is_err());

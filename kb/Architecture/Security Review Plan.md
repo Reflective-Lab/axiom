@@ -5,6 +5,22 @@ tags: [architecture, security]
 
 Post-restructuring security review. Run after the kernel correction is fully landed and all ADRs are implemented.
 
+## Current Baseline
+
+The 2026-04-11 runtime/policy review is recorded in [[Architecture/Audits/2026-04-11 Security Review]].
+
+That review closed the immediate control-surface issues:
+
+- unauthenticated delegation minting
+- weak bearer-token fallback
+- query-string token acceptance
+- unwired gRPC auth
+- permissive CORS defaults
+- secret-bearing config logs
+- unenforced HTTP body size limits
+
+This page remains the forward plan. The audit page is the dated implementation record.
+
 ## Scope
 
 The review targets the **six public crates** and the **kernel boundary**. The goal is to prove that the axioms are enforced by the compiler and runtime, not just by convention.
@@ -97,6 +113,25 @@ For each public crate, verify:
 just deny           # cargo deny check (supply chain)
 cargo audit         # known vulnerabilities
 cargo geiger        # unsafe usage in dependency tree
+```
+
+## Regression Gate
+
+Minimum regression gate for changes touching runtime, policy, auth, or protocol:
+
+```bash
+just security-gate
+```
+
+Current command set:
+
+```bash
+cargo check --workspace
+cargo test -p converge-policy
+cargo test -p converge-runtime --lib
+cargo test -p converge-pack --test compile_fail
+cargo test -p converge-core --test compile_fail --test truth_pipeline --test negative --test properties
+cargo test -p converge-client --test messages
 ```
 
 ## Execution Order
