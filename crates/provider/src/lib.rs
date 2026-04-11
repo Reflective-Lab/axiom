@@ -17,7 +17,8 @@
 //! > **Converge converges; providers adapt.**
 //!
 //! This crate provides capability adapters (providers) that connect Converge
-//! workflows to external systems. Each provider implements [`converge_traits::Backend`]
+//! workflows to external systems. Each provider implements
+//! [`converge_provider_api::Backend`]
 //! for identity and capability declaration, and [`provider_api::LlmProvider`] for
 //! invocation. Providers return structured observations with provenance.
 //!
@@ -273,7 +274,7 @@ pub use provider_api::{
     ModelSelectorTrait, TokenUsage as LlmTokenUsage,
 };
 
-// Convergence integration (Backend + Agent wrappers)
+// Convergence integration (Backend + Suggestor wrappers)
 pub use convergence::LlmAgent;
 
 // Contract types (re-exported for convenience)

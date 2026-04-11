@@ -6,7 +6,7 @@ use burn::{
     prelude::*,
     tensor::{Tensor, backend::Backend},
 };
-use converge_core::{Agent, AgentEffect, Context, ContextKey, Fact};
+use converge_core::{Suggestor, AgentEffect, ContextKey, ProposedFact};
 use serde_json;
 
 // Re-defining for now if not public in engine, strictly we should move to lib or common
@@ -56,7 +56,7 @@ pub struct InferenceAgent {
     // in real app, model might be Arc<Mutex<Model>> or just loaded
     // For demo we instantiate on fly or would hold it.
     // Burn models are cheap to clone if weights are Arc.
-    // For this demo, we won't hold the model in the struct to avoid generic complexity in the Agent trait object,
+    // For this demo, we won't hold the model in the struct to avoid generic complexity in the Suggestor trait object,
     // or we use a concrete backend like NdArrayBackend.
 }
 
@@ -66,7 +66,7 @@ impl InferenceAgent {
     }
 }
 
-impl Agent for InferenceAgent {
+impl Suggestor for InferenceAgent {
     fn name(&self) -> &str {
         "InferenceAgent (Burn)"
     }
@@ -140,13 +140,14 @@ impl Agent for InferenceAgent {
 
         let hypo_content = format!("Prediction: {:.4} (based on {})", prediction, facts[0].id);
 
-        let hypothesis = Fact::new(
+        let hypothesis = ProposedFact::new(
             ContextKey::Hypotheses,
             format!("hypo-{}", facts[0].id),
             hypo_content,
+            self.name(),
         );
 
-        AgentEffect::with_fact(hypothesis)
+        AgentEffect::with_proposal(hypothesis)
     }
 }
 

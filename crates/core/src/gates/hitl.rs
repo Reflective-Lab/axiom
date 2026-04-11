@@ -50,7 +50,7 @@ pub struct HitlPolicy {
     /// `None` means no confidence-based gating.
     pub confidence_threshold: Option<f32>,
 
-    /// Agent IDs whose proposals always require HITL.
+    /// Suggestor IDs whose proposals always require HITL.
     /// Empty means no agent-based gating.
     pub gated_agent_ids: Vec<String>,
 
@@ -98,7 +98,7 @@ impl HitlPolicy {
             }
         }
 
-        // Agent-based gating
+        // Suggestor-based gating
         if self.gated_agent_ids.contains(&agent_id.to_string()) {
             return true;
         }
@@ -176,7 +176,7 @@ pub struct GateRequest {
     /// Which agent made the proposal.
     pub agent_id: String,
 
-    /// Agent's stated reason for the proposal.
+    /// Suggestor's stated reason for the proposal.
     pub rationale: Option<String>,
 
     /// Key data the agent used to make this proposal (for human context).

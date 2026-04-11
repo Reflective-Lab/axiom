@@ -1,24 +1,24 @@
 // Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 
-//! Example agents for testing and demonstration.
+//! Example suggestors for testing and demonstration.
 //!
-// Agent trait returns &str, but we return literals. This is fine.
+// Suggestor trait returns &str, but we return literals. This is fine.
 #![allow(clippy::unnecessary_literal_bound)]
 //!
-//! These agents prove the core convergence properties:
-//! - `SeedAgent`: Emits initial facts, stops when done
-//! - `ReactOnceAgent`: Reacts to changes, stops after one contribution
+//! These suggestors prove the core convergence properties:
+//! - `SeedSuggestor`: Emits initial facts, stops when done
+//! - `ReactOnceSuggestor`: Reacts to changes, stops after one contribution
 //!
 //! # Example
 //!
 //! ```
 //! use converge_core::{Engine, Context, ContextKey};
-//! use converge_core::agents::{SeedAgent, ReactOnceAgent};
+//! use converge_core::suggestors::{SeedSuggestor, ReactOnceSuggestor};
 //!
 //! let mut engine = Engine::new();
-//! engine.register(SeedAgent::new("seed-1", "initial value"));
-//! engine.register(ReactOnceAgent::new("hyp-1", "derived insight"));
+//! engine.register_suggestor(SeedSuggestor::new("seed-1", "initial value"));
+//! engine.register_suggestor(ReactOnceSuggestor::new("hyp-1", "derived insight"));
 //!
 //! let result = engine.run(Context::new()).expect("converges");
 //! assert!(result.converged);
@@ -26,23 +26,23 @@
 //! assert!(result.context.has(ContextKey::Hypotheses));
 //! ```
 
-use crate::agent::Agent;
-use crate::context::{ContextKey, Fact};
+use crate::agent::Suggestor;
+use crate::context::{ContextKey, ProposedFact};
 use crate::effect::AgentEffect;
 
-/// An agent that emits an initial seed fact once.
+/// A suggestor that emits an initial seed proposal once.
 ///
 /// Demonstrates:
-/// - Agent with no dependencies (runs first)
+/// - Suggestor with no dependencies (runs first)
 /// - Self-terminating behavior (checks if already contributed)
 /// - Monotonic context evolution
-pub struct SeedAgent {
+pub struct SeedSuggestor {
     fact_id: String,
     content: String,
 }
 
-impl SeedAgent {
-    /// Creates a new seed agent.
+impl SeedSuggestor {
+    /// Creates a new seed suggestor.
     #[must_use]
     pub fn new(fact_id: impl Into<String>, content: impl Into<String>) -> Self {
         Self {
@@ -52,9 +52,9 @@ impl SeedAgent {
     }
 }
 
-impl Agent for SeedAgent {
+impl Suggestor for SeedSuggestor {
     fn name(&self) -> &str {
-        "SeedAgent"
+        "SeedSuggestor"
     }
 
     fn dependencies(&self) -> &[ContextKey] {
@@ -69,27 +69,28 @@ impl Agent for SeedAgent {
     }
 
     fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
-        AgentEffect::with_fact(Fact {
-            key: ContextKey::Seeds,
-            id: self.fact_id.clone(),
-            content: self.content.clone(),
-        })
+        AgentEffect::with_proposal(ProposedFact::new(
+            ContextKey::Seeds,
+            self.fact_id.clone(),
+            self.content.clone(),
+            self.name(),
+        ))
     }
 }
 
-/// An agent that reacts to seeds by emitting a hypothesis once.
+/// A suggestor that reacts to seeds by emitting a hypothesis once.
 ///
 /// Demonstrates:
 /// - Dependency-driven activation (only runs when Seeds change)
 /// - Data-driven behavior (reads context to decide)
 /// - Self-terminating (checks if already contributed)
-pub struct ReactOnceAgent {
+pub struct ReactOnceSuggestor {
     fact_id: String,
     content: String,
 }
 
-impl ReactOnceAgent {
-    /// Creates a new reactive agent.
+impl ReactOnceSuggestor {
+    /// Creates a new reactive suggestor.
     #[must_use]
     pub fn new(fact_id: impl Into<String>, content: impl Into<String>) -> Self {
         Self {
@@ -99,9 +100,9 @@ impl ReactOnceAgent {
     }
 }
 
-impl Agent for ReactOnceAgent {
+impl Suggestor for ReactOnceSuggestor {
     fn name(&self) -> &str {
-        "ReactOnceAgent"
+        "ReactOnceSuggestor"
     }
 
     fn dependencies(&self) -> &[ContextKey] {
@@ -118,11 +119,12 @@ impl Agent for ReactOnceAgent {
     }
 
     fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
-        AgentEffect::with_fact(Fact {
-            key: ContextKey::Hypotheses,
-            id: self.fact_id.clone(),
-            content: self.content.clone(),
-        })
+        AgentEffect::with_proposal(ProposedFact::new(
+            ContextKey::Hypotheses,
+            self.fact_id.clone(),
+            self.content.clone(),
+            self.name(),
+        ))
     }
 }
 
@@ -135,7 +137,7 @@ mod tests {
     #[test]
     fn seed_agent_emits_once() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent::new("s1", "value"));
+        engine.register_suggestor(SeedSuggestor::new("s1", "value"));
 
         let result = engine.run(Context::new()).expect("converges");
 
@@ -146,8 +148,8 @@ mod tests {
     #[test]
     fn react_once_agent_chains_from_seed() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent::new("s1", "seed"));
-        engine.register(ReactOnceAgent::new("h1", "hypothesis"));
+        engine.register_suggestor(SeedSuggestor::new("s1", "seed"));
+        engine.register_suggestor(ReactOnceSuggestor::new("h1", "hypothesis"));
 
         let result = engine.run(Context::new()).expect("converges");
 
@@ -159,9 +161,9 @@ mod tests {
     #[test]
     fn multiple_seeds_all_converge() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent::new("s1", "first"));
-        engine.register(SeedAgent::new("s2", "second"));
-        engine.register(SeedAgent::new("s3", "third"));
+        engine.register_suggestor(SeedSuggestor::new("s1", "first"));
+        engine.register_suggestor(SeedSuggestor::new("s2", "second"));
+        engine.register_suggestor(SeedSuggestor::new("s3", "third"));
 
         let result = engine.run(Context::new()).expect("converges");
 
@@ -171,10 +173,10 @@ mod tests {
 
     #[test]
     fn chain_of_three_converges() {
-        /// Third agent in the chain.
+        /// Third suggestor in the chain.
         struct StrategyAgent;
 
-        impl Agent for StrategyAgent {
+        impl Suggestor for StrategyAgent {
             fn name(&self) -> &str {
                 "StrategyAgent"
             }
@@ -188,18 +190,19 @@ mod tests {
             }
 
             fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
-                AgentEffect::with_fact(Fact {
-                    key: ContextKey::Strategies,
-                    id: "strat-1".into(),
-                    content: "derived strategy".into(),
-                })
+                AgentEffect::with_proposal(ProposedFact::new(
+                    ContextKey::Strategies,
+                    "strat-1",
+                    "derived strategy",
+                    self.name(),
+                ))
             }
         }
 
         let mut engine = Engine::new();
-        engine.register(SeedAgent::new("s1", "seed"));
-        engine.register(ReactOnceAgent::new("h1", "hypothesis"));
-        engine.register(StrategyAgent);
+        engine.register_suggestor(SeedSuggestor::new("s1", "seed"));
+        engine.register_suggestor(ReactOnceSuggestor::new("h1", "hypothesis"));
+        engine.register_suggestor(StrategyAgent);
 
         let result = engine.run(Context::new()).expect("converges");
 

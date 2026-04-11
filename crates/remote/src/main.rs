@@ -4,8 +4,9 @@
 
 //! Converge Remote - Runtime Driver
 //!
-//! This is the gRPC client that connects to converge-runtime.
-//! It implements the full Converge Protocol for streaming convergence.
+//! This is the compatibility CLI that connects to `converge-runtime`.
+//! The canonical Rust SDK now lives in `converge-client`, and the canonical
+//! generated wire contract now lives in `converge-protocol`.
 //!
 //! # Architecture
 //!
@@ -26,8 +27,8 @@
 //! # Watch a running job
 //! converge-remote watch <run_id> --server grpc://localhost:50051
 //!
-//! # Inject a fact into a running job
-//! converge-remote inject --run-id <id> --fact '{"key": "Seeds", "content": "..."}'
+//! # Submit an observation to a running job
+//! converge-remote observe --run-id <id> --observation '{"key": "Seeds", "payload": {"content": "..."}}'
 //!
 //! # Approve/reject a pending proposal
 //! converge-remote approve <proposal_id>
@@ -36,28 +37,19 @@
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use converge_client::{ConvergeClient, messages};
+use converge_protocol::{
+    prost_types,
+    v1::{
+        ApproveProposalRequest, Budget, CancelJobRequest, GetCapabilitiesRequest, GetJobRequest,
+        PauseRunRequest, RejectProposalRequest, ResumeRunRequest, SeedFact, SubmitJobRequest,
+        SubmitObservationRequest, SubscribeRequest, server_event,
+    },
+};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
-
-pub mod converge {
-    pub mod v1 {
-        #![allow(clippy::doc_markdown)]
-        #![allow(clippy::must_use_candidate)]
-        #![allow(clippy::missing_errors_doc)]
-        #![allow(clippy::default_trait_access)]
-        #![allow(clippy::similar_names)]
-        tonic::include_proto!("converge.v1");
-    }
-}
-
-use converge::v1::{
-    ApproveProposalRequest, Budget, CancelJobRequest, ClientMessage, GetCapabilitiesRequest,
-    GetJobRequest, InjectFactRequest, PauseRunRequest, RejectProposalRequest, ResumeRunRequest,
-    SeedFact, SubmitJobRequest, SubscribeRequest, client_message,
-    converge_service_client::ConvergeServiceClient, server_event,
-};
 
 #[allow(dead_code)]
 mod connection;
@@ -130,15 +122,15 @@ enum Commands {
         json: bool,
     },
 
-    /// Inject a fact into a running job
-    Inject {
+    /// Submit an observation to a running job
+    Observe {
         /// Run ID
         #[arg(long)]
         run_id: String,
 
-        /// Fact as JSON
+        /// Observation as JSON
         #[arg(long)]
-        fact: String,
+        observation: String,
     },
 
     /// Approve a pending proposal
@@ -251,8 +243,11 @@ async fn main() -> Result<()> {
             watch_job(&server, &run_id, json).await?;
         }
 
-        Commands::Inject { run_id, fact } => {
-            inject_fact(&server, &run_id, &fact).await?;
+        Commands::Observe {
+            run_id,
+            observation,
+        } => {
+            submit_observation(&server, &run_id, &observation).await?;
         }
 
         Commands::Approve {
@@ -314,7 +309,7 @@ async fn run_job(config: RunJobConfig) -> Result<()> {
         info!(server = %config.server, template = %config.template, "Connecting to runtime");
     }
 
-    let mut client = ConvergeServiceClient::connect(config.server.clone()).await?;
+    let mut client = ConvergeClient::connect(config.server.clone()).await?;
 
     // Parse seeds into SeedFacts
     let seed_list: Vec<SeedFact> = if let Some(seeds_raw) = config.seeds {
@@ -377,7 +372,7 @@ async fn run_job(config: RunJobConfig) -> Result<()> {
         parent_trace_id: None,
     };
 
-    let response = client.submit_job(submit_request).await?.into_inner();
+    let response = client.submit_job(submit_request).await?;
     let job_id = response.job_id;
     let run_id = response.run_id;
 
@@ -390,21 +385,20 @@ async fn run_job(config: RunJobConfig) -> Result<()> {
         let (tx, rx) = mpsc::channel(32);
 
         // Send subscribe request
-        let subscribe_msg = ClientMessage {
-            request_id: format!("sub_{}", uuid::Uuid::new_v4()),
-            message: Some(client_message::Message::Subscribe(SubscribeRequest {
+        let subscribe_msg = messages::subscribe(
+            format!("sub_{}", uuid::Uuid::new_v4()),
+            SubscribeRequest {
                 job_id: Some(job_id.clone()),
                 run_id: Some(run_id.clone()),
                 correlation_id: config.correlation_id.clone(),
                 since_sequence: 0,
                 entry_types: vec![],
-            })),
-        };
+            },
+        );
         tx.send(subscribe_msg).await?;
 
         let outbound = ReceiverStream::new(rx);
-        let response = client.stream(outbound).await?;
-        let mut inbound = response.into_inner();
+        let mut inbound = client.stream(outbound).await?;
 
         // Process incoming events
         while let Some(event) = inbound.message().await? {
@@ -470,7 +464,7 @@ async fn run_job(config: RunJobConfig) -> Result<()> {
 
     if config.quiet {
         // Get final status for exit code
-        let status_response = client.get_job(GetJobRequest { job_id }).await?.into_inner();
+        let status_response = client.get_job(GetJobRequest { job_id }).await?;
 
         let exit_code = match status_response.status {
             3 => 0, // CONVERGED
@@ -486,27 +480,26 @@ async fn run_job(config: RunJobConfig) -> Result<()> {
 async fn watch_job(server: &str, run_id: &str, json: bool) -> Result<()> {
     info!(server = %server, run_id = %run_id, "Watching job");
 
-    let mut client = ConvergeServiceClient::connect(server.to_string()).await?;
+    let mut client = ConvergeClient::connect(server.to_string()).await?;
 
     // Use bidirectional streaming
     let (tx, rx) = mpsc::channel(32);
 
     // Send subscribe request
-    let subscribe_msg = ClientMessage {
-        request_id: format!("watch_{}", uuid::Uuid::new_v4()),
-        message: Some(client_message::Message::Subscribe(SubscribeRequest {
+    let subscribe_msg = messages::subscribe(
+        format!("watch_{}", uuid::Uuid::new_v4()),
+        SubscribeRequest {
             job_id: None,
             run_id: Some(run_id.to_string()),
             correlation_id: None,
             since_sequence: 0,
             entry_types: vec![],
-        })),
-    };
+        },
+    );
     tx.send(subscribe_msg).await?;
 
     let outbound = ReceiverStream::new(rx);
-    let response = client.stream(outbound).await?;
-    let mut inbound = response.into_inner();
+    let mut inbound = client.stream(outbound).await?;
 
     while let Some(event) = inbound.message().await? {
         if let Some(e) = &event.event {
@@ -568,41 +561,49 @@ async fn watch_job(server: &str, run_id: &str, json: bool) -> Result<()> {
     Ok(())
 }
 
-async fn inject_fact(server: &str, run_id: &str, fact_json: &str) -> Result<()> {
-    info!(server = %server, run_id = %run_id, "Injecting fact");
+async fn submit_observation(server: &str, run_id: &str, observation_json: &str) -> Result<()> {
+    info!(server = %server, run_id = %run_id, "Submitting observation");
 
-    let mut client = ConvergeServiceClient::connect(server.to_string()).await?;
+    let mut client = ConvergeClient::connect(server.to_string()).await?;
 
-    // Parse fact JSON
-    let fact_value: serde_json::Value = serde_json::from_str(fact_json)?;
+    let observation_value: serde_json::Value = serde_json::from_str(observation_json)?;
+    let key = observation_value
+        .get("key")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| anyhow::anyhow!("observation JSON must include string field 'key'"))?
+        .to_string();
+    let payload = observation_payload(&observation_value)?;
+    let target_truth_id = observation_value
+        .get("target_truth_id")
+        .and_then(serde_json::Value::as_str)
+        .map(String::from);
 
-    // Use bidirectional streaming to send inject request
+    // Use bidirectional streaming to send observation request
     let (tx, rx) = mpsc::channel(32);
 
-    let inject_msg = ClientMessage {
-        request_id: format!("inject_{}", uuid::Uuid::new_v4()),
-        message: Some(client_message::Message::InjectFact(InjectFactRequest {
+    let observation_msg = messages::submit_observation(
+        format!("observe_{}", uuid::Uuid::new_v4()),
+        SubmitObservationRequest {
             run_id: run_id.to_string(),
-            key: fact_value["key"].as_str().unwrap_or("injected").to_string(),
-            payload: Some(json_to_prost_struct(&fact_value)),
-            truth_id: fact_value["truth_id"].as_str().map(String::from),
-            idempotency_key: format!("inject_{}", uuid::Uuid::new_v4()),
-        })),
-    };
-    tx.send(inject_msg).await?;
+            key,
+            payload: Some(json_to_prost_struct(&payload)),
+            target_truth_id,
+            idempotency_key: format!("observe_{}", uuid::Uuid::new_v4()),
+        },
+    );
+    tx.send(observation_msg).await?;
 
     let outbound = ReceiverStream::new(rx);
-    let response = client.stream(outbound).await?;
-    let mut inbound = response.into_inner();
+    let mut inbound = client.stream(outbound).await?;
 
     // Wait for ack
     if let Some(event) = inbound.message().await? {
         if let Some(server_event::Event::Ack(ack)) = event.event {
             if ack.success {
-                println!("Fact injected successfully");
+                println!("Observation submitted successfully");
             } else {
                 warn!(
-                    "Failed to inject fact: {}",
+                    "Failed to submit observation: {}",
                     ack.error_message.unwrap_or_default()
                 );
                 std::process::exit(1);
@@ -613,26 +614,50 @@ async fn inject_fact(server: &str, run_id: &str, fact_json: &str) -> Result<()> 
     Ok(())
 }
 
+fn observation_payload(observation: &serde_json::Value) -> Result<serde_json::Value> {
+    if let Some(payload) = observation.get("payload") {
+        return Ok(payload.clone());
+    }
+
+    let object = observation
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("observation JSON must be an object"))?;
+    let mut payload = serde_json::Map::new();
+    for (key, value) in object {
+        if matches!(key.as_str(), "key" | "target_truth_id" | "idempotency_key") {
+            continue;
+        }
+        payload.insert(key.clone(), value.clone());
+    }
+
+    if payload.is_empty() {
+        return Err(anyhow::anyhow!(
+            "observation JSON must include 'payload' or additional payload fields"
+        ));
+    }
+
+    Ok(serde_json::Value::Object(payload))
+}
+
 async fn approve_proposal(server: &str, run_id: &str, proposal_id: &str) -> Result<()> {
     info!(server = %server, run_id = %run_id, proposal_id = %proposal_id, "Approving proposal");
 
-    let mut client = ConvergeServiceClient::connect(server.to_string()).await?;
+    let mut client = ConvergeClient::connect(server.to_string()).await?;
 
     let (tx, rx) = mpsc::channel(32);
 
-    let approve_msg = ClientMessage {
-        request_id: format!("approve_{}", uuid::Uuid::new_v4()),
-        message: Some(client_message::Message::Approve(ApproveProposalRequest {
+    let approve_msg = messages::approve(
+        format!("approve_{}", uuid::Uuid::new_v4()),
+        ApproveProposalRequest {
             run_id: run_id.to_string(),
             proposal_id: proposal_id.to_string(),
             comment: None,
-        })),
-    };
+        },
+    );
     tx.send(approve_msg).await?;
 
     let outbound = ReceiverStream::new(rx);
-    let response = client.stream(outbound).await?;
-    let mut inbound = response.into_inner();
+    let mut inbound = client.stream(outbound).await?;
 
     if let Some(event) = inbound.message().await? {
         if let Some(server_event::Event::Ack(ack)) = event.event {
@@ -659,23 +684,22 @@ async fn reject_proposal(
 ) -> Result<()> {
     info!(server = %server, run_id = %run_id, proposal_id = %proposal_id, "Rejecting proposal");
 
-    let mut client = ConvergeServiceClient::connect(server.to_string()).await?;
+    let mut client = ConvergeClient::connect(server.to_string()).await?;
 
     let (tx, rx) = mpsc::channel(32);
 
-    let reject_msg = ClientMessage {
-        request_id: format!("reject_{}", uuid::Uuid::new_v4()),
-        message: Some(client_message::Message::Reject(RejectProposalRequest {
+    let reject_msg = messages::reject(
+        format!("reject_{}", uuid::Uuid::new_v4()),
+        RejectProposalRequest {
             run_id: run_id.to_string(),
             proposal_id: proposal_id.to_string(),
             reason: reason.to_string(),
-        })),
-    };
+        },
+    );
     tx.send(reject_msg).await?;
 
     let outbound = ReceiverStream::new(rx);
-    let response = client.stream(outbound).await?;
-    let mut inbound = response.into_inner();
+    let mut inbound = client.stream(outbound).await?;
 
     if let Some(event) = inbound.message().await? {
         if let Some(server_event::Event::Ack(ack)) = event.event {
@@ -697,22 +721,21 @@ async fn reject_proposal(
 async fn pause_run(server: &str, run_id: &str) -> Result<()> {
     info!(server = %server, run_id = %run_id, "Pausing run");
 
-    let mut client = ConvergeServiceClient::connect(server.to_string()).await?;
+    let mut client = ConvergeClient::connect(server.to_string()).await?;
 
     let (tx, rx) = mpsc::channel(32);
 
-    let pause_msg = ClientMessage {
-        request_id: format!("pause_{}", uuid::Uuid::new_v4()),
-        message: Some(client_message::Message::Pause(PauseRunRequest {
+    let pause_msg = messages::pause(
+        format!("pause_{}", uuid::Uuid::new_v4()),
+        PauseRunRequest {
             run_id: run_id.to_string(),
             reason: None,
-        })),
-    };
+        },
+    );
     tx.send(pause_msg).await?;
 
     let outbound = ReceiverStream::new(rx);
-    let response = client.stream(outbound).await?;
-    let mut inbound = response.into_inner();
+    let mut inbound = client.stream(outbound).await?;
 
     if let Some(event) = inbound.message().await? {
         if let Some(server_event::Event::Ack(ack)) = event.event {
@@ -731,21 +754,20 @@ async fn pause_run(server: &str, run_id: &str) -> Result<()> {
 async fn resume_run(server: &str, run_id: &str) -> Result<()> {
     info!(server = %server, run_id = %run_id, "Resuming run");
 
-    let mut client = ConvergeServiceClient::connect(server.to_string()).await?;
+    let mut client = ConvergeClient::connect(server.to_string()).await?;
 
     let (tx, rx) = mpsc::channel(32);
 
-    let resume_msg = ClientMessage {
-        request_id: format!("resume_{}", uuid::Uuid::new_v4()),
-        message: Some(client_message::Message::Resume(ResumeRunRequest {
+    let resume_msg = messages::resume(
+        format!("resume_{}", uuid::Uuid::new_v4()),
+        ResumeRunRequest {
             run_id: run_id.to_string(),
-        })),
-    };
+        },
+    );
     tx.send(resume_msg).await?;
 
     let outbound = ReceiverStream::new(rx);
-    let response = client.stream(outbound).await?;
-    let mut inbound = response.into_inner();
+    let mut inbound = client.stream(outbound).await?;
 
     if let Some(event) = inbound.message().await? {
         if let Some(server_event::Event::Ack(ack)) = event.event {
@@ -767,22 +789,21 @@ async fn resume_run(server: &str, run_id: &str) -> Result<()> {
 async fn cancel_job(server: &str, job_id: &str, reason: Option<&str>) -> Result<()> {
     info!(server = %server, job_id = %job_id, "Cancelling job");
 
-    let mut client = ConvergeServiceClient::connect(server.to_string()).await?;
+    let mut client = ConvergeClient::connect(server.to_string()).await?;
 
     let (tx, rx) = mpsc::channel(32);
 
-    let cancel_msg = ClientMessage {
-        request_id: format!("cancel_{}", uuid::Uuid::new_v4()),
-        message: Some(client_message::Message::CancelJob(CancelJobRequest {
+    let cancel_msg = messages::cancel_job(
+        format!("cancel_{}", uuid::Uuid::new_v4()),
+        CancelJobRequest {
             job_id: job_id.to_string(),
             reason: reason.map(String::from),
-        })),
-    };
+        },
+    );
     tx.send(cancel_msg).await?;
 
     let outbound = ReceiverStream::new(rx);
-    let response = client.stream(outbound).await?;
-    let mut inbound = response.into_inner();
+    let mut inbound = client.stream(outbound).await?;
 
     if let Some(event) = inbound.message().await? {
         if let Some(server_event::Event::Ack(ack)) = event.event {
@@ -799,14 +820,13 @@ async fn cancel_job(server: &str, job_id: &str, reason: Option<&str>) -> Result<
 }
 
 async fn get_status(server: &str, job_id: &str, json: bool) -> Result<()> {
-    let mut client = ConvergeServiceClient::connect(server.to_string()).await?;
+    let mut client = ConvergeClient::connect(server.to_string()).await?;
 
     let response = client
         .get_job(GetJobRequest {
             job_id: job_id.to_string(),
         })
-        .await?
-        .into_inner();
+        .await?;
 
     if json {
         println!(
@@ -842,7 +862,7 @@ async fn get_status(server: &str, job_id: &str, json: bool) -> Result<()> {
 async fn get_capabilities(server: &str) -> Result<()> {
     info!(server = %server, "Querying capabilities");
 
-    let mut client = ConvergeServiceClient::connect(server.to_string()).await?;
+    let mut client = ConvergeClient::connect(server.to_string()).await?;
 
     let hostname = hostname::get().map_or_else(
         |_| "unknown".to_string(),
@@ -856,7 +876,7 @@ async fn get_capabilities(server: &str) -> Result<()> {
         platform: "cli".to_string(),
     };
 
-    let response = client.get_capabilities(request).await?.into_inner();
+    let response = client.get_capabilities(request).await?;
 
     println!("Converge Remote v{}\n", env!("CARGO_PKG_VERSION"));
     println!("Server: {server}");

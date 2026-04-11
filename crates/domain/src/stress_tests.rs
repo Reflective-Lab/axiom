@@ -10,7 +10,7 @@
 //! - Convergence: System always reaches fixed point
 //! - Edge cases: Empty inputs, no solutions, invalid data
 
-use converge_core::agents::SeedAgent;
+use converge_core::suggestors::SeedSuggestor;
 use converge_core::{Context, Engine};
 
 // Import kernel use case agents from lib.rs exports
@@ -34,12 +34,12 @@ mod tests {
         {
             let run = || {
                 let mut engine = Engine::new();
-                engine.register(SeedAgent::new("participants", "Alice, Bob"));
-                engine.register(AvailabilityRetrievalAgent);
-                engine.register(TimeZoneNormalizationAgent);
-                engine.register(WorkingHoursConstraintAgent);
-                engine.register(SlotOptimizationAgent);
-                engine.register(ConflictDetectionAgent);
+                engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob"));
+                engine.register_suggestor(AvailabilityRetrievalAgent);
+                engine.register_suggestor(TimeZoneNormalizationAgent);
+                engine.register_suggestor(WorkingHoursConstraintAgent);
+                engine.register_suggestor(SlotOptimizationAgent);
+                engine.register_suggestor(ConflictDetectionAgent);
                 engine.run(Context::new()).expect("should converge")
             };
             let r1 = run();
@@ -58,15 +58,15 @@ mod tests {
     fn multiple_kernel_use_cases_no_interference() {
         // Run meeting scheduler twice with different inputs
         let mut engine1 = Engine::new();
-        engine1.register(SeedAgent::new("participants", "Alice, Bob"));
-        engine1.register(AvailabilityRetrievalAgent);
-        engine1.register(SlotOptimizationAgent);
+        engine1.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob"));
+        engine1.register_suggestor(AvailabilityRetrievalAgent);
+        engine1.register_suggestor(SlotOptimizationAgent);
         let r1 = engine1.run(Context::new()).expect("should converge");
 
         let mut engine2 = Engine::new();
-        engine2.register(SeedAgent::new("participants", "Charlie"));
-        engine2.register(AvailabilityRetrievalAgent);
-        engine2.register(SlotOptimizationAgent);
+        engine2.register_suggestor(SeedSuggestor::new("participants", "Charlie"));
+        engine2.register_suggestor(AvailabilityRetrievalAgent);
+        engine2.register_suggestor(SlotOptimizationAgent);
         let r2 = engine2.run(Context::new()).expect("should converge");
 
         // Both should converge independently

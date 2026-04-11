@@ -18,7 +18,7 @@
 //! distinguished by their ID prefixes (session:, audit:, compliance:, etc.).
 
 use converge_core::{
-    Agent, AgentEffect, ContextKey, Fact,
+    Suggestor, AgentEffect, ContextKey,
     invariant::{Invariant, InvariantClass, InvariantResult, Violation},
 };
 
@@ -45,7 +45,7 @@ pub const REDACTED_PREFIX: &str = "redacted:";
 #[derive(Debug, Clone, Default)]
 pub struct SessionValidatorAgent;
 
-impl Agent for SessionValidatorAgent {
+impl Suggestor for SessionValidatorAgent {
     fn name(&self) -> &str {
         "session_validator"
     }
@@ -66,10 +66,11 @@ impl Agent for SessionValidatorAgent {
 
         for trigger in triggers.iter() {
             if trigger.content.contains("session.token") {
-                facts.push(Fact {
-                    key: ContextKey::Signals,
-                    id: format!("{}{}", SESSION_PREFIX, trigger.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Signals,
+                    format!("{}{}", SESSION_PREFIX, trigger.id),
+                    serde_json::json!({
                         "type": "validated_session",
                         "token_id": trigger.id,
                         "valid": true,
@@ -79,11 +80,11 @@ impl Agent for SessionValidatorAgent {
                         "validated_at": "2026-01-12T12:00:00Z"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -93,7 +94,7 @@ impl Agent for SessionValidatorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct RbacEnforcerAgent;
 
-impl Agent for RbacEnforcerAgent {
+impl Suggestor for RbacEnforcerAgent {
     fn name(&self) -> &str {
         "rbac_enforcer"
     }
@@ -121,10 +122,11 @@ impl Agent for RbacEnforcerAgent {
         for session in signals.iter() {
             if session.id.starts_with(SESSION_PREFIX) && session.content.contains("\"valid\":true")
             {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}", ACCESS_DECISION_PREFIX, session.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}", ACCESS_DECISION_PREFIX, session.id),
+                    serde_json::json!({
                         "type": "access_decision",
                         "session_id": session.id,
                         "decision": "allow",
@@ -133,11 +135,11 @@ impl Agent for RbacEnforcerAgent {
                         "evaluated_at": "2026-01-12T12:00:00Z"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -147,7 +149,7 @@ impl Agent for RbacEnforcerAgent {
 #[derive(Debug, Clone, Default)]
 pub struct AuditWriterAgent;
 
-impl Agent for AuditWriterAgent {
+impl Suggestor for AuditWriterAgent {
     fn name(&self) -> &str {
         "audit_writer"
     }
@@ -168,10 +170,11 @@ impl Agent for AuditWriterAgent {
 
         for decision in proposals.iter() {
             if decision.id.starts_with(ACCESS_DECISION_PREFIX) {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}", AUDIT_PREFIX, decision.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}", AUDIT_PREFIX, decision.id),
+                    serde_json::json!({
                         "type": "audit_entry",
                         "access_decision_id": decision.id,
                         "action": "access_evaluated",
@@ -182,11 +185,11 @@ impl Agent for AuditWriterAgent {
                         "immutable": true
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -194,7 +197,7 @@ impl Agent for AuditWriterAgent {
 #[derive(Debug, Clone, Default)]
 pub struct ProvenanceTrackerAgent;
 
-impl Agent for ProvenanceTrackerAgent {
+impl Suggestor for ProvenanceTrackerAgent {
     fn name(&self) -> &str {
         "provenance_tracker"
     }
@@ -221,10 +224,11 @@ impl Agent for ProvenanceTrackerAgent {
 
         for entry in proposals.iter() {
             if entry.id.starts_with(AUDIT_PREFIX) {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}", PROVENANCE_PREFIX, entry.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}", PROVENANCE_PREFIX, entry.id),
+                    serde_json::json!({
                         "type": "provenance",
                         "audit_entry_id": entry.id,
                         "chain": [],
@@ -233,11 +237,11 @@ impl Agent for ProvenanceTrackerAgent {
                         "verified": true
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -247,7 +251,7 @@ impl Agent for ProvenanceTrackerAgent {
 #[derive(Debug, Clone, Default)]
 pub struct ComplianceScannerAgent;
 
-impl Agent for ComplianceScannerAgent {
+impl Suggestor for ComplianceScannerAgent {
     fn name(&self) -> &str {
         "compliance_scanner"
     }
@@ -277,10 +281,11 @@ impl Agent for ComplianceScannerAgent {
 
         let violations_found = false; // Simplified
 
-        AgentEffect::with_facts(vec![Fact {
-            key: ContextKey::Evaluations,
-            id: format!("{}scan:latest", COMPLIANCE_PREFIX),
-            content: serde_json::json!({
+        AgentEffect::with_proposal(crate::proposal(
+            self.name(),
+            ContextKey::Evaluations,
+            format!("{}scan:latest", COMPLIANCE_PREFIX),
+            serde_json::json!({
                 "type": "compliance_status",
                 "scan_id": "scan_001",
                 "scanned_entries": audit_count,
@@ -289,7 +294,7 @@ impl Agent for ComplianceScannerAgent {
                 "scanned_at": "2026-01-12T12:00:00Z"
             })
             .to_string(),
-        }])
+        ))
     }
 }
 
@@ -297,7 +302,7 @@ impl Agent for ComplianceScannerAgent {
 #[derive(Debug, Clone, Default)]
 pub struct ViolationRemediatorAgent;
 
-impl Agent for ViolationRemediatorAgent {
+impl Suggestor for ViolationRemediatorAgent {
     fn name(&self) -> &str {
         "violation_remediator"
     }
@@ -320,10 +325,11 @@ impl Agent for ViolationRemediatorAgent {
             if violation.id.starts_with(VIOLATION_PREFIX)
                 && violation.content.contains("\"state\":\"open\"")
             {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}", REMEDIATION_PREFIX, violation.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}", REMEDIATION_PREFIX, violation.id),
+                    serde_json::json!({
                         "type": "remediation",
                         "violation_id": violation.id,
                         "proposed_actions": [],
@@ -332,11 +338,11 @@ impl Agent for ViolationRemediatorAgent {
                         "proposed_at": "2026-01-12T12:00:00Z"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -344,7 +350,7 @@ impl Agent for ViolationRemediatorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct PiiRedactorAgent;
 
-impl Agent for PiiRedactorAgent {
+impl Suggestor for PiiRedactorAgent {
     fn name(&self) -> &str {
         "pii_redactor"
     }
@@ -365,10 +371,11 @@ impl Agent for PiiRedactorAgent {
 
         for trigger in triggers.iter() {
             if trigger.content.contains("redaction.required") {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}", REDACTED_PREFIX, trigger.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}", REDACTED_PREFIX, trigger.id),
+                    serde_json::json!({
                         "type": "redacted_content",
                         "source_id": trigger.id,
                         "redacted_fields": ["email", "phone", "ssn", "address"],
@@ -376,11 +383,11 @@ impl Agent for PiiRedactorAgent {
                         "redacted_at": "2026-01-12T12:00:00Z"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -583,7 +590,18 @@ impl Invariant for LegalActionsAuditedInvariant {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use converge_core::Context;
+    use converge_core::{Context, Engine};
+
+    fn promoted_context(entries: &[(ContextKey, &str, &str)]) -> Context {
+        let mut ctx = Context::new();
+        for (key, id, content) in entries {
+            let _ = ctx.add_input(*key, *id, *content);
+        }
+        Engine::new()
+            .run(ctx)
+            .expect("should promote test inputs")
+            .context
+    }
 
     #[test]
     fn agents_have_correct_names() {
@@ -609,13 +627,11 @@ mod tests {
 
     #[test]
     fn executed_contract_without_audit_violates() {
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "contract:msa:deal-123".to_string(),
-            content: r#"{"type":"contract","state":"executed","immutable":true}"#.to_string(),
-        })
-        .unwrap();
+        let ctx = promoted_context(&[(
+            ContextKey::Proposals,
+            "contract:msa:deal-123",
+            r#"{"type":"contract","state":"executed","immutable":true}"#,
+        )]);
 
         let result = LegalActionsAuditedInvariant.check(&ctx);
         assert!(matches!(result, InvariantResult::Violated(_)));
@@ -623,19 +639,18 @@ mod tests {
 
     #[test]
     fn executed_contract_with_audit_passes() {
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "contract:msa:deal-123".to_string(),
-            content: r#"{"type":"contract","state":"executed","immutable":true}"#.to_string(),
-        })
-        .unwrap();
-        ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "audit:contract:msa:deal-123".to_string(),
-            content: r#"{"type":"audit_entry","action":"contract_executed","contract_id":"contract:msa:deal-123","immutable":true}"#.to_string(),
-        })
-        .unwrap();
+        let ctx = promoted_context(&[
+            (
+                ContextKey::Proposals,
+                "contract:msa:deal-123",
+                r#"{"type":"contract","state":"executed","immutable":true}"#,
+            ),
+            (
+                ContextKey::Proposals,
+                "audit:contract:msa:deal-123",
+                r#"{"type":"audit_entry","action":"contract_executed","contract_id":"contract:msa:deal-123","immutable":true}"#,
+            ),
+        ]);
 
         let result = LegalActionsAuditedInvariant.check(&ctx);
         assert!(matches!(result, InvariantResult::Ok));
@@ -643,13 +658,11 @@ mod tests {
 
     #[test]
     fn equity_grant_without_audit_violates() {
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "equity:grant-456".to_string(),
-            content: r#"{"type":"equity_grant","state":"granted"}"#.to_string(),
-        })
-        .unwrap();
+        let ctx = promoted_context(&[(
+            ContextKey::Proposals,
+            "equity:grant-456",
+            r#"{"type":"equity_grant","state":"granted"}"#,
+        )]);
 
         let result = LegalActionsAuditedInvariant.check(&ctx);
         assert!(matches!(result, InvariantResult::Violated(_)));
@@ -657,19 +670,18 @@ mod tests {
 
     #[test]
     fn equity_grant_with_audit_passes() {
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "equity:grant-456".to_string(),
-            content: r#"{"type":"equity_grant","state":"granted"}"#.to_string(),
-        })
-        .unwrap();
-        ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "audit:equity:grant-456".to_string(),
-            content: r#"{"type":"audit_entry","action":"equity_granted","grant_id":"equity:grant-456","immutable":true}"#.to_string(),
-        })
-        .unwrap();
+        let ctx = promoted_context(&[
+            (
+                ContextKey::Proposals,
+                "equity:grant-456",
+                r#"{"type":"equity_grant","state":"granted"}"#,
+            ),
+            (
+                ContextKey::Proposals,
+                "audit:equity:grant-456",
+                r#"{"type":"audit_entry","action":"equity_granted","grant_id":"equity:grant-456","immutable":true}"#,
+            ),
+        ]);
 
         let result = LegalActionsAuditedInvariant.check(&ctx);
         assert!(matches!(result, InvariantResult::Ok));
@@ -677,13 +689,11 @@ mod tests {
 
     #[test]
     fn ip_assignment_without_audit_violates() {
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "ip_assignment:contractor-789".to_string(),
-            content: r#"{"type":"ip_assignment","state":"signed"}"#.to_string(),
-        })
-        .unwrap();
+        let ctx = promoted_context(&[(
+            ContextKey::Proposals,
+            "ip_assignment:contractor-789",
+            r#"{"type":"ip_assignment","state":"signed"}"#,
+        )]);
 
         let result = LegalActionsAuditedInvariant.check(&ctx);
         assert!(matches!(result, InvariantResult::Violated(_)));
@@ -691,19 +701,18 @@ mod tests {
 
     #[test]
     fn ip_assignment_with_audit_passes() {
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "ip_assignment:contractor-789".to_string(),
-            content: r#"{"type":"ip_assignment","state":"signed"}"#.to_string(),
-        })
-        .unwrap();
-        ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "audit:ip_assignment:contractor-789".to_string(),
-            content: r#"{"type":"audit_entry","action":"ip_assigned","assignment_id":"ip_assignment:contractor-789","immutable":true}"#.to_string(),
-        })
-        .unwrap();
+        let ctx = promoted_context(&[
+            (
+                ContextKey::Proposals,
+                "ip_assignment:contractor-789",
+                r#"{"type":"ip_assignment","state":"signed"}"#,
+            ),
+            (
+                ContextKey::Proposals,
+                "audit:ip_assignment:contractor-789",
+                r#"{"type":"audit_entry","action":"ip_assigned","assignment_id":"ip_assignment:contractor-789","immutable":true}"#,
+            ),
+        ]);
 
         let result = LegalActionsAuditedInvariant.check(&ctx);
         assert!(matches!(result, InvariantResult::Ok));

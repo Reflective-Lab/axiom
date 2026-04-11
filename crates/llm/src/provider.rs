@@ -12,8 +12,7 @@ use std::fmt;
 use std::sync::Arc;
 
 // Import types from converge-core using public re-exports
-use converge_core::validation::encode_proposal;
-use converge_core::{Agent, AgentEffect, Context, ContextKey, ProposedFact};
+use converge_core::{Suggestor, AgentEffect, ContextKey, ProposedFact};
 
 // Re-export core LLM types - these are the canonical types
 // NOTE: LlmProvider is deprecated in converge-core. We define ChatProvider below as the replacement.
@@ -501,7 +500,7 @@ impl ProviderAgent {
     }
 }
 
-impl Agent for ProviderAgent {
+impl Suggestor for ProviderAgent {
     fn name(&self) -> &str {
         &self.name
     }
@@ -536,8 +535,7 @@ impl Agent for ProviderAgent {
         match self.provider.complete(&request) {
             Ok(response) => {
                 let proposals = self.parser.parse(&response, self.config.target_key);
-                let facts: Vec<_> = proposals.iter().map(encode_proposal).collect();
-                AgentEffect::with_facts(facts)
+                AgentEffect::with_proposals(proposals)
             }
             Err(e) => {
                 tracing::error!(agent = %self.name, error = %e, "LLM call failed");

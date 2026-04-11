@@ -7,13 +7,13 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Agent persona — the principal in Converge policy decisions.
+/// Suggestor persona — the principal in Converge policy decisions.
 ///
 /// Maps to converge-personas definitions. Authority levels determine
 /// what actions the agent can perform without escalation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrincipalIn {
-    /// Agent identifier (e.g., `agent:strategic_analyst`)
+    /// Suggestor identifier (e.g., `agent:strategic_analyst`)
     pub id: String,
     /// Authority level: advisory, supervisory, participatory, sovereign
     pub authority: String,

@@ -13,7 +13,7 @@ use axum::{
 };
 use converge_runtime::{handlers, state::AppState};
 use http_body_util::BodyExt;
-use serde_json::{Value, json};
+use serde_json::Value;
 use tower::ServiceExt;
 
 // =============================================================================

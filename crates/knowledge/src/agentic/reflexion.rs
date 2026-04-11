@@ -13,7 +13,7 @@
 //! ```rust,no_run
 //! use converge_knowledge::agentic::{ReflexionEpisode, Critique, CritiqueType};
 //!
-//! // Agent tried to implement sorting but made an error
+//! // Suggestor tried to implement sorting but made an error
 //! let episode = ReflexionEpisode::new(
 //!     "algorithm_implementation",
 //!     "Implement quicksort",
@@ -344,7 +344,7 @@ mod tests {
     /// 1. Store multiple failed episodes
     /// 2. Search for episodes similar to a new task
     /// 3. Return episodes that match keywords
-    /// 4. Agent can learn from past mistakes
+    /// 4. Suggestor can learn from past mistakes
     #[test]
     fn test_find_similar_failures() {
         let mut memory = ReflexionMemory::new();
@@ -396,7 +396,7 @@ mod tests {
     /// What happens:
     /// 1. Track both successes and failures
     /// 2. Calculate success rate
-    /// 3. Agent can see improvement over time
+    /// 3. Suggestor can see improvement over time
     #[test]
     fn test_success_rate() {
         let mut memory = ReflexionMemory::new();

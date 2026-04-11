@@ -11,7 +11,7 @@
 //! distinguished by their ID prefixes (promise:, task:, blocker:, etc.).
 
 use converge_core::{
-    Agent, AgentEffect, ContextKey, Fact,
+    Suggestor, AgentEffect, ContextKey,
     invariant::{Invariant, InvariantClass, InvariantResult, Violation},
 };
 
@@ -35,7 +35,7 @@ pub const POSTMORTEM_PREFIX: &str = "postmortem:";
 #[derive(Debug, Clone, Default)]
 pub struct PromiseCreatorAgent;
 
-impl Agent for PromiseCreatorAgent {
+impl Suggestor for PromiseCreatorAgent {
     fn name(&self) -> &str {
         "promise_creator"
     }
@@ -60,10 +60,11 @@ impl Agent for PromiseCreatorAgent {
 
         for trigger in triggers.iter() {
             if trigger.content.contains("deal.closed_won") {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}", PROMISE_PREFIX, trigger.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}", PROMISE_PREFIX, trigger.id),
+                    serde_json::json!({
                         "type": "promise",
                         "deal_id": trigger.id,
                         "state": "draft",
@@ -71,11 +72,11 @@ impl Agent for PromiseCreatorAgent {
                         "created_at": "2026-01-12"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -83,7 +84,7 @@ impl Agent for PromiseCreatorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct ScopeExtractorAgent;
 
-impl Agent for ScopeExtractorAgent {
+impl Suggestor for ScopeExtractorAgent {
     fn name(&self) -> &str {
         "scope_extractor"
     }
@@ -106,10 +107,11 @@ impl Agent for ScopeExtractorAgent {
             if promise.id.starts_with(PROMISE_PREFIX)
                 && promise.content.contains("\"state\":\"draft\"")
             {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}", SCOPE_PREFIX, promise.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}", SCOPE_PREFIX, promise.id),
+                    serde_json::json!({
                         "type": "scope",
                         "promise_id": promise.id,
                         "deliverables": [],
@@ -117,11 +119,11 @@ impl Agent for ScopeExtractorAgent {
                         "timeline": "30 days"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -129,7 +131,7 @@ impl Agent for ScopeExtractorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct WorkBreakdownAgent;
 
-impl Agent for WorkBreakdownAgent {
+impl Suggestor for WorkBreakdownAgent {
     fn name(&self) -> &str {
         "work_breakdown"
     }
@@ -156,10 +158,11 @@ impl Agent for WorkBreakdownAgent {
 
         for item in proposals.iter() {
             if item.id.starts_with(SCOPE_PREFIX) {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}1:{}", TASK_PREFIX, item.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}1:{}", TASK_PREFIX, item.id),
+                    serde_json::json!({
                         "type": "task",
                         "work_item_id": item.id,
                         "title": "Implementation task",
@@ -167,11 +170,11 @@ impl Agent for WorkBreakdownAgent {
                         "estimated_hours": 40
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -179,7 +182,7 @@ impl Agent for WorkBreakdownAgent {
 #[derive(Debug, Clone, Default)]
 pub struct BlockerDetectorAgent;
 
-impl Agent for BlockerDetectorAgent {
+impl Suggestor for BlockerDetectorAgent {
     fn name(&self) -> &str {
         "blocker_detector"
     }
@@ -200,10 +203,11 @@ impl Agent for BlockerDetectorAgent {
 
         for task in proposals.iter() {
             if task.id.starts_with(TASK_PREFIX) && task.content.contains("\"blocked\":true") {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}", BLOCKER_PREFIX, task.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}", BLOCKER_PREFIX, task.id),
+                    serde_json::json!({
                         "type": "blocker",
                         "task_id": task.id,
                         "state": "raised",
@@ -211,11 +215,11 @@ impl Agent for BlockerDetectorAgent {
                         "description": "Task is blocked"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -223,7 +227,7 @@ impl Agent for BlockerDetectorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct BlockerRouterAgent;
 
-impl Agent for BlockerRouterAgent {
+impl Suggestor for BlockerRouterAgent {
     fn name(&self) -> &str {
         "blocker_router"
     }
@@ -246,10 +250,11 @@ impl Agent for BlockerRouterAgent {
             if blocker.id.starts_with(BLOCKER_PREFIX)
                 && blocker.content.contains("\"state\":\"raised\"")
             {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}routed:{}", BLOCKER_PREFIX, blocker.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}routed:{}", BLOCKER_PREFIX, blocker.id),
+                    serde_json::json!({
                         "type": "routed_blocker",
                         "blocker_id": blocker.id,
                         "state": "assigned",
@@ -257,11 +262,11 @@ impl Agent for BlockerRouterAgent {
                         "sla_hours": 24
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -269,7 +274,7 @@ impl Agent for BlockerRouterAgent {
 #[derive(Debug, Clone, Default)]
 pub struct RiskAssessorAgent;
 
-impl Agent for RiskAssessorAgent {
+impl Suggestor for RiskAssessorAgent {
     fn name(&self) -> &str {
         "risk_assessor"
     }
@@ -309,10 +314,11 @@ impl Agent for RiskAssessorAgent {
                     "low"
                 };
 
-                facts.push(Fact {
-                    key: ContextKey::Evaluations,
-                    id: format!("{}{}", RISK_PREFIX, promise.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Evaluations,
+                    format!("{}{}", RISK_PREFIX, promise.id),
+                    serde_json::json!({
                         "type": "risk_assessment",
                         "promise_id": promise.id,
                         "risk_level": risk_level,
@@ -320,11 +326,11 @@ impl Agent for RiskAssessorAgent {
                         "mitigation_required": risk_level != "low"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -332,7 +338,7 @@ impl Agent for RiskAssessorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct StatusAggregatorAgent;
 
-impl Agent for StatusAggregatorAgent {
+impl Suggestor for StatusAggregatorAgent {
     fn name(&self) -> &str {
         "status_aggregator"
     }
@@ -355,7 +361,7 @@ impl Agent for StatusAggregatorAgent {
 
     fn execute(&self, _ctx: &dyn converge_core::ContextView) -> AgentEffect {
         // Aggregates status - simplified implementation
-        AgentEffect::with_facts(vec![])
+        AgentEffect::empty()
     }
 }
 
@@ -363,7 +369,7 @@ impl Agent for StatusAggregatorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct AcceptanceRequestorAgent;
 
-impl Agent for AcceptanceRequestorAgent {
+impl Suggestor for AcceptanceRequestorAgent {
     fn name(&self) -> &str {
         "acceptance_requestor"
     }
@@ -386,21 +392,22 @@ impl Agent for AcceptanceRequestorAgent {
             if promise.id.starts_with(PROMISE_PREFIX)
                 && promise.content.contains("\"state\":\"review\"")
             {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}", ACCEPTANCE_PREFIX, promise.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}", ACCEPTANCE_PREFIX, promise.id),
+                    serde_json::json!({
                         "type": "acceptance_request",
                         "promise_id": promise.id,
                         "state": "pending",
                         "requested_at": "2026-01-12"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -408,7 +415,7 @@ impl Agent for AcceptanceRequestorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct PostmortemSchedulerAgent;
 
-impl Agent for PostmortemSchedulerAgent {
+impl Suggestor for PostmortemSchedulerAgent {
     fn name(&self) -> &str {
         "postmortem_scheduler"
     }
@@ -431,21 +438,22 @@ impl Agent for PostmortemSchedulerAgent {
             if promise.id.starts_with(PROMISE_PREFIX)
                 && promise.content.contains("\"state\":\"completed\"")
             {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}", POSTMORTEM_PREFIX, promise.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}", POSTMORTEM_PREFIX, promise.id),
+                    serde_json::json!({
                         "type": "postmortem",
                         "promise_id": promise.id,
                         "scheduled_for": "2026-01-19",
                         "participants": ["delivery_team", "customer_success"]
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -598,7 +606,18 @@ impl Invariant for CompletedPromiseHasAcceptanceInvariant {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use converge_core::Context;
+    use converge_core::{Context, Engine};
+
+    fn promoted_context(entries: &[(ContextKey, &str, &str)]) -> Context {
+        let mut ctx = Context::new();
+        for (key, id, content) in entries {
+            let _ = ctx.add_input(*key, *id, *content);
+        }
+        Engine::new()
+            .run(ctx)
+            .expect("should promote test inputs")
+            .context
+    }
 
     #[test]
     fn agents_have_correct_names() {
@@ -632,13 +651,11 @@ mod tests {
 
     #[test]
     fn blocker_without_resolution_path_violates() {
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "blocker:task:123".to_string(),
-            content: r#"{"type":"blocker","state":"raised","severity":"high"}"#.to_string(),
-        })
-        .unwrap();
+        let ctx = promoted_context(&[(
+            ContextKey::Proposals,
+            "blocker:task:123",
+            r#"{"type":"blocker","state":"raised","severity":"high"}"#,
+        )]);
 
         let result = BlockerHasResolutionPathInvariant.check(&ctx);
         assert!(matches!(result, InvariantResult::Violated(_)));
@@ -646,13 +663,11 @@ mod tests {
 
     #[test]
     fn blocker_with_owner_passes() {
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "blocker:task:123".to_string(),
-            content: r#"{"type":"blocker","state":"raised","owner":"tech_lead"}"#.to_string(),
-        })
-        .unwrap();
+        let ctx = promoted_context(&[(
+            ContextKey::Proposals,
+            "blocker:task:123",
+            r#"{"type":"blocker","state":"raised","owner":"tech_lead"}"#,
+        )]);
 
         let result = BlockerHasResolutionPathInvariant.check(&ctx);
         assert!(matches!(result, InvariantResult::Ok));
@@ -660,13 +675,11 @@ mod tests {
 
     #[test]
     fn scope_change_without_approval_violates() {
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "scope:promise:123".to_string(),
-            content: r#"{"type":"scope","change_type":"addition","approved":false}"#.to_string(),
-        })
-        .unwrap();
+        let ctx = promoted_context(&[(
+            ContextKey::Proposals,
+            "scope:promise:123",
+            r#"{"type":"scope","change_type":"addition","approved":false}"#,
+        )]);
 
         let result = ScopeChangeRequiresApprovalInvariant.check(&ctx);
         assert!(matches!(result, InvariantResult::Violated(_)));
@@ -674,13 +687,11 @@ mod tests {
 
     #[test]
     fn scope_change_with_approval_passes() {
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "scope:promise:123".to_string(),
-            content: r#"{"type":"scope","change_type":"addition","approved":true}"#.to_string(),
-        })
-        .unwrap();
+        let ctx = promoted_context(&[(
+            ContextKey::Proposals,
+            "scope:promise:123",
+            r#"{"type":"scope","change_type":"addition","approved":true}"#,
+        )]);
 
         let result = ScopeChangeRequiresApprovalInvariant.check(&ctx);
         assert!(matches!(result, InvariantResult::Ok));
@@ -688,13 +699,11 @@ mod tests {
 
     #[test]
     fn completed_promise_without_acceptance_violates() {
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "promise:deal:123".to_string(),
-            content: r#"{"type":"promise","deal_id":"deal:123","state":"completed"}"#.to_string(),
-        })
-        .unwrap();
+        let ctx = promoted_context(&[(
+            ContextKey::Proposals,
+            "promise:deal:123",
+            r#"{"type":"promise","deal_id":"deal:123","state":"completed"}"#,
+        )]);
 
         let result = CompletedPromiseHasAcceptanceInvariant.check(&ctx);
         assert!(matches!(result, InvariantResult::Violated(_)));
@@ -702,19 +711,18 @@ mod tests {
 
     #[test]
     fn completed_promise_with_acceptance_passes() {
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "promise:deal:123".to_string(),
-            content: r#"{"type":"promise","deal_id":"deal:123","state":"completed"}"#.to_string(),
-        })
-        .unwrap();
-        ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "acceptance:promise:deal:123".to_string(),
-            content: r#"{"type":"acceptance_request","state":"accepted"}"#.to_string(),
-        })
-        .unwrap();
+        let ctx = promoted_context(&[
+            (
+                ContextKey::Proposals,
+                "promise:deal:123",
+                r#"{"type":"promise","deal_id":"deal:123","state":"completed"}"#,
+            ),
+            (
+                ContextKey::Proposals,
+                "acceptance:promise:deal:123",
+                r#"{"type":"acceptance_request","state":"accepted"}"#,
+            ),
+        ]);
 
         let result = CompletedPromiseHasAcceptanceInvariant.check(&ctx);
         assert!(matches!(result, InvariantResult::Ok));

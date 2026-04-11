@@ -28,7 +28,7 @@ pub struct SeedFact {
     pub content: String,
 }
 
-/// Agent wiring configuration within a pack.
+/// Suggestor wiring configuration within a pack.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentWiring {
     pub id: String,

@@ -5,16 +5,16 @@
 //!
 //! These types define the invocation API for LLM providers — how you call them
 //! and what you get back. This is the provider-specific boundary; the
-//! platform-wide contract (`Backend`, `Agent`, `AgentEffect`) lives in
-//! `converge-traits`.
+//! platform-wide contract (`Backend`) lives in `converge-provider-api`,
+//! while pack authoring lives in `converge-pack`.
 //!
-//! # Relationship to converge-traits
+//! # Relationship to the public Converge contracts
 //!
-//! | This module             | converge-traits          |
-//! |-------------------------|--------------------------|
-//! | `LlmProvider` (invoke)  | `Backend` (identity)     |
-//! | `LlmRequest/Response`   | `AgentEffect` (effects)  |
-//! | `LlmError`              | `BackendError` (generic) |
+//! | This module             | Public crate                 |
+//! |-------------------------|------------------------------|
+//! | `LlmProvider` (invoke)  | `converge-provider-api`      |
+//! | `LlmRequest/Response`   | provider-local invocation    |
+//! | `LlmError`              | `BackendError` is generic    |
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -195,7 +195,7 @@ impl LlmError {
 /// wraps a remote LLM API (Anthropic, `OpenAI`, etc.) and exposes a
 /// simple prompt-in/response-out interface.
 ///
-/// Providers also implement [`converge_traits::Backend`] for identity
+/// Providers also implement [`converge_provider_api::Backend`] for identity
 /// and capability declaration, enabling the platform's capability-based
 /// selection.
 pub trait LlmProvider: Send + Sync {
@@ -233,7 +233,7 @@ pub trait LlmProvider: Send + Sync {
     }
 }
 
-// ── Selection types (local copies, compatible with converge-traits) ──
+// ── Selection types (local copies, compatible with converge-provider-api) ──
 
 /// Requirements for model selection.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -315,5 +315,5 @@ pub trait ModelSelectorTrait: Send + Sync {
     fn select(&self, requirements: &AgentRequirements) -> Result<(String, String), LlmError>;
 }
 
-// Re-export converge-traits selection types that are still compatible.
-pub use converge_traits::{ComplianceLevel, CostClass, DataSovereignty};
+// Re-export shared selection types that are still compatible.
+pub use converge_provider_api::{ComplianceLevel, CostClass, DataSovereignty};

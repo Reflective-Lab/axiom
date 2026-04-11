@@ -5,13 +5,13 @@
 //! gRPC server implementation for the Converge Protocol.
 //!
 //! This module provides the gRPC server that mobile and CLI clients connect to.
-//! It implements the Converge Protocol defined in `proto/converge.proto`.
+//! It implements the Converge Protocol defined in `schema/proto/converge.proto`.
 //!
 //! # Architecture
 //!
 //! The Converge Protocol is stream-first:
 //! - Clients open a bidirectional stream
-//! - Clients send control messages (submit job, approve, inject fact, etc.)
+//! - Clients send control messages (submit job, submit observation, approve, etc.)
 //! - Server sends events (facts, proposals, traces, decisions, status)
 //!
 //! Unary RPCs are available as fallback for degraded network conditions.
@@ -37,12 +37,12 @@ mod server;
 
 pub use server::GrpcServer;
 
-// Generated protobuf types
+// Generated protobuf types from the canonical shared protocol crate
 #[allow(clippy::all)]
 #[allow(clippy::pedantic)]
 #[allow(clippy::nursery)]
 pub mod generated {
-    include!("generated/converge.v1.rs");
+    pub use converge_protocol::v1::*;
 }
 
 // Re-export commonly used types
@@ -76,11 +76,11 @@ pub use generated::{
     GetJobRequest,
     GetJobResponse,
     HaltInfo,
-    InjectFactRequest,
     JobCompleted,
     JobCreated,
     PackInfo,
     PauseRunRequest,
+    SubmitObservationRequest,
     // Heartbeat
     Ping,
     Pong,

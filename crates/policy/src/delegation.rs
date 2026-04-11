@@ -14,7 +14,7 @@ use crate::types::DecideRequest;
 /// Scoped, time-limited authority delegation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Delegation {
-    /// Agent persona being granted authority
+    /// Suggestor persona being granted authority
     pub sub: String,
     /// Who delegated (supervisor persona or human identifier)
     pub issuer: String,

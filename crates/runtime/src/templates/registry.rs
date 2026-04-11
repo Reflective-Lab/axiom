@@ -207,7 +207,7 @@ impl TemplateRegistry {
     /// The YAML config (wiring) is in converge-domain/packs/growth-strategy.yaml
     ///
     /// Semantics (invariants, validation rules, forbidden terms) are in Gherkin,
-    /// NOT in this wiring config. Agent IDs match @agent @id:xxx tags.
+    /// NOT in this wiring config. Suggestor IDs match @agent @id:xxx tags.
     fn growth_strategy_template() -> Option<PackConfig> {
         Some(PackConfig {
             name: "growth-strategy".to_string(),

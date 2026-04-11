@@ -7,7 +7,7 @@
 //! This module produces a governed, reviewable fill plan and proposed field values.
 //! It is intentionally minimal and deterministic to keep invariants in focus.
 
-use converge_core::{Agent, AgentEffect, ContextKey, Fact, ProposedFact};
+use converge_core::{Suggestor, AgentEffect, ContextKey, ProposedFact};
 use serde::{Deserialize, Serialize};
 
 const FORM_REQUEST_SEED_ID: &str = "form_filler:request";
@@ -78,7 +78,7 @@ fn classify_risk(field_id: &str) -> bool {
 /// Extracts a schema from the seed request (PDF-first entry).
 pub struct FormSchemaAgent;
 
-impl Agent for FormSchemaAgent {
+impl Suggestor for FormSchemaAgent {
     fn name(&self) -> &str {
         "FormSchemaAgent"
     }
@@ -102,18 +102,19 @@ impl Agent for FormSchemaAgent {
             "fields": request.fields,
         });
 
-        AgentEffect::with_fact(Fact {
-            key: ContextKey::Signals,
-            id: SCHEMA_FACT_ID.to_string(),
-            content: payload.to_string(),
-        })
+        AgentEffect::with_proposal(crate::proposal(
+            self.name(),
+            ContextKey::Signals,
+            SCHEMA_FACT_ID,
+            payload.to_string(),
+        ))
     }
 }
 
 /// Maps schema fields to candidate sources (deterministic placeholder).
 pub struct FieldMappingAgent;
 
-impl Agent for FieldMappingAgent {
+impl Suggestor for FieldMappingAgent {
     fn name(&self) -> &str {
         "FieldMappingAgent"
     }
@@ -147,18 +148,19 @@ impl Agent for FieldMappingAgent {
             .collect();
 
         let payload = serde_json::json!({ "mappings": mappings });
-        AgentEffect::with_fact(Fact {
-            key: ContextKey::Hypotheses,
-            id: MAPPINGS_FACT_ID.to_string(),
-            content: payload.to_string(),
-        })
+        AgentEffect::with_proposal(crate::proposal(
+            self.name(),
+            ContextKey::Hypotheses,
+            MAPPINGS_FACT_ID,
+            payload.to_string(),
+        ))
     }
 }
 
 /// Normalizes candidate values (placeholder deterministic normalization).
 pub struct NormalizationAgent;
 
-impl Agent for NormalizationAgent {
+impl Suggestor for NormalizationAgent {
     fn name(&self) -> &str {
         "NormalizationAgent"
     }
@@ -191,18 +193,19 @@ impl Agent for NormalizationAgent {
             .collect();
 
         let payload = serde_json::json!({ "normalized": normalized });
-        AgentEffect::with_fact(Fact {
-            key: ContextKey::Hypotheses,
-            id: NORMALIZED_FACT_ID.to_string(),
-            content: payload.to_string(),
-        })
+        AgentEffect::with_proposal(crate::proposal(
+            self.name(),
+            ContextKey::Hypotheses,
+            NORMALIZED_FACT_ID,
+            payload.to_string(),
+        ))
     }
 }
 
 /// Detects missing required fields (based on empty normalized values).
 pub struct CompletenessAgent;
 
-impl Agent for CompletenessAgent {
+impl Suggestor for CompletenessAgent {
     fn name(&self) -> &str {
         "CompletenessAgent"
     }
@@ -233,18 +236,19 @@ impl Agent for CompletenessAgent {
             .collect();
 
         let payload = CompletenessStatus { missing_fields };
-        AgentEffect::with_fact(Fact {
-            key: ContextKey::Constraints,
-            id: COMPLETENESS_FACT_ID.to_string(),
-            content: serde_json::to_string(&payload).unwrap_or_default(),
-        })
+        AgentEffect::with_proposal(crate::proposal(
+            self.name(),
+            ContextKey::Constraints,
+            COMPLETENESS_FACT_ID,
+            serde_json::to_string(&payload).unwrap_or_default(),
+        ))
     }
 }
 
 /// Classifies high-risk fields that require approval.
 pub struct RiskClassifierAgent;
 
-impl Agent for RiskClassifierAgent {
+impl Suggestor for RiskClassifierAgent {
     fn name(&self) -> &str {
         "RiskClassifierAgent"
     }
@@ -275,18 +279,19 @@ impl Agent for RiskClassifierAgent {
             .collect::<Vec<_>>();
 
         let payload = RiskClassification { high_risk_fields };
-        AgentEffect::with_fact(Fact {
-            key: ContextKey::Constraints,
-            id: RISK_FACT_ID.to_string(),
-            content: serde_json::to_string(&payload).unwrap_or_default(),
-        })
+        AgentEffect::with_proposal(crate::proposal(
+            self.name(),
+            ContextKey::Constraints,
+            RISK_FACT_ID,
+            serde_json::to_string(&payload).unwrap_or_default(),
+        ))
     }
 }
 
 /// Produces a consolidated fill plan.
 pub struct FillPlanAgent;
 
-impl Agent for FillPlanAgent {
+impl Suggestor for FillPlanAgent {
     fn name(&self) -> &str {
         "FillPlanAgent"
     }
@@ -341,18 +346,19 @@ impl Agent for FillPlanAgent {
             ready_for_submit,
         };
 
-        AgentEffect::with_fact(Fact {
-            key: ContextKey::Strategies,
-            id: FILL_PLAN_FACT_ID.to_string(),
-            content: serde_json::to_string(&plan).unwrap_or_default(),
-        })
+        AgentEffect::with_proposal(crate::proposal(
+            self.name(),
+            ContextKey::Strategies,
+            FILL_PLAN_FACT_ID,
+            serde_json::to_string(&plan).unwrap_or_default(),
+        ))
     }
 }
 
 /// Emits proposed field values (for approval and promotion).
 pub struct ProposalEmitterAgent;
 
-impl Agent for ProposalEmitterAgent {
+impl Suggestor for ProposalEmitterAgent {
     fn name(&self) -> &str {
         "ProposalEmitterAgent"
     }
@@ -393,8 +399,6 @@ impl Agent for ProposalEmitterAgent {
             })
             .collect();
 
-        let mut effect = AgentEffect::empty();
-        effect.proposals = proposals;
-        effect
+        AgentEffect::with_proposals(proposals)
     }
 }

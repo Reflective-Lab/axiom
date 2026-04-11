@@ -295,7 +295,7 @@ mod tests {
         let manifest_json = serde_json::to_string(&WasmManifest {
             name: "test-agent".to_string(),
             version: "1.0.0".to_string(),
-            kind: ModuleKind::Agent,
+            kind: ModuleKind::Suggestor,
             invariant_class: None,
             dependencies: vec!["Seeds".to_string()],
             capabilities: vec![],
@@ -337,17 +337,19 @@ mod tests {
         Arc::new(WasmEngine::new().unwrap())
     }
 
-    fn context_with_strategies() -> Context {
+    fn promoted_context(entries: &[(ContextKey, &str, &str)]) -> Context {
         let mut ctx = Context::new();
-        ctx.add_fact(Fact::new(ContextKey::Strategies, "strat-1", "SEO strategy"))
-            .unwrap();
-        ctx.add_fact(Fact::new(
-            ContextKey::Strategies,
-            "strat-2",
-            "Content marketing",
-        ))
-        .unwrap();
-        ctx
+        for (key, id, content) in entries {
+            ctx.add_input(*key, *id, *content).unwrap();
+        }
+        Engine::new().run(ctx).unwrap().context
+    }
+
+    fn context_with_strategies() -> Context {
+        promoted_context(&[
+            (ContextKey::Strategies, "strat-1", "SEO strategy"),
+            (ContextKey::Strategies, "strat-2", "Content marketing"),
+        ])
     }
 
     // =========================================================================
@@ -356,13 +358,11 @@ mod tests {
 
     #[test]
     fn context_to_guest_includes_all_public_keys() {
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact::new(ContextKey::Seeds, "s1", "seed"))
-            .unwrap();
-        ctx.add_fact(Fact::new(ContextKey::Strategies, "st1", "strat"))
-            .unwrap();
-        ctx.add_fact(Fact::new(ContextKey::Evaluations, "e1", "eval"))
-            .unwrap();
+        let ctx = promoted_context(&[
+            (ContextKey::Seeds, "s1", "seed"),
+            (ContextKey::Strategies, "st1", "strat"),
+            (ContextKey::Evaluations, "e1", "eval"),
+        ]);
 
         let guest = context_to_guest(&ctx, 5);
         assert_eq!(guest.cycle, 5);
@@ -393,9 +393,7 @@ mod tests {
 
     #[test]
     fn context_to_guest_preserves_version() {
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact::new(ContextKey::Seeds, "s1", "v"))
-            .unwrap();
+        let ctx = promoted_context(&[(ContextKey::Seeds, "s1", "v")]);
         let guest = context_to_guest(&ctx, 3);
         assert_eq!(guest.version, ctx.version());
         assert_eq!(guest.cycle, 3);

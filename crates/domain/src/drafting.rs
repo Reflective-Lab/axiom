@@ -5,7 +5,7 @@
 //!
 //! Seeds -> Signals (research notes) -> Strategies (draft output)
 
-use converge_core::{Agent, AgentEffect, ContextKey, Fact};
+use converge_core::{Suggestor, AgentEffect, ContextKey};
 
 const DRAFT_RESEARCH_PREFIX: &str = "drafting_research:";
 const DRAFT_OUTPUT_PREFIX: &str = "drafting_output:";
@@ -13,7 +13,7 @@ const DRAFT_OUTPUT_PREFIX: &str = "drafting_output:";
 /// Drafting research agent (deterministic fallback).
 pub struct DraftingResearchAgent;
 
-impl Agent for DraftingResearchAgent {
+impl Suggestor for DraftingResearchAgent {
     fn name(&self) -> &str {
         "DraftingResearchAgent"
     }
@@ -38,18 +38,19 @@ impl Agent for DraftingResearchAgent {
             .collect::<Vec<_>>()
             .join(" | ");
 
-        AgentEffect::with_facts(vec![Fact {
-            key: ContextKey::Signals,
-            id: format!("{DRAFT_RESEARCH_PREFIX}notes"),
-            content: format!("Drafting research notes: {summary}"),
-        }])
+        AgentEffect::with_proposal(crate::proposal(
+            self.name(),
+            ContextKey::Signals,
+            format!("{DRAFT_RESEARCH_PREFIX}notes"),
+            format!("Drafting research notes: {summary}"),
+        ))
     }
 }
 
 /// Drafting composer agent (deterministic fallback).
 pub struct DraftingComposerAgent;
 
-impl Agent for DraftingComposerAgent {
+impl Suggestor for DraftingComposerAgent {
     fn name(&self) -> &str {
         "DraftingComposerAgent"
     }
@@ -77,10 +78,11 @@ impl Agent for DraftingComposerAgent {
             .collect::<Vec<_>>()
             .join("\n");
 
-        AgentEffect::with_facts(vec![Fact {
-            key: ContextKey::Strategies,
-            id: format!("{DRAFT_OUTPUT_PREFIX}v0"),
-            content: format!("Draft output (deterministic):\n{notes}"),
-        }])
+        AgentEffect::with_proposal(crate::proposal(
+            self.name(),
+            ContextKey::Strategies,
+            format!("{DRAFT_OUTPUT_PREFIX}v0"),
+            format!("Draft output (deterministic):\n{notes}"),
+        ))
     }
 }

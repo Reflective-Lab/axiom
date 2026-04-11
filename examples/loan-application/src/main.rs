@@ -6,7 +6,7 @@
 //! Demonstrates: parallel execution, conditional HITL (borderline cases), consensus.
 
 use converge_core::{
-    Agent, AgentEffect, Context, ContextKey, Engine, EngineHitlPolicy, Fact, ProposedFact,
+    Suggestor, AgentEffect, Context, ContextKey, Engine, EngineHitlPolicy, ProposedFact,
     RunResult,
     gates::hitl::GateDecision,
     gates::{TimeoutAction, TimeoutPolicy},
@@ -14,7 +14,7 @@ use converge_core::{
 
 struct ApplicationIngestionAgent;
 
-impl Agent for ApplicationIngestionAgent {
+impl Suggestor for ApplicationIngestionAgent {
     fn name(&self) -> &str {
         "ApplicationIngestionAgent"
     }
@@ -33,11 +33,10 @@ impl Agent for ApplicationIngestionAgent {
 
         if let Some(s) = seed {
             if let Ok(app) = serde_json::from_str::<serde_json::Value>(&s.content) {
-                return AgentEffect::with_fact(Fact {
-                    key: ContextKey::Signals,
-                    id: "application".to_string(),
-                    content: app.to_string(),
-                });
+                return AgentEffect::with_proposal(
+                    ProposedFact::new(ContextKey::Signals, "application", app.to_string(), self.name())
+                        .with_confidence(1.0),
+                );
             }
         }
 
@@ -47,7 +46,7 @@ impl Agent for ApplicationIngestionAgent {
 
 struct DocumentVerificationAgent;
 
-impl Agent for DocumentVerificationAgent {
+impl Suggestor for DocumentVerificationAgent {
     fn name(&self) -> &str {
         "DocumentVerificationAgent"
     }
@@ -71,15 +70,19 @@ impl Agent for DocumentVerificationAgent {
                     .and_then(|d| d.as_bool())
                     .unwrap_or(false);
 
-                return AgentEffect::with_fact(Fact {
-                    key: ContextKey::Evaluations,
-                    id: "documents".to_string(),
-                    content: serde_json::json!({
-                        "criterion": "documents",
-                        "score": if docs_complete { 1.0 } else { 0.0 },
-                        "details": if docs_complete { "All required documents provided" } else { "Missing documents" }
-                    }).to_string(),
-                });
+                return AgentEffect::with_proposal(
+                    ProposedFact::new(
+                        ContextKey::Evaluations,
+                        "documents",
+                        serde_json::json!({
+                            "criterion": "documents",
+                            "score": if docs_complete { 1.0 } else { 0.0 },
+                            "details": if docs_complete { "All required documents provided" } else { "Missing documents" }
+                        }).to_string(),
+                        self.name(),
+                    )
+                    .with_confidence(1.0),
+                );
             }
         }
 
@@ -89,7 +92,7 @@ impl Agent for DocumentVerificationAgent {
 
 struct CreditCheckAgent;
 
-impl Agent for CreditCheckAgent {
+impl Suggestor for CreditCheckAgent {
     fn name(&self) -> &str {
         "CreditCheckAgent"
     }
@@ -143,19 +146,23 @@ impl Agent for CreditCheckAgent {
 
                 let combined = (credit_score_score + dti_score) / 2.0;
 
-                return AgentEffect::with_fact(Fact {
-                    key: ContextKey::Evaluations,
-                    id: "credit".to_string(),
-                    content: serde_json::json!({
-                        "criterion": "credit",
-                        "score": combined,
-                        "details": {
-                            "credit_score": credit_score,
-                            "dti_ratio": dti
-                        }
-                    })
-                    .to_string(),
-                });
+                return AgentEffect::with_proposal(
+                    ProposedFact::new(
+                        ContextKey::Evaluations,
+                        "credit",
+                        serde_json::json!({
+                            "criterion": "credit",
+                            "score": combined,
+                            "details": {
+                                "credit_score": credit_score,
+                                "dti_ratio": dti
+                            }
+                        })
+                        .to_string(),
+                        self.name(),
+                    )
+                    .with_confidence(1.0),
+                );
             }
         }
 
@@ -165,7 +172,7 @@ impl Agent for CreditCheckAgent {
 
 struct ComplianceAgent;
 
-impl Agent for ComplianceAgent {
+impl Suggestor for ComplianceAgent {
     fn name(&self) -> &str {
         "ComplianceAgent"
     }
@@ -207,18 +214,22 @@ impl Agent for ComplianceAgent {
 
                 let compliant = violations.is_empty();
 
-                return AgentEffect::with_fact(Fact {
-                    key: ContextKey::Evaluations,
-                    id: "compliance".to_string(),
-                    content: serde_json::json!({
-                        "criterion": "compliance",
-                        "score": if compliant { 1.0 } else { 0.0 },
-                        "details": {
-                            "violations": violations
-                        }
-                    })
-                    .to_string(),
-                });
+                return AgentEffect::with_proposal(
+                    ProposedFact::new(
+                        ContextKey::Evaluations,
+                        "compliance",
+                        serde_json::json!({
+                            "criterion": "compliance",
+                            "score": if compliant { 1.0 } else { 0.0 },
+                            "details": {
+                                "violations": violations
+                            }
+                        })
+                        .to_string(),
+                        self.name(),
+                    )
+                    .with_confidence(1.0),
+                );
             }
         }
 
@@ -228,7 +239,7 @@ impl Agent for ComplianceAgent {
 
 struct RiskAssessmentAgent;
 
-impl Agent for RiskAssessmentAgent {
+impl Suggestor for RiskAssessmentAgent {
     fn name(&self) -> &str {
         "RiskAssessmentAgent"
     }
@@ -272,18 +283,22 @@ impl Agent for RiskAssessmentAgent {
                     0.3
                 };
 
-                return AgentEffect::with_fact(Fact {
-                    key: ContextKey::Evaluations,
-                    id: "risk".to_string(),
-                    content: serde_json::json!({
-                        "criterion": "risk",
-                        "score": risk_score,
-                        "details": {
-                            "risk_factors": risk_factors
-                        }
-                    })
-                    .to_string(),
-                });
+                return AgentEffect::with_proposal(
+                    ProposedFact::new(
+                        ContextKey::Evaluations,
+                        "risk",
+                        serde_json::json!({
+                            "criterion": "risk",
+                            "score": risk_score,
+                            "details": {
+                                "risk_factors": risk_factors
+                            }
+                        })
+                        .to_string(),
+                        self.name(),
+                    )
+                    .with_confidence(1.0),
+                );
             }
         }
 
@@ -293,7 +308,7 @@ impl Agent for RiskAssessmentAgent {
 
 struct LoanDecisionAgent;
 
-impl Agent for LoanDecisionAgent {
+impl Suggestor for LoanDecisionAgent {
     fn name(&self) -> &str {
         "LoanDecisionAgent"
     }
@@ -357,12 +372,12 @@ fn main() {
 
     let mut engine = Engine::new();
 
-    engine.register(ApplicationIngestionAgent);
-    engine.register(DocumentVerificationAgent);
-    engine.register(CreditCheckAgent);
-    engine.register(ComplianceAgent);
-    engine.register(RiskAssessmentAgent);
-    engine.register(LoanDecisionAgent);
+    engine.register_suggestor(ApplicationIngestionAgent);
+    engine.register_suggestor(DocumentVerificationAgent);
+    engine.register_suggestor(CreditCheckAgent);
+    engine.register_suggestor(ComplianceAgent);
+    engine.register_suggestor(RiskAssessmentAgent);
+    engine.register_suggestor(LoanDecisionAgent);
 
     let hitl_policy = EngineHitlPolicy {
         confidence_threshold: Some(0.75),
@@ -387,11 +402,7 @@ fn main() {
     });
 
     let mut ctx = Context::new();
-    let _ = ctx.add_fact(Fact {
-        key: ContextKey::Seeds,
-        id: "application-1".to_string(),
-        content: application.to_string(),
-    });
+    let _ = ctx.add_input(ContextKey::Seeds, "application-1", application.to_string());
 
     println!(
         "Processing loan application for ${}, credit score: {}\n",

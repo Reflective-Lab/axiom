@@ -1,6 +1,6 @@
 // Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 
-//! Agent effects — re-exported from converge-traits.
+//! Suggestor effects — re-exported from converge-pack.
 
-pub use converge_traits::effect::AgentEffect;
+pub use converge_pack::effect::AgentEffect;

@@ -13,7 +13,8 @@ categories = ["api-bindings", "web-programming"]
 
 [dependencies]
 converge-core.workspace = true
-converge-traits.workspace = true
+converge-pack.workspace = true
+converge-provider-api.workspace = true
 converge-mcp = { workspace = true, features = ["client"] }
 reqwest = { workspace = true, optional = true }
 serde.workspace = true

@@ -41,7 +41,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use strum::IntoEnumIterator;
 use tokio::task;
-use tracing::{info, info_span, warn};
+use tracing::{info, info_span};
 use utoipa::ToSchema;
 
 use crate::error::{RuntimeError, RuntimeErrorResponse};

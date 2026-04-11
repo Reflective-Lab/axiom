@@ -7,7 +7,7 @@
 //! This module implements a deterministic meeting scheduling use case
 //! that validates the Converge engine with constraint satisfaction.
 //!
-//! # Agent Pipeline
+//! # Suggestor Pipeline
 //!
 //! ```text
 //! Seeds (participants, duration, window)
@@ -32,7 +32,7 @@
 //!
 //! ```
 //! use converge_core::{Engine, Context, ContextKey};
-//! use converge_core::agents::SeedAgent;
+//! use converge_core::suggestors::SeedSuggestor;
 //! use converge_domain::meeting_scheduler::{
 //!     AvailabilityRetrievalAgent, TimeZoneNormalizationAgent,
 //!     WorkingHoursConstraintAgent, SlotOptimizationAgent, ConflictDetectionAgent,
@@ -41,16 +41,16 @@
 //! let mut engine = Engine::new();
 //!
 //! // Seed the context with meeting requirements
-//! engine.register(SeedAgent::new("participants", "Alice, Bob, Carol"));
-//! engine.register(SeedAgent::new("duration", "60"));
-//! engine.register(SeedAgent::new("window", "next week"));
+//! engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob, Carol"));
+//! engine.register_suggestor(SeedSuggestor::new("duration", "60"));
+//! engine.register_suggestor(SeedSuggestor::new("window", "next week"));
 //!
 //! // Register meeting scheduler agents
-//! engine.register(AvailabilityRetrievalAgent);
-//! engine.register(TimeZoneNormalizationAgent);
-//! engine.register(WorkingHoursConstraintAgent);
-//! engine.register(SlotOptimizationAgent);
-//! engine.register(ConflictDetectionAgent);
+//! engine.register_suggestor(AvailabilityRetrievalAgent);
+//! engine.register_suggestor(TimeZoneNormalizationAgent);
+//! engine.register_suggestor(WorkingHoursConstraintAgent);
+//! engine.register_suggestor(SlotOptimizationAgent);
+//! engine.register_suggestor(ConflictDetectionAgent);
 //!
 //! let result = engine.run(Context::new()).expect("should converge");
 //!
@@ -59,19 +59,19 @@
 //! assert!(result.context.has(ContextKey::Evaluations));
 //! ```
 
-// Agent trait returns &str, but we return literals. This is fine.
+// Suggestor trait returns &str, but we return literals. This is fine.
 #![allow(clippy::unnecessary_literal_bound)]
 
-use converge_core::{Agent, AgentEffect, ContextKey, Fact};
+use converge_core::{Suggestor, AgentEffect, ContextKey, Fact};
 
-/// Agent that retrieves availability for participants.
+/// Suggestor that retrieves availability for participants.
 ///
 ///
 /// Simulates calendar lookup for each participant.
 /// In a real system, this would query calendar APIs.
 pub struct AvailabilityRetrievalAgent;
 
-impl Agent for AvailabilityRetrievalAgent {
+impl Suggestor for AvailabilityRetrievalAgent {
     fn name(&self) -> &str {
         "AvailabilityRetrievalAgent"
     }
@@ -99,49 +99,52 @@ impl Agent for AvailabilityRetrievalAgent {
             // Deterministic availability generation based on participants
             let content = &seed.content;
             if content.contains("Alice") {
-                facts.push(Fact {
-                    key: ContextKey::Signals,
-                    id: "availability:alice".into(),
-                    content: "Alice: Mon 9-17, Tue 9-17, Wed 9-17, Thu 9-17, Fri 9-17 (UTC)".into(),
-                });
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Signals,
+                    "availability:alice",
+                    "Alice: Mon 9-17, Tue 9-17, Wed 9-17, Thu 9-17, Fri 9-17 (UTC)",
+                ));
             }
             if content.contains("Bob") {
-                facts.push(Fact {
-                    key: ContextKey::Signals,
-                    id: "availability:bob".into(),
-                    content: "Bob: Mon 10-18, Tue 10-18, Wed 10-18, Thu 10-18, Fri 10-18 (UTC)"
-                        .into(),
-                });
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Signals,
+                    "availability:bob",
+                    "Bob: Mon 10-18, Tue 10-18, Wed 10-18, Thu 10-18, Fri 10-18 (UTC)",
+                ));
             }
             if content.contains("Carol") {
-                facts.push(Fact {
-                    key: ContextKey::Signals,
-                    id: "availability:carol".into(),
-                    content: "Carol: Mon 8-16, Tue 8-16, Wed 8-16, Thu 8-16, Fri 8-16 (UTC)".into(),
-                });
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Signals,
+                    "availability:carol",
+                    "Carol: Mon 8-16, Tue 8-16, Wed 8-16, Thu 8-16, Fri 8-16 (UTC)",
+                ));
             }
         }
 
         // Always emit baseline availability if no specific data
         if facts.is_empty() {
-            facts.push(Fact {
-                key: ContextKey::Signals,
-                id: "availability:default".into(),
-                content: "Default: Mon-Fri 9-17 UTC".into(),
-            });
+            facts.push(crate::proposal(
+                self.name(),
+                ContextKey::Signals,
+                "availability:default",
+                "Default: Mon-Fri 9-17 UTC",
+            ));
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
-/// Agent that normalizes time zones and availability windows.
+/// Suggestor that normalizes time zones and availability windows.
 ///
 ///
 /// Converts all availability to a common timezone and aligns windows.
 pub struct TimeZoneNormalizationAgent;
 
-impl Agent for TimeZoneNormalizationAgent {
+impl Suggestor for TimeZoneNormalizationAgent {
     fn name(&self) -> &str {
         "TimeZoneNormalizationAgent"
     }
@@ -179,24 +182,25 @@ impl Agent for TimeZoneNormalizationAgent {
         if !availability_signals.is_empty() {
             // Normalize to UTC and find common windows
             // For simplicity, assume all are already in UTC and find overlap
-            facts.push(Fact {
-                key: ContextKey::Signals,
-                id: "normalized:common-window".into(),
-                content: "Common availability: Mon-Fri 10-16 UTC (all participants)".into(),
-            });
+            facts.push(crate::proposal(
+                self.name(),
+                ContextKey::Signals,
+                "normalized:common-window",
+                "Common availability: Mon-Fri 10-16 UTC (all participants)",
+            ));
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
-/// Agent that enforces working hours constraints.
+/// Suggestor that enforces working hours constraints.
 ///
 ///
 /// Validates that candidate slots respect working hour policies.
 pub struct WorkingHoursConstraintAgent;
 
-impl Agent for WorkingHoursConstraintAgent {
+impl Suggestor for WorkingHoursConstraintAgent {
     fn name(&self) -> &str {
         "WorkingHoursConstraintAgent"
     }
@@ -236,34 +240,36 @@ impl Agent for WorkingHoursConstraintAgent {
         let normalized = signals.iter().find(|s| s.id.starts_with("normalized:"));
 
         if let Some(norm) = normalized {
-            facts.push(Fact {
-                key: ContextKey::Constraints,
-                id: "working-hours:policy".into(),
-                content: format!(
+            facts.push(crate::proposal(
+                self.name(),
+                ContextKey::Constraints,
+                "working-hours:policy",
+                format!(
                     "Working hours: {} | Minimum duration: {} minutes",
                     norm.content, duration
                 ),
-            });
+            ));
         } else {
             // Default constraint
-            facts.push(Fact {
-                key: ContextKey::Constraints,
-                id: "working-hours:default".into(),
-                content: format!("Working hours: Mon-Fri 9-17 UTC | Duration: {duration} minutes"),
-            });
+            facts.push(crate::proposal(
+                self.name(),
+                ContextKey::Constraints,
+                "working-hours:default",
+                format!("Working hours: Mon-Fri 9-17 UTC | Duration: {duration} minutes"),
+            ));
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
-/// Agent that optimizes and generates candidate time slots.
+/// Suggestor that optimizes and generates candidate time slots.
 ///
 ///
 /// Produces ranked candidate slots based on availability and constraints.
 pub struct SlotOptimizationAgent;
 
-impl Agent for SlotOptimizationAgent {
+impl Suggestor for SlotOptimizationAgent {
     fn name(&self) -> &str {
         "SlotOptimizationAgent"
     }
@@ -309,24 +315,25 @@ impl Agent for SlotOptimizationAgent {
         ];
 
         for (start, end, rank) in slots {
-            facts.push(Fact {
-                key: ContextKey::Strategies,
-                id: format!("slot:{rank}"),
-                content: format!("Candidate slot {rank}: {start} - {end} ({duration} minutes)"),
-            });
+            facts.push(crate::proposal(
+                self.name(),
+                ContextKey::Strategies,
+                format!("slot:{rank}"),
+                format!("Candidate slot {rank}: {start} - {end} ({duration} minutes)"),
+            ));
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
-/// Agent that detects conflicts and ranks valid slots.
+/// Suggestor that detects conflicts and ranks valid slots.
 ///
 ///
 /// Evaluates candidate slots against constraints and ranks them.
 pub struct ConflictDetectionAgent;
 
-impl Agent for ConflictDetectionAgent {
+impl Suggestor for ConflictDetectionAgent {
     fn name(&self) -> &str {
         "ConflictDetectionAgent"
     }
@@ -356,31 +363,31 @@ impl Agent for ConflictDetectionAgent {
             if is_valid {
                 let (score, rationale) = evaluate_slot(slot, i);
 
-                facts.push(Fact {
-                    key: ContextKey::Evaluations,
-                    id: format!("eval:{}", slot.id.strip_prefix("slot:").unwrap_or(&slot.id)),
-                    content: format!(
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Evaluations,
+                    format!("eval:{}", slot.id.strip_prefix("slot:").unwrap_or(&slot.id)),
+                    format!(
                         "Score: {}/100 | {} | Rationale: {}",
                         score,
                         if i == 0 { "RECOMMENDED" } else { "ALTERNATIVE" },
                         rationale
                     ),
-                });
+                ));
             }
         }
 
         // Ensure at least one valid slot
         if facts.is_empty() {
-            facts.push(Fact {
-                key: ContextKey::Evaluations,
-                id: "eval:no-slot".into(),
-                content:
-                    "Score: 0/100 | INFEASIBLE | Rationale: No valid slots found within constraints"
-                        .into(),
-            });
+            facts.push(crate::proposal(
+                self.name(),
+                ContextKey::Evaluations,
+                "eval:no-slot",
+                "Score: 0/100 | INFEASIBLE | Rationale: No valid slots found within constraints",
+            ));
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -562,13 +569,13 @@ mod tests {
     use super::*;
     use converge_core::Context;
     use converge_core::Engine;
-    use converge_core::agents::SeedAgent;
+    use converge_core::suggestors::SeedSuggestor;
 
     #[test]
     fn availability_agent_retrieves_availability() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent::new("participants", "Alice, Bob, Carol"));
-        engine.register(AvailabilityRetrievalAgent);
+        engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob, Carol"));
+        engine.register_suggestor(AvailabilityRetrievalAgent);
 
         let result = engine.run(Context::new()).expect("should converge");
 
@@ -582,9 +589,9 @@ mod tests {
     #[test]
     fn timezone_agent_normalizes_availability() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent::new("participants", "Alice, Bob, Carol"));
-        engine.register(AvailabilityRetrievalAgent);
-        engine.register(TimeZoneNormalizationAgent);
+        engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob, Carol"));
+        engine.register_suggestor(AvailabilityRetrievalAgent);
+        engine.register_suggestor(TimeZoneNormalizationAgent);
 
         let result = engine.run(Context::new()).expect("should converge");
 
@@ -596,11 +603,11 @@ mod tests {
     #[test]
     fn working_hours_agent_enforces_constraints() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent::new("participants", "Alice, Bob, Carol"));
-        engine.register(SeedAgent::new("duration", "60"));
-        engine.register(AvailabilityRetrievalAgent);
-        engine.register(TimeZoneNormalizationAgent);
-        engine.register(WorkingHoursConstraintAgent);
+        engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob, Carol"));
+        engine.register_suggestor(SeedSuggestor::new("duration", "60"));
+        engine.register_suggestor(AvailabilityRetrievalAgent);
+        engine.register_suggestor(TimeZoneNormalizationAgent);
+        engine.register_suggestor(WorkingHoursConstraintAgent);
 
         let result = engine.run(Context::new()).expect("should converge");
 
@@ -611,12 +618,12 @@ mod tests {
     #[test]
     fn slot_optimization_agent_generates_candidates() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent::new("participants", "Alice, Bob, Carol"));
-        engine.register(SeedAgent::new("duration", "60"));
-        engine.register(AvailabilityRetrievalAgent);
-        engine.register(TimeZoneNormalizationAgent);
-        engine.register(WorkingHoursConstraintAgent);
-        engine.register(SlotOptimizationAgent);
+        engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob, Carol"));
+        engine.register_suggestor(SeedSuggestor::new("duration", "60"));
+        engine.register_suggestor(AvailabilityRetrievalAgent);
+        engine.register_suggestor(TimeZoneNormalizationAgent);
+        engine.register_suggestor(WorkingHoursConstraintAgent);
+        engine.register_suggestor(SlotOptimizationAgent);
 
         let result = engine.run(Context::new()).expect("should converge");
 
@@ -630,13 +637,13 @@ mod tests {
     #[test]
     fn conflict_detection_agent_ranks_slots() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent::new("participants", "Alice, Bob, Carol"));
-        engine.register(SeedAgent::new("duration", "60"));
-        engine.register(AvailabilityRetrievalAgent);
-        engine.register(TimeZoneNormalizationAgent);
-        engine.register(WorkingHoursConstraintAgent);
-        engine.register(SlotOptimizationAgent);
-        engine.register(ConflictDetectionAgent);
+        engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob, Carol"));
+        engine.register_suggestor(SeedSuggestor::new("duration", "60"));
+        engine.register_suggestor(AvailabilityRetrievalAgent);
+        engine.register_suggestor(TimeZoneNormalizationAgent);
+        engine.register_suggestor(WorkingHoursConstraintAgent);
+        engine.register_suggestor(SlotOptimizationAgent);
+        engine.register_suggestor(ConflictDetectionAgent);
 
         let result = engine.run(Context::new()).expect("should converge");
 
@@ -652,13 +659,13 @@ mod tests {
     fn full_pipeline_converges_deterministically() {
         let run = || {
             let mut engine = Engine::new();
-            engine.register(SeedAgent::new("participants", "Alice, Bob, Carol"));
-            engine.register(SeedAgent::new("duration", "60"));
-            engine.register(AvailabilityRetrievalAgent);
-            engine.register(TimeZoneNormalizationAgent);
-            engine.register(WorkingHoursConstraintAgent);
-            engine.register(SlotOptimizationAgent);
-            engine.register(ConflictDetectionAgent);
+            engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob, Carol"));
+            engine.register_suggestor(SeedSuggestor::new("duration", "60"));
+            engine.register_suggestor(AvailabilityRetrievalAgent);
+            engine.register_suggestor(TimeZoneNormalizationAgent);
+            engine.register_suggestor(WorkingHoursConstraintAgent);
+            engine.register_suggestor(SlotOptimizationAgent);
+            engine.register_suggestor(ConflictDetectionAgent);
             engine.run(Context::new()).expect("should converge")
         };
 

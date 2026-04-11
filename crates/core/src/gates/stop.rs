@@ -137,7 +137,7 @@ pub enum StopReason {
     },
 
     /// An agent refused to continue.
-    /// Agent explicitly declined to produce output.
+    /// Suggestor explicitly declined to produce output.
     AgentRefused {
         /// ID of the refusing agent
         agent_id: String,
@@ -389,7 +389,7 @@ impl std::fmt::Display for StopReason {
                 write!(f, "Error ({:?}): {}", category, message)
             }
             Self::AgentRefused { agent_id, reason } => {
-                write!(f, "Agent '{}' refused: {}", agent_id, reason)
+                write!(f, "Suggestor '{}' refused: {}", agent_id, reason)
             }
             Self::HitlGatePending {
                 gate_id,

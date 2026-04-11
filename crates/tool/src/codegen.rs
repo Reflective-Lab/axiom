@@ -53,7 +53,7 @@ use crate::truths::TruthGovernance;
 pub enum ManifestError {
     /// Invariant module must declare an invariant class.
     MissingInvariantClass,
-    /// Agent module must have at least one dependency.
+    /// Suggestor module must have at least one dependency.
     MissingDependencies,
     /// Module name could not be determined from tags or scenario name.
     MissingName,
@@ -188,7 +188,7 @@ impl ManifestBuilder {
                     ScenarioKind::Invariant | ScenarioKind::Validation | ScenarioKind::EndToEnd => {
                         "Invariant"
                     }
-                    ScenarioKind::Agent => "Agent",
+                    ScenarioKind::Suggestor => "Suggestor",
                 }
                 .to_string(),
             );
@@ -369,7 +369,7 @@ impl ManifestBuilder {
     /// Returns `ManifestError::MissingInvariantClass` if kind is Invariant
     /// but no class tag was provided.
     ///
-    /// Returns `ManifestError::MissingDependencies` if kind is Agent but
+    /// Returns `ManifestError::MissingDependencies` if kind is Suggestor but
     /// no context key dependencies were found.
     ///
     /// Returns `ManifestError::MissingName` if no name could be determined.
@@ -380,7 +380,7 @@ impl ManifestBuilder {
         if kind == "Invariant" && self.invariant_class.is_none() {
             return Err(ManifestError::MissingInvariantClass);
         }
-        if kind == "Agent" && self.dependencies.is_empty() {
+        if kind == "Suggestor" && self.dependencies.is_empty() {
             return Err(ManifestError::MissingDependencies);
         }
 
@@ -1126,8 +1126,8 @@ mod tests {
     #[test]
     fn manifest_from_agent_tags() {
         let meta = ScenarioMeta {
-            name: "Market Signal Agent".to_string(),
-            kind: Some(ScenarioKind::Agent),
+            name: "Market Signal Suggestor".to_string(),
+            kind: Some(ScenarioKind::Suggestor),
             invariant_class: None,
             id: Some("market_signal".to_string()),
             provider: None,
@@ -1143,7 +1143,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert!(json.contains("\"Agent\""));
+        assert!(json.contains("\"Suggestor\""));
         assert!(json.contains("\"Signals\""));
         assert!(json.contains("\"market_signal\""));
     }
@@ -1203,7 +1203,7 @@ mod tests {
     fn manifest_agent_without_deps_errors() {
         let meta = ScenarioMeta {
             name: "test".to_string(),
-            kind: Some(ScenarioKind::Agent),
+            kind: Some(ScenarioKind::Suggestor),
             invariant_class: None,
             id: Some("test_agent".to_string()),
             provider: None,
@@ -1389,7 +1389,7 @@ mod tests {
             ) {
                 let meta = ScenarioMeta {
                     name: name.clone(),
-                    kind: Some(if is_invariant { ScenarioKind::Invariant } else { ScenarioKind::Agent }),
+                    kind: Some(if is_invariant { ScenarioKind::Invariant } else { ScenarioKind::Suggestor }),
                     invariant_class: if has_class { Some(InvariantClassTag::Structural) } else { None },
                     id: Some(name),
                     provider: None,

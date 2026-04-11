@@ -639,17 +639,17 @@ impl RootIntent {
         let mut facts = Vec::new();
 
         // Intent metadata as seed
-        facts.push(Fact {
-            key: ContextKey::Seeds,
-            id: format!("intent:{}", self.id),
-            content: format!(
+        facts.push(crate::context::new_fact(
+            ContextKey::Seeds,
+            format!("intent:{}", self.id),
+            format!(
                 "kind={} objective={}",
                 self.kind.name(),
                 self.objective
                     .as_ref()
                     .map_or("unspecified".to_string(), Objective::name)
             ),
-        });
+        ));
 
         // Scope as seeds
         for (i, constraint) in self.scope.constraints().iter().enumerate() {
@@ -663,21 +663,21 @@ impl RootIntent {
                 ScopeConstraint::CustomerSegment(s) => format!("segment={s}"),
                 ScopeConstraint::Custom { key, value } => format!("{key}={value}"),
             };
-            facts.push(Fact {
-                key: ContextKey::Seeds,
-                id: format!("scope:{}:{i}", self.id),
+            facts.push(crate::context::new_fact(
+                ContextKey::Seeds,
+                format!("scope:{}:{i}", self.id),
                 content,
-            });
+            ));
         }
 
         // Hard constraints as constraint facts
         for constraint in &self.constraints {
             if constraint.severity == ConstraintSeverity::Hard {
-                facts.push(Fact {
-                    key: ContextKey::Constraints,
-                    id: format!("constraint:{}:{}", self.id, constraint.key),
-                    content: format!("{}={}", constraint.key, constraint.value),
-                });
+                facts.push(crate::context::new_fact(
+                    ContextKey::Constraints,
+                    format!("constraint:{}:{}", self.id, constraint.key),
+                    format!("{}={}", constraint.key, constraint.value),
+                ));
             }
         }
 
@@ -756,17 +756,17 @@ mod tests {
     #[test]
     fn success_criteria_checks_satisfaction() {
         let mut ctx = Context::new();
-        ctx.add_fact(Fact {
-            key: ContextKey::Strategies,
-            id: "strat-1".into(),
-            content: "growth strategy".into(),
-        })
+        ctx.add_fact(crate::context::new_fact(
+            ContextKey::Strategies,
+            "strat-1",
+            "growth strategy",
+        ))
         .unwrap();
-        ctx.add_fact(Fact {
-            key: ContextKey::Evaluations,
-            id: "eval-1".into(),
-            content: "viable and recommended".into(),
-        })
+        ctx.add_fact(crate::context::new_fact(
+            ContextKey::Evaluations,
+            "eval-1",
+            "viable and recommended",
+        ))
         .unwrap();
 
         let criteria = SuccessCriteria::new().require(SuccessCriterion::AtLeastOneViableStrategy);
@@ -838,7 +838,7 @@ mod tests {
         // Check constraint fact
         let constraint_fact = facts
             .iter()
-            .find(|f| f.key == ContextKey::Constraints)
+            .find(|f| f.key() == ContextKey::Constraints)
             .unwrap();
         assert!(constraint_fact.content.contains("budget=1M"));
     }
@@ -860,11 +860,7 @@ mod tests {
         let mut ctx = Context::new();
         assert!(!intent.is_successful(&ctx));
 
-        ctx.add_fact(Fact {
-            key: ContextKey::Strategies,
-            id: "s1".into(),
-            content: "strategy".into(),
-        })
+        ctx.add_fact(crate::context::new_fact(ContextKey::Strategies, "s1", "strategy"))
         .unwrap();
 
         assert!(intent.is_successful(&ctx));

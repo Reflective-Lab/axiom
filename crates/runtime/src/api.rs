@@ -72,7 +72,7 @@ use crate::templates::{
     ),
     info(
         title = "Converge Runtime API",
-        description = "HTTP API for the Converge Agent OS - supports template-based multi-agent job execution",
+        description = "HTTP API for the Converge Suggestor OS - supports template-based multi-agent job execution",
         version = "0.1.0",
         contact(
             name = "Converge",

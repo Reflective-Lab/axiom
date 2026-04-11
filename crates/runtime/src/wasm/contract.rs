@@ -103,7 +103,7 @@
 //! |--------------------------|----------------------------------|---------|
 //! | `check_invariant`        | `(ctx_ptr: u32, ctx_len: u32) -> (ptr: u32, len: u32)` | Core invariant check |
 //!
-//! ## Agent Module Exports (optional, for full JTBD agents)
+//! ## Suggestor Module Exports (optional, for full JTBD agents)
 //!
 //! | Export                    | Signature                        | Purpose |
 //! |--------------------------|----------------------------------|---------|
@@ -166,7 +166,7 @@ pub struct WasmManifest {
     pub invariant_class: Option<WasmInvariantClass>,
 
     /// For agent modules: declared context key dependencies.
-    /// Required when `kind` is `Agent`.
+    /// Required when `kind` is `Suggestor`.
     pub dependencies: Vec<String>,
 
     /// Host capabilities this module requires.
@@ -201,7 +201,7 @@ pub enum ModuleKind {
 
     /// A full agent (compiled from JTBD spec).
     /// Implements `agent_accepts` + `agent_execute`.
-    Agent,
+    Suggestor,
 }
 
 /// Invariant class for WASM invariant modules.
@@ -403,7 +403,7 @@ impl GuestInvariantResult {
 }
 
 // ============================================================================
-// Agent Guest Response
+// Suggestor Guest Response
 // ============================================================================
 
 /// Effect returned by `agent_execute`.

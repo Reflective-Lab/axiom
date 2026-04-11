@@ -311,11 +311,7 @@ mod tests {
         registry.register(RequireSeeds);
 
         let mut ctx = Context::new();
-        let _ = ctx.add_fact(Fact {
-            key: ContextKey::Seeds,
-            id: "s1".into(),
-            content: "value".into(),
-        });
+        let _ = ctx.add_fact(crate::context::new_fact(ContextKey::Seeds, "s1", "value"));
 
         assert!(registry.check_acceptance(&ctx).is_ok());
     }
@@ -340,11 +336,7 @@ mod tests {
         registry.register(NoEmptyContent);
 
         let mut ctx = Context::new();
-        let _ = ctx.add_fact(Fact {
-            key: ContextKey::Seeds,
-            id: "bad".into(),
-            content: "   ".into(), // Empty after trim
-        });
+        let _ = ctx.add_fact(crate::context::new_fact(ContextKey::Seeds, "bad", "   ")); // Empty after trim
 
         let result = registry.check_structural(&ctx);
         assert!(result.is_err());

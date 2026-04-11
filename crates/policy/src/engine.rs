@@ -51,7 +51,7 @@ impl PolicyEngine {
 
     /// Evaluate a policy decision.
     ///
-    /// Builds Cedar principal (`Agent::Persona`), resource (`Flow::Commitment`),
+    /// Builds Cedar principal (`Suggestor::Persona`), resource (`Flow::Commitment`),
     /// and context from the request, then evaluates the loaded policies.
     ///
     /// # Errors
@@ -60,8 +60,8 @@ impl PolicyEngine {
     pub fn evaluate(&self, req: &DecideRequest) -> Result<PolicyDecision, EngineError> {
         let ctx = req.context.clone().unwrap_or_default();
 
-        // Build principal entity: Agent::Persona
-        let p_type = EntityTypeName::from_str("Agent::Persona")
+        // Build principal entity: Suggestor::Persona
+        let p_type = EntityTypeName::from_str("Suggestor::Persona")
             .map_err(|e| EngineError::EntityBuild(e.to_string()))?;
         let p_id = EntityId::from_str(&req.principal.id)
             .map_err(|e| EngineError::EntityBuild(e.to_string()))?;

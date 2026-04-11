@@ -6,7 +6,7 @@
 //! Demonstrates: long-running workflows, humans in the loop, multi-tier approvals.
 
 use converge_core::{
-    Agent, AgentEffect, Context, ContextKey, Engine, EngineHitlPolicy, Fact, ProposedFact,
+    Suggestor, AgentEffect, Context, ContextKey, Engine, EngineHitlPolicy, ProposedFact,
     RunResult,
     gates::hitl::GateDecision,
     gates::{TimeoutAction, TimeoutPolicy},
@@ -17,7 +17,7 @@ const FINANCE_THRESHOLD: f64 = 10_000.0;
 
 struct ExpenseParsingAgent;
 
-impl Agent for ExpenseParsingAgent {
+impl Suggestor for ExpenseParsingAgent {
     fn name(&self) -> &str {
         "ExpenseParsingAgent"
     }
@@ -36,26 +36,25 @@ impl Agent for ExpenseParsingAgent {
 
         let parsed = if let Some(s) = seed {
             let json: serde_json::Value = serde_json::from_str(&s.content).unwrap_or_default();
-            Fact {
-                key: ContextKey::Strategies,
-                id: "parsed-expense".to_string(),
-                content: serde_json::to_string(&json).unwrap_or_default(),
-            }
+            ProposedFact::new(
+                ContextKey::Strategies,
+                "parsed-expense",
+                serde_json::to_string(&json).unwrap_or_default(),
+                self.name(),
+            )
+            .with_confidence(1.0)
         } else {
-            Fact {
-                key: ContextKey::Strategies,
-                id: "parsed-expense".to_string(),
-                content: "{}".to_string(),
-            }
+            ProposedFact::new(ContextKey::Strategies, "parsed-expense", "{}", self.name())
+                .with_confidence(1.0)
         };
 
-        AgentEffect::with_facts(vec![parsed])
+        AgentEffect::with_proposals(vec![parsed])
     }
 }
 
 struct PolicyValidationAgent;
 
-impl Agent for PolicyValidationAgent {
+impl Suggestor for PolicyValidationAgent {
     fn name(&self) -> &str {
         "PolicyValidationAgent"
     }
@@ -96,17 +95,21 @@ impl Agent for PolicyValidationAgent {
             "violations": violations
         });
 
-        AgentEffect::with_facts(vec![Fact {
-            key: ContextKey::Evaluations,
-            id: "policy-validation".to_string(),
-            content: result.to_string(),
-        }])
+        AgentEffect::with_proposal(
+            ProposedFact::new(
+                ContextKey::Evaluations,
+                "policy-validation",
+                result.to_string(),
+                self.name(),
+            )
+            .with_confidence(1.0),
+        )
     }
 }
 
 struct ApprovalRoutingAgent;
 
-impl Agent for ApprovalRoutingAgent {
+impl Suggestor for ApprovalRoutingAgent {
     fn name(&self) -> &str {
         "ApprovalRoutingAgent"
     }
@@ -151,17 +154,21 @@ impl Agent for ApprovalRoutingAgent {
             "pending": required_approvers.len()
         });
 
-        AgentEffect::with_facts(vec![Fact {
-            key: ContextKey::Constraints,
-            id: "approval-routing".to_string(),
-            content: routing.to_string(),
-        }])
+        AgentEffect::with_proposal(
+            ProposedFact::new(
+                ContextKey::Constraints,
+                "approval-routing",
+                routing.to_string(),
+                self.name(),
+            )
+            .with_confidence(1.0),
+        )
     }
 }
 
 struct ApprovalSimulationAgent;
 
-impl Agent for ApprovalSimulationAgent {
+impl Suggestor for ApprovalSimulationAgent {
     fn name(&self) -> &str {
         "ApprovalSimulationAgent"
     }
@@ -205,10 +212,10 @@ fn main() {
 
     let mut engine = Engine::new();
 
-    engine.register(ExpenseParsingAgent);
-    engine.register(PolicyValidationAgent);
-    engine.register(ApprovalRoutingAgent);
-    engine.register(ApprovalSimulationAgent);
+    engine.register_suggestor(ExpenseParsingAgent);
+    engine.register_suggestor(PolicyValidationAgent);
+    engine.register_suggestor(ApprovalRoutingAgent);
+    engine.register_suggestor(ApprovalSimulationAgent);
 
     let hitl_policy = EngineHitlPolicy {
         confidence_threshold: Some(0.8),
@@ -229,11 +236,7 @@ fn main() {
     });
 
     let mut ctx = Context::new();
-    let _ = ctx.add_fact(Fact {
-        key: ContextKey::Seeds,
-        id: "expense-1".to_string(),
-        content: expense.to_string(),
-    });
+    let _ = ctx.add_input(ContextKey::Seeds, "expense-1", expense.to_string());
 
     println!(
         "Expense submitted: ${} {} - {}\n",

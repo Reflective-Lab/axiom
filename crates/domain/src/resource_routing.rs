@@ -7,7 +7,7 @@
 //! This module implements a deterministic resource routing use case
 //! that validates the Converge engine with solver integration.
 //!
-//! # Agent Pipeline
+//! # Suggestor Pipeline
 //!
 //! ```text
 //! Seeds (tasks, resources)
@@ -32,7 +32,7 @@
 //!
 //! ```
 //! use converge_core::{Engine, Context, ContextKey};
-//! use converge_core::agents::SeedAgent;
+//! use converge_core::suggestors::SeedSuggestor;
 //! use converge_domain::resource_routing::{
 //!     TaskRetrievalAgent, ResourceRetrievalAgent, ConstraintValidationAgent,
 //!     SolverAgent, FeasibilityAgent,
@@ -41,15 +41,15 @@
 //! let mut engine = Engine::new();
 //!
 //! // Seed the context with tasks and resources
-//! engine.register(SeedAgent::new("tasks", "Delivery A, Delivery B, Delivery C"));
-//! engine.register(SeedAgent::new("resources", "Vehicle 1, Vehicle 2"));
+//! engine.register_suggestor(SeedSuggestor::new("tasks", "Delivery A, Delivery B, Delivery C"));
+//! engine.register_suggestor(SeedSuggestor::new("resources", "Vehicle 1, Vehicle 2"));
 //!
 //! // Register resource routing agents
-//! engine.register(TaskRetrievalAgent);
-//! engine.register(ResourceRetrievalAgent);
-//! engine.register(ConstraintValidationAgent);
-//! engine.register(SolverAgent);
-//! engine.register(FeasibilityAgent);
+//! engine.register_suggestor(TaskRetrievalAgent);
+//! engine.register_suggestor(ResourceRetrievalAgent);
+//! engine.register_suggestor(ConstraintValidationAgent);
+//! engine.register_suggestor(SolverAgent);
+//! engine.register_suggestor(FeasibilityAgent);
 //!
 //! let result = engine.run(Context::new()).expect("should converge");
 //!
@@ -58,18 +58,18 @@
 //! assert!(result.context.has(ContextKey::Evaluations));
 //! ```
 
-// Agent trait returns &str, but we return literals. This is fine.
+// Suggestor trait returns &str, but we return literals. This is fine.
 #![allow(clippy::unnecessary_literal_bound)]
 
-use converge_core::{Agent, AgentEffect, ContextKey, Fact};
+use converge_core::{Suggestor, AgentEffect, ContextKey, Fact};
 
-/// Agent that retrieves and structures task definitions.
+/// Suggestor that retrieves and structures task definitions.
 ///
 ///
 /// Extracts tasks from seeds and creates structured task facts.
 pub struct TaskRetrievalAgent;
 
-impl Agent for TaskRetrievalAgent {
+impl Suggestor for TaskRetrievalAgent {
     fn name(&self) -> &str {
         "TaskRetrievalAgent"
     }
@@ -105,43 +105,46 @@ impl Agent for TaskRetrievalAgent {
             let tasks: Vec<&str> = seed.content.split(',').map(str::trim).collect();
 
             for (i, task) in tasks.iter().enumerate() {
-                facts.push(Fact {
-                    key: ContextKey::Signals,
-                    id: format!("task:{}", i + 1),
-                    content: format!(
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Signals,
+                    format!("task:{}", i + 1),
+                    format!(
                         "Task {}: {} | Priority: {} | Duration: {} min",
                         i + 1,
                         task,
                         if i == 0 { "High" } else { "Medium" },
-                        (i + 1) * 30, // Variable duration
+                        (i + 1) * 30,
                     ),
-                });
+                ));
             }
         } else {
             // Default tasks
-            facts.push(Fact {
-                key: ContextKey::Signals,
-                id: "task:1".into(),
-                content: "Task 1: Delivery A | Priority: High | Duration: 30 min".into(),
-            });
-            facts.push(Fact {
-                key: ContextKey::Signals,
-                id: "task:2".into(),
-                content: "Task 2: Delivery B | Priority: Medium | Duration: 60 min".into(),
-            });
+            facts.push(crate::proposal(
+                self.name(),
+                ContextKey::Signals,
+                "task:1",
+                "Task 1: Delivery A | Priority: High | Duration: 30 min",
+            ));
+            facts.push(crate::proposal(
+                self.name(),
+                ContextKey::Signals,
+                "task:2",
+                "Task 2: Delivery B | Priority: Medium | Duration: 60 min",
+            ));
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
-/// Agent that retrieves and structures resource definitions.
+/// Suggestor that retrieves and structures resource definitions.
 ///
 ///
 /// Extracts resources from seeds and creates structured resource facts.
 pub struct ResourceRetrievalAgent;
 
-impl Agent for ResourceRetrievalAgent {
+impl Suggestor for ResourceRetrievalAgent {
     fn name(&self) -> &str {
         "ResourceRetrievalAgent"
     }
@@ -178,42 +181,45 @@ impl Agent for ResourceRetrievalAgent {
             let resources: Vec<&str> = seed.content.split(',').map(str::trim).collect();
 
             for (i, resource) in resources.iter().enumerate() {
-                facts.push(Fact {
-                    key: ContextKey::Signals,
-                    id: format!("resource:{}", i + 1),
-                    content: format!(
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Signals,
+                    format!("resource:{}", i + 1),
+                    format!(
                         "Resource {}: {} | Capacity: {} tasks | Status: Available",
                         i + 1,
                         resource,
-                        if i == 0 { 3 } else { 2 }, // Variable capacity
+                        if i == 0 { 3 } else { 2 },
                     ),
-                });
+                ));
             }
         } else {
             // Default resources
-            facts.push(Fact {
-                key: ContextKey::Signals,
-                id: "resource:1".into(),
-                content: "Resource 1: Vehicle 1 | Capacity: 3 tasks | Status: Available".into(),
-            });
-            facts.push(Fact {
-                key: ContextKey::Signals,
-                id: "resource:2".into(),
-                content: "Resource 2: Vehicle 2 | Capacity: 2 tasks | Status: Available".into(),
-            });
+            facts.push(crate::proposal(
+                self.name(),
+                ContextKey::Signals,
+                "resource:1",
+                "Resource 1: Vehicle 1 | Capacity: 3 tasks | Status: Available",
+            ));
+            facts.push(crate::proposal(
+                self.name(),
+                ContextKey::Signals,
+                "resource:2",
+                "Resource 2: Vehicle 2 | Capacity: 2 tasks | Status: Available",
+            ));
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
-/// Agent that validates constraints (capacity, time windows, etc.).
+/// Suggestor that validates constraints (capacity, time windows, etc.).
 ///
 ///
 /// Creates constraint facts based on tasks and resources.
 pub struct ConstraintValidationAgent;
 
-impl Agent for ConstraintValidationAgent {
+impl Suggestor for ConstraintValidationAgent {
     fn name(&self) -> &str {
         "ConstraintValidationAgent"
     }
@@ -250,40 +256,43 @@ impl Agent for ConstraintValidationAgent {
             .count();
 
         // Define capacity constraints
-        facts.push(Fact {
-            key: ContextKey::Constraints,
-            id: "constraint:capacity".into(),
-            content: format!(
+        facts.push(crate::proposal(
+            self.name(),
+            ContextKey::Constraints,
+            "constraint:capacity",
+            format!(
                 "Capacity constraint: {task_count} tasks must be assigned to {resource_count} resources"
             ),
-        });
+        ));
 
         // Define objective
-        facts.push(Fact {
-            key: ContextKey::Constraints,
-            id: "constraint:objective".into(),
-            content: "Objective: Minimize total delivery time".into(),
-        });
+        facts.push(crate::proposal(
+            self.name(),
+            ContextKey::Constraints,
+            "constraint:objective",
+            "Objective: Minimize total delivery time",
+        ));
 
         // Define feasibility requirement
-        facts.push(Fact {
-            key: ContextKey::Constraints,
-            id: "constraint:feasibility".into(),
-            content: "All tasks must be assigned | No resource exceeds capacity".into(),
-        });
+        facts.push(crate::proposal(
+            self.name(),
+            ContextKey::Constraints,
+            "constraint:feasibility",
+            "All tasks must be assigned | No resource exceeds capacity",
+        ));
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
-/// Agent that performs deterministic optimization (solver).
+/// Suggestor that performs deterministic optimization (solver).
 ///
 ///
 /// Generates candidate assignments using a simple greedy algorithm.
 /// In a real system, this would integrate with a proper solver library.
 pub struct SolverAgent;
 
-impl Agent for SolverAgent {
+impl Suggestor for SolverAgent {
     fn name(&self) -> &str {
         "SolverAgent"
     }
@@ -346,10 +355,11 @@ impl Agent for SolverAgent {
                     .strip_prefix("resource:")
                     .unwrap_or("unknown");
 
-                facts.push(Fact {
-                    key: ContextKey::Strategies,
-                    id: format!("assignment:{assignment_id}"),
-                    content: format!(
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Strategies,
+                    format!("assignment:{assignment_id}"),
+                    format!(
                         "Assignment {}: {} → {} | Load: {}/{}",
                         assignment_id,
                         task.id.strip_prefix("task:").unwrap_or("unknown"),
@@ -363,31 +373,32 @@ impl Agent for SolverAgent {
                             .and_then(|s| s.parse::<usize>().ok())
                             .unwrap_or(2)
                     ),
-                });
+                ));
                 assignment_id += 1;
             }
         }
 
         // If no assignments were made, create a fallback
         if facts.is_empty() {
-            facts.push(Fact {
-                key: ContextKey::Strategies,
-                id: "assignment:infeasible".into(),
-                content: "Assignment: INFEASIBLE | Reason: Insufficient capacity".into(),
-            });
+            facts.push(crate::proposal(
+                self.name(),
+                ContextKey::Strategies,
+                "assignment:infeasible",
+                "Assignment: INFEASIBLE | Reason: Insufficient capacity",
+            ));
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
-/// Agent that validates feasibility and ranks assignments.
+/// Suggestor that validates feasibility and ranks assignments.
 ///
 ///
 /// Evaluates assignments against constraints and ranks them.
 pub struct FeasibilityAgent;
 
-impl Agent for FeasibilityAgent {
+impl Suggestor for FeasibilityAgent {
     fn name(&self) -> &str {
         "FeasibilityAgent"
     }
@@ -428,16 +439,17 @@ impl Agent for FeasibilityAgent {
 
                 let (score, rationale) = evaluate_assignment(assignment, i, all_tasks_assigned);
 
-                facts.push(Fact {
-                    key: ContextKey::Evaluations,
-                    id: format!(
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Evaluations,
+                    format!(
                         "eval:{}",
                         assignment
                             .id
                             .strip_prefix("assignment:")
                             .unwrap_or(&assignment.id)
                     ),
-                    content: format!(
+                    format!(
                         "Score: {}/100 | {} | Rationale: {}",
                         score,
                         if i == 0 && all_tasks_assigned {
@@ -447,29 +459,30 @@ impl Agent for FeasibilityAgent {
                         },
                         rationale
                     ),
-                });
+                ));
             }
         } else {
-            facts.push(Fact {
-                key: ContextKey::Evaluations,
-                id: "eval:infeasible".into(),
-                content: format!(
+            facts.push(crate::proposal(
+                self.name(),
+                ContextKey::Evaluations,
+                "eval:infeasible",
+                format!(
                     "Score: 0/100 | INFEASIBLE | Rationale: Only {assignment_count}/{task_count} tasks assigned"
                 ),
-            });
+            ));
         }
 
         // Ensure at least one evaluation
         if facts.is_empty() {
-            facts.push(Fact {
-                key: ContextKey::Evaluations,
-                id: "eval:unknown".into(),
-                content: "Score: 0/100 | UNKNOWN | Rationale: Unable to evaluate assignments"
-                    .into(),
-            });
+            facts.push(crate::proposal(
+                self.name(),
+                ContextKey::Evaluations,
+                "eval:unknown",
+                "Score: 0/100 | UNKNOWN | Rationale: Unable to evaluate assignments",
+            ));
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -654,16 +667,16 @@ mod tests {
     use super::*;
     use converge_core::Context;
     use converge_core::Engine;
-    use converge_core::agents::SeedAgent;
+    use converge_core::suggestors::SeedSuggestor;
 
     #[test]
     fn task_retrieval_agent_extracts_tasks() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent::new(
+        engine.register_suggestor(SeedSuggestor::new(
             "tasks",
             "Delivery A, Delivery B, Delivery C",
         ));
-        engine.register(TaskRetrievalAgent);
+        engine.register_suggestor(TaskRetrievalAgent);
 
         let result = engine.run(Context::new()).expect("should converge");
 
@@ -677,8 +690,8 @@ mod tests {
     #[test]
     fn resource_retrieval_agent_extracts_resources() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent::new("resources", "Vehicle 1, Vehicle 2"));
-        engine.register(ResourceRetrievalAgent);
+        engine.register_suggestor(SeedSuggestor::new("resources", "Vehicle 1, Vehicle 2"));
+        engine.register_suggestor(ResourceRetrievalAgent);
 
         let result = engine.run(Context::new()).expect("should converge");
 
@@ -690,11 +703,11 @@ mod tests {
     #[test]
     fn constraint_validation_agent_creates_constraints() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent::new("tasks", "Delivery A, Delivery B"));
-        engine.register(SeedAgent::new("resources", "Vehicle 1"));
-        engine.register(TaskRetrievalAgent);
-        engine.register(ResourceRetrievalAgent);
-        engine.register(ConstraintValidationAgent);
+        engine.register_suggestor(SeedSuggestor::new("tasks", "Delivery A, Delivery B"));
+        engine.register_suggestor(SeedSuggestor::new("resources", "Vehicle 1"));
+        engine.register_suggestor(TaskRetrievalAgent);
+        engine.register_suggestor(ResourceRetrievalAgent);
+        engine.register_suggestor(ConstraintValidationAgent);
 
         let result = engine.run(Context::new()).expect("should converge");
 
@@ -705,12 +718,12 @@ mod tests {
     #[test]
     fn solver_agent_generates_assignments() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent::new("tasks", "Delivery A, Delivery B"));
-        engine.register(SeedAgent::new("resources", "Vehicle 1, Vehicle 2"));
-        engine.register(TaskRetrievalAgent);
-        engine.register(ResourceRetrievalAgent);
-        engine.register(ConstraintValidationAgent);
-        engine.register(SolverAgent);
+        engine.register_suggestor(SeedSuggestor::new("tasks", "Delivery A, Delivery B"));
+        engine.register_suggestor(SeedSuggestor::new("resources", "Vehicle 1, Vehicle 2"));
+        engine.register_suggestor(TaskRetrievalAgent);
+        engine.register_suggestor(ResourceRetrievalAgent);
+        engine.register_suggestor(ConstraintValidationAgent);
+        engine.register_suggestor(SolverAgent);
 
         let result = engine.run(Context::new()).expect("should converge");
 
@@ -724,13 +737,13 @@ mod tests {
     #[test]
     fn feasibility_agent_evaluates_assignments() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent::new("tasks", "Delivery A, Delivery B"));
-        engine.register(SeedAgent::new("resources", "Vehicle 1, Vehicle 2"));
-        engine.register(TaskRetrievalAgent);
-        engine.register(ResourceRetrievalAgent);
-        engine.register(ConstraintValidationAgent);
-        engine.register(SolverAgent);
-        engine.register(FeasibilityAgent);
+        engine.register_suggestor(SeedSuggestor::new("tasks", "Delivery A, Delivery B"));
+        engine.register_suggestor(SeedSuggestor::new("resources", "Vehicle 1, Vehicle 2"));
+        engine.register_suggestor(TaskRetrievalAgent);
+        engine.register_suggestor(ResourceRetrievalAgent);
+        engine.register_suggestor(ConstraintValidationAgent);
+        engine.register_suggestor(SolverAgent);
+        engine.register_suggestor(FeasibilityAgent);
 
         let result = engine.run(Context::new()).expect("should converge");
 
@@ -745,16 +758,16 @@ mod tests {
     fn full_pipeline_converges_deterministically() {
         let run = || {
             let mut engine = Engine::new();
-            engine.register(SeedAgent::new(
+            engine.register_suggestor(SeedSuggestor::new(
                 "tasks",
                 "Delivery A, Delivery B, Delivery C",
             ));
-            engine.register(SeedAgent::new("resources", "Vehicle 1, Vehicle 2"));
-            engine.register(TaskRetrievalAgent);
-            engine.register(ResourceRetrievalAgent);
-            engine.register(ConstraintValidationAgent);
-            engine.register(SolverAgent);
-            engine.register(FeasibilityAgent);
+            engine.register_suggestor(SeedSuggestor::new("resources", "Vehicle 1, Vehicle 2"));
+            engine.register_suggestor(TaskRetrievalAgent);
+            engine.register_suggestor(ResourceRetrievalAgent);
+            engine.register_suggestor(ConstraintValidationAgent);
+            engine.register_suggestor(SolverAgent);
+            engine.register_suggestor(FeasibilityAgent);
             engine.run(Context::new()).expect("should converge")
         };
 

@@ -28,7 +28,7 @@
 //!    - Examples: "Did SDR funnel produce diverse, qualified leads?"
 //!    - These are the competitive moat
 //!
-//! 3. **Agent-level evals** (quality hints)
+//! 3. **Suggestor-level evals** (quality hints)
 //!    - Prompt quality, output format, hallucination containment
 //!    - Scoped, local, non-authoritative
 //!
@@ -181,11 +181,7 @@ impl EvalResult {
             self.outcome, self.score, self.rationale
         );
 
-        Fact {
-            key: ContextKey::Evaluations,
-            id,
-            content,
-        }
+        crate::context::new_fact(ContextKey::Evaluations, id, content)
     }
 }
 
@@ -372,11 +368,7 @@ mod tests {
         let id = registry.register(RequireSeedsEval);
 
         let mut ctx = Context::new();
-        let _ = ctx.add_fact(Fact {
-            key: ContextKey::Seeds,
-            id: "s1".into(),
-            content: "value".into(),
-        });
+        let _ = ctx.add_fact(crate::context::new_fact(ContextKey::Seeds, "s1", "value"));
 
         let result = registry.evaluate_by_id(id, &ctx);
         assert_eq!(result.outcome, EvalOutcome::Pass);
@@ -400,7 +392,7 @@ mod tests {
         let result = EvalResult::new("test_eval", EvalOutcome::Pass, 0.85, "Test passed");
 
         let fact = result.to_fact(None);
-        assert_eq!(fact.key, ContextKey::Evaluations);
+        assert_eq!(fact.key(), ContextKey::Evaluations);
         assert!(fact.id.starts_with("eval:test_eval"));
         assert!(fact.content.contains("Pass"));
         assert!(fact.content.contains("0.85"));

@@ -22,7 +22,7 @@
 //!
 //! # Architecture Note
 //!
-//! In Converge, Qwen3-VL is a **Tool-class component**, not an Agent:
+//! In Converge, Qwen3-VL is a **Tool-class component**, not an Suggestor:
 //! - Produces candidates with scores, not decisions
 //! - Output goes through validation before becoming facts
 //! - Expands what agents can *see*, not what they can *decide*

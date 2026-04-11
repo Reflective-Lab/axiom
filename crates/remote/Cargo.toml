@@ -16,9 +16,11 @@ name = "converge-remote"
 path = "src/main.rs"
 
 [dependencies]
-# gRPC
-tonic.workspace = true
-prost.workspace = true
+# Converge crates
+converge-client.workspace = true
+converge-protocol.workspace = true
+
+# Structured payloads
 prost-types.workspace = true
 
 # Async runtime
@@ -40,22 +42,15 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 
 # Error handling
-thiserror.workspace = true
 anyhow.workspace = true
 
 # Utilities
 uuid.workspace = true
 hostname.workspace = true
 
-# HTTP client for REST fallback
-reqwest.workspace = true
-
 # Configuration
 config.workspace = true
 dotenv.workspace = true
-
-[build-dependencies]
-tonic-build.workspace = true
 
 [dev-dependencies]
 tokio-test = "0.4"

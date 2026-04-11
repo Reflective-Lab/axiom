@@ -1,4 +1,4 @@
-//! AgenticDB: Agent Memory System
+//! AgenticDB: Suggestor Memory System
 //!
 //! Implements the 5-table architecture from ruvector for AI agent memory:
 //!
@@ -124,7 +124,7 @@ impl AgenticDB {
     /// # async fn example() {
     /// let db = AgenticDB::new();
     ///
-    /// // Agent attempted something and failed
+    /// // Suggestor attempted something and failed
     /// let episode = ReflexionEpisode::new(
     ///     "write_code",
     ///     "Write a function to parse JSON",
@@ -352,7 +352,7 @@ mod tests {
         // Create a new agent memory database
         let db = AgenticDB::new();
 
-        // Scenario: Agent tried to write code but made an error
+        // Scenario: Suggestor tried to write code but made an error
         let episode = ReflexionEpisode::new(
             "code_generation",                                    // task type
             "Write a function to calculate factorial",            // original goal
@@ -398,7 +398,7 @@ mod tests {
     async fn test_skill_library() {
         let db = AgenticDB::new();
 
-        // Agent successfully completed a task - consolidate as a skill
+        // Suggestor successfully completed a task - consolidate as a skill
         let skill = Skill::new(
             "error_handling",
             "Rust Error Handling Pattern",
@@ -441,7 +441,7 @@ mod tests {
     /// Test: Recording a learning session with rewards.
     ///
     /// This simulates reinforcement learning:
-    /// 1. Agent starts a session with a goal
+    /// 1. Suggestor starts a session with a goal
     /// 2. Takes actions and observes results
     /// 3. Receives rewards (positive or negative)
     /// 4. Learns from the trajectory
@@ -452,7 +452,7 @@ mod tests {
         // Start a session
         let session_id = db.start_session("Fix the bug in auth module").await;
 
-        // Turn 1: Agent reads the code
+        // Turn 1: Suggestor reads the code
         db.record_turn(
             session_id,
             "read_file auth.rs",
@@ -461,7 +461,7 @@ mod tests {
         )
         .await;
 
-        // Turn 2: Agent makes a fix
+        // Turn 2: Suggestor makes a fix
         db.record_turn(
             session_id,
             "edit auth.rs: add None check",
@@ -470,7 +470,7 @@ mod tests {
         )
         .await;
 
-        // Turn 3: Agent runs tests
+        // Turn 3: Suggestor runs tests
         db.record_turn(
             session_id,
             "run tests",
@@ -486,7 +486,7 @@ mod tests {
 
     /// Test: Complete workflow demonstrating all 5 tables working together.
     ///
-    /// Scenario: Agent is asked to implement a feature.
+    /// Scenario: Suggestor is asked to implement a feature.
     /// 1. Check past failures (Reflexion)
     /// 2. Find applicable skills (Skill Library)
     /// 3. Understand related concepts (Causal Memory)
@@ -529,11 +529,11 @@ mod tests {
             .start_session("Implement user registration endpoint")
             .await;
 
-        // Agent checks past failures first
+        // Suggestor checks past failures first
         let failures = db.query_similar_failures("api endpoint", 5).await;
         assert!(!failures.is_empty(), "Should find past API failure");
 
-        // Agent uses skill and records turn
+        // Suggestor uses skill and records turn
         db.record_turn(
             session_id,
             "apply validation skill",

@@ -197,10 +197,9 @@ pub trait LlmProvider: Send + Sync {
 // LLM AGENT
 // =============================================================================
 
-use crate::agent::Agent;
+use crate::agent::Suggestor;
 use crate::context::{ContextKey, ProposedFact};
 use crate::effect::AgentEffect;
-use crate::validation::encode_proposal;
 use std::sync::Arc;
 
 /// Configuration for an LLM-powered agent.
@@ -318,7 +317,7 @@ impl LlmAgent {
     }
 }
 
-impl Agent for LlmAgent {
+impl Suggestor for LlmAgent {
     fn name(&self) -> &str {
         &self.name
     }
@@ -342,8 +341,7 @@ impl Agent for LlmAgent {
         match self.provider.complete(&request) {
             Ok(response) => {
                 let proposals = self.parser.parse(&response, self.config.target_key);
-                let facts: Vec<_> = proposals.iter().map(encode_proposal).collect();
-                AgentEffect::with_facts(facts)
+                AgentEffect::with_proposals(proposals)
             }
             Err(_) => AgentEffect::empty(),
         }

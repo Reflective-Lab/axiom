@@ -35,7 +35,7 @@ option swift_prefix = "Converge";
 // ConvergeService is the primary API for mobile and CLI clients.
 //
 // The Stream RPC provides real-time bidirectional communication:
-// - Client sends control messages (submit jobs, approve proposals, inject facts)
+// - Client sends control messages (submit jobs, submit observations, approve proposals)
 // - Server sends events (facts, proposals, traces, decisions, run status)
 //
 // Unary RPCs provide polling fallback for degraded network conditions.
@@ -77,7 +77,7 @@ message ClientMessage {
     CancelJobRequest cancel_job = 11;
 
     // Run control (human-in-the-loop)
-    InjectFactRequest inject_fact = 20;
+    SubmitObservationRequest submit_observation = 20;
     ApproveProposalRequest approve = 21;
     RejectProposalRequest reject = 22;
     PauseRunRequest pause = 23;
@@ -449,19 +449,19 @@ message CancelJobRequest {
 // RUN CONTROL (Human-in-the-Loop)
 // ============================================================================
 
-// InjectFactRequest injects a fact into a running context.
-// Used for human-in-the-loop input.
-message InjectFactRequest {
+// SubmitObservationRequest records a human or system observation for a running context.
+// Observations enter the truth pipeline and are not authoritative facts.
+message SubmitObservationRequest {
   string run_id = 1;
 
-  // Fact key.
+  // Target semantic context key for the observation.
   string key = 2;
 
-  // Fact value (structured data).
+  // Structured observation payload.
   google.protobuf.Struct payload = 3;
 
-  // Which truth this satisfies (optional).
-  optional string truth_id = 4;
+  // Optional semantic target the observation is intended to inform.
+  optional string target_truth_id = 4;
 
   // Idempotency key for replay safety.
   string idempotency_key = 5;

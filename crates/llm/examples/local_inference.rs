@@ -34,15 +34,6 @@
 
 use converge_llm::{InferenceEnvelope, PromptStackBuilder, StateInjection, UserIntent};
 
-// Backend selection based on features
-#[cfg(any(feature = "llama3", feature = "tiny"))]
-#[cfg(feature = "wgpu")]
-type Backend = burn::backend::Wgpu;
-
-#[cfg(any(feature = "llama3", feature = "tiny"))]
-#[cfg(all(feature = "ndarray", not(feature = "wgpu")))]
-type Backend = burn::backend::NdArray;
-
 fn main() {
     // Initialize tracing
     tracing_subscriber::fmt()

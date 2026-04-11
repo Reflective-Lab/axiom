@@ -364,18 +364,27 @@ pub fn build_openai_prompt(
 #[allow(clippy::float_cmp)] // Known constant values in tests
 mod tests {
     use super::*;
-    use converge_core::Fact;
+    use converge_core::{Context, Fact, Engine};
+
+    fn promoted_fact(key: ContextKey, id: &str, content: &str) -> Fact {
+        let mut ctx = Context::new();
+        let _ = ctx.add_input(key, id, content);
+        Engine::new()
+            .run(ctx)
+            .expect("should promote test input")
+            .context
+            .get(key)
+            .first()
+            .expect("promoted fact should exist")
+            .clone()
+    }
 
     #[test]
     fn test_claude_prompt_building() {
         let mut ctx = PromptContext::new();
         ctx.add_facts(
             ContextKey::Signals,
-            vec![Fact {
-                key: ContextKey::Signals,
-                id: "s1".to_string(),
-                content: "Test signal".to_string(),
-            }],
+            vec![promoted_fact(ContextKey::Signals, "s1", "Test signal")],
         );
 
         let prompt = build_claude_prompt(

@@ -42,7 +42,7 @@ use axum::{
     routing::get,
 };
 use futures::StreamExt as FuturesStreamExt;
-use futures::stream::{self, BoxStream, Stream};
+use futures::stream::{self, Stream};
 use serde::{Deserialize, Serialize};
 use tokio::time::interval;
 use tracing::info;
@@ -424,14 +424,14 @@ pub async fn connection_state(State(sse_state): State<SseState>) -> axum::Json<s
 // Control Endpoints (SSE is unidirectional, so control uses REST)
 // =============================================================================
 
-/// Request body for injecting a fact.
+/// Request body for submitting an observation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct InjectFactRequest {
+pub struct SubmitObservationRequest {
     pub run_id: String,
     pub key: String,
     pub payload: serde_json::Value,
     #[serde(default)]
-    pub truth_id: Option<String>,
+    pub target_truth_id: Option<String>,
     pub idempotency_key: String,
 }
 
@@ -452,12 +452,12 @@ pub struct RejectProposalRequest {
     pub reason: String,
 }
 
-/// Inject a fact into a running context.
+/// Submit an observation to a running context.
 ///
-/// SSE equivalent of the gRPC InjectFact control message.
-pub async fn inject_fact(
+/// SSE equivalent of the gRPC SubmitObservation control message.
+pub async fn submit_observation(
     State(sse_state): State<SseState>,
-    axum::Json(request): axum::Json<InjectFactRequest>,
+    axum::Json(request): axum::Json<SubmitObservationRequest>,
 ) -> axum::Json<serde_json::Value> {
     let seq = sse_state.next_sequence();
 
@@ -465,15 +465,15 @@ pub async fn inject_fact(
         run_id = %request.run_id,
         key = %request.key,
         idempotency_key = %request.idempotency_key,
-        "Injecting fact via SSE control"
+        "Submitting observation via SSE control"
     );
 
-    // TODO: Actually inject the fact into the context
+    // TODO: Actually stage the observation into the running context
 
     axum::Json(serde_json::json!({
         "success": true,
         "sequence": seq,
-        "entry_id": format!("fact_{}", uuid::Uuid::new_v4())
+        "entry_id": format!("observation_{}", uuid::Uuid::new_v4())
     }))
 }
 
@@ -887,7 +887,7 @@ pub async fn execute_ask_stream(
 /// - `POST /api/v1/ask` - Execute ask-converge with SSE streaming
 ///
 /// Control (POST):
-/// - `POST /api/v1/stream/inject` - Inject a fact
+/// - `POST /api/v1/stream/observations` - Submit an observation
 /// - `POST /api/v1/stream/approve` - Approve a proposal
 /// - `POST /api/v1/stream/reject` - Reject a proposal
 pub fn router() -> Router<AppState> {
@@ -905,7 +905,10 @@ pub fn router() -> Router<AppState> {
         )
         .route("/api/v1/ask", axum::routing::post(execute_ask_stream))
         // Control endpoints (REST, since SSE is unidirectional)
-        .route("/api/v1/stream/inject", axum::routing::post(inject_fact))
+        .route(
+            "/api/v1/stream/observations",
+            axum::routing::post(submit_observation),
+        )
         .route(
             "/api/v1/stream/approve",
             axum::routing::post(approve_proposal),

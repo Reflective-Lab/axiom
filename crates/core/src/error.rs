@@ -3,7 +3,7 @@
 
 //! Error types for Converge.
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use thiserror::Error;
 
 use crate::context::Context;
@@ -14,7 +14,7 @@ use crate::invariant::InvariantClass;
 ///
 /// Note: Context is boxed in error variants to keep the error type small,
 /// as recommended by clippy. Access via `error.context()` method.
-#[derive(Debug, Error, Serialize, Deserialize)]
+#[derive(Debug, Error, Serialize)]
 pub enum ConvergeError {
     /// Budget limit exceeded (cycles, facts, or time).
     #[error("budget exhausted: {kind}")]
@@ -33,7 +33,7 @@ pub enum ConvergeError {
         context: Box<Context>,
     },
 
-    /// Agent execution failed.
+    /// Suggestor execution failed.
     #[error("agent failed: {agent_id}")]
     AgentFailed { agent_id: String },
 

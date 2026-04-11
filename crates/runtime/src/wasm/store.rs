@@ -392,7 +392,7 @@ impl ModuleStore {
     pub fn get_agents(&self, tenant_id: &str) -> Vec<&ModuleDescriptor> {
         self.get_active(tenant_id)
             .into_iter()
-            .filter(|m| m.manifest.kind == ModuleKind::Agent)
+            .filter(|m| m.manifest.kind == ModuleKind::Suggestor)
             .collect()
     }
 
@@ -476,7 +476,7 @@ mod tests {
         let manifest_json = serde_json::to_string(&WasmManifest {
             name: "test-agent".to_string(),
             version: "1.0.0".to_string(),
-            kind: ModuleKind::Agent,
+            kind: ModuleKind::Suggestor,
             invariant_class: None,
             dependencies: vec!["Seeds".to_string()],
             capabilities: vec![],
@@ -680,7 +680,7 @@ mod tests {
         let wat = agent_module_wat();
         let desc = store.upload("tenant-1", wat.as_bytes(), None).unwrap();
 
-        assert_eq!(desc.manifest.kind, ModuleKind::Agent);
+        assert_eq!(desc.manifest.kind, ModuleKind::Suggestor);
         assert_eq!(desc.manifest.name, "test-agent");
     }
 

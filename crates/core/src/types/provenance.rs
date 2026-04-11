@@ -196,7 +196,7 @@ impl Actor {
 
     /// Create an agent actor.
     pub fn agent(id: impl Into<String>) -> Self {
-        Self::new(id, ActorKind::Agent)
+        Self::new(id, ActorKind::Suggestor)
     }
 
     /// Create a system actor.
@@ -211,7 +211,7 @@ pub enum ActorKind {
     /// Human user
     Human,
     /// AI agent
-    Agent,
+    Suggestor,
     /// System/automation
     System,
 }
@@ -404,7 +404,7 @@ mod tests {
         let system = Actor::system("converge-engine");
 
         assert_eq!(human.kind, ActorKind::Human);
-        assert_eq!(agent.kind, ActorKind::Agent);
+        assert_eq!(agent.kind, ActorKind::Suggestor);
         assert_eq!(system.kind, ActorKind::System);
     }
 }

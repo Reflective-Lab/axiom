@@ -14,9 +14,9 @@
 //! - [`knowledge`]: Organizational learning (Signal -> Hypothesis -> Experiment -> Canonical)
 //! - [`data_metrics`]: Single source of truth (Instrument -> Collect -> Validate -> Report -> Alert)
 //!
-//! # Agent Wiring
+//! # Suggestor Wiring
 //!
-//! Agent IDs in YAML (packs/*.yaml) map to structs in these modules:
+//! Suggestor IDs in YAML (packs/*.yaml) map to structs in these modules:
 //!
 //! ```yaml
 //! # packs/money.yaml
@@ -29,7 +29,7 @@
 //!
 //! ```rust,ignore
 //! use converge_domain::packs::money::InvoiceCreatorAgent;
-//! engine.register(InvoiceCreatorAgent);
+//! engine.register_suggestor(InvoiceCreatorAgent);
 //! ```
 //!
 //! # Fact ID Prefixes

@@ -1,0 +1,7 @@
+error[E0609]: no field `facts` on type `AgentEffect`
+ --> tests/compile_fail/effect_no_facts_field.rs:8:25
+  |
+8 |     let _facts = effect.facts;
+  |                         ^^^^^ unknown field
+  |
+  = note: available field is: `proposals`

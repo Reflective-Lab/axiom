@@ -14,7 +14,7 @@ use std::sync::Arc;
 pub fn setup_mock_llm_meeting_scheduler(engine: &mut Engine) -> Vec<Arc<MockProvider>> {
     let mut providers = Vec::new();
 
-    // Availability Retrieval Agent: Fast extraction
+    // Availability Retrieval Suggestor: Fast extraction
     let (agent, provider) = create_mock_llm_agent(
         "AvailabilityRetrievalAgent",
         "You extract participant availability from calendars.",
@@ -27,10 +27,10 @@ pub fn setup_mock_llm_meeting_scheduler(engine: &mut Engine) -> Vec<Arc<MockProv
             0.8,
         )],
     );
-    engine.register(agent);
+    engine.register_suggestor(agent);
     providers.push(provider);
 
-    // Time Zone Normalization Agent: Fast processing
+    // Time Zone Normalization Suggestor: Fast processing
     let (agent, provider) = create_mock_llm_agent(
         "TimeZoneNormalizationAgent",
         "You normalize time zones to UTC.",
@@ -43,10 +43,10 @@ pub fn setup_mock_llm_meeting_scheduler(engine: &mut Engine) -> Vec<Arc<MockProv
             0.85,
         )],
     );
-    engine.register(agent);
+    engine.register_suggestor(agent);
     providers.push(provider);
 
-    // Slot Optimization Agent: Analysis for optimization
+    // Slot Optimization Suggestor: Analysis for optimization
     let (agent, provider) = create_mock_llm_agent(
         "SlotOptimizationAgent",
         "You optimize meeting time slots based on availability.",
@@ -59,7 +59,7 @@ pub fn setup_mock_llm_meeting_scheduler(engine: &mut Engine) -> Vec<Arc<MockProv
             0.9,
         )],
     );
-    engine.register(agent);
+    engine.register_suggestor(agent);
     providers.push(provider);
 
     providers
@@ -69,12 +69,12 @@ pub fn setup_mock_llm_meeting_scheduler(engine: &mut Engine) -> Vec<Arc<MockProv
 mod tests {
     use super::*;
     use converge_core::Context;
-    use converge_core::agents::SeedAgent;
+    use converge_core::suggestors::SeedSuggestor;
 
     #[test]
     fn mock_llm_meeting_scheduler_converges() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent::new("participants", "Alice, Bob"));
+        engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob"));
 
         let _providers = setup_mock_llm_meeting_scheduler(&mut engine);
 

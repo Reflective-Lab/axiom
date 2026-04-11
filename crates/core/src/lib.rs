@@ -3,24 +3,24 @@
 
 //! # Converge Core
 //!
-//! A correctness-first, context-driven multi-agent runtime.
+//! A correctness-first, context-driven multi-suggestor runtime.
 //!
-//! Converge is an Agent OS where:
+//! Converge is a Suggestor OS where:
 //! - Context is the API
-//! - Agents collaborate through data, not calls
+//! - Suggestors collaborate through data, not calls
 //! - Execution proceeds until a fixed point
 //! - Convergence is explicit and observable
 //!
 //! ## Quick Start
 //!
 //! ```
-//! use converge_core::{Engine, Context, ContextKey};
-//! use converge_core::agents::{SeedAgent, ReactOnceAgent};
+//! use converge_core::{Context, ContextKey, Engine};
+//! use converge_core::suggestors::{ReactOnceSuggestor, SeedSuggestor};
 //!
-//! // Create engine and register agents
+//! // Create engine and register suggestors
 //! let mut engine = Engine::new();
-//! engine.register(SeedAgent::new("seed-1", "initial data"));
-//! engine.register(ReactOnceAgent::new("hyp-1", "derived insight"));
+//! engine.register_suggestor(SeedSuggestor::new("seed-1", "initial data"));
+//! engine.register_suggestor(ReactOnceSuggestor::new("hyp-1", "derived insight"));
 //!
 //! // Run until convergence
 //! let result = engine.run(Context::new()).expect("should converge");
@@ -35,15 +35,15 @@
 //! ## Core Concepts
 //!
 //! - [`Context`]: The shared, typed, evolving state of a job
-//! - [`Agent`]: A capability that reads context and emits effects
-//! - [`AgentEffect`]: Buffered output (facts) from an agent
-//! - [`Engine`]: The convergence loop that coordinates agents
+//! - [`Suggestor`]: A capability that reads context and emits effects
+//! - [`AgentEffect`]: Buffered proposal output from a suggestor
+//! - [`Engine`]: The convergence loop that coordinates suggestors
 //!
 //! ## Guarantees
 //!
 //! - **Determinism**: Same input → same output
 //! - **Termination**: Budgets prevent infinite loops
-//! - **Isolation**: Agents never call each other
+//! - **Isolation**: Suggestors never call each other
 //! - **Auditability**: All changes are traceable
 //!
 //! # Design Tenets
@@ -68,7 +68,7 @@
 //!
 //! **Why**: Control flow hides decisions; convergence makes them observable.
 //!
-//! **In code**: The [`Engine`] runs agents repeatedly until a fixed point is reached.
+//! **In code**: The [`Engine`] runs suggestors repeatedly until a fixed point is reached.
 //! [`StopReason`] exhaustively enumerates why execution halted. No hidden loops.
 //!
 //! ## 3. Append-Only Truth
@@ -81,13 +81,13 @@
 //! [`CorrectionEvent`] creates new correction facts rather than
 //! mutating existing ones. The [`Context`] accumulates facts without overwriting.
 //!
-//! ## 4. Agents Suggest, Engine Decides
+//! ## 4. Suggestors Suggest, Engine Decides
 //!
-//! **Axiom**: Agents emit proposals; promotion requires validation gates (and sometimes humans).
+//! **Axiom**: Suggestors emit proposals; promotion requires validation gates (and sometimes humans).
 //!
 //! **Why**: Separates suggestion from decision, enabling governance and audit.
 //!
-//! **In code**: [`PromotionGate`] is the ONLY path to create Facts. Agents produce
+//! **In code**: [`PromotionGate`] is the ONLY path to create Facts. Suggestors produce
 //! [`Proposal`] in the `Draft` state which must go through [`ValidationReport`]
 //! before becoming `Validated` and finally [`TypesFact`].
 //!
@@ -127,7 +127,7 @@
 //!
 //! **Why**: Hidden work makes systems unpredictable and unauditable.
 //!
-//! **In code**: [`AgentEffect`] explicitly captures all agent output. The [`Engine`]
+//! **In code**: [`AgentEffect`] explicitly captures all suggestor output. The [`Engine`]
 //! budget system ([`CycleBudget`], [`FactBudget`], [`TokenBudget`]) makes resource
 //! consumption visible. [`StopReason`] explains exactly why execution ended.
 //!
@@ -190,7 +190,8 @@
 //! See `deny.toml` at the crate root for CI enforcement of these rules.
 
 mod agent;
-pub mod agents;
+#[path = "agents.rs"]
+pub mod suggestors;
 pub mod backend;
 pub mod capability;
 mod context;
@@ -214,13 +215,13 @@ pub mod truth;
 pub mod types;
 pub mod validation;
 
-pub use agent::{Agent, AgentId};
+pub use agent::{Suggestor, SuggestorId};
 pub use context::{Context, ContextKey, Fact, ProposedFact, ValidationError};
 pub use effect::AgentEffect;
 
-/// Re-export the Context trait from converge-traits.
-/// Agent and Invariant implementations use `&dyn ContextView` in their signatures.
-pub use converge_traits::Context as ContextView;
+/// Re-export the Context trait from converge-pack.
+/// Suggestor and Invariant implementations use `&dyn ContextView` in their signatures.
+pub use converge_pack::Context as ContextView;
 pub use engine::{
     Budget, ConvergeResult, Engine, EngineHitlPolicy, ExperienceEventObserver, HitlPause,
     RunResult, StreamingCallback, TypesRunHooks,
@@ -335,8 +336,8 @@ pub use backend::{
 };
 
 // Re-export new types module (3-tier hierarchy: Observation -> Proposal -> Fact)
-// Note: types::Fact is the new governed Fact with PromotionRecord
-// The existing context::Fact remains for backward compatibility
+// Note: types::Fact is the governed semantic fact with PromotionRecord.
+// context::Fact is the stable read-only runtime/context surface.
 pub use types::{
     Actor,
     ActorKind,
@@ -412,7 +413,7 @@ pub use types::{
     ValidationSummary,
 };
 
-// Gate Pattern (agents suggest, engine decides)
+// Gate Pattern (suggestors suggest, engine decides)
 pub use gates::{
     // Boundary types (constitutional kernel-platform contract)
     AuthorityGrant,

@@ -165,7 +165,7 @@ pub use execution_plan::{AdapterPlan, DeterminismPlan, ExecutionPlan, RecallPlan
 // RecallMetadata from trace module (used for decision trace observability)
 pub use trace::RecallMetadata;
 
-// Agent types (legacy PromptTemplate kept for compatibility)
+// Suggestor types (legacy PromptTemplate kept for compatibility)
 pub use agent::{LlmAgent, PromptTemplate, ReasoningConfig};
 
 // Configuration
@@ -355,7 +355,7 @@ pub use provider::{
     MockResponse,
     ModelConfig,
     MultiLineParser,
-    // Agent types
+    // Suggestor types
     ProviderAgent,
     // Extended error type
     ProviderError,

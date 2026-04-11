@@ -59,7 +59,7 @@ pub struct PackConfig {
     #[serde(default)]
     pub budget: BudgetConfig,
 
-    /// Agent → provider wiring.
+    /// Suggestor → provider wiring.
     #[serde(default)]
     pub agents: Vec<AgentWiring>,
 
@@ -109,13 +109,13 @@ impl Default for BudgetConfig {
     }
 }
 
-/// Agent → provider wiring.
+/// Suggestor → provider wiring.
 ///
 /// Maps an agent ID (from Gherkin `@agent @id:xxx`) to provider requirements.
 /// Does NOT contain prompts or semantic behavior (those come from compiled Gherkin).
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AgentWiring {
-    /// Agent ID (must match `@agent @id:xxx` in Gherkin spec).
+    /// Suggestor ID (must match `@agent @id:xxx` in Gherkin spec).
     /// Supports both "id" and "name" in YAML for backward compatibility.
     #[serde(alias = "name")]
     pub id: String,
@@ -276,13 +276,13 @@ pub type TemplateSummary = PackSummary;
 pub type TemplateJobRequest = PackJobRequest;
 
 // Legacy agent definition (keeping for now during transition)
-/// Agent definition within a template.
+/// Suggestor definition within a template.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AgentDefinition {
-    /// Agent name (unique within template).
+    /// Suggestor name (unique within template).
     pub name: String,
 
-    /// Agent type: "seed", "llm", or "validation".
+    /// Suggestor type: "seed", "llm", or "validation".
     #[serde(rename = "type")]
     pub agent_type: AgentType,
 
@@ -306,12 +306,12 @@ pub struct AgentDefinition {
     #[serde(default)]
     pub prompt_template: Option<String>,
 
-    /// Agent-specific configuration.
+    /// Suggestor-specific configuration.
     #[serde(default)]
     pub config: HashMap<String, serde_json::Value>,
 }
 
-/// Agent type enumeration.
+/// Suggestor type enumeration.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum AgentType {

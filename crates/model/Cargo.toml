@@ -1,0 +1,18 @@
+[package]
+name = "converge-model"
+version.workspace = true
+publish = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The curated semantic model surface for Converge"
+keywords = ["converge", "model", "fact", "proposal"]
+categories = ["algorithms"]
+
+[dependencies]
+converge-core.workspace = true
+converge-pack.workspace = true
+
+[lints]
+workspace = true

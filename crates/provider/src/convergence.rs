@@ -4,15 +4,14 @@
 //! Convergence integration for LLM providers.
 //!
 //! This module bridges the gap between the simple `LlmProvider` invocation
-//! trait and the platform-wide convergence contract (`Backend`, `Agent`).
+//! trait and the platform-wide convergence contract (`Backend`, `Suggestor`).
 
-use converge_traits::{
-    Agent, AgentEffect, Backend, BackendKind, Capability, Context, ContextKey, ProposedFact,
-};
+use converge_pack::{Suggestor, AgentEffect, Context, ContextKey, ProposedFact};
+use converge_provider_api::{Backend, BackendKind, Capability};
 
 use crate::provider_api::{LlmProvider, LlmRequest};
 
-/// Wraps any `LlmProvider` as a convergence [`Agent`].
+/// Wraps any `LlmProvider` as a convergence [`Suggestor`].
 ///
 /// `LlmAgent` reads from specified dependency keys, builds a prompt from
 /// context, calls the wrapped provider, and emits `ProposedFact` instances
@@ -80,7 +79,7 @@ impl<P: LlmProvider> LlmAgent<P> {
     }
 }
 
-impl<P: LlmProvider> Agent for LlmAgent<P> {
+impl<P: LlmProvider> Suggestor for LlmAgent<P> {
     fn name(&self) -> &str {
         &self.agent_name
     }
@@ -159,7 +158,21 @@ impl<P: LlmProvider> Backend for LlmAgent<P> {
 mod tests {
     use super::*;
     use crate::provider_api::{FinishReason, LlmError, LlmResponse, TokenUsage};
-    use converge_traits::{Context, ContextKey, Fact, ProposedFact};
+    use converge_core::{Context as CoreContext, Engine};
+    use converge_pack::{Context, ContextKey, Fact, ProposedFact};
+
+    fn promoted_fact(key: ContextKey, id: &str, content: &str) -> Fact {
+        let mut ctx = CoreContext::new();
+        let _ = ctx.add_input(key, id, content);
+        Engine::new()
+            .run(ctx)
+            .expect("should promote test input")
+            .context
+            .get(key)
+            .first()
+            .expect("promoted fact should exist")
+            .clone()
+    }
 
     /// Minimal in-memory context for testing.
     struct TestContext {
@@ -179,9 +192,9 @@ mod tests {
             self.facts
                 .entry(ContextKey::Seeds)
                 .or_default()
-                .push(Fact::new(
+                .push(promoted_fact(
                     ContextKey::Seeds,
-                    format!("seed:{content}"),
+                    &format!("seed:{content}"),
                     content,
                 ));
             self

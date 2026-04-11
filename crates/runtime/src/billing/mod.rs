@@ -5,7 +5,7 @@
 //! Billing module — payment capability adapter for Converge Runtime.
 //!
 //! Implements Stripe's Agentic Commerce Protocol (ACP) for two use cases:
-//! 1. **Agent payments**: AI agents making payments on behalf of users with
+//! 1. **Suggestor payments**: AI agents making payments on behalf of users with
 //!    Shared Payment Tokens, scoped authorization, and human-in-the-loop consent.
 //! 2. **SaaS billing**: Getting paid for Converge itself via payment links
 //!    and subscription management.

@@ -7,7 +7,7 @@
 //! Partners use this pattern to integrate their own model backends.
 
 use converge_provider::provider_api::{
-    FinishReason, LlmError, LlmErrorKind, LlmProvider, LlmRequest, LlmResponse, TokenUsage,
+    FinishReason, LlmError, LlmProvider, LlmRequest, LlmResponse, TokenUsage,
 };
 
 /// A mock provider that echoes prompts — replace with your real API client.

@@ -10,9 +10,18 @@ use converge_core::traits::{
     ChatBackend, ChatMessage, ChatRequest, ChatResponse, ChatRole, DynChatBackend, FinishReason,
     LlmError, TokenUsage,
 };
-use converge_core::{Agent, AgentEffect, ContextKey, Fact};
+use converge_core::{Suggestor, AgentEffect, ContextKey, ProposedFact};
 use std::fmt::Write;
 use std::sync::Arc;
+
+fn proposed_fact(
+    provenance: impl Into<String>,
+    key: ContextKey,
+    id: impl Into<String>,
+    content: impl Into<String>,
+) -> ProposedFact {
+    ProposedFact::new(key, id, content, provenance)
+}
 
 /// LLM-powered agent that generates strategic insights from evaluations.
 ///
@@ -98,7 +107,7 @@ Keep each insight concise (1-2 sentences).".to_string(),
 
     /// Parses LLM response into facts.
     #[allow(clippy::unused_self)]
-    fn parse_response(&self, response: &str) -> Vec<Fact> {
+    fn parse_response(&self, response: &str) -> Vec<ProposedFact> {
         let mut facts = Vec::new();
 
         for (i, line) in response.lines().enumerate() {
@@ -115,28 +124,30 @@ Keep each insight concise (1-2 sentences).".to_string(),
                 .trim();
 
             if !content.is_empty() && content.len() > 10 {
-                facts.push(Fact {
-                    key: ContextKey::Hypotheses,
-                    id: format!("insight:{}", i + 1),
-                    content: content.to_string(),
-                });
+                facts.push(proposed_fact(
+                    self.name(),
+                    ContextKey::Hypotheses,
+                    format!("insight:{}", i + 1),
+                    content.to_string(),
+                ));
             }
         }
 
         // Ensure we have at least one insight
         if facts.is_empty() {
-            facts.push(Fact {
-                key: ContextKey::Hypotheses,
-                id: "insight:fallback".into(),
-                content: "LLM analysis completed but no structured insights extracted. Review raw evaluation data.".into(),
-            });
+            facts.push(proposed_fact(
+                self.name(),
+                ContextKey::Hypotheses,
+                "insight:fallback",
+                "LLM analysis completed but no structured insights extracted. Review raw evaluation data.",
+            ));
         }
 
         facts
     }
 }
 
-impl Agent for StrategicInsightAgent {
+impl Suggestor for StrategicInsightAgent {
     fn name(&self) -> &'static str {
         "StrategicInsightAgent"
     }
@@ -177,13 +188,14 @@ impl Agent for StrategicInsightAgent {
         match result {
             Ok(response) => {
                 let facts = self.parse_response(&response.content);
-                AgentEffect::with_facts(facts)
+                AgentEffect::with_proposals(facts)
             }
-            Err(e) => AgentEffect::with_facts(vec![Fact {
-                key: ContextKey::Hypotheses,
-                id: "insight:error".into(),
-                content: format!("LLM call failed: {e}. Manual review recommended."),
-            }]),
+            Err(e) => AgentEffect::with_proposal(proposed_fact(
+                self.name(),
+                ContextKey::Hypotheses,
+                "insight:error",
+                format!("LLM call failed: {e}. Manual review recommended."),
+            )),
         }
     }
 }
@@ -328,7 +340,7 @@ Keep each risk assessment concise (2-3 sentences)."
 
     /// Parses LLM response into risk facts.
     #[allow(clippy::unused_self)]
-    fn parse_response(&self, response: &str) -> Vec<Fact> {
+    fn parse_response(&self, response: &str) -> Vec<ProposedFact> {
         let mut facts = Vec::new();
         let mut risk_count = 0;
 
@@ -347,29 +359,30 @@ Keep each risk assessment concise (2-3 sentences)."
 
             if !content.is_empty() && content.len() > 20 {
                 risk_count += 1;
-                facts.push(Fact {
-                    key: ContextKey::Constraints,
-                    id: format!("risk:{risk_count}"),
-                    content: content.to_string(),
-                });
+                facts.push(proposed_fact(
+                    self.name(),
+                    ContextKey::Constraints,
+                    format!("risk:{risk_count}"),
+                    content.to_string(),
+                ));
             }
         }
 
         // Ensure we have at least one risk identified
         if facts.is_empty() {
-            facts.push(Fact {
-                key: ContextKey::Constraints,
-                id: "risk:none-identified".into(),
-                content: "No significant risks identified. Recommend manual review of assumptions."
-                    .into(),
-            });
+            facts.push(proposed_fact(
+                self.name(),
+                ContextKey::Constraints,
+                "risk:none-identified",
+                "No significant risks identified. Recommend manual review of assumptions.",
+            ));
         }
 
         facts
     }
 }
 
-impl Agent for RiskAssessmentAgent {
+impl Suggestor for RiskAssessmentAgent {
     fn name(&self) -> &'static str {
         "RiskAssessmentAgent"
     }
@@ -412,13 +425,14 @@ impl Agent for RiskAssessmentAgent {
         match result {
             Ok(response) => {
                 let facts = self.parse_response(&response.content);
-                AgentEffect::with_facts(facts)
+                AgentEffect::with_proposals(facts)
             }
-            Err(e) => AgentEffect::with_facts(vec![Fact {
-                key: ContextKey::Constraints,
-                id: "risk:error".into(),
-                content: format!("Risk assessment failed: {e}. Manual review recommended."),
-            }]),
+            Err(e) => AgentEffect::with_proposal(proposed_fact(
+                self.name(),
+                ContextKey::Constraints,
+                "risk:error",
+                format!("Risk assessment failed: {e}. Manual review recommended."),
+            )),
         }
     }
 }
@@ -471,7 +485,22 @@ impl ChatBackend for MockRiskProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use converge_core::Context;
+    use converge_core::{Context, Engine, ProposedFact};
+
+    fn promoted_context(entries: &[(ContextKey, &str, &str)]) -> Context {
+        let mut ctx = Context::new();
+        for (key, id, content) in entries {
+            ctx.add_input(*key, *id, *content).unwrap();
+        }
+        Engine::new().run(ctx).unwrap().context
+    }
+
+    fn promote_proposals(mut ctx: Context, proposals: Vec<ProposedFact>) -> Context {
+        for proposal in proposals {
+            ctx.add_proposal(proposal).unwrap();
+        }
+        Engine::new().run(ctx).unwrap().context
+    }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn strategic_insight_agent_parses_numbered_list() {
@@ -479,20 +508,14 @@ mod tests {
         let agent = StrategicInsightAgent::new(provider);
 
         // Create a context with evaluations
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact::new(
-            ContextKey::Evaluations,
-            "eval:test",
-            "Score: 80/100",
-        ))
-        .unwrap();
+        let ctx = promoted_context(&[(ContextKey::Evaluations, "eval:test", "Score: 80/100")]);
 
         assert!(agent.accepts(&ctx));
 
         let effect = agent.execute(&ctx);
 
-        assert!(!effect.facts.is_empty());
-        assert!(effect.facts.iter().any(|f| f.id.starts_with("insight:")));
+        assert!(!effect.proposals.is_empty());
+        assert!(effect.proposals.iter().any(|f| f.id.starts_with("insight:")));
     }
 
     #[test]
@@ -500,19 +523,10 @@ mod tests {
         let provider = Arc::new(MockInsightProvider::default_insights());
         let agent = StrategicInsightAgent::new(provider);
 
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact::new(
-            ContextKey::Evaluations,
-            "eval:test",
-            "Score: 80/100",
-        ))
-        .unwrap();
-        ctx.add_fact(Fact::new(
-            ContextKey::Hypotheses,
-            "insight:1",
-            "Existing insight",
-        ))
-        .unwrap();
+        let ctx = promoted_context(&[
+            (ContextKey::Evaluations, "eval:test", "Score: 80/100"),
+            (ContextKey::Hypotheses, "insight:1", "Existing insight"),
+        ]);
 
         // Should not accept because Hypotheses already exist
         assert!(!agent.accepts(&ctx));
@@ -524,29 +538,20 @@ mod tests {
         let agent = RiskAssessmentAgent::new(provider);
 
         // Create a context with strategies and evaluations
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact::new(
-            ContextKey::Strategies,
-            "strategy:test",
-            "Test strategy",
-        ))
-        .unwrap();
-        ctx.add_fact(Fact::new(
-            ContextKey::Evaluations,
-            "eval:test",
-            "Score: 75/100",
-        ))
-        .unwrap();
+        let ctx = promoted_context(&[
+            (ContextKey::Strategies, "strategy:test", "Test strategy"),
+            (ContextKey::Evaluations, "eval:test", "Score: 75/100"),
+        ]);
 
         assert!(agent.accepts(&ctx));
 
         let effect = agent.execute(&ctx);
 
-        assert!(!effect.facts.is_empty());
-        assert!(effect.facts.iter().any(|f| f.id.starts_with("risk:")));
+        assert!(!effect.proposals.is_empty());
+        assert!(effect.proposals.iter().any(|f| f.id.starts_with("risk:")));
         assert!(
             effect
-                .facts
+                .proposals
                 .iter()
                 .all(|f| f.key == ContextKey::Constraints)
         );
@@ -557,25 +562,11 @@ mod tests {
         let provider = Arc::new(MockRiskProvider::default_risks());
         let agent = RiskAssessmentAgent::new(provider);
 
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact::new(
-            ContextKey::Strategies,
-            "strategy:test",
-            "Test strategy",
-        ))
-        .unwrap();
-        ctx.add_fact(Fact::new(
-            ContextKey::Evaluations,
-            "eval:test",
-            "Score: 75/100",
-        ))
-        .unwrap();
-        ctx.add_fact(Fact::new(
-            ContextKey::Constraints,
-            "risk:1",
-            "Existing risk",
-        ))
-        .unwrap();
+        let ctx = promoted_context(&[
+            (ContextKey::Strategies, "strategy:test", "Test strategy"),
+            (ContextKey::Evaluations, "eval:test", "Score: 75/100"),
+            (ContextKey::Constraints, "risk:1", "Existing risk"),
+        ]);
 
         // Should not accept because Constraints (risks) already exist
         assert!(!agent.accepts(&ctx));

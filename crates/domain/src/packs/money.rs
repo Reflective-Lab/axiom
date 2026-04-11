@@ -7,7 +7,7 @@
 //!
 //! # Lifecycle: AR → AP → Reconcile → Close
 //!
-//! # Agent Pipeline
+//! # Suggestor Pipeline
 //!
 //! ```text
 //! Triggers (deal.closed_won, milestone.completed)
@@ -32,7 +32,7 @@
 //! distinguished by their ID prefixes (invoice:, payment:, ledger:, etc.).
 
 use converge_core::{
-    Agent, AgentEffect, ContextKey, Fact,
+    Suggestor, AgentEffect, ContextKey,
     invariant::{Invariant, InvariantClass, InvariantResult, Violation},
 };
 
@@ -64,7 +64,7 @@ pub const PERIOD_PREFIX: &str = "period:";
 #[derive(Debug, Clone, Default)]
 pub struct InvoiceCreatorAgent;
 
-impl Agent for InvoiceCreatorAgent {
+impl Suggestor for InvoiceCreatorAgent {
     fn name(&self) -> &str {
         "invoice_creator"
     }
@@ -93,10 +93,11 @@ impl Agent for InvoiceCreatorAgent {
 
         for trigger in triggers.iter() {
             if trigger.content.contains("deal.closed_won") {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}draft:{}", INVOICE_PREFIX, trigger.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}draft:{}", INVOICE_PREFIX, trigger.id),
+                    serde_json::json!({
                         "type": "invoice",
                         "state": "draft",
                         "source_trigger": trigger.id,
@@ -106,11 +107,11 @@ impl Agent for InvoiceCreatorAgent {
                         "currency": "USD"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -123,7 +124,7 @@ impl Agent for InvoiceCreatorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct PaymentAllocatorAgent;
 
-impl Agent for PaymentAllocatorAgent {
+impl Suggestor for PaymentAllocatorAgent {
     fn name(&self) -> &str {
         "payment_allocator"
     }
@@ -157,13 +158,14 @@ impl Agent for PaymentAllocatorAgent {
         for payment in payments.iter() {
             // Try to find matching invoice
             if let Some(invoice) = invoices.first() {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!(
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!(
                         "{}allocation:{}->{}",
                         PAYMENT_PREFIX, payment.id, invoice.id
                     ),
-                    content: serde_json::json!({
+                    serde_json::json!({
                         "type": "payment_allocation",
                         "payment_id": payment.id,
                         "invoice_id": invoice.id,
@@ -171,11 +173,11 @@ impl Agent for PaymentAllocatorAgent {
                         "match_method": "exact_amount"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -185,7 +187,7 @@ impl Agent for PaymentAllocatorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct ReconciliationMatcherAgent;
 
-impl Agent for ReconciliationMatcherAgent {
+impl Suggestor for ReconciliationMatcherAgent {
     fn name(&self) -> &str {
         "reconciliation_matcher"
     }
@@ -224,10 +226,11 @@ impl Agent for ReconciliationMatcherAgent {
 
         for txn in bank_txns.iter() {
             if let Some(invoice) = invoices.first() {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}->{}", LEDGER_PREFIX, txn.id, invoice.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}->{}", LEDGER_PREFIX, txn.id, invoice.id),
+                    serde_json::json!({
                         "type": "ledger_entry",
                         "bank_txn_id": txn.id,
                         "matched_doc_id": invoice.id,
@@ -235,11 +238,11 @@ impl Agent for ReconciliationMatcherAgent {
                         "match_method": "exact"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -252,7 +255,7 @@ impl Agent for ReconciliationMatcherAgent {
 #[derive(Debug, Clone, Default)]
 pub struct OverdueDetectorAgent;
 
-impl Agent for OverdueDetectorAgent {
+impl Suggestor for OverdueDetectorAgent {
     fn name(&self) -> &str {
         "overdue_detector"
     }
@@ -279,10 +282,11 @@ impl Agent for OverdueDetectorAgent {
             if invoice.id.starts_with(INVOICE_PREFIX)
                 && invoice.content.contains("\"overdue\":true")
             {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}overdue_action:{}", INVOICE_PREFIX, invoice.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}overdue_action:{}", INVOICE_PREFIX, invoice.id),
+                    serde_json::json!({
                         "type": "overdue_action",
                         "invoice_id": invoice.id,
                         "new_state": "overdue",
@@ -290,11 +294,11 @@ impl Agent for OverdueDetectorAgent {
                         "days_overdue": 7
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -304,7 +308,7 @@ impl Agent for OverdueDetectorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct PeriodCloserAgent;
 
-impl Agent for PeriodCloserAgent {
+impl Suggestor for PeriodCloserAgent {
     fn name(&self) -> &str {
         "period_closer"
     }
@@ -328,10 +332,11 @@ impl Agent for PeriodCloserAgent {
             if period.id.starts_with(PERIOD_PREFIX)
                 && period.content.contains("\"state\":\"closing\"")
             {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}close_request:{}", PERIOD_PREFIX, period.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}close_request:{}", PERIOD_PREFIX, period.id),
+                    serde_json::json!({
                         "type": "period_close_request",
                         "period_id": period.id,
                         "action": "request_authority",
@@ -339,11 +344,11 @@ impl Agent for PeriodCloserAgent {
                         "pending_approval": true
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -437,20 +442,19 @@ impl Invariant for ClosedPeriodReadonlyInvariant {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use converge_core::Context;
-    use converge_core::Engine;
+    use converge_core::{Context, Engine};
 
     #[test]
     fn invoice_creator_produces_draft() {
         let mut engine = Engine::new();
-        engine.register(InvoiceCreatorAgent);
+        engine.register_suggestor(InvoiceCreatorAgent);
 
         let mut ctx = Context::new();
-        let _ = ctx.add_fact(Fact {
-            key: ContextKey::Seeds,
-            id: "trigger:deal.closed_won:deal_123".into(),
-            content: "deal.closed_won for customer ABC".into(),
-        });
+        let _ = ctx.add_input(
+            ContextKey::Seeds,
+            "trigger:deal.closed_won:deal_123",
+            "deal.closed_won for customer ABC",
+        );
 
         let result = engine.run(ctx).expect("should converge");
         assert!(result.converged);

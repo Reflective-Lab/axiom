@@ -23,6 +23,8 @@
 //! - [`drafting`]: Content drafting (kernel utility)
 //! - [`form_filler`]: Form filling agents (kernel utility)
 
+use converge_core::{ContextKey, ProposedFact};
+
 pub mod ask_converge;
 pub mod domain_invariants;
 pub mod drafting;
@@ -102,3 +104,12 @@ pub use evals::{
     RbacEnforcementEval,
     ScopeCreepDetectionEval,
 };
+
+pub(crate) fn proposal(
+    provenance: impl Into<String>,
+    key: ContextKey,
+    id: impl Into<String>,
+    content: impl Into<String>,
+) -> ProposedFact {
+    ProposedFact::new(key, id, content, provenance)
+}

@@ -6,7 +6,7 @@
 //! Tests invariants that must hold for all inputs:
 //! - YAML roundtrip preserves data
 //! - Validator rejects forbidden keys
-//! - Agent IDs must be unique
+//! - Suggestor IDs must be unique
 //! - Requirements config parses correctly
 
 use proptest::prelude::*;
@@ -224,7 +224,7 @@ description: {description}
 }
 
 // =============================================================================
-// Property Tests: Agent ID Uniqueness
+// Property Tests: Suggestor ID Uniqueness
 // =============================================================================
 
 proptest! {

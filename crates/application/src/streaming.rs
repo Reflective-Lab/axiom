@@ -105,7 +105,7 @@ impl StreamingCallback for StreamingHandler {
         match self.format {
             OutputFormat::Human => {
                 // Format: [cycle:N] fact:Key:id | content
-                let key_str = format!("{:?}", fact.key);
+                let key_str = format!("{:?}", fact.key());
                 println!(
                     "[cycle:{}] fact:{}:{} | {}",
                     cycle, key_str, fact.id, fact.content
@@ -115,7 +115,7 @@ impl StreamingCallback for StreamingHandler {
                 let event = StreamingFact {
                     cycle,
                     event_type: "fact".to_string(),
-                    key: format!("{:?}", fact.key),
+                    key: format!("{:?}", fact.key()),
                     id: fact.id.clone(),
                     content: fact.content.clone(),
                 };
@@ -160,18 +160,27 @@ struct StreamingStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use converge_core::ContextKey;
+    use converge_core::{Context, ContextKey, Engine};
+
+    fn promoted_fact(key: ContextKey, id: &str, content: &str) -> Fact {
+        let mut ctx = Context::new();
+        let _ = ctx.add_input(key, id, content);
+        Engine::new()
+            .run(ctx)
+            .expect("should promote test input")
+            .context
+            .get(key)
+            .first()
+            .expect("promoted fact should exist")
+            .clone()
+    }
 
     #[test]
     fn streaming_handler_counts_facts() {
         let handler = StreamingHandler::human();
         assert_eq!(handler.fact_count(), 0);
 
-        let fact = Fact {
-            key: ContextKey::Seeds,
-            id: "test".to_string(),
-            content: "test content".to_string(),
-        };
+        let fact = promoted_fact(ContextKey::Seeds, "test", "test content");
 
         handler.on_fact(1, &fact);
         assert_eq!(handler.fact_count(), 1);

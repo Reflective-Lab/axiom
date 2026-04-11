@@ -1,4 +1,10 @@
-# Converge.zone — Codex Handoff
+# Codex Entrypoint
+
+Read and follow `AGENTS.md` — it is the canonical project documentation.
+
+---
+
+# Converge.zone — Codex Handoff (Historical Context)
 
 This file captures the most useful project-specific context learned during
 recent work, with emphasis on deployment, verification, and what is worth

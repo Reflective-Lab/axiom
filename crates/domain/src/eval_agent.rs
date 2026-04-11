@@ -1,15 +1,15 @@
 // Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 
-//! Agent that executes evals and stores results in context.
+//! Suggestor that executes evals and stores results in context.
 //!
 //! This agent demonstrates how evals can be integrated into the convergence
 //! loop. It runs registered evals when their dependencies change and stores
 //! results as facts in context.
 
-use converge_core::{Agent, AgentEffect, ContextKey, Eval, EvalId, EvalRegistry, Fact};
+use converge_core::{Suggestor, AgentEffect, ContextKey, Eval, EvalId, EvalRegistry};
 
-/// Agent that executes evals and stores results in context.
+/// Suggestor that executes evals and stores results in context.
 ///
 /// This agent:
 /// - Runs when eval dependencies change
@@ -45,7 +45,7 @@ impl EvalExecutionAgent {
     }
 }
 
-impl Agent for EvalExecutionAgent {
+impl Suggestor for EvalExecutionAgent {
     fn name(&self) -> &str {
         &self.name
     }
@@ -107,15 +107,16 @@ impl Agent for EvalExecutionAgent {
         };
 
         // Convert results to facts
-        let facts: Vec<Fact> = results
+        let proposals = results
             .into_iter()
             .map(|result| {
                 // Include agent name in eval ID for traceability
-                result.to_fact(Some(&self.name))
+                let fact = result.to_fact(Some(&self.name));
+                crate::proposal(self.name(), fact.key(), fact.id, fact.content)
             })
             .collect();
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(proposals)
     }
 }
 
@@ -123,30 +124,32 @@ impl Agent for EvalExecutionAgent {
 mod tests {
     use super::*;
     use crate::evals::MeetingScheduleFeasibilityEval;
-    use converge_core::Context;
+    use converge_core::{Context, Engine};
+
+    fn promoted_context(entries: &[(ContextKey, &str, &str)]) -> Context {
+        let mut ctx = Context::new();
+        for (key, id, content) in entries {
+            ctx.add_input(*key, *id, *content).unwrap();
+        }
+        Engine::new().run(ctx).unwrap().context
+    }
 
     #[test]
     fn eval_agent_executes_registered_evals() {
         let mut agent = EvalExecutionAgent::new("test_eval_agent");
         agent.register_eval(MeetingScheduleFeasibilityEval);
 
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact::new(
-            ContextKey::Strategies,
-            "strat-1",
-            "email campaign",
-        ))
-        .unwrap();
+        let ctx = promoted_context(&[(ContextKey::Strategies, "strat-1", "email campaign")]);
 
-        // Agent should accept (has inputs, no existing evals)
+        // Suggestor should accept (has inputs, no existing evals)
         assert!(agent.accepts(&ctx));
 
         let effect = agent.execute(&ctx);
-        assert!(!effect.facts.is_empty());
+        assert!(!effect.proposals.is_empty());
 
         // Check that eval result was stored
-        let eval_facts: Vec<&Fact> = effect
-            .facts
+        let eval_facts: Vec<_> = effect
+            .proposals
             .iter()
             .filter(|f| f.key == ContextKey::Evaluations)
             .collect();
@@ -158,22 +161,18 @@ mod tests {
         let mut agent = EvalExecutionAgent::new("test_eval_agent");
         agent.register_eval(MeetingScheduleFeasibilityEval);
 
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact::new(
-            ContextKey::Strategies,
-            "strat-1",
-            "email campaign",
-        ))
-        .unwrap();
+        let ctx = promoted_context(&[(ContextKey::Strategies, "strat-1", "email campaign")]);
 
         // First execution
         assert!(agent.accepts(&ctx));
         let effect1 = agent.execute(&ctx);
 
         // Add eval results to context (simulating merge)
-        for fact in effect1.facts {
-            ctx.add_fact(fact).unwrap();
+        let mut ctx = ctx;
+        for proposal in effect1.proposals {
+            ctx.add_proposal(proposal).unwrap();
         }
+        let ctx = Engine::new().run(ctx).unwrap().context;
 
         // Second execution should not be accepted (idempotency)
         assert!(!agent.accepts(&ctx));

@@ -1,6 +1,6 @@
 // Copyright 2024-2026 Reflective Labs
 
-//! LLM Agent for the Converge framework.
+//! LLM Suggestor for the Converge framework.
 //!
 //! This module provides agents that use LLMs for reasoning, generation,
 //! and decision-making within the Converge agent system.
@@ -11,7 +11,7 @@ use crate::inference::{GenerationParams, InferenceEngine};
 use crate::model::LlamaModel;
 use crate::tokenizer::Tokenizer;
 use burn::backend::NdArray;
-use converge_core::{Agent, AgentEffect, Context, ContextKey, Fact, ProposedFact};
+use converge_core::{Suggestor, AgentEffect, ContextKey, ProposedFact};
 use serde::{Deserialize, Serialize};
 
 /// An agent that uses an LLM for reasoning and generation.
@@ -98,7 +98,7 @@ impl LlmAgent {
     }
 }
 
-impl Agent for LlmAgent {
+impl Suggestor for LlmAgent {
     fn name(&self) -> &str {
         &self.name
     }
@@ -120,9 +120,9 @@ impl Agent for LlmAgent {
 
         // Check Proposals (pending before validation)
         let has_pending = ctx
-            .get(ContextKey::Proposals)
+            .get_proposals(self.output_key)
             .iter()
-            .any(|f| f.id.contains(&my_prefix));
+            .any(|proposal| proposal.id.contains(&my_prefix));
 
         // Check target_key (validated contributions)
         let has_validated = ctx
@@ -163,13 +163,15 @@ impl Agent for LlmAgent {
                     error = %e,
                     "LLM inference failed"
                 );
-                // Diagnostic facts are trusted (system-generated, not LLM-generated)
-                let fact = Fact {
-                    key: ContextKey::Diagnostic,
-                    id: format!("{}-error", self.name),
-                    content: format!("LLM inference failed: {e}"),
-                };
-                AgentEffect::with_fact(fact)
+                AgentEffect::with_proposal(
+                    ProposedFact::new(
+                        ContextKey::Diagnostic,
+                        format!("{}-error", self.name),
+                        format!("LLM inference failed: {e}"),
+                        format!("system:{}", self.name),
+                    )
+                    .with_confidence(1.0),
+                )
             }
         }
     }
@@ -256,6 +258,15 @@ impl Default for ReasoningConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use converge_core::{Context, Engine};
+
+    fn promoted_context(entries: &[(ContextKey, &str, &str)]) -> Context {
+        let mut ctx = Context::new();
+        for (key, id, content) in entries {
+            ctx.add_input(*key, *id, *content).unwrap();
+        }
+        Engine::new().run(ctx).unwrap().context
+    }
 
     #[test]
     fn test_agent_creation() {
@@ -272,11 +283,7 @@ mod tests {
         let mut ctx = Context::new();
         assert!(!agent.accepts(&ctx)); // No seeds
 
-        let _ = ctx.add_fact(Fact {
-            key: ContextKey::Seeds,
-            id: "seed-1".to_string(),
-            content: "test seed".to_string(),
-        });
+        ctx = promoted_context(&[(ContextKey::Seeds, "seed-1", "test seed")]);
         assert!(agent.accepts(&ctx)); // Has seeds
     }
 
@@ -285,12 +292,7 @@ mod tests {
         let config = LlmConfig::default();
         let agent = LlmAgent::new("test-agent", config);
 
-        let mut ctx = Context::new();
-        let _ = ctx.add_fact(Fact {
-            key: ContextKey::Seeds,
-            id: "seed-1".to_string(),
-            content: "test content".to_string(),
-        });
+        let ctx = promoted_context(&[(ContextKey::Seeds, "seed-1", "test content")]);
 
         let prompt = agent.build_prompt(&ctx);
         assert!(prompt.contains("test content"));
@@ -321,22 +323,16 @@ mod tests {
         let config = LlmConfig::default();
         let agent = LlmAgent::new("test-agent", config);
 
-        let mut ctx = Context::new();
-
-        // Add seed so accepts() would normally return true
-        let _ = ctx.add_fact(Fact {
-            key: ContextKey::Seeds,
-            id: "seed-1".to_string(),
-            content: "test seed".to_string(),
-        });
+        let mut ctx = promoted_context(&[(ContextKey::Seeds, "seed-1", "test seed")]);
         assert!(agent.accepts(&ctx)); // Should accept (no pending proposal)
 
         // Add a pending proposal from this agent
-        let _ = ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "test-agent-output".to_string(),
-            content: "pending proposal".to_string(),
-        });
+        let _ = ctx.add_proposal(ProposedFact::new(
+            ContextKey::Hypotheses,
+            "test-agent-output",
+            "pending proposal",
+            "test-agent",
+        ));
 
         // Now accepts() should return false (pending proposal exists)
         assert!(
@@ -351,22 +347,18 @@ mod tests {
         let config = LlmConfig::default();
         let agent = LlmAgent::new("test-agent", config);
 
-        let mut ctx = Context::new();
-
-        // Add seed
-        let _ = ctx.add_fact(Fact {
-            key: ContextKey::Seeds,
-            id: "seed-1".to_string(),
-            content: "test seed".to_string(),
-        });
+        let mut ctx = promoted_context(&[(ContextKey::Seeds, "seed-1", "test seed")]);
         assert!(agent.accepts(&ctx));
 
         // Add validated output in target_key (Hypotheses by default)
-        let _ = ctx.add_fact(Fact {
-            key: ContextKey::Hypotheses,
-            id: "test-agent-output".to_string(),
-            content: "validated output".to_string(),
-        });
+        ctx = promoted_context(&[
+            (ContextKey::Seeds, "seed-1", "test seed"),
+            (
+                ContextKey::Hypotheses,
+                "test-agent-output",
+                "validated output",
+            ),
+        ]);
 
         // Now accepts() should return false (validated contribution exists)
         assert!(
@@ -382,23 +374,19 @@ mod tests {
         let config = LlmConfig::default();
         let agent = LlmAgent::new("test-agent", config);
 
-        let mut ctx = Context::new();
-        let _ = ctx.add_fact(Fact {
-            key: ContextKey::Seeds,
-            id: "seed-1".to_string(),
-            content: "test seed".to_string(),
-        });
+        let mut ctx = promoted_context(&[(ContextKey::Seeds, "seed-1", "test seed")]);
 
         // First check: should accept
         assert!(agent.accepts(&ctx), "First execution should be accepted");
 
         // Simulate what happens after first execution:
         // A proposal is added to the context
-        let _ = ctx.add_fact(Fact {
-            key: ContextKey::Proposals,
-            id: "test-agent-output".to_string(),
-            content: "generated content".to_string(),
-        });
+        let _ = ctx.add_proposal(ProposedFact::new(
+            ContextKey::Hypotheses,
+            "test-agent-output",
+            "generated content",
+            "test-agent",
+        ));
 
         // Second check: should NOT accept (idempotency)
         assert!(

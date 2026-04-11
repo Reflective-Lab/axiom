@@ -23,7 +23,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use converge_core::traits::DynChatBackend;
-use converge_core::{Context, ContextKey, Engine, Fact};
+use converge_core::{Context, ContextKey, Engine};
 use converge_provider::AnthropicBackend;
 use strum::IntoEnumIterator;
 
@@ -513,8 +513,9 @@ impl App {
             match serde_json::from_str::<Vec<crate::packs::SeedFact>>(&seeds_json) {
                 Ok(seed_facts) => {
                     for seed in seed_facts {
-                        let fact = Fact::new(ContextKey::Seeds, seed.id, seed.content);
-                        if let Err(e) = context.add_fact(fact) {
+                        if let Err(e) =
+                            context.add_input(ContextKey::Seeds, seed.id, seed.content)
+                        {
                             self.submit_form.error = Some(format!("Failed to add seed: {e}"));
                             return;
                         }
@@ -531,8 +532,8 @@ impl App {
 
         // Register generic LLM agents
         let llm_provider = create_chat_backend();
-        engine.register(StrategicInsightAgent::new(llm_provider.clone()));
-        engine.register(RiskAssessmentAgent::new(llm_provider));
+        engine.register_suggestor(StrategicInsightAgent::new(llm_provider.clone()));
+        engine.register_suggestor(RiskAssessmentAgent::new(llm_provider));
 
         match engine.run(context) {
             Ok(result) => {
@@ -553,7 +554,7 @@ impl App {
                             .get(key)
                             .iter()
                             .map(|fact| FactInfo {
-                                key: format!("{:?}", fact.key),
+                                key: format!("{:?}", fact.key()),
                                 id: fact.id.clone(),
                                 content: fact.content.clone(),
                                 confidence: 1.0,

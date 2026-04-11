@@ -829,19 +829,24 @@ impl Eval for DashboardSourceEval {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use converge_core::{Context, Fact};
+    use converge_core::{Context, Engine};
+
+    fn promoted_context(entries: &[(ContextKey, &str, &str)]) -> Context {
+        let mut ctx = Context::new();
+        for (key, id, content) in entries {
+            ctx.add_input(*key, *id, *content).unwrap();
+        }
+        Engine::new().run(ctx).unwrap().context
+    }
 
     #[test]
     fn invoice_accuracy_passes_with_valid_invoices() {
         let eval = InvoiceAccuracyEval;
-        let mut ctx = Context::new();
-
-        ctx.add_fact(Fact::new(
+        let ctx = promoted_context(&[(
             ContextKey::Proposals,
             "invoice:001",
             "amount: 1000, customer: Acme Corp",
-        ))
-        .unwrap();
+        )]);
 
         let result = eval.evaluate(&ctx);
         assert_eq!(result.outcome, EvalOutcome::Pass);
@@ -850,14 +855,7 @@ mod tests {
     #[test]
     fn meeting_feasibility_indeterminate_without_constraints() {
         let eval = MeetingScheduleFeasibilityEval;
-        let mut ctx = Context::new();
-
-        ctx.add_fact(Fact::new(
-            ContextKey::Strategies,
-            "meeting-1",
-            "standup at 10-16",
-        ))
-        .unwrap();
+        let ctx = promoted_context(&[(ContextKey::Strategies, "meeting-1", "standup at 10-16")]);
 
         let result = eval.evaluate(&ctx);
         // No working hours constraint → indeterminate

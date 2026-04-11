@@ -5,7 +5,7 @@
 //!
 //! Shows: Engine, agents, context, facts, and the convergence loop.
 
-use converge_core::agents::{ReactOnceAgent, SeedAgent};
+use converge_core::suggestors::{ReactOnceSuggestor, SeedSuggestor};
 use converge_core::{Context, ContextKey, Engine};
 
 fn main() {
@@ -15,10 +15,10 @@ fn main() {
     let mut engine = Engine::new();
 
     // 2. Register agents
-    //    SeedAgent:      writes a fact once, then goes idle
-    //    ReactOnceAgent: waits for Seeds, then writes Hypotheses once
-    engine.register(SeedAgent::new("seed-1", "Monthly active users grew 15%"));
-    engine.register(ReactOnceAgent::new(
+    //    SeedSuggestor:      writes a fact once, then goes idle
+    //    ReactOnceSuggestor: waits for Seeds, then writes Hypotheses once
+    engine.register_suggestor(SeedSuggestor::new("seed-1", "Monthly active users grew 15%"));
+    engine.register_suggestor(ReactOnceSuggestor::new(
         "hypothesis-1",
         "Growth driven by new onboarding flow",
     ));
@@ -33,12 +33,12 @@ fn main() {
 
     println!("Seeds:");
     for fact in result.context.get(ContextKey::Seeds) {
-        println!("  [{:?}] {}: {}", fact.key, fact.id, fact.content);
+        println!("  [{:?}] {}: {}", fact.key(), fact.id, fact.content);
     }
 
     println!("\nHypotheses:");
     for fact in result.context.get(ContextKey::Hypotheses) {
-        println!("  [{:?}] {}: {}", fact.key, fact.id, fact.content);
+        println!("  [{:?}] {}: {}", fact.key(), fact.id, fact.content);
     }
 
     println!("\n=== Done ===");

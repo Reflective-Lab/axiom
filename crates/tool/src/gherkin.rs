@@ -172,7 +172,7 @@ pub enum ScenarioKind {
     /// A proposal validation rule.
     Validation,
     /// An agent contract (what the agent may propose).
-    Agent,
+    Suggestor,
     /// An end-to-end integration test.
     EndToEnd,
 }
@@ -230,7 +230,7 @@ pub fn extract_scenario_meta(name: &str, tags: &[String]) -> ScenarioMeta {
         match tag {
             "invariant" => kind = Some(ScenarioKind::Invariant),
             "validation" => kind = Some(ScenarioKind::Validation),
-            "agent" => kind = Some(ScenarioKind::Agent),
+            "agent" => kind = Some(ScenarioKind::Suggestor),
             "e2e" => kind = Some(ScenarioKind::EndToEnd),
             "structural" => invariant_class = Some(InvariantClassTag::Structural),
             "semantic" => invariant_class = Some(InvariantClassTag::Semantic),
@@ -287,7 +287,7 @@ pub fn extract_scenario_meta(name: &str, tags: &[String]) -> ScenarioMeta {
 /// let metas = extract_all_metas(content).unwrap();
 /// assert_eq!(metas.len(), 2);
 /// assert_eq!(metas[0].kind, Some(ScenarioKind::Invariant));
-/// assert_eq!(metas[1].kind, Some(ScenarioKind::Agent));
+/// assert_eq!(metas[1].kind, Some(ScenarioKind::Suggestor));
 /// ```
 pub fn extract_all_metas(content: &str) -> Result<Vec<ScenarioMeta>, ValidationError> {
     let document = parse_truth_document(content)?;
@@ -1220,7 +1220,7 @@ Feature: Test
         ];
         let meta = extract_scenario_meta("Market Signal agent proposes Signals", &tags);
 
-        assert_eq!(meta.kind, Some(ScenarioKind::Agent));
+        assert_eq!(meta.kind, Some(ScenarioKind::Suggestor));
         assert_eq!(meta.provider.as_deref(), Some("llm"));
         assert_eq!(meta.id.as_deref(), Some("market_signal"));
     }
@@ -1322,7 +1322,7 @@ Truth: Growth Strategy Pack
         assert_eq!(metas[1].id.as_deref(), Some("require_multiple_strategies"));
 
         // Third: agent
-        assert_eq!(metas[2].kind, Some(ScenarioKind::Agent));
+        assert_eq!(metas[2].kind, Some(ScenarioKind::Suggestor));
         assert_eq!(metas[2].provider.as_deref(), Some("llm"));
 
         // Fourth: e2e test

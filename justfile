@@ -245,23 +245,44 @@ jj-push:
 clean:
     cargo clean
 
+# ── Workflow ──────────────────────────────────────────────────────────
+
+# Session opener — repo health + recent activity
+focus:
+    @bash scripts/workflow/focus.sh
+
+# Team sync — PRs, issues, recent commits
+sync:
+    @bash scripts/workflow/sync.sh
+
+# Build health, test results
+status:
+    @bash scripts/workflow/status.sh
+
 # ── Info ───────────────────────────────────────────────────────────────
 
 # Show workspace crate dependency graph
 deps:
     @echo "Dependency graph (leaf → root):"
-    @echo "  converge-traits          (no deps)"
-    @echo "  converge-core            (no internal deps)"
-    @echo "  converge-provider        → core, traits"
+    @echo "  converge-pack            (no internal deps)"
+    @echo "  converge-provider-api    (no internal deps)"
+    @echo "  converge-protocol        (no internal deps)"
+    @echo "  converge-traits          -> pack, provider-api (compatibility only)"
+    @echo "  converge-core            -> pack"
+    @echo "  converge-model           -> core, pack"
+    @echo "  converge-kernel          -> core, pack"
+    @echo "  converge-client          -> protocol"
+    @echo "  converge-mcp             (no internal deps)"
+    @echo "  converge-provider        → core, pack, provider-api"
     @echo "  converge-domain          → core, provider"
     @echo "  converge-experience      → core"
-    @echo "  converge-knowledge       (no internal deps)"
+    @echo "  converge-knowledge       → mcp (server feature)"
     @echo "  ortools-sys              (no deps, FFI)"
     @echo "  converge-optimization    → ortools-sys (optional)"
     @echo "  converge-analytics       → core, domain, provider"
     @echo "  converge-llm             → core, domain, provider (optional)"
     @echo "  converge-policy          → core"
     @echo "  converge-tool            → core, provider"
-    @echo "  converge-remote          (no internal deps, gRPC client)"
-    @echo "  converge-runtime         → core, provider, tool"
-    @echo "  converge-application     → core, provider, domain, tool"
+    @echo "  converge-remote          → client, protocol"
+    @echo "  converge-runtime         → core, provider, protocol, tool"
+    @echo "  converge-application     → core, provider, domain, tool, mcp, knowledge"

@@ -174,7 +174,7 @@ impl ContentHash {
     )]
     #[must_use]
     pub fn compute_fact(fact: &Fact) -> Self {
-        let combined = format!("{:?}|{}|{}", fact.key, fact.id, fact.content);
+        let combined = format!("{:?}|{}|{}", fact.key(), fact.id, fact.content);
         #[allow(deprecated)]
         Self::compute(&combined)
     }
@@ -343,7 +343,7 @@ impl MerkleRoot {
 /// A wrapper around Context that tracks integrity metadata.
 ///
 /// This provides optional integrity tracking without modifying the core types.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TrackedContext {
     /// The underlying context.
     pub context: Context,
@@ -433,7 +433,7 @@ impl TrackedContext {
     /// Returns an error if the fact conflicts with an existing fact.
     #[allow(deprecated)]
     pub fn add_fact(&mut self, fact: Fact) -> Result<bool, crate::error::ConvergeError> {
-        let key = fact.key;
+        let key = fact.key();
         let id = fact.id.clone();
         let hash = ContentHash::compute_fact(&fact);
 
@@ -602,12 +602,12 @@ mod tests {
         assert_eq!(tracked.clock_time(), 0);
 
         tracked
-            .add_fact(Fact::new(ContextKey::Seeds, "s1", "seed"))
+            .add_fact(crate::context::new_fact(ContextKey::Seeds, "s1", "seed"))
             .unwrap();
         assert_eq!(tracked.clock_time(), 1);
 
         tracked
-            .add_fact(Fact::new(ContextKey::Seeds, "s2", "seed2"))
+            .add_fact(crate::context::new_fact(ContextKey::Seeds, "s2", "seed2"))
             .unwrap();
         assert_eq!(tracked.clock_time(), 2);
     }
@@ -616,17 +616,17 @@ mod tests {
     fn tracked_context_computes_merkle_root() {
         let mut tracked = TrackedContext::empty();
         tracked
-            .add_fact(Fact::new(ContextKey::Seeds, "s1", "first"))
+            .add_fact(crate::context::new_fact(ContextKey::Seeds, "s1", "first"))
             .unwrap();
         tracked
-            .add_fact(Fact::new(ContextKey::Seeds, "s2", "second"))
+            .add_fact(crate::context::new_fact(ContextKey::Seeds, "s2", "second"))
             .unwrap();
 
         let root1 = tracked.merkle_root().clone();
 
         // Adding another fact changes the root
         tracked
-            .add_fact(Fact::new(ContextKey::Seeds, "s3", "third"))
+            .add_fact(crate::context::new_fact(ContextKey::Seeds, "s3", "third"))
             .unwrap();
         let root2 = tracked.merkle_root().clone();
 
@@ -637,7 +637,7 @@ mod tests {
     fn tracked_context_verifies_integrity() {
         let mut tracked = TrackedContext::empty();
         tracked
-            .add_fact(Fact::new(ContextKey::Seeds, "s1", "test"))
+            .add_fact(crate::context::new_fact(ContextKey::Seeds, "s1", "test"))
             .unwrap();
 
         assert!(tracked.verify_integrity());

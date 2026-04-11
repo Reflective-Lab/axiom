@@ -1136,29 +1136,29 @@ mod tests {
         let alpha = 16.0;
 
         // Adapter A - different pattern
-        let lora_a_A: Vec<f32> = vec![0.1; 64 * rank];
-        let lora_b_A: Vec<f32> = vec![0.1; rank * 64];
+        let lora_a_a: Vec<f32> = vec![0.1; 64 * rank];
+        let lora_b_a: Vec<f32> = vec![0.1; rank * 64];
 
         // Adapter B - different pattern
-        let lora_a_B: Vec<f32> = vec![0.2; 64 * rank];
-        let lora_b_B: Vec<f32> = vec![-0.1; rank * 64];
+        let lora_a_b: Vec<f32> = vec![0.2; 64 * rank];
+        let lora_b_b: Vec<f32> = vec![-0.1; rank * 64];
 
-        let delta_A =
-            compute_lora_delta::<TestBackend>(&lora_a_A, &lora_b_A, 64, 64, rank, alpha, &device);
-        let delta_B =
-            compute_lora_delta::<TestBackend>(&lora_a_B, &lora_b_B, 64, 64, rank, alpha, &device);
+        let delta_a =
+            compute_lora_delta::<TestBackend>(&lora_a_a, &lora_b_a, 64, 64, rank, alpha, &device);
+        let delta_b =
+            compute_lora_delta::<TestBackend>(&lora_a_b, &lora_b_b, 64, 64, rank, alpha, &device);
 
         const CYCLES: usize = 50;
 
         for _ in 0..CYCLES {
             // Attach A
-            current = current.clone() + delta_A.clone();
+            current = current.clone() + delta_a.clone();
             // Detach A
-            current = current.clone() - delta_A.clone();
+            current = current.clone() - delta_a.clone();
             // Attach B
-            current = current.clone() + delta_B.clone();
+            current = current.clone() + delta_b.clone();
             // Detach B
-            current = current.clone() - delta_B.clone();
+            current = current.clone() - delta_b.clone();
         }
 
         // Verify original restored

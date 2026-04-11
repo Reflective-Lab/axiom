@@ -8,7 +8,7 @@
 //!
 //! # Philosophy
 //!
-//! Agent prompts are **machine-to-machine contracts**, not human UX.
+//! Suggestor prompts are **machine-to-machine contracts**, not human UX.
 //! They prioritize:
 //! - Token efficiency (50-60% savings vs Markdown)
 //! - Structural clarity
@@ -31,7 +31,7 @@ pub enum PromptFormat {
     Edn,
 }
 
-/// Agent role in the prompt contract.
+/// Suggestor role in the prompt contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AgentRole {
     /// Proposes new facts (LLM agents).
@@ -117,7 +117,7 @@ impl OutputContract {
 /// to EDN-like format for LLM consumption.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentPrompt {
-    /// Agent role.
+    /// Suggestor role.
     pub role: AgentRole,
     /// Objective (what the agent should do).
     pub objective: String,
@@ -338,16 +338,8 @@ mod tests {
         ctx.add_facts(
             ContextKey::Signals,
             vec![
-                Fact {
-                    key: ContextKey::Signals,
-                    id: "s1".to_string(),
-                    content: "Revenue +15% Q3".to_string(),
-                },
-                Fact {
-                    key: ContextKey::Signals,
-                    id: "s2".to_string(),
-                    content: "Market $2.3B".to_string(),
-                },
+                crate::context::new_fact(ContextKey::Signals, "s1", "Revenue +15% Q3"),
+                crate::context::new_fact(ContextKey::Signals, "s2", "Market $2.3B"),
             ],
         );
 
@@ -373,11 +365,7 @@ mod tests {
     fn test_context_building() {
         let mut context = Context::new();
         context
-            .add_fact(Fact {
-                key: ContextKey::Seeds,
-                id: "seed1".to_string(),
-                content: "Test seed".to_string(),
-            })
+            .add_fact(crate::context::new_fact(ContextKey::Seeds, "seed1", "Test seed"))
             .unwrap();
 
         let prompt_ctx = PromptContext::from_context(&context, &[ContextKey::Seeds]);
@@ -398,11 +386,7 @@ mod tests {
         let mut ctx = PromptContext::new();
         ctx.add_facts(
             ContextKey::Signals,
-            vec![Fact {
-                key: ContextKey::Signals,
-                id: "s1".to_string(),
-                content: "Revenue +15% Q3".to_string(),
-            }],
+            vec![crate::context::new_fact(ContextKey::Signals, "s1", "Revenue +15% Q3")],
         );
 
         let prompt = AgentPrompt::new(

@@ -1,11 +1,11 @@
 // Copyright 2024-2026 Reflective Labs
 
-//! Example: LLM Agent Integration
+//! Example: LLM Suggestor Integration
 //!
 //! Demonstrates how to use the LlmAgent within a Converge context.
 //! This example shows the agent API without requiring actual model weights.
 
-use converge_core::{Agent, Context, ContextKey, Fact};
+use converge_core::{Suggestor, Context, ContextKey, Engine};
 use converge_llm::{GenerationParams, LlmAgent, LlmConfig, PromptTemplate};
 
 fn main() {
@@ -14,7 +14,7 @@ fn main() {
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    println!("=== Converge LLM Agent Example ===\n");
+    println!("=== Converge LLM Suggestor Example ===\n");
 
     // Create an LLM agent with small config (for demo)
     let config = LlmConfig::small();
@@ -30,31 +30,36 @@ fn main() {
         .with_template(PromptTemplate::reasoning())
         .with_output_key(ContextKey::Hypotheses);
 
-    println!("Agent: {}", agent.name());
+    println!("Suggestor: {}", agent.name());
     println!("Dependencies: {:?}", agent.dependencies());
     println!();
 
     // Create a context with some seed facts
-    let mut ctx = Context::new();
+    let mut staged = Context::new();
 
     // Add seed facts (simulating data from analytics pipeline)
-    let _ = ctx.add_fact(Fact {
-        key: ContextKey::Seeds,
-        id: "metric-1".to_string(),
-        content: "Monthly active users increased by 15% in December".to_string(),
-    });
+    let _ = staged.add_input(
+        ContextKey::Seeds,
+        "metric-1",
+        "Monthly active users increased by 15% in December",
+    );
 
-    let _ = ctx.add_fact(Fact {
-        key: ContextKey::Seeds,
-        id: "metric-2".to_string(),
-        content: "Customer churn rate decreased from 5% to 3.5%".to_string(),
-    });
+    let _ = staged.add_input(
+        ContextKey::Seeds,
+        "metric-2",
+        "Customer churn rate decreased from 5% to 3.5%",
+    );
 
-    let _ = ctx.add_fact(Fact {
-        key: ContextKey::Signals,
-        id: "signal-1".to_string(),
-        content: "New onboarding flow launched November 15th".to_string(),
-    });
+    let _ = staged.add_input(
+        ContextKey::Signals,
+        "signal-1",
+        "New onboarding flow launched November 15th",
+    );
+
+    let mut ctx = Engine::new()
+        .run(staged)
+        .expect("seed inputs should promote")
+        .context;
 
     println!(
         "Context prepared with {} seeds and {} signals\n",
@@ -63,31 +68,31 @@ fn main() {
     );
 
     // Check if agent accepts this context
-    println!("Agent accepts context: {}", agent.accepts(&ctx));
+    println!("Suggestor accepts context: {}", agent.accepts(&ctx));
 
     // Execute the agent (this will fail gracefully without loaded model)
     println!("\nExecuting agent...");
     let effect = agent.execute(&ctx);
 
     // Examine the effect
-    println!("\nAgent produced {} fact(s):", effect.facts.len());
-    for fact in &effect.facts {
+    println!("\nSuggestor produced {} proposal(s):", effect.proposals.len());
+    for proposal in &effect.proposals {
         println!(
             "  [{:?}] {}: {}",
-            fact.key,
-            fact.id,
-            if fact.content.len() > 80 {
-                format!("{}...", &fact.content[..80])
+            proposal.key,
+            proposal.id,
+            if proposal.content.len() > 80 {
+                format!("{}...", &proposal.content[..80])
             } else {
-                fact.content.clone()
+                proposal.content.clone()
             }
         );
     }
 
     // Demonstrate that agent won't run twice (already has output)
-    let _ = ctx.add_fact(effect.facts.into_iter().next().unwrap());
+    let _ = ctx.add_proposal(effect.proposals.into_iter().next().unwrap());
     println!("\nAfter adding output to context:");
-    println!("Agent accepts context: {}", agent.accepts(&ctx));
+    println!("Suggestor accepts context: {}", agent.accepts(&ctx));
 
     println!("\n=== Example Complete ===");
     println!("\nNote: To run with actual inference, load model weights first.");

@@ -187,7 +187,7 @@ fn main() {
 
 fn build_failure_taxonomy(
     adv_report: &converge_llm::adversarial::AdversarialReport,
-    stress_report: &converge_llm::contract_stress::OutputStressReport,
+    _stress_report: &converge_llm::contract_stress::OutputStressReport,
 ) {
     println!("┌─────────────────────────────────────────────────────────────┐");
     println!("│ CATEGORY 1: STRUCTURAL FAILURES (Contract Rejects)         │");

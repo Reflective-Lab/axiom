@@ -1,7 +1,7 @@
 // Copyright 2024-2026 Reflective Labs
 
 use anyhow::{Result, anyhow};
-use converge_core::{Agent, AgentEffect, Context, ContextKey, Fact, ProposedFact};
+use converge_core::{Suggestor, AgentEffect, ContextKey, ProposedFact};
 use polars::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -89,7 +89,7 @@ impl FeatureAgent {
     }
 }
 
-impl Agent for FeatureAgent {
+impl Suggestor for FeatureAgent {
     fn name(&self) -> &str {
         "FeatureAgent (Polars)"
     }
@@ -109,10 +109,11 @@ impl Agent for FeatureAgent {
         let features = match self.compute_features() {
             Ok(f) => f,
             Err(e) => {
-                return AgentEffect::with_fact(Fact::new(
+                return AgentEffect::with_proposal(ProposedFact::new(
                     ContextKey::Diagnostic,
                     "feature-agent-error",
                     e.to_string(),
+                    self.name(),
                 ));
             }
         };

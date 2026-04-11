@@ -171,7 +171,7 @@ impl StreamingCallback for RuntimeStreamingCallback {
         let event = StreamingEvent::Fact {
             sequence: self.next_sequence(),
             cycle,
-            key: format!("{:?}", fact.key),
+            key: format!("{:?}", fact.key()),
             id: fact.id.clone(),
             content: fact.content.clone(),
             timestamp_ns: Self::now_ns(),
@@ -218,17 +218,26 @@ impl StreamingEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use converge_core::ContextKey;
+    use converge_core::{Context, ContextKey, Engine};
+
+    fn promoted_fact(key: ContextKey, id: &str, content: &str) -> Fact {
+        let mut ctx = Context::new();
+        let _ = ctx.add_input(key, id, content);
+        Engine::new()
+            .run(ctx)
+            .expect("should promote test input")
+            .context
+            .get(key)
+            .first()
+            .expect("promoted fact should exist")
+            .clone()
+    }
 
     #[tokio::test]
     async fn test_streaming_callback_emits_facts() {
         let (callback, mut receiver) = RuntimeStreamingCallback::channel(100);
 
-        let fact = Fact {
-            key: ContextKey::Seeds,
-            id: "test-fact".to_string(),
-            content: "Test content".to_string(),
-        };
+        let fact = promoted_fact(ContextKey::Seeds, "test-fact", "Test content");
 
         callback.on_fact(1, &fact);
 

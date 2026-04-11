@@ -4,27 +4,37 @@
 //! Converge execution engine.
 //!
 //! The engine owns convergence:
-//! - Registers agents and builds dependency index
+//! - Registers suggestors and builds dependency index
 //! - Runs the convergence loop
 //! - Merges effects serially
 //! - Detects fixed point
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use converge_pack::{
+    FactActor, FactActorKind, FactEvidenceRef, FactLocalTrace, FactPromotionRecord,
+    FactRemoteTrace, FactTraceLink, FactValidationSummary,
+};
 use strum::IntoEnumIterator;
 use tracing::{debug, info, info_span, warn};
 
-use crate::agent::{Agent, AgentId};
-use crate::context::{Context, ContextKey, Fact, ProposedFact};
+use crate::agent::{Suggestor, SuggestorId};
+use crate::context::{Context, ContextKey, Fact, ProposedFact, ValidationError};
 use crate::effect::AgentEffect;
 use crate::error::ConvergeError;
 use crate::experience_store::ExperienceEvent;
+use crate::gates::promotion::PromotionGate;
+use crate::gates::validation::{ValidationContext, ValidationPolicy};
 use crate::gates::StopReason;
 use crate::gates::hitl::{GateDecision, GateEvent, GateRequest, GateVerdict, TimeoutPolicy};
 use crate::invariant::{Invariant, InvariantError, InvariantId, InvariantRegistry};
 use crate::kernel_boundary::DecisionStep;
 use crate::truth::{CriterionEvaluator, CriterionOutcome, CriterionResult};
-use crate::types::TypesRootIntent;
+use crate::types::{
+    Actor, CaptureContext, ContentHash, Draft, EvidenceRef, GateId, LocalTrace, ObservationId,
+    ObservationProvenance, Proposal, ProposalId, ProposedContent, ProposedContentKind, TraceLink,
+    TypesRootIntent,
+};
 
 /// Callback trait for streaming fact emissions during convergence.
 ///
@@ -76,7 +86,7 @@ pub struct TypesRunHooks {
 
 /// Budget limits for execution.
 ///
-/// Guarantees termination even with misbehaving agents.
+/// Guarantees termination even with misbehaving suggestors.
 #[derive(Debug, Clone)]
 pub struct Budget {
     /// Maximum execution cycles before forced termination.
@@ -162,12 +172,12 @@ pub struct HitlPause {
     pub cycle: u32,
     /// The proposal awaiting approval.
     pub(crate) proposal: ProposedFact,
-    /// Agent ID that produced the proposal.
-    pub(crate) agent_id: AgentId,
+    /// Suggestor ID that produced the proposal.
+    pub(crate) agent_id: SuggestorId,
     /// Dirty keys from the cycle in progress.
     pub(crate) dirty_keys: Vec<ContextKey>,
     /// Remaining effects to merge after the paused proposal.
-    pub(crate) remaining_effects: Vec<(AgentId, AgentEffect)>,
+    pub(crate) remaining_effects: Vec<(SuggestorId, AgentEffect)>,
     /// Facts already added in the current merge pass.
     pub(crate) facts_added: usize,
     /// Audit trail of gate events.
@@ -185,17 +195,17 @@ pub enum RunResult {
 
 /// The Converge execution engine.
 ///
-/// Owns agent registration, dependency indexing, and the convergence loop.
+/// Owns suggestor registration, dependency indexing, and the convergence loop.
 pub struct Engine {
-    /// Registered agents in order of registration.
-    agents: Vec<Box<dyn Agent>>,
-    /// Optional pack ownership for registered agents.
+    /// Registered suggestors in order of registration.
+    agents: Vec<Box<dyn Suggestor>>,
+    /// Optional pack ownership for registered suggestors.
     agent_packs: Vec<Option<String>>,
-    /// Dependency index: `ContextKey` → `AgentId`s interested in that key.
-    index: HashMap<ContextKey, Vec<AgentId>>,
-    /// Agents with no dependencies (run on every cycle).
-    always_eligible: Vec<AgentId>,
-    /// Next agent ID to assign.
+    /// Dependency index: `ContextKey` → `SuggestorId`s interested in that key.
+    index: HashMap<ContextKey, Vec<SuggestorId>>,
+    /// Suggestors with no dependencies (run on every cycle).
+    always_eligible: Vec<SuggestorId>,
+    /// Next suggestor ID to assign.
     next_id: u32,
     /// Execution budget.
     budget: Budget,
@@ -330,9 +340,11 @@ impl Engine {
 
         if decision.is_approved() {
             // Promote the proposal
-            match Fact::try_from(pause.proposal) {
+            let promoted_by = format!("suggestor-{}", pause.agent_id.0);
+            match self.promote_pack_proposal(&pause.proposal, pause.cycle, &promoted_by) {
                 Ok(fact) => {
                     info!(gate_id = %decision.gate_id.as_str(), "HITL gate approved, promoting proposal");
+                    context.remove_proposal(pause.proposal.key, &pause.proposal.id);
                     if let Some(ref cb) = self.streaming_callback {
                         cb.on_fact(pause.cycle, &fact);
                     }
@@ -351,21 +363,22 @@ impl Engine {
             info!(gate_id = %decision.gate_id.as_str(), "HITL gate rejected, discarding proposal");
             // Track rejected proposal ID so re-proposals are auto-rejected.
             self.rejected_proposals.insert(pause.proposal.id.clone());
-            // Record rejection as a diagnostic fact so agents can observe it.
-            // Without this, agents that check !ctx.has(key) would re-propose
+            context.remove_proposal(pause.proposal.key, &pause.proposal.id);
+            // Record rejection as a diagnostic fact so suggestors can observe it.
+            // Without this, suggestors that check !ctx.has(key) would re-propose
             // the same fact indefinitely, triggering infinite HITL pauses.
             let reason = match &decision.verdict {
                 GateVerdict::Reject { reason } => reason.as_deref().unwrap_or("no reason provided"),
                 GateVerdict::Approve => "rejected",
             };
-            let diagnostic = Fact {
-                key: ContextKey::Diagnostic,
-                id: format!("hitl-rejected:{}", pause.proposal.id),
-                content: format!(
+            let diagnostic = crate::context::new_fact(
+                ContextKey::Diagnostic,
+                format!("hitl-rejected:{}", pause.proposal.id),
+                format!(
                     "HITL gate rejected proposal '{}' by {}: {}",
                     pause.proposal.id, decision.decided_by, reason
                 ),
-            };
+            );
             let _ = context.add_fact(diagnostic);
             facts_added += 1;
         }
@@ -413,37 +426,37 @@ impl Engine {
         id
     }
 
-    /// Registers an agent and returns its ID.
+    /// Registers a suggestor and returns its ID.
     ///
-    /// Agents are assigned monotonically increasing IDs.
+    /// Suggestors are assigned monotonically increasing IDs.
     /// The dependency index is updated incrementally.
-    pub fn register(&mut self, agent: impl Agent + 'static) -> AgentId {
-        self.register_internal(None, agent)
+    pub fn register_suggestor(&mut self, suggestor: impl Suggestor + 'static) -> SuggestorId {
+        self.register_internal(None, suggestor)
     }
 
-    /// Registers an agent as part of a named pack.
+    /// Registers a suggestor as part of a named pack.
     ///
     /// Pack ownership is used by [`run_with_types_intent`](Self::run_with_types_intent)
     /// and [`set_active_packs`](Self::set_active_packs) to constrain which
-    /// agents may participate in a run.
-    pub fn register_in_pack(
+    /// suggestors may participate in a run.
+    pub fn register_suggestor_in_pack(
         &mut self,
         pack_id: impl Into<String>,
-        agent: impl Agent + 'static,
-    ) -> AgentId {
-        self.register_internal(Some(pack_id.into()), agent)
+        suggestor: impl Suggestor + 'static,
+    ) -> SuggestorId {
+        self.register_internal(Some(pack_id.into()), suggestor)
     }
 
     fn register_internal(
         &mut self,
         pack_id: Option<String>,
-        agent: impl Agent + 'static,
-    ) -> AgentId {
-        let id = AgentId(self.next_id);
+        suggestor: impl Suggestor + 'static,
+    ) -> SuggestorId {
+        let id = SuggestorId(self.next_id);
         self.next_id += 1;
 
-        let name = agent.name().to_string();
-        let deps: Vec<ContextKey> = agent.dependencies().to_vec();
+        let name = suggestor.name().to_string();
+        let deps: Vec<ContextKey> = suggestor.dependencies().to_vec();
 
         // Update dependency index
         if deps.is_empty() {
@@ -455,15 +468,15 @@ impl Engine {
             }
         }
 
-        self.agents.push(Box::new(agent));
+        self.agents.push(Box::new(suggestor));
         self.agent_packs.push(pack_id.clone());
-        debug!(agent = %name, ?id, ?deps, ?pack_id, "Registered agent");
+        debug!(suggestor = %name, ?id, ?deps, ?pack_id, "Registered suggestor");
         id
     }
 
-    /// Returns the number of registered agents.
+    /// Returns the number of registered suggestors.
     #[must_use]
-    pub fn agent_count(&self) -> usize {
+    pub fn suggestor_count(&self) -> usize {
         self.agents.len()
     }
 
@@ -532,8 +545,8 @@ impl Engine {
     ///
     /// repeat:
     ///   clear dirty flags
-    ///   find eligible agents (dirty deps + accepts)
-    ///   execute eligible agents (parallel read)
+    ///   find eligible suggestors (dirty deps + accepts)
+    ///   execute eligible suggestors (parallel read)
     ///   merge effects (serial, deterministic order)
     ///   track which keys changed
     /// until no keys changed OR budget exhausted
@@ -556,9 +569,18 @@ impl Engine {
         let _span = info_span!("engine_run").entered();
         let mut cycles: u32 = 0;
 
+        if context.has_pending_proposals() {
+            context.clear_dirty();
+            self.promote_pending_context_proposals(&mut context, 0, event_observer)?;
+        }
+
         // First cycle: we treat all existing keys in the context as "dirty"
-        // to ensure that dependency-indexed agents are triggered by initial data.
-        let mut dirty_keys: Vec<ContextKey> = context.all_keys();
+        // to ensure that dependency-indexed suggestors are triggered by initial data.
+        let mut dirty_keys: Vec<ContextKey> = if context.dirty_keys().is_empty() {
+            context.all_keys()
+        } else {
+            context.dirty_keys().to_vec()
+        };
 
         loop {
             cycles += 1;
@@ -577,21 +599,21 @@ impl Engine {
                 });
             }
 
-            // Find eligible agents
+            // Find eligible suggestors
             let eligible = {
                 let _span = info_span!("eligible_agents").entered();
                 let e = self.find_eligible(&context, &dirty_keys);
-                info!(count = e.len(), "Found eligible agents");
+                info!(count = e.len(), "Found eligible suggestors");
                 e
             };
 
             if eligible.is_empty() {
-                info!("No more eligible agents. Convergence reached.");
+                info!("No more eligible suggestors. Convergence reached.");
                 // Emit cycle end callback (0 facts added)
                 if let Some(ref cb) = self.streaming_callback {
                     cb.on_cycle_end(cycles, 0);
                 }
-                // No agents want to run — check acceptance invariants before declaring convergence
+                // No suggestors want to run — check acceptance invariants before declaring convergence
                 if let Err(e) = self.invariants.check_acceptance(&context) {
                     self.emit_diagnostic(&mut context, &e);
                     return Err(ConvergeError::InvariantViolation {
@@ -611,16 +633,16 @@ impl Engine {
                 });
             }
 
-            // Execute eligible agents and collect effects
+            // Execute eligible suggestors and collect effects
             let effects = {
                 let _span = info_span!("execute_agents", count = eligible.len()).entered();
                 #[allow(deprecated)]
                 let eff = self.execute_agents(&context, &eligible);
-                info!(count = eff.len(), "Executed agents");
+                info!(count = eff.len(), "Executed suggestors");
                 eff
             };
 
-            // Merge effects serially (deterministic order by AgentId)
+            // Merge effects serially (deterministic order by SuggestorId)
             let (new_dirty_keys, facts_added) = {
                 let _span = info_span!("merge_effects", count = effects.len()).entered();
                 let (d, count) =
@@ -691,25 +713,25 @@ impl Engine {
         }
     }
 
-    /// Finds agents eligible to run based on dirty keys and `accepts()`.
-    fn find_eligible(&self, context: &Context, dirty_keys: &[ContextKey]) -> Vec<AgentId> {
-        let mut candidates: HashSet<AgentId> = HashSet::new();
+    /// Finds suggestors eligible to run based on dirty keys and `accepts()`.
+    fn find_eligible(&self, context: &Context, dirty_keys: &[ContextKey]) -> Vec<SuggestorId> {
+        let mut candidates: HashSet<SuggestorId> = HashSet::new();
 
         // Unique dirty keys to avoid redundant lookups
         let unique_dirty: HashSet<&ContextKey> = dirty_keys.iter().collect();
 
-        // Agents whose dependencies intersect with dirty keys
+        // Suggestors whose dependencies intersect with dirty keys
         for key in unique_dirty {
             if let Some(ids) = self.index.get(key) {
                 candidates.extend(ids);
             }
         }
 
-        // Agents with no dependencies (always considered)
+        // Suggestors with no dependencies (always considered)
         candidates.extend(&self.always_eligible);
 
         // Filter by accepts()
-        let mut eligible: Vec<AgentId> = candidates
+        let mut eligible: Vec<SuggestorId> = candidates
             .into_iter()
             .filter(|&id| {
                 let agent = &self.agents[id.0 as usize];
@@ -722,7 +744,7 @@ impl Engine {
         eligible
     }
 
-    fn is_agent_active_for_pack(&self, id: AgentId) -> bool {
+    fn is_agent_active_for_pack(&self, id: SuggestorId) -> bool {
         match &self.active_packs {
             None => true,
             Some(active_packs) => self.agent_packs[id.0 as usize]
@@ -731,7 +753,7 @@ impl Engine {
         }
     }
 
-    /// Executes agents sequentially and collects their effects.
+    /// Executes suggestors sequentially and collects their effects.
     ///
     /// # Deprecation Notice
     ///
@@ -745,8 +767,8 @@ impl Engine {
     fn execute_agents(
         &self,
         context: &Context,
-        eligible: &[AgentId],
-    ) -> Vec<(AgentId, AgentEffect)> {
+        eligible: &[SuggestorId],
+    ) -> Vec<(SuggestorId, AgentEffect)> {
         eligible
             .iter()
             .map(|&id| {
@@ -757,51 +779,223 @@ impl Engine {
             .collect()
     }
 
+    fn proposal_kind_for(&self, key: ContextKey) -> ProposedContentKind {
+        match key {
+            ContextKey::Strategies => ProposedContentKind::Plan,
+            ContextKey::Evaluations => ProposedContentKind::Evaluation,
+            ContextKey::Competitors | ContextKey::Constraints => ProposedContentKind::Classification,
+            ContextKey::Proposals => ProposedContentKind::Draft,
+            ContextKey::Seeds
+            | ContextKey::Hypotheses
+            | ContextKey::Signals
+            | ContextKey::Diagnostic => ProposedContentKind::Claim,
+        }
+    }
+
+    fn validate_pack_proposal(&self, proposal: &ProposedFact) -> Result<(), ValidationError> {
+        if proposal.content.trim().is_empty() {
+            return Err(ValidationError {
+                reason: "content cannot be empty".to_string(),
+            });
+        }
+
+        if !proposal.confidence.is_finite() || !(0.0..=1.0).contains(&proposal.confidence) {
+            return Err(ValidationError {
+                reason: "confidence must be a finite number between 0.0 and 1.0".to_string(),
+            });
+        }
+
+        Ok(())
+    }
+
+    fn pack_actor_kind(kind: crate::types::ActorKind) -> FactActorKind {
+        match kind {
+            crate::types::ActorKind::Human => FactActorKind::Human,
+            crate::types::ActorKind::Suggestor => FactActorKind::Suggestor,
+            crate::types::ActorKind::System => FactActorKind::System,
+        }
+    }
+
+    fn pack_actor(actor: &crate::types::Actor) -> FactActor {
+        FactActor::new(actor.id.clone(), Self::pack_actor_kind(actor.kind))
+    }
+
+    fn pack_validation_summary(summary: &crate::types::ValidationSummary) -> FactValidationSummary {
+        FactValidationSummary::new(
+            summary.checks_passed.clone(),
+            summary.checks_skipped.clone(),
+            summary.warnings.clone(),
+        )
+    }
+
+    fn pack_evidence_ref(evidence: &crate::types::EvidenceRef) -> FactEvidenceRef {
+        match evidence {
+            crate::types::EvidenceRef::Observation(id) => {
+                FactEvidenceRef::Observation(id.as_str().to_string())
+            }
+            crate::types::EvidenceRef::HumanApproval(id) => {
+                FactEvidenceRef::HumanApproval(id.as_str().to_string())
+            }
+            crate::types::EvidenceRef::Derived(id) => {
+                FactEvidenceRef::Derived(id.as_str().to_string())
+            }
+        }
+    }
+
+    fn pack_trace_link(trace_link: &crate::types::TraceLink) -> FactTraceLink {
+        match trace_link {
+            crate::types::TraceLink::Local(local) => FactTraceLink::Local(FactLocalTrace::new(
+                local.trace_id.clone(),
+                local.span_id.clone(),
+                local.parent_span_id.clone(),
+                local.sampled,
+            )),
+            crate::types::TraceLink::Remote(remote) => {
+                FactTraceLink::Remote(FactRemoteTrace::new(
+                    remote.system.clone(),
+                    remote.reference.clone(),
+                    remote.retrieval_auth.clone(),
+                    remote.retention_hint.clone(),
+                ))
+            }
+        }
+    }
+
+    fn pack_promotion_record(record: &crate::types::PromotionRecord) -> FactPromotionRecord {
+        FactPromotionRecord::new(
+            record.gate_id.as_str(),
+            record.policy_version_hash.to_hex(),
+            Self::pack_actor(&record.approver),
+            Self::pack_validation_summary(&record.validation_summary),
+            record
+                .evidence_refs
+                .iter()
+                .map(Self::pack_evidence_ref)
+                .collect(),
+            Self::pack_trace_link(&record.trace_link),
+            record.promoted_at.as_str(),
+        )
+    }
+
+    fn promote_pack_proposal(
+        &self,
+        proposal: &ProposedFact,
+        cycle: u32,
+        promoted_by: &str,
+    ) -> Result<Fact, ValidationError> {
+        self.validate_pack_proposal(proposal)?;
+
+        let provenance = ObservationProvenance::new(
+            ObservationId::new(format!("obs:{}", proposal.id)),
+            ContentHash::zero(),
+            CaptureContext::new()
+                .with_env("proposal_provenance", proposal.provenance.clone())
+                .with_correlation_id(proposal.id.clone()),
+        );
+
+        let draft = Proposal::<Draft>::new(
+            ProposalId::new(&proposal.id),
+            ProposedContent::new(self.proposal_kind_for(proposal.key), proposal.content.clone())
+                .with_confidence(proposal.confidence as f32),
+            provenance,
+        );
+
+        let gate = PromotionGate::new(GateId::new("engine-promotion"), ValidationPolicy::new());
+        let validated = gate
+            .validate_proposal(draft, &ValidationContext::default())
+            .map_err(|error| ValidationError {
+                reason: error.to_string(),
+            })?;
+        let governed = gate
+            .promote_to_fact(
+                validated,
+                Actor::system("converge-engine"),
+                vec![EvidenceRef::observation(ObservationId::new(format!(
+                    "obs:{}",
+                    proposal.id
+                )))],
+                TraceLink::local(LocalTrace::new(
+                    format!("cycle-{cycle}"),
+                    promoted_by.to_string(),
+                )),
+            )
+            .map_err(|error| ValidationError {
+                reason: error.to_string(),
+            })?;
+
+        Ok(crate::context::new_fact_with_promotion(
+            proposal.key,
+            proposal.id.clone(),
+            governed.content().content.clone(),
+            Self::pack_promotion_record(governed.promotion_record()),
+            governed.created_at().as_str(),
+        ))
+    }
+
+    fn promote_pending_context_proposals(
+        &self,
+        context: &mut Context,
+        cycle: u32,
+        event_observer: Option<&Arc<dyn ExperienceEventObserver>>,
+    ) -> Result<usize, ConvergeError> {
+        let proposals = context.drain_proposals();
+        let mut facts_added = 0usize;
+
+        for proposal in proposals {
+            match self.promote_pack_proposal(&proposal, cycle, "context-input") {
+                Ok(fact) => {
+                    emit_experience_event(
+                        event_observer,
+                        ExperienceEvent::FactPromoted {
+                            proposal_id: proposal.id.clone(),
+                            fact_id: fact.id.clone(),
+                            promoted_by: "context-input".to_string(),
+                            reason: "staged context input promoted".to_string(),
+                            requires_human: false,
+                        },
+                    );
+                    if let Some(ref cb) = self.streaming_callback {
+                        cb.on_fact(cycle, &fact);
+                    }
+                    context.add_fact(fact)?;
+                    facts_added += 1;
+                }
+                Err(error) => {
+                    info!(
+                        proposal_id = %proposal.id,
+                        reason = %error,
+                        "Staged context proposal rejected"
+                    );
+                }
+            }
+        }
+
+        Ok(facts_added)
+    }
+
     /// Merges effects into context in deterministic order.
     ///
     /// Returns a tuple of (dirty keys for next cycle, count of facts added).
     fn merge_effects(
         &self,
         context: &mut Context,
-        mut effects: Vec<(AgentId, AgentEffect)>,
+        mut effects: Vec<(SuggestorId, AgentEffect)>,
         cycle: u32,
         event_observer: Option<&Arc<dyn ExperienceEventObserver>>,
     ) -> Result<(Vec<ContextKey>, usize), ConvergeError> {
-        // Sort by AgentId for deterministic ordering (DECISIONS.md §1)
+        // Sort by SuggestorId for deterministic ordering (DECISIONS.md §1)
         effects.sort_by_key(|(id, _)| *id);
 
         context.clear_dirty();
         let mut facts_added = 0usize;
 
         for (id, effect) in effects {
-            // 1. Process explicit facts
-            for fact in effect.facts {
-                // Emit streaming callback before adding (so we have the fact data)
-                if let Some(ref cb) = self.streaming_callback {
-                    cb.on_fact(cycle, &fact);
-                }
-                if let Err(e) = context.add_fact(fact) {
-                    return match e {
-                        ConvergeError::Conflict {
-                            id, existing, new, ..
-                        } => Err(ConvergeError::Conflict {
-                            id,
-                            existing,
-                            new,
-                            context: Box::new(context.clone()),
-                        }),
-                        _ => Err(e),
-                    };
-                }
-                facts_added += 1;
-            }
-
-            // 2. Process proposals (Validation & Promotion)
+            let promoted_by = format!("agent-{}", id.0);
             for proposal in effect.proposals {
                 let proposal_id = proposal.id.clone();
                 let _span =
                     info_span!("validate_proposal", agent = %id, proposal = %proposal_id).entered();
-                match Fact::try_from(proposal) {
+                match self.promote_pack_proposal(&proposal, cycle, &promoted_by) {
                     Ok(fact) => {
                         info!(agent = %id, fact = %fact.id, "Proposal promoted to fact");
                         emit_experience_event(
@@ -809,8 +1003,9 @@ impl Engine {
                             ExperienceEvent::FactPromoted {
                                 proposal_id,
                                 fact_id: fact.id.clone(),
-                                promoted_by: format!("agent-{}", id.0),
-                                reason: "proposal validated in engine merge".to_string(),
+                                promoted_by: promoted_by.clone(),
+                                reason: "proposal validated and promoted in engine merge"
+                                    .to_string(),
                                 requires_human: false,
                             },
                         );
@@ -856,14 +1051,14 @@ impl Engine {
     /// Emits a diagnostic fact to the context.
     fn emit_diagnostic(&self, context: &mut Context, err: &InvariantError) {
         let _ = self; // May use engine state in future (e.g., for diagnostic IDs)
-        let fact = Fact {
-            key: ContextKey::Diagnostic,
-            id: format!("violation:{}:{}", err.invariant_name, context.version()),
-            content: format!(
+        let fact = crate::context::new_fact(
+            ContextKey::Diagnostic,
+            format!("violation:{}:{}", err.invariant_name, context.version()),
+            format!(
                 "{:?} invariant '{}' violated: {}",
                 err.class, err.invariant_name, err.violation.reason
             ),
-        };
+        );
         let _ = context.add_fact(fact);
     }
 
@@ -871,7 +1066,17 @@ impl Engine {
     fn run_inner(&mut self, mut context: Context) -> RunResult {
         let _span = info_span!("engine_run_hitl").entered();
         let mut cycles: u32 = 0;
-        let mut dirty_keys: Vec<ContextKey> = context.all_keys();
+        if context.has_pending_proposals() {
+            context.clear_dirty();
+            if let Err(e) = self.promote_pending_context_proposals(&mut context, 0, None) {
+                return RunResult::Complete(Err(e));
+            }
+        }
+        let mut dirty_keys: Vec<ContextKey> = if context.dirty_keys().is_empty() {
+            context.all_keys()
+        } else {
+            context.dirty_keys().to_vec()
+        };
 
         loop {
             cycles += 1;
@@ -995,6 +1200,14 @@ impl Engine {
         from_cycle: u32,
         dirty_keys: Vec<ContextKey>,
     ) -> RunResult {
+        if context.has_pending_proposals() {
+            context.clear_dirty();
+            if let Err(e) = self.promote_pending_context_proposals(&mut context, from_cycle, None)
+            {
+                return RunResult::Complete(Err(e));
+            }
+        }
+
         // Check structural invariants from the completed cycle
         if let Err(e) = self.invariants.check_structural(&context) {
             self.emit_diagnostic(&mut context, &e);
@@ -1154,7 +1367,7 @@ impl Engine {
     fn merge_effects_hitl(
         &self,
         context: &mut Context,
-        mut effects: Vec<(AgentId, AgentEffect)>,
+        mut effects: Vec<(SuggestorId, AgentEffect)>,
         cycle: u32,
     ) -> MergeResult {
         effects.sort_by_key(|(id, _)| *id);
@@ -1164,30 +1377,6 @@ impl Engine {
 
         while idx < effects.len() {
             let (id, ref mut effect) = effects[idx];
-
-            // Process explicit facts
-            for fact in std::mem::take(&mut effect.facts) {
-                if let Some(ref cb) = self.streaming_callback {
-                    cb.on_fact(cycle, &fact);
-                }
-                if let Err(e) = context.add_fact(fact) {
-                    return MergeResult::Complete(match e {
-                        ConvergeError::Conflict {
-                            id: cid,
-                            existing,
-                            new,
-                            ..
-                        } => Err(ConvergeError::Conflict {
-                            id: cid,
-                            existing,
-                            new,
-                            context: Box::new(context.clone()),
-                        }),
-                        _ => Err(e),
-                    });
-                }
-                facts_added += 1;
-            }
 
             // Process proposals with HITL check
             let proposals = std::mem::take(&mut effect.proposals);
@@ -1232,8 +1421,10 @@ impl Engine {
                             gate_request.agent_id.clone(),
                         );
 
+                        let _ = context.add_proposal(proposal.clone());
+
                         // Collect remaining unmerged effects (after current index)
-                        let remaining: Vec<(AgentId, AgentEffect)> = effects.split_off(idx + 1);
+                        let remaining: Vec<(SuggestorId, AgentEffect)> = effects.split_off(idx + 1);
 
                         return MergeResult::HitlPause(Box::new(HitlPause {
                             request: gate_request,
@@ -1252,7 +1443,8 @@ impl Engine {
                 // Normal promotion path
                 let _span =
                     info_span!("validate_proposal", agent = %id, proposal = %proposal.id).entered();
-                match Fact::try_from(proposal) {
+                let promoted_by = format!("agent-{}", id.0);
+                match self.promote_pack_proposal(&proposal, cycle, &promoted_by) {
                     Ok(fact) => {
                         info!(agent = %id, fact = %fact.id, "Proposal promoted to fact");
                         if let Some(ref cb) = self.streaming_callback {
@@ -1292,23 +1484,16 @@ impl Engine {
     fn merge_remaining(
         &self,
         context: &mut Context,
-        effects: Vec<(AgentId, AgentEffect)>,
+        effects: Vec<(SuggestorId, AgentEffect)>,
         cycle: u32,
         initial_facts: usize,
     ) -> Result<(Vec<ContextKey>, usize), ConvergeError> {
         let mut facts_added = initial_facts;
 
         for (id, effect) in effects {
-            for fact in effect.facts {
-                if let Some(ref cb) = self.streaming_callback {
-                    cb.on_fact(cycle, &fact);
-                }
-                context.add_fact(fact)?;
-                facts_added += 1;
-            }
-
             for proposal in effect.proposals {
-                match Fact::try_from(proposal) {
+                let promoted_by = format!("agent-{}", id.0);
+                match self.promote_pack_proposal(&proposal, cycle, &promoted_by) {
                     Ok(fact) => {
                         if let Some(ref cb) = self.streaming_callback {
                             cb.on_fact(cycle, &fact);
@@ -1483,30 +1668,39 @@ fn stop_reason_label(stop_reason: &StopReason) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::context::{Fact, ProposedFact};
+    use crate::context::ProposedFact;
     use crate::truth::{CriterionEvaluator, CriterionResult};
     use crate::{Criterion, TypesBudgets, TypesIntentId, TypesIntentKind, TypesRootIntent};
     use std::sync::Mutex;
     use strum::IntoEnumIterator;
     use tracing_test::traced_test;
 
+    fn proposal(
+        key: ContextKey,
+        id: impl Into<String>,
+        content: impl Into<String>,
+        provenance: impl Into<String>,
+    ) -> ProposedFact {
+        ProposedFact::new(key, id, content, provenance)
+    }
+
     #[test]
     #[traced_test]
     fn engine_emits_tracing_logs() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent);
+        engine.register_suggestor(SeedSuggestor);
         let _ = engine.run(Context::new()).unwrap();
 
         assert!(logs_contain("Starting convergence cycle"));
-        assert!(logs_contain("Found eligible agents"));
+        assert!(logs_contain("Found eligible suggestors"));
     }
 
-    /// Agent that emits a seed fact once.
-    struct SeedAgent;
+    /// Suggestor that emits a seed fact once.
+    struct SeedSuggestor;
 
-    impl Agent for SeedAgent {
+    impl Suggestor for SeedSuggestor {
         fn name(&self) -> &'static str {
-            "SeedAgent"
+            "SeedSuggestor"
         }
 
         fn dependencies(&self) -> &[ContextKey] {
@@ -1518,20 +1712,21 @@ mod tests {
         }
 
         fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
-            AgentEffect::with_fact(Fact {
-                key: ContextKey::Seeds,
-                id: "seed-1".into(),
-                content: "initial seed".into(),
-            })
+            AgentEffect::with_proposal(proposal(
+                ContextKey::Seeds,
+                "seed-1",
+                "initial seed",
+                self.name(),
+            ))
         }
     }
 
-    /// Agent that reacts to seeds once.
-    struct ReactOnceAgent;
+    /// Suggestor that reacts to seeds once.
+    struct ReactOnceSuggestor;
 
-    impl Agent for ReactOnceAgent {
+    impl Suggestor for ReactOnceSuggestor {
         fn name(&self) -> &'static str {
-            "ReactOnceAgent"
+            "ReactOnceSuggestor"
         }
 
         fn dependencies(&self) -> &[ContextKey] {
@@ -1543,17 +1738,18 @@ mod tests {
         }
 
         fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
-            AgentEffect::with_fact(Fact {
-                key: ContextKey::Hypotheses,
-                id: "hyp-1".into(),
-                content: "derived from seed".into(),
-            })
+            AgentEffect::with_proposal(proposal(
+                ContextKey::Hypotheses,
+                "hyp-1",
+                "derived from seed",
+                self.name(),
+            ))
         }
     }
 
     struct ProposalSeedAgent;
 
-    impl Agent for ProposalSeedAgent {
+    impl Suggestor for ProposalSeedAgent {
         fn name(&self) -> &str {
             "ProposalSeedAgent"
         }
@@ -1620,7 +1816,7 @@ mod tests {
     #[test]
     fn engine_converges_with_single_agent() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent);
+        engine.register_suggestor(SeedSuggestor);
 
         let result = engine.run(Context::new()).expect("should converge");
 
@@ -1632,8 +1828,8 @@ mod tests {
     #[test]
     fn engine_converges_with_chain() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent);
-        engine.register(ReactOnceAgent);
+        engine.register_suggestor(SeedSuggestor);
+        engine.register_suggestor(ReactOnceSuggestor);
 
         let result = engine.run(Context::new()).expect("should converge");
 
@@ -1646,8 +1842,8 @@ mod tests {
     fn engine_converges_deterministically() {
         let run = || {
             let mut engine = Engine::new();
-            engine.register(SeedAgent);
-            engine.register(ReactOnceAgent);
+            engine.register_suggestor(SeedSuggestor);
+            engine.register_suggestor(ReactOnceSuggestor);
             engine.run(Context::new()).expect("should converge")
         };
 
@@ -1668,7 +1864,7 @@ mod tests {
     #[test]
     fn typed_intent_run_evaluates_success_criteria() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent);
+        engine.register_suggestor(SeedSuggestor);
 
         let intent = TypesRootIntent::builder()
             .id(TypesIntentId::new("truth:test-seed"))
@@ -1700,7 +1896,7 @@ mod tests {
     #[test]
     fn typed_intent_run_emits_fact_and_outcome_events() {
         let mut engine = Engine::new();
-        engine.register(ProposalSeedAgent);
+        engine.register_suggestor(ProposalSeedAgent);
 
         let intent = TypesRootIntent::builder()
             .id(TypesIntentId::new("truth:event-test"))
@@ -1738,7 +1934,7 @@ mod tests {
     #[test]
     fn typed_intent_run_surfaces_human_intervention_required() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent);
+        engine.register_suggestor(SeedSuggestor);
 
         let intent = TypesRootIntent::builder()
             .id(TypesIntentId::new("truth:blocked-test"))
@@ -1776,12 +1972,12 @@ mod tests {
     fn engine_respects_cycle_budget() {
         use std::sync::atomic::{AtomicU32, Ordering};
 
-        /// Agent that always wants to run (would loop forever).
+        /// Suggestor that always wants to run (would loop forever).
         struct InfiniteAgent {
             counter: AtomicU32,
         }
 
-        impl Agent for InfiniteAgent {
+        impl Suggestor for InfiniteAgent {
             fn name(&self) -> &'static str {
                 "InfiniteAgent"
             }
@@ -1796,11 +1992,12 @@ mod tests {
 
             fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
                 let n = self.counter.fetch_add(1, Ordering::SeqCst);
-                AgentEffect::with_fact(Fact {
-                    key: ContextKey::Seeds,
-                    id: format!("inf-{n}"),
-                    content: "infinite".into(),
-                })
+                AgentEffect::with_proposal(proposal(
+                    ContextKey::Seeds,
+                    format!("inf-{n}"),
+                    "infinite",
+                    self.name(),
+                ))
             }
         }
 
@@ -1808,7 +2005,7 @@ mod tests {
             max_cycles: 5,
             max_facts: 1000,
         });
-        engine.register(InfiniteAgent {
+        engine.register_suggestor(InfiniteAgent {
             counter: AtomicU32::new(0),
         });
 
@@ -1821,10 +2018,10 @@ mod tests {
 
     #[test]
     fn engine_respects_fact_budget() {
-        /// Agent that emits many facts.
+        /// Suggestor that emits many facts.
         struct FloodAgent;
 
-        impl Agent for FloodAgent {
+        impl Suggestor for FloodAgent {
             fn name(&self) -> &'static str {
                 "FloodAgent"
             }
@@ -1839,13 +2036,9 @@ mod tests {
 
             fn execute(&self, ctx: &dyn crate::ContextView) -> AgentEffect {
                 let n = ctx.get(ContextKey::Seeds).len();
-                AgentEffect::with_facts(
+                AgentEffect::with_proposals(
                     (0..10)
-                        .map(|i| Fact {
-                            key: ContextKey::Seeds,
-                            id: format!("flood-{n}-{i}"),
-                            content: "flood".into(),
-                        })
+                        .map(|i| proposal(ContextKey::Seeds, format!("flood-{n}-{i}"), "flood", self.name()))
                         .collect(),
                 )
             }
@@ -1855,7 +2048,7 @@ mod tests {
             max_cycles: 100,
             max_facts: 25,
         });
-        engine.register(FloodAgent);
+        engine.register_suggestor(FloodAgent);
 
         let result = engine.run(Context::new());
 
@@ -1866,10 +2059,10 @@ mod tests {
 
     #[test]
     fn dependency_index_filters_agents() {
-        /// Agent that only cares about Strategies.
+        /// Suggestor that only cares about Strategies.
         struct StrategyAgent;
 
-        impl Agent for StrategyAgent {
+        impl Suggestor for StrategyAgent {
             fn name(&self) -> &'static str {
                 "StrategyAgent"
             }
@@ -1883,30 +2076,31 @@ mod tests {
             }
 
             fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
-                AgentEffect::with_fact(Fact {
-                    key: ContextKey::Constraints,
-                    id: "constraint-1".into(),
-                    content: "from strategy".into(),
-                })
+                AgentEffect::with_proposal(proposal(
+                    ContextKey::Constraints,
+                    "constraint-1",
+                    "from strategy",
+                    self.name(),
+                ))
             }
         }
 
         let mut engine = Engine::new();
-        engine.register(SeedAgent); // Emits to Seeds
-        engine.register(StrategyAgent); // Only watches Strategies
+        engine.register_suggestor(SeedSuggestor); // Emits to Seeds
+        engine.register_suggestor(StrategyAgent); // Only watches Strategies
 
         let result = engine.run(Context::new()).expect("should converge");
 
-        // SeedAgent runs, but StrategyAgent never runs because
+        // SeedSuggestor runs, but StrategyAgent never runs because
         // Seeds changed, not Strategies
         assert!(result.context.has(ContextKey::Seeds));
         assert!(!result.context.has(ContextKey::Constraints));
     }
 
-    /// Agent used to probe dependency scheduling.
+    /// Suggestor used to probe dependency scheduling.
     struct AlwaysAgent;
 
-    impl Agent for AlwaysAgent {
+    impl Suggestor for AlwaysAgent {
         fn name(&self) -> &'static str {
             "AlwaysAgent"
         }
@@ -1924,10 +2118,10 @@ mod tests {
         }
     }
 
-    /// Agent that depends on Seeds regardless of their values.
+    /// Suggestor that depends on Seeds regardless of their values.
     struct SeedWatcher;
 
-    impl Agent for SeedWatcher {
+    impl Suggestor for SeedWatcher {
         fn name(&self) -> &'static str {
             "SeedWatcher"
         }
@@ -1948,8 +2142,8 @@ mod tests {
     #[test]
     fn find_eligible_respects_dirty_keys() {
         let mut engine = Engine::new();
-        let always_id = engine.register(AlwaysAgent);
-        let watcher_id = engine.register(SeedWatcher);
+        let always_id = engine.register_suggestor(AlwaysAgent);
+        let watcher_id = engine.register_suggestor(SeedWatcher);
         let ctx = Context::new();
 
         let eligible = engine.find_eligible(&ctx, &[]);
@@ -1959,10 +2153,10 @@ mod tests {
         assert_eq!(eligible, vec![always_id, watcher_id]);
     }
 
-    /// Agent that depends on multiple keys, used to assert dedup.
+    /// Suggestor that depends on multiple keys, used to assert dedup.
     struct MultiDepAgent;
 
-    impl Agent for MultiDepAgent {
+    impl Suggestor for MultiDepAgent {
         fn name(&self) -> &'static str {
             "MultiDepAgent"
         }
@@ -1983,7 +2177,7 @@ mod tests {
     #[test]
     fn find_eligible_deduplicates_agents() {
         let mut engine = Engine::new();
-        let multi_id = engine.register(MultiDepAgent);
+        let multi_id = engine.register_suggestor(MultiDepAgent);
         let ctx = Context::new();
 
         let eligible = engine.find_eligible(&ctx, &[ContextKey::Seeds, ContextKey::Hypotheses]);
@@ -1993,22 +2187,22 @@ mod tests {
     #[test]
     fn find_eligible_respects_active_pack_filter() {
         let mut engine = Engine::new();
-        let pack_a_id = engine.register_in_pack("pack-a", AlwaysAgent);
-        let _pack_b_id = engine.register_in_pack("pack-b", AlwaysAgent);
-        let global_id = engine.register(AlwaysAgent);
+        let pack_a_id = engine.register_suggestor_in_pack("pack-a", AlwaysAgent);
+        let _pack_b_id = engine.register_suggestor_in_pack("pack-b", AlwaysAgent);
+        let global_id = engine.register_suggestor(AlwaysAgent);
         engine.set_active_packs(["pack-a"]);
 
         let eligible = engine.find_eligible(&Context::new(), &[]);
         assert_eq!(eligible, vec![pack_a_id, global_id]);
     }
 
-    /// Agent with static fact output used for merge ordering tests.
+    /// Suggestor with static fact output used for merge ordering tests.
     struct NamedAgent {
         name: &'static str,
         fact_id: &'static str,
     }
 
-    impl Agent for NamedAgent {
+    impl Suggestor for NamedAgent {
         fn name(&self) -> &str {
             self.name
         }
@@ -2022,37 +2216,30 @@ mod tests {
         }
 
         fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
-            AgentEffect::with_fact(Fact {
-                key: ContextKey::Seeds,
-                id: self.fact_id.into(),
-                content: format!("emitted-by-{}", self.name),
-            })
+            AgentEffect::with_proposal(proposal(
+                ContextKey::Seeds,
+                self.fact_id,
+                format!("emitted-by-{}", self.name),
+                self.name(),
+            ))
         }
     }
 
     #[test]
     fn merge_effects_respect_agent_ordering() {
         let mut engine = Engine::new();
-        let id_a = engine.register(NamedAgent {
+        let id_a = engine.register_suggestor(NamedAgent {
             name: "AgentA",
             fact_id: "a",
         });
-        let id_b = engine.register(NamedAgent {
+        let id_b = engine.register_suggestor(NamedAgent {
             name: "AgentB",
             fact_id: "b",
         });
         let mut context = Context::new();
 
-        let effect_a = AgentEffect::with_fact(Fact {
-            key: ContextKey::Seeds,
-            id: "a".into(),
-            content: "first".into(),
-        });
-        let effect_b = AgentEffect::with_fact(Fact {
-            key: ContextKey::Seeds,
-            id: "b".into(),
-            content: "second".into(),
-        });
+        let effect_a = AgentEffect::with_proposal(proposal(ContextKey::Seeds, "a", "first", "AgentA"));
+        let effect_b = AgentEffect::with_proposal(proposal(ContextKey::Seeds, "b", "second", "AgentB"));
 
         // Intentionally feed merge_effects in reverse order.
         let (dirty, facts_added) = engine
@@ -2156,9 +2343,9 @@ mod tests {
     #[test]
     fn structural_invariant_fails_immediately() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent);
+        engine.register_suggestor(SeedSuggestor);
         engine.register_invariant(ForbidContent {
-            forbidden: "initial", // SeedAgent emits "initial seed"
+            forbidden: "initial", // SeedSuggestor emits "initial seed"
         });
 
         let result = engine.run(Context::new());
@@ -2179,7 +2366,7 @@ mod tests {
         // This test uses an agent that emits a seed but no agent to emit hypotheses.
         // The semantic invariant requires balance, so it should fail.
         let mut engine = Engine::new();
-        engine.register(SeedAgent);
+        engine.register_suggestor(SeedSuggestor);
         engine.register_invariant(RequireBalance);
 
         let result = engine.run(Context::new());
@@ -2197,10 +2384,10 @@ mod tests {
 
     #[test]
     fn acceptance_invariant_rejects_result() {
-        // SeedAgent emits only one seed, but acceptance requires 2
+        // SeedSuggestor emits only one seed, but acceptance requires 2
         let mut engine = Engine::new();
-        engine.register(SeedAgent);
-        engine.register(ReactOnceAgent); // Add hypotheses to pass semantic
+        engine.register_suggestor(SeedSuggestor);
+        engine.register_suggestor(ReactOnceSuggestor); // Add hypotheses to pass semantic
         engine.register_invariant(RequireMultipleSeeds);
 
         let result = engine.run(Context::new());
@@ -2230,7 +2417,7 @@ mod tests {
         /// Mock LLM agent that proposes a malicious fact.
         struct MaliciousLlmAgent;
 
-        impl Agent for MaliciousLlmAgent {
+        impl Suggestor for MaliciousLlmAgent {
             fn name(&self) -> &'static str {
                 "MaliciousLlmAgent"
             }
@@ -2246,7 +2433,6 @@ mod tests {
 
             fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
                 AgentEffect {
-                    facts: Vec::new(),
                     proposals: vec![ProposedFact {
                         key: ContextKey::Hypotheses,
                         id: "injected-hyp".into(),
@@ -2289,7 +2475,7 @@ mod tests {
         }
 
         let mut engine = Engine::new();
-        engine.register(MaliciousLlmAgent);
+        engine.register_suggestor(MaliciousLlmAgent);
         engine.register_invariant(RejectInjectedContent);
 
         let result = engine.run(Context::new());
@@ -2318,10 +2504,10 @@ mod tests {
         // A proposal with confidence > 1.0 must fail TryFrom validation
         // and never reach the context at all.
 
-        /// Agent proposing a fact with invalid confidence.
+        /// Suggestor proposing a fact with invalid confidence.
         struct BadConfidenceAgent;
 
-        impl Agent for BadConfidenceAgent {
+        impl Suggestor for BadConfidenceAgent {
             fn name(&self) -> &'static str {
                 "BadConfidenceAgent"
             }
@@ -2336,7 +2522,6 @@ mod tests {
 
             fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
                 AgentEffect {
-                    facts: Vec::new(),
                     proposals: vec![ProposedFact {
                         key: ContextKey::Hypotheses,
                         id: "bad-conf".into(),
@@ -2349,7 +2534,7 @@ mod tests {
         }
 
         let mut engine = Engine::new();
-        engine.register(BadConfidenceAgent);
+        engine.register_suggestor(BadConfidenceAgent);
 
         let result = engine
             .run(Context::new())
@@ -2364,10 +2549,10 @@ mod tests {
     fn proposal_with_empty_content_rejected_before_context() {
         // A proposal with empty content must fail TryFrom validation.
 
-        /// Agent proposing a fact with empty content.
+        /// Suggestor proposing a fact with empty content.
         struct EmptyContentAgent;
 
-        impl Agent for EmptyContentAgent {
+        impl Suggestor for EmptyContentAgent {
             fn name(&self) -> &'static str {
                 "EmptyContentAgent"
             }
@@ -2382,7 +2567,6 @@ mod tests {
 
             fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
                 AgentEffect {
-                    facts: Vec::new(),
                     proposals: vec![ProposedFact {
                         key: ContextKey::Hypotheses,
                         id: "empty-prop".into(),
@@ -2395,7 +2579,7 @@ mod tests {
         }
 
         let mut engine = Engine::new();
-        engine.register(EmptyContentAgent);
+        engine.register_suggestor(EmptyContentAgent);
 
         let result = engine
             .run(Context::new())
@@ -2410,10 +2594,10 @@ mod tests {
         // A well-formed proposal from a legitimate agent should be promoted
         // to a fact and participate in convergence.
 
-        /// Agent that proposes a legitimate fact.
+        /// Suggestor that proposes a legitimate fact.
         struct LegitLlmAgent;
 
-        impl Agent for LegitLlmAgent {
+        impl Suggestor for LegitLlmAgent {
             fn name(&self) -> &'static str {
                 "LegitLlmAgent"
             }
@@ -2428,7 +2612,6 @@ mod tests {
 
             fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
                 AgentEffect {
-                    facts: Vec::new(),
                     proposals: vec![ProposedFact {
                         key: ContextKey::Hypotheses,
                         id: "hyp-1".into(),
@@ -2441,7 +2624,7 @@ mod tests {
         }
 
         let mut engine = Engine::new();
-        engine.register(LegitLlmAgent);
+        engine.register_suggestor(LegitLlmAgent);
 
         let result = engine.run(Context::new()).expect("should converge");
 
@@ -2454,10 +2637,10 @@ mod tests {
 
     #[test]
     fn all_invariant_classes_pass_when_satisfied() {
-        /// Agent that emits two seeds.
+        /// Suggestor that emits two seeds.
         struct TwoSeedAgent;
 
-        impl Agent for TwoSeedAgent {
+        impl Suggestor for TwoSeedAgent {
             fn name(&self) -> &'static str {
                 "TwoSeedAgent"
             }
@@ -2471,25 +2654,17 @@ mod tests {
             }
 
             fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
-                AgentEffect::with_facts(vec![
-                    Fact {
-                        key: ContextKey::Seeds,
-                        id: "seed-1".into(),
-                        content: "good content".into(),
-                    },
-                    Fact {
-                        key: ContextKey::Seeds,
-                        id: "seed-2".into(),
-                        content: "more good content".into(),
-                    },
+                AgentEffect::with_proposals(vec![
+                    proposal(ContextKey::Seeds, "seed-1", "good content", self.name()),
+                    proposal(ContextKey::Seeds, "seed-2", "more good content", self.name()),
                 ])
             }
         }
 
-        /// Agent that derives hypothesis from seeds.
+        /// Suggestor that derives hypothesis from seeds.
         struct DeriverAgent;
 
-        impl Agent for DeriverAgent {
+        impl Suggestor for DeriverAgent {
             fn name(&self) -> &'static str {
                 "DeriverAgent"
             }
@@ -2503,11 +2678,12 @@ mod tests {
             }
 
             fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
-                AgentEffect::with_fact(Fact {
-                    key: ContextKey::Hypotheses,
-                    id: "hyp-1".into(),
-                    content: "derived".into(),
-                })
+                AgentEffect::with_proposal(proposal(
+                    ContextKey::Hypotheses,
+                    "hyp-1",
+                    "derived",
+                    self.name(),
+                ))
             }
         }
 
@@ -2529,8 +2705,8 @@ mod tests {
         }
 
         let mut engine = Engine::new();
-        engine.register(TwoSeedAgent);
-        engine.register(DeriverAgent);
+        engine.register_suggestor(TwoSeedAgent);
+        engine.register_suggestor(DeriverAgent);
 
         // Register all three invariant classes
         engine.register_invariant(ForbidContent {
@@ -2552,10 +2728,10 @@ mod tests {
     // HITL GATE TESTS (REF-42)
     // ========================================================================
 
-    /// Agent that proposes a fact (not direct emit) for HITL testing.
+    /// Suggestor that proposes a fact (not direct emit) for HITL testing.
     struct ProposingAgent;
 
-    impl Agent for ProposingAgent {
+    impl Suggestor for ProposingAgent {
         fn name(&self) -> &'static str {
             "ProposingAgent"
         }
@@ -2582,8 +2758,8 @@ mod tests {
     #[test]
     fn hitl_pauses_convergence_on_low_confidence() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent);
-        engine.register(ProposingAgent);
+        engine.register_suggestor(SeedSuggestor);
+        engine.register_suggestor(ProposingAgent);
         engine.set_hitl_policy(EngineHitlPolicy {
             confidence_threshold: Some(0.8), // 0.7 < 0.8 → triggers HITL
             gated_keys: Vec::new(),
@@ -2605,8 +2781,8 @@ mod tests {
     #[test]
     fn hitl_does_not_pause_above_threshold() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent);
-        engine.register(ProposingAgent);
+        engine.register_suggestor(SeedSuggestor);
+        engine.register_suggestor(ProposingAgent);
         engine.set_hitl_policy(EngineHitlPolicy {
             confidence_threshold: Some(0.5), // 0.7 > 0.5 → no HITL
             gated_keys: Vec::new(),
@@ -2628,8 +2804,8 @@ mod tests {
     #[test]
     fn hitl_pauses_on_gated_key() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent);
-        engine.register(ProposingAgent);
+        engine.register_suggestor(SeedSuggestor);
+        engine.register_suggestor(ProposingAgent);
         engine.set_hitl_policy(EngineHitlPolicy {
             confidence_threshold: None,
             gated_keys: vec![ContextKey::Hypotheses], // Gate all Hypotheses proposals
@@ -2649,8 +2825,8 @@ mod tests {
     #[test]
     fn hitl_resume_approve_promotes_proposal() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent);
-        engine.register(ProposingAgent);
+        engine.register_suggestor(SeedSuggestor);
+        engine.register_suggestor(ProposingAgent);
         engine.set_hitl_policy(EngineHitlPolicy {
             confidence_threshold: Some(0.8),
             gated_keys: Vec::new(),
@@ -2682,8 +2858,8 @@ mod tests {
     #[test]
     fn hitl_resume_reject_discards_proposal() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent);
-        engine.register(ProposingAgent);
+        engine.register_suggestor(SeedSuggestor);
+        engine.register_suggestor(ProposingAgent);
         engine.set_hitl_policy(EngineHitlPolicy {
             confidence_threshold: Some(0.8),
             gated_keys: Vec::new(),
@@ -2718,8 +2894,8 @@ mod tests {
     #[test]
     fn hitl_without_policy_behaves_like_normal_run() {
         let mut engine = Engine::new();
-        engine.register(SeedAgent);
-        engine.register(ProposingAgent);
+        engine.register_suggestor(SeedSuggestor);
+        engine.register_suggestor(ProposingAgent);
         // No HITL policy set
 
         let result = engine.run_with_hitl(Context::new());

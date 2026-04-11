@@ -5,7 +5,7 @@
 //!
 //! Shows: domain agents, invariants, constraint satisfaction via convergence.
 
-use converge_core::{Context, ContextKey, Engine, Fact};
+use converge_core::{Context, ContextKey, Engine};
 use converge_domain::{
     AvailabilityRetrievalAgent, ConflictDetectionAgent, RequireParticipantAvailability,
     RequirePositiveDuration, RequireValidSlot, SlotOptimizationAgent, TimeZoneNormalizationAgent,
@@ -17,18 +17,18 @@ fn main() {
 
     let mut engine = Engine::new();
 
-    engine.register(AvailabilityRetrievalAgent);
-    engine.register(TimeZoneNormalizationAgent);
-    engine.register(ConflictDetectionAgent);
-    engine.register(WorkingHoursConstraintAgent);
-    engine.register(SlotOptimizationAgent);
+    engine.register_suggestor(AvailabilityRetrievalAgent);
+    engine.register_suggestor(TimeZoneNormalizationAgent);
+    engine.register_suggestor(ConflictDetectionAgent);
+    engine.register_suggestor(WorkingHoursConstraintAgent);
+    engine.register_suggestor(SlotOptimizationAgent);
 
     engine.register_invariant(RequireParticipantAvailability);
     engine.register_invariant(RequirePositiveDuration);
     engine.register_invariant(RequireValidSlot);
 
     let mut ctx = Context::new();
-    let _ = ctx.add_fact(Fact::new(
+    let _ = ctx.add_input(
         ContextKey::Seeds,
         "request-1",
         serde_json::json!({
@@ -38,7 +38,7 @@ fn main() {
             "timezone": "Europe/Stockholm"
         })
         .to_string(),
-    ));
+    );
 
     println!("Scheduling request seeded.\n");
 

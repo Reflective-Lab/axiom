@@ -1,11 +1,11 @@
 // Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 
-//! Custom Agent — implement the Agent trait from scratch.
+//! Custom Suggestor — implement the Suggestor trait from scratch.
 //!
-//! Shows: Agent trait, accepts/execute contract, AgentEffect, ProposedFact.
+//! Shows: Suggestor trait, accepts/execute contract, AgentEffect, ProposedFact.
 
-use converge_core::{Agent, AgentEffect, Context, ContextKey, Engine, ProposedFact};
+use converge_core::{Suggestor, AgentEffect, Context, ContextKey, Engine, ProposedFact};
 
 /// A custom agent that reads Seeds and emits a summary as a Hypothesis.
 struct SummaryAgent {
@@ -20,7 +20,7 @@ impl SummaryAgent {
     }
 }
 
-impl Agent for SummaryAgent {
+impl Suggestor for SummaryAgent {
     fn name(&self) -> &str {
         &self.agent_name
     }
@@ -52,20 +52,20 @@ impl Agent for SummaryAgent {
 }
 
 fn main() {
-    println!("=== Custom Agent Example ===\n");
+    println!("=== Custom Suggestor Example ===\n");
 
     let mut engine = Engine::new();
 
-    engine.register(converge_core::agents::SeedAgent::new(
+    engine.register_suggestor(converge_core::suggestors::SeedSuggestor::new(
         "data-a",
         "Revenue up 12%",
     ));
-    engine.register(converge_core::agents::SeedAgent::new(
+    engine.register_suggestor(converge_core::suggestors::SeedSuggestor::new(
         "data-b",
         "Churn down to 3.5%",
     ));
 
-    engine.register(SummaryAgent::new("summarizer"));
+    engine.register_suggestor(SummaryAgent::new("summarizer"));
 
     let result = engine.run(Context::new()).expect("should converge");
 

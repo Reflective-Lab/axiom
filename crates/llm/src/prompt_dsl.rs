@@ -7,7 +7,7 @@
 // optimized for token efficiency and deterministic parsing.
 
 // Import types from converge-core using public re-exports
-use converge_core::{Context, ContextKey, Fact};
+use converge_core::{ContextKey, Fact};
 use std::collections::HashSet;
 use std::fmt::Write;
 
@@ -21,7 +21,7 @@ pub enum PromptFormat {
     Edn,
 }
 
-/// Agent role in the prompt contract.
+/// Suggestor role in the prompt contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AgentRole {
     /// Proposes new facts (LLM agents).
@@ -104,7 +104,7 @@ impl DslOutputContract {
 /// Compact agent prompt contract.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentPrompt {
-    /// Agent role.
+    /// Suggestor role.
     pub role: AgentRole,
     /// Objective (what the agent should do).
     pub objective: String,
@@ -306,16 +306,29 @@ fn escape_string(s: &str) -> String {
 mod tests {
     use super::*;
 
+    fn promoted_fact(key: ContextKey, id: &str, content: &str) -> Fact {
+        let mut ctx = converge_core::Context::new();
+        let _ = ctx.add_input(key, id, content);
+        converge_core::Engine::new()
+            .run(ctx)
+            .expect("should promote test input")
+            .context
+            .get(key)
+            .first()
+            .expect("promoted fact should exist")
+            .clone()
+    }
+
     #[test]
     fn test_edn_serialization() {
         let mut ctx = PromptContext::new();
         ctx.add_facts(
             ContextKey::Signals,
-            vec![Fact {
-                key: ContextKey::Signals,
-                id: "s1".to_string(),
-                content: "Revenue +15% Q3".to_string(),
-            }],
+            vec![promoted_fact(
+                ContextKey::Signals,
+                "s1",
+                "Revenue +15% Q3",
+            )],
         );
 
         let prompt = AgentPrompt::new(

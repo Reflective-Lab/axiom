@@ -33,7 +33,7 @@
 //! let solution = solve(&problem).unwrap();
 //! println!("Total cost: {}", solution.total_cost);
 //! for (agent, task) in solution.assignments.iter().enumerate() {
-//!     println!("Agent {} -> Task {}", agent, task);
+//!     println!("Suggestor {} -> Task {}", agent, task);
 //! }
 //! ```
 

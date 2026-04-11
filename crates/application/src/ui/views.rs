@@ -8,7 +8,7 @@
 //! - Packs list with descriptions
 //! - Submit form
 //! - Context facts visualization
-//! - Agent status display
+//! - Suggestor status display
 
 use super::app::{App, JobStatus, View};
 use ratatui::{
@@ -656,7 +656,7 @@ fn draw_context(f: &mut Frame, app: &mut App, area: Rect) {
 
 fn draw_agents(f: &mut Frame, app: &mut App, area: Rect) {
     let header = Row::new(vec![
-        Cell::from("Agent").style(
+        Cell::from("Suggestor").style(
             Style::default()
                 .fg(Color::Yellow)
                 .add_modifier(Modifier::BOLD),

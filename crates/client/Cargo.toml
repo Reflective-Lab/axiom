@@ -1,0 +1,19 @@
+[package]
+name = "converge-client"
+version.workspace = true
+publish = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The idiomatic Rust client SDK for remote Converge runtimes"
+keywords = ["converge", "client", "grpc", "sdk"]
+categories = ["network-programming"]
+
+[dependencies]
+converge-protocol.workspace = true
+thiserror.workspace = true
+tonic.workspace = true
+
+[lints]
+workspace = true

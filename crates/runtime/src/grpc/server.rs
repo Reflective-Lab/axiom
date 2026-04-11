@@ -56,7 +56,7 @@ impl GrpcServer {
     }
 
     /// Start the gRPC server.
-    pub async fn start(mut self) -> Result<(), RuntimeError> {
+    pub async fn start(self) -> Result<(), RuntimeError> {
         let addr = self.config.bind;
         let service = ConvergeServiceImpl::new();
 

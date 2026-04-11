@@ -12,7 +12,7 @@ keywords = ["agent", "runtime", "convergence", "context-driven"]
 categories = ["algorithms", "concurrency"]
 
 [dependencies]
-converge-traits.workspace = true
+converge-pack = { workspace = true, features = ["kernel-authority"] }
 thiserror.workspace = true
 tracing.workspace = true
 serde.workspace = true

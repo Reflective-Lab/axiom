@@ -24,7 +24,7 @@ use converge_runtime::wasm::store::ModuleStore;
 // =============================================================================
 
 fn arb_module_kind() -> impl Strategy<Value = ModuleKind> {
-    prop_oneof![Just(ModuleKind::Invariant), Just(ModuleKind::Agent),]
+    prop_oneof![Just(ModuleKind::Invariant), Just(ModuleKind::Suggestor),]
 }
 
 fn arb_invariant_class() -> impl Strategy<Value = WasmInvariantClass> {

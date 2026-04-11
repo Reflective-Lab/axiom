@@ -7,7 +7,7 @@
 //! This pack enforces grounded answering with explicit recall-only sources.
 
 use converge_core::invariant::{Invariant, InvariantClass, InvariantResult, Violation};
-use converge_core::{Agent, AgentEffect, ContextKey, Fact};
+use converge_core::{Suggestor, AgentEffect, ContextKey};
 use serde::Deserialize;
 
 const QUESTION_SEED_ID: &str = "ask:question";
@@ -88,11 +88,11 @@ fn build_answer(question: &str, sources: &[AskSource]) -> serde_json::Value {
     })
 }
 
-/// Agent that produces a grounded answer based on provided sources.
+/// Suggestor that produces a grounded answer based on provided sources.
 #[derive(Debug, Clone, Default)]
 pub struct AskConvergeAgent;
 
-impl Agent for AskConvergeAgent {
+impl Suggestor for AskConvergeAgent {
     fn name(&self) -> &str {
         "ask_converge"
     }
@@ -122,13 +122,14 @@ impl Agent for AskConvergeAgent {
         }
 
         let answer = build_answer(&question, &sources);
-        let fact = Fact {
-            key: ContextKey::Strategies,
-            id: ANSWER_ID.to_string(),
-            content: answer.to_string(),
-        };
+        let fact = crate::proposal(
+            self.name(),
+            ContextKey::Strategies,
+            ANSWER_ID,
+            answer.to_string(),
+        );
 
-        AgentEffect::with_fact(fact)
+        AgentEffect::with_proposal(fact)
     }
 }
 
@@ -215,37 +216,36 @@ impl Invariant for RecallNotEvidenceInvariant {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use converge_core::Context;
+    use converge_core::{Context, Engine};
+
+    fn promoted_context(entries: &[(ContextKey, &str, &str)]) -> Context {
+        let mut ctx = Context::new();
+        for (key, id, content) in entries {
+            ctx.add_input(*key, *id, *content).unwrap();
+        }
+        Engine::new().run(ctx).unwrap().context
+    }
 
     #[test]
     fn ask_agent_emits_answer_with_sources() {
-        let mut ctx = Context::new();
-        ctx.add_fact(Fact::new(
-            ContextKey::Seeds,
-            QUESTION_SEED_ID,
-            "What is Converge?",
-        ))
-        .unwrap();
-        ctx.add_fact(Fact::new(
-            ContextKey::Seeds,
-            "ask:source:1",
-            serde_json::json!({
-                "id": "source-1",
-                "content": "Converge is a semantic governance runtime."
-            })
-            .to_string(),
-        ))
-        .unwrap();
+        let source = serde_json::json!({
+            "id": "source-1",
+            "content": "Converge is a semantic governance runtime."
+        })
+        .to_string();
+        let ctx = promoted_context(&[
+            (ContextKey::Seeds, QUESTION_SEED_ID, "What is Converge?"),
+            (ContextKey::Seeds, "ask:source:1", source.as_str()),
+        ]);
 
         let agent = AskConvergeAgent::default();
         let effect = agent.execute(&ctx);
         assert!(!effect.is_empty());
-        assert_eq!(effect.facts.len(), 1);
+        assert_eq!(effect.proposals.len(), 1);
     }
 
     #[test]
     fn invariants_accept_grounded_answer() {
-        let mut ctx = Context::new();
         let payload = build_answer(
             "What is Converge?",
             &[AskSource {
@@ -255,12 +255,8 @@ mod tests {
                 content: "Converge is a semantic governance runtime.".to_string(),
             }],
         );
-        ctx.add_fact(Fact::new(
-            ContextKey::Strategies,
-            ANSWER_ID,
-            payload.to_string(),
-        ))
-        .unwrap();
+        let payload = payload.to_string();
+        let ctx = promoted_context(&[(ContextKey::Strategies, ANSWER_ID, payload.as_str())]);
 
         assert!(matches!(
             GroundedAnswerInvariant.check(&ctx),

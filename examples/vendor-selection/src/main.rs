@@ -6,7 +6,7 @@
 //! Demonstrates: swarms, consensus/aggregation, multi-criteria scoring.
 
 use converge_core::{
-    Agent, AgentEffect, Context, ContextKey, Engine, EngineHitlPolicy, Fact, ProposedFact,
+    Suggestor, AgentEffect, Context, ContextKey, Engine, EngineHitlPolicy, ProposedFact,
     RunResult,
     gates::hitl::GateDecision,
     gates::{TimeoutAction, TimeoutPolicy},
@@ -14,7 +14,7 @@ use converge_core::{
 
 struct VendorDataAgent;
 
-impl Agent for VendorDataAgent {
+impl Suggestor for VendorDataAgent {
     fn name(&self) -> &str {
         "VendorDataAgent"
     }
@@ -43,23 +43,27 @@ impl Agent for VendorDataAgent {
             .as_array()
             .map_or(&[] as &[serde_json::Value], |v| v)
         {
-            facts.push(Fact {
-                key: ContextKey::Signals,
-                id: format!(
-                    "vendor-{}",
-                    vendor.get("id").and_then(|v| v.as_str()).unwrap_or("?")
-                ),
-                content: vendor.to_string(),
-            });
+            facts.push(
+                ProposedFact::new(
+                    ContextKey::Signals,
+                    format!(
+                        "vendor-{}",
+                        vendor.get("id").and_then(|v| v.as_str()).unwrap_or("?")
+                    ),
+                    vendor.to_string(),
+                    self.name(),
+                )
+                .with_confidence(1.0),
+            );
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
 struct PriceEvaluatorAgent;
 
-impl Agent for PriceEvaluatorAgent {
+impl Suggestor for PriceEvaluatorAgent {
     fn name(&self) -> &str {
         "PriceEvaluatorAgent"
     }
@@ -94,27 +98,31 @@ impl Agent for PriceEvaluatorAgent {
                     0.1
                 };
 
-                evaluations.push(Fact {
-                    key: ContextKey::Evaluations,
-                    id: format!("price:{}", id),
-                    content: serde_json::json!({
-                        "vendor_id": id,
-                        "criterion": "price",
-                        "score": score,
-                        "raw_value": price
-                    })
-                    .to_string(),
-                });
+                evaluations.push(
+                    ProposedFact::new(
+                        ContextKey::Evaluations,
+                        format!("price:{}", id),
+                        serde_json::json!({
+                            "vendor_id": id,
+                            "criterion": "price",
+                            "score": score,
+                            "raw_value": price
+                        })
+                        .to_string(),
+                        self.name(),
+                    )
+                    .with_confidence(1.0),
+                );
             }
         }
 
-        AgentEffect::with_facts(evaluations)
+        AgentEffect::with_proposals(evaluations)
     }
 }
 
 struct ComplianceEvaluatorAgent;
 
-impl Agent for ComplianceEvaluatorAgent {
+impl Suggestor for ComplianceEvaluatorAgent {
     fn name(&self) -> &str {
         "ComplianceEvaluatorAgent"
     }
@@ -141,27 +149,31 @@ impl Agent for ComplianceEvaluatorAgent {
 
                 let score = if compliant { 1.0 } else { 0.0 };
 
-                evaluations.push(Fact {
-                    key: ContextKey::Evaluations,
-                    id: format!("compliance:{}", id),
-                    content: serde_json::json!({
-                        "vendor_id": id,
-                        "criterion": "compliance",
-                        "score": score,
-                        "raw_value": compliant
-                    })
-                    .to_string(),
-                });
+                evaluations.push(
+                    ProposedFact::new(
+                        ContextKey::Evaluations,
+                        format!("compliance:{}", id),
+                        serde_json::json!({
+                            "vendor_id": id,
+                            "criterion": "compliance",
+                            "score": score,
+                            "raw_value": compliant
+                        })
+                        .to_string(),
+                        self.name(),
+                    )
+                    .with_confidence(1.0),
+                );
             }
         }
 
-        AgentEffect::with_facts(evaluations)
+        AgentEffect::with_proposals(evaluations)
     }
 }
 
 struct RiskEvaluatorAgent;
 
-impl Agent for RiskEvaluatorAgent {
+impl Suggestor for RiskEvaluatorAgent {
     fn name(&self) -> &str {
         "RiskEvaluatorAgent"
     }
@@ -196,27 +208,31 @@ impl Agent for RiskEvaluatorAgent {
                     0.1
                 };
 
-                evaluations.push(Fact {
-                    key: ContextKey::Evaluations,
-                    id: format!("risk:{}", id),
-                    content: serde_json::json!({
-                        "vendor_id": id,
-                        "criterion": "risk",
-                        "score": score,
-                        "raw_value": years
-                    })
-                    .to_string(),
-                });
+                evaluations.push(
+                    ProposedFact::new(
+                        ContextKey::Evaluations,
+                        format!("risk:{}", id),
+                        serde_json::json!({
+                            "vendor_id": id,
+                            "criterion": "risk",
+                            "score": score,
+                            "raw_value": years
+                        })
+                        .to_string(),
+                        self.name(),
+                    )
+                    .with_confidence(1.0),
+                );
             }
         }
 
-        AgentEffect::with_facts(evaluations)
+        AgentEffect::with_proposals(evaluations)
     }
 }
 
 struct TimelineEvaluatorAgent;
 
-impl Agent for TimelineEvaluatorAgent {
+impl Suggestor for TimelineEvaluatorAgent {
     fn name(&self) -> &str {
         "TimelineEvaluatorAgent"
     }
@@ -251,27 +267,31 @@ impl Agent for TimelineEvaluatorAgent {
                     0.2
                 };
 
-                evaluations.push(Fact {
-                    key: ContextKey::Evaluations,
-                    id: format!("timeline:{}", id),
-                    content: serde_json::json!({
-                        "vendor_id": id,
-                        "criterion": "timeline",
-                        "score": score,
-                        "raw_value": weeks
-                    })
-                    .to_string(),
-                });
+                evaluations.push(
+                    ProposedFact::new(
+                        ContextKey::Evaluations,
+                        format!("timeline:{}", id),
+                        serde_json::json!({
+                            "vendor_id": id,
+                            "criterion": "timeline",
+                            "score": score,
+                            "raw_value": weeks
+                        })
+                        .to_string(),
+                        self.name(),
+                    )
+                    .with_confidence(1.0),
+                );
             }
         }
 
-        AgentEffect::with_facts(evaluations)
+        AgentEffect::with_proposals(evaluations)
     }
 }
 
 struct ConsensusAgent;
 
-impl Agent for ConsensusAgent {
+impl Suggestor for ConsensusAgent {
     fn name(&self) -> &str {
         "ConsensusAgent"
     }
@@ -309,7 +329,7 @@ impl Agent for ConsensusAgent {
             }
         }
 
-        let weights = serde_json::json!({
+        let _weights = serde_json::json!({
             "price": 0.30,
             "compliance": 0.25,
             "risk": 0.20,
@@ -343,10 +363,7 @@ impl Agent for ConsensusAgent {
             })
             .collect();
 
-        AgentEffect {
-            facts: Vec::new(),
-            proposals,
-        }
+        AgentEffect::with_proposals(proposals)
     }
 }
 
@@ -355,12 +372,12 @@ fn main() {
 
     let mut engine = Engine::new();
 
-    engine.register(VendorDataAgent);
-    engine.register(PriceEvaluatorAgent);
-    engine.register(ComplianceEvaluatorAgent);
-    engine.register(RiskEvaluatorAgent);
-    engine.register(TimelineEvaluatorAgent);
-    engine.register(ConsensusAgent);
+    engine.register_suggestor(VendorDataAgent);
+    engine.register_suggestor(PriceEvaluatorAgent);
+    engine.register_suggestor(ComplianceEvaluatorAgent);
+    engine.register_suggestor(RiskEvaluatorAgent);
+    engine.register_suggestor(TimelineEvaluatorAgent);
+    engine.register_suggestor(ConsensusAgent);
 
     let hitl_policy = EngineHitlPolicy {
         confidence_threshold: Some(0.75),
@@ -402,11 +419,7 @@ fn main() {
     });
 
     let mut ctx = Context::new();
-    let _ = ctx.add_fact(Fact {
-        key: ContextKey::Seeds,
-        id: "rfp-1".to_string(),
-        content: rfp.to_string(),
-    });
+    let _ = ctx.add_input(ContextKey::Seeds, "rfp-1", rfp.to_string());
 
     println!("Evaluating 3 vendors with swarm of 5 agents...\n");
 

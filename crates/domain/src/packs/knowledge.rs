@@ -24,7 +24,7 @@
 //! - Success metrics defined before experiment starts
 
 use converge_core::{
-    Agent, AgentEffect, ContextKey, Fact,
+    Suggestor, AgentEffect, ContextKey,
     invariant::{Invariant, InvariantClass, InvariantResult, Violation},
 };
 
@@ -50,7 +50,7 @@ pub const PATENT_REPORT_PREFIX: &str = "patent_report:";
 #[derive(Debug, Clone, Default)]
 pub struct SignalCaptureAgent;
 
-impl Agent for SignalCaptureAgent {
+impl Suggestor for SignalCaptureAgent {
     fn name(&self) -> &str {
         "signal_capture"
     }
@@ -76,10 +76,11 @@ impl Agent for SignalCaptureAgent {
                 || seed.content.contains("customer.feedback")
                 || seed.content.contains("observation")
             {
-                facts.push(Fact {
-                    key: ContextKey::Signals,
-                    id: format!("{}{}", SIGNAL_PREFIX, seed.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Signals,
+                    format!("{}{}", SIGNAL_PREFIX, seed.id),
+                    serde_json::json!({
                         "type": "captured_signal",
                         "source_id": seed.id,
                         "state": "signal_captured",
@@ -91,11 +92,11 @@ impl Agent for SignalCaptureAgent {
                         "captured_at": "2026-01-12"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -103,7 +104,7 @@ impl Agent for SignalCaptureAgent {
 #[derive(Debug, Clone, Default)]
 pub struct HypothesisGeneratorAgent;
 
-impl Agent for HypothesisGeneratorAgent {
+impl Suggestor for HypothesisGeneratorAgent {
     fn name(&self) -> &str {
         "hypothesis_generator"
     }
@@ -126,10 +127,11 @@ impl Agent for HypothesisGeneratorAgent {
             if signal.id.starts_with(SIGNAL_PREFIX)
                 && signal.content.contains("\"state\":\"signal_captured\"")
             {
-                facts.push(Fact {
-                    key: ContextKey::Hypotheses,
-                    id: format!("{}{}", HYPOTHESIS_PREFIX, signal.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Hypotheses,
+                    format!("{}{}", HYPOTHESIS_PREFIX, signal.id),
+                    serde_json::json!({
                         "type": "hypothesis",
                         "signal_id": signal.id,
                         "state": "hypothesis_proposed",
@@ -139,11 +141,11 @@ impl Agent for HypothesisGeneratorAgent {
                         "proposed_at": "2026-01-12"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -151,7 +153,7 @@ impl Agent for HypothesisGeneratorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct HypothesisReviewerAgent;
 
-impl Agent for HypothesisReviewerAgent {
+impl Suggestor for HypothesisReviewerAgent {
     fn name(&self) -> &str {
         "hypothesis_reviewer"
     }
@@ -175,10 +177,11 @@ impl Agent for HypothesisReviewerAgent {
             if hyp.id.starts_with(HYPOTHESIS_PREFIX)
                 && hyp.content.contains("\"state\":\"hypothesis_proposed\"")
             {
-                facts.push(Fact {
-                    key: ContextKey::Hypotheses,
-                    id: format!("{}approved:{}", HYPOTHESIS_PREFIX, hyp.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Hypotheses,
+                    format!("{}approved:{}", HYPOTHESIS_PREFIX, hyp.id),
+                    serde_json::json!({
                         "type": "hypothesis_review",
                         "hypothesis_id": hyp.id,
                         "state": "approved",
@@ -186,11 +189,11 @@ impl Agent for HypothesisReviewerAgent {
                         "approved_at": "2026-01-12"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -198,7 +201,7 @@ impl Agent for HypothesisReviewerAgent {
 #[derive(Debug, Clone, Default)]
 pub struct ExperimentSchedulerAgent;
 
-impl Agent for ExperimentSchedulerAgent {
+impl Suggestor for ExperimentSchedulerAgent {
     fn name(&self) -> &str {
         "experiment_scheduler"
     }
@@ -225,10 +228,11 @@ impl Agent for ExperimentSchedulerAgent {
 
         for review in hypotheses.iter() {
             if review.content.contains("\"state\":\"approved\"") {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}", EXPERIMENT_PREFIX, review.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}", EXPERIMENT_PREFIX, review.id),
+                    serde_json::json!({
                         "type": "experiment",
                         "hypothesis_id": review.id,
                         "state": "experiment_scheduled",
@@ -240,11 +244,11 @@ impl Agent for ExperimentSchedulerAgent {
                         "scheduled_at": "2026-01-12"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -252,7 +256,7 @@ impl Agent for ExperimentSchedulerAgent {
 #[derive(Debug, Clone, Default)]
 pub struct ExperimentRunnerAgent;
 
-impl Agent for ExperimentRunnerAgent {
+impl Suggestor for ExperimentRunnerAgent {
     fn name(&self) -> &str {
         "experiment_runner"
     }
@@ -282,10 +286,11 @@ impl Agent for ExperimentRunnerAgent {
                     .any(|s| s.content.contains("experiment.results"));
 
                 if has_results {
-                    facts.push(Fact {
-                        key: ContextKey::Proposals,
-                        id: format!("{}completed:{}", EXPERIMENT_PREFIX, experiment.id),
-                        content: serde_json::json!({
+                    facts.push(crate::proposal(
+                        self.name(),
+                        ContextKey::Proposals,
+                        format!("{}completed:{}", EXPERIMENT_PREFIX, experiment.id),
+                        serde_json::json!({
                             "type": "experiment_result",
                             "experiment_id": experiment.id,
                             "state": "completed",
@@ -297,12 +302,12 @@ impl Agent for ExperimentRunnerAgent {
                             "completed_at": "2026-01-12"
                         })
                         .to_string(),
-                    });
+                    ));
                 }
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -310,7 +315,7 @@ impl Agent for ExperimentRunnerAgent {
 #[derive(Debug, Clone, Default)]
 pub struct DecisionMemoAgent;
 
-impl Agent for DecisionMemoAgent {
+impl Suggestor for DecisionMemoAgent {
     fn name(&self) -> &str {
         "decision_memo"
     }
@@ -333,10 +338,11 @@ impl Agent for DecisionMemoAgent {
             if result.id.contains(EXPERIMENT_PREFIX)
                 && result.content.contains("\"state\":\"completed\"")
             {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}", DECISION_PREFIX, result.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}", DECISION_PREFIX, result.id),
+                    serde_json::json!({
                         "type": "decision_memo",
                         "experiment_id": result.id,
                         "state": "decision_pending",
@@ -345,11 +351,11 @@ impl Agent for DecisionMemoAgent {
                         "created_at": "2026-01-12"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -357,7 +363,7 @@ impl Agent for DecisionMemoAgent {
 #[derive(Debug, Clone, Default)]
 pub struct CanonicalKnowledgeAgent;
 
-impl Agent for CanonicalKnowledgeAgent {
+impl Suggestor for CanonicalKnowledgeAgent {
     fn name(&self) -> &str {
         "canonical_knowledge"
     }
@@ -378,10 +384,11 @@ impl Agent for CanonicalKnowledgeAgent {
 
         for signal in signals.iter() {
             if signal.content.contains("decision.made") {
-                facts.push(Fact {
-                    key: ContextKey::Strategies, // Using Strategies for canonical knowledge
-                    id: format!("{}{}", CANONICAL_PREFIX, signal.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Strategies,
+                    format!("{}{}", CANONICAL_PREFIX, signal.id),
+                    serde_json::json!({
                         "type": "canonical_knowledge",
                         "decision_id": signal.id,
                         "state": "canonical",
@@ -395,11 +402,11 @@ impl Agent for CanonicalKnowledgeAgent {
                         "created_at": "2026-01-12"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -407,7 +414,7 @@ impl Agent for CanonicalKnowledgeAgent {
 #[derive(Debug, Clone, Default)]
 pub struct ClaimValidatorAgent;
 
-impl Agent for ClaimValidatorAgent {
+impl Suggestor for ClaimValidatorAgent {
     fn name(&self) -> &str {
         "claim_validator"
     }
@@ -428,10 +435,11 @@ impl Agent for ClaimValidatorAgent {
 
         for seed in seeds.iter() {
             if seed.content.contains("claim.submitted") {
-                facts.push(Fact {
-                    key: ContextKey::Evaluations,
-                    id: format!("{}{}", CLAIM_PREFIX, seed.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Evaluations,
+                    format!("{}{}", CLAIM_PREFIX, seed.id),
+                    serde_json::json!({
                         "type": "validated_claim",
                         "seed_id": seed.id,
                         "has_provenance": true,
@@ -443,11 +451,11 @@ impl Agent for ClaimValidatorAgent {
                         "validated_at": "2026-01-12"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 

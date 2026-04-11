@@ -6,9 +6,9 @@
 //!
 //! Provides a builder pattern for configuring and running convergence jobs.
 
-use converge_core::agents::SeedAgent;
+use converge_core::suggestors::SeedSuggestor;
 use converge_core::{Budget, Context, ContextKey, ConvergeResult, Engine};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use strum::IntoEnumIterator;
 use tracing::{info, info_span};
 
@@ -19,7 +19,7 @@ use super::packs::{LlmConfig, register_pack_agents};
 use super::streaming::{EventReceiver, RuntimeStreamingCallback};
 
 /// Result of job execution.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ExecutionResult {
     /// Whether convergence was reached.
     pub converged: bool,
@@ -241,7 +241,7 @@ impl JobExecutor {
 
         // Register seed agents
         for seed in &self.seeds {
-            engine.register(SeedAgent::new(&seed.id, &seed.content));
+            engine.register_suggestor(SeedSuggestor::new(&seed.id, &seed.content));
         }
 
         // Register pack agents
@@ -296,7 +296,7 @@ impl JobExecutor {
 
             // Register seed agents
             for seed in &self.seeds {
-                engine.register(SeedAgent::new(&seed.id, &seed.content));
+                engine.register_suggestor(SeedSuggestor::new(&seed.id, &seed.content));
             }
 
             // Register pack agents
@@ -388,16 +388,15 @@ mod tests {
     #[test]
     fn test_execution_result_from_converge_result() {
         let mut context = Context::new();
-        let _ = context.add_fact(converge_core::Fact::new(
-            ContextKey::Seeds,
-            "test",
-            "content",
-        ));
+        let _ = context.add_input(ContextKey::Seeds, "test", "content");
+        let context = Engine::new().run(context).unwrap().context;
 
         let converge_result = ConvergeResult {
             converged: true,
             cycles: 5,
             context,
+            stop_reason: converge_core::StopReason::Converged,
+            criteria_outcomes: Vec::new(),
         };
 
         let result = ExecutionResult::from((converge_result, 100));

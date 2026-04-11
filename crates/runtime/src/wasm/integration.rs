@@ -33,7 +33,7 @@ use super::store::ModuleStore;
 /// Iterates the store's active invariant modules, creates a `WasmInvariant`
 /// adapter for each, and registers them with the engine.
 ///
-/// Agent modules are currently skipped (agent WASM integration is planned
+/// Suggestor modules are currently skipped (agent WASM integration is planned
 /// for a future milestone).
 ///
 /// # Returns
@@ -248,7 +248,7 @@ mod tests {
         let manifest_json = serde_json::to_string(&WasmManifest {
             name: "test-agent".to_string(),
             version: "1.0.0".to_string(),
-            kind: ModuleKind::Agent,
+            kind: ModuleKind::Suggestor,
             invariant_class: None,
             dependencies: vec!["Seeds".to_string()],
             capabilities: vec![HostCapability::ReadContext],
@@ -441,7 +441,7 @@ mod tests {
         .unwrap();
 
         assert!(!module_id.content_hash.is_empty());
-        assert!(inv_ids.is_empty()); // Agent doesn't produce InvariantIds
+        assert!(inv_ids.is_empty()); // Suggestor doesn't produce InvariantIds
     }
 
     #[test]

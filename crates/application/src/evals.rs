@@ -15,7 +15,7 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 
-use converge_core::{Context as ConvergeContext, ContextKey, Engine, Fact};
+use converge_core::{Context as ConvergeContext, ContextKey, Engine};
 use strum::IntoEnumIterator;
 
 use crate::packs::SeedFact;
@@ -146,8 +146,7 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
 
     let mut context = ConvergeContext::new();
     for seed in &fixture.seeds {
-        let fact = Fact::new(ContextKey::Seeds, &seed.id, &seed.content);
-        if let Err(e) = context.add_fact(fact) {
+        if let Err(e) = context.add_input(ContextKey::Seeds, &seed.id, &seed.content) {
             return EvalResult::error(
                 &fixture.eval_id,
                 run_id,

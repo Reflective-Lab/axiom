@@ -45,14 +45,14 @@ use tracing_subscriber::EnvFilter;
 use crate::agents::MockInsightProvider;
 
 use converge_core::traits::DynChatBackend;
-use converge_core::{Context, ContextKey, Engine, Fact};
+use converge_core::{Context, ContextKey, Engine};
 use converge_provider::AnthropicBackend;
 use strum::IntoEnumIterator;
 
 /// Converge - Semantic convergence engine for agentic workflows
 #[derive(Parser)]
 #[command(name = "converge")]
-#[command(about = "Converge Agent OS - where agents propose and the engine decides")]
+#[command(about = "Converge Suggestor OS - where agents propose and the engine decides")]
 #[command(version)]
 struct Cli {
     #[command(subcommand)]
@@ -283,9 +283,8 @@ async fn main() -> Result<()> {
                     .map_err(|e| anyhow::anyhow!("Failed to parse seeds JSON: {e}"))?;
 
                 for seed in seed_facts {
-                    let fact = Fact::new(ContextKey::Seeds, seed.id, seed.content);
                     context
-                        .add_fact(fact)
+                        .add_input(ContextKey::Seeds, seed.id, seed.content)
                         .map_err(|e| anyhow::anyhow!("Failed to add seed fact: {e}"))?;
                 }
             }

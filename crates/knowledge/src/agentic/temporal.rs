@@ -371,7 +371,7 @@ mod tests {
     /// What happens:
     /// 1. Establish a pattern (low activity at night)
     /// 2. Check if unusual activity is flagged
-    /// 3. Agent can alert on unexpected behavior
+    /// 3. Suggestor can alert on unexpected behavior
     #[test]
     fn test_anomaly_detection() {
         let mut crystal = TimeCrystal::new("system_load", TemporalPeriod::Daily);

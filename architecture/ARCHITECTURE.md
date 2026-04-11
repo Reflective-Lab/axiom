@@ -1,12 +1,25 @@
 # Converge — Architecture
 
-Converge is a **pure Rust Agent OS** for building correctness-first,
-context-driven, multi-agent systems that provably converge.
+Converge is a **pure Rust Suggestor OS** for building correctness-first,
+context-driven, multi-suggestor systems that provably converge.
+
+## Canonical Contracts
+
+The canonical external API boundaries are defined in:
+
+- [API_SURFACES.md](/Users/kpernyer/dev/work/converge/architecture/API_SURFACES.md)
+- [ADR-001 Canonical Public Crates](/Users/kpernyer/dev/work/converge/architecture/adr/ADR-001-canonical-public-crates.md)
+- [ADR-002 Truth Pipeline](/Users/kpernyer/dev/work/converge/architecture/adr/ADR-002-truth-pipeline.md)
+- [ADR-003 Pack Authoring Contract](/Users/kpernyer/dev/work/converge/architecture/adr/ADR-003-pack-authoring-contract.md)
+- [ADR-004 Contract Stabilization](/Users/kpernyer/dev/work/converge/architecture/adr/ADR-004-contract-stabilization.md)
+
+If older sections of this file conflict with those documents, the API surfaces
+document and ADRs win.
 
 ## Core Axioms
 
 1. Context is the only shared state
-2. Agents never call each other
+2. Suggestors never call each other
 3. Execution is graph-based, not linear
 4. Context evolution is monotonic
 5. Convergence is explicit and observable
@@ -25,7 +38,7 @@ context-driven, multi-agent systems that provably converge.
 │ Execution graph & convergence engine     │
 └──────────────────────────────────────────┘
 ┌──────────────────────────────────────────┐
-│ Agent Layer                              │
+│ Suggestor Layer                              │
 │ Deterministic · LLM · Solver · IO        │
 └──────────────────────────────────────────┘
 ┌──────────────────────────────────────────┐
@@ -42,10 +55,16 @@ context-driven, multi-agent systems that provably converge.
 
 ```
 crates/
-  traits/         Public trait contract (no deps)
-  core/           Engine, context, types (no internal deps)
+  model/          Curated semantic model surface
+  pack/           Canonical pack authoring contract
+  protocol/       Canonical generated wire contract (`converge.v1`)
+  traits/         Deprecated compatibility facade
+  kernel/         Curated in-process embedding API
+  client/         Canonical remote Rust SDK
+  core/           Kernel implementation and truth pipeline enforcement
+  provider-api/   Canonical provider capability contract
   provider/       LLM backends (Anthropic, OpenAI, Gemini, Ollama, …)
-  domain/         Domain agents and packs
+  domain/         Domain suggestors and packs
   experience/     Event-sourced audit ledger
   knowledge/      Vector search knowledge base
   mcp/            Model Context Protocol (client + server)
@@ -54,7 +73,7 @@ crates/
   llm/            Local inference kernel (publish = false)
   policy/         Cedar policy engine (publish = false)
   runtime/        HTTP/gRPC servers (publish = false)
-  remote/         gRPC client library
+  remote/         Compatibility CLI on top of client + protocol
   tool/           Dev tools, Gherkin validator (`cz` binary)
   application/    Single `converge` binary (publish = false)
 
@@ -69,10 +88,16 @@ architecture/     This directory
 ## Dependency Graph (leaf → root)
 
 ```
-converge-traits          (no deps)
-converge-core            (no internal deps)
+converge-pack            (no internal deps)
+converge-provider-api    (no internal deps)
+converge-protocol        (no internal deps)
+converge-traits          -> pack, provider-api (compatibility only)
+converge-core            -> pack
+converge-model           -> core, pack
+converge-kernel          -> core, pack
+converge-client          -> protocol
 converge-mcp             (no internal deps)
-converge-provider        → core, traits
+converge-provider        → core, pack, provider-api
 converge-domain          → core, provider
 converge-experience      → core
 converge-knowledge       → mcp (server feature)
@@ -82,22 +107,26 @@ converge-analytics       → core, domain, provider
 converge-llm             → core, domain, provider
 converge-policy          → core
 converge-tool            → core, provider
-converge-remote          (no internal deps, gRPC client)
-converge-runtime         → core, provider, tool
+converge-remote          → client, protocol
+converge-runtime         → core, provider, protocol, tool
 converge-application     → core, provider, domain, tool, mcp, knowledge, …
 ```
 
 ## Execution Model
+
+This section describes the enforced implementation shape.
+
+ADR-002 defines the truth pipeline enforced in code.
 
 ### Basic convergence loop
 ```
 initialize context from RootIntent
 
 repeat
-  determine eligible agents     (pure, side-effect free)
-  filter by active packs        (only agents in activated packs run)
-  execute eligible agents       (parallel, read-only context via ContextView)
-  collect AgentEffects          (buffered facts + proposals)
+  determine eligible suggestors (pure, side-effect free)
+  filter by active packs        (only suggestors in activated packs run)
+  execute eligible suggestors   (read-only context via ContextView; scheduling is runtime-defined)
+  collect AgentEffects          (buffered proposals only)
   promote proposals → facts     (promotion gate validates confidence, provenance)
   merge effects into context    (serialized, deterministic)
   evaluate criteria             (CriterionEvaluator checks success conditions)
@@ -109,8 +138,8 @@ until convergence or termination
 Application builds TypesRootIntent from TruthDefinition
   → intent carries: active_packs, success_criteria, budget, constraints
 
-Application creates Engine, registers agents in packs
-  → engine.register_in_pack("compliance-pack", screener_agent)
+Application creates Engine, registers suggestors in packs
+  → engine.register_suggestor_in_pack("compliance-pack", screener_agent)
 
 Application calls run_with_types_intent_and_hooks()
   → engine runs convergence loop
@@ -130,17 +159,17 @@ Application projects ConvergeResult into domain state
 
 **Termination**: convergence reached, criteria met, budgets exhausted, invariants violated, or human intervention required.
 
-**Guarantees**: determinism, termination (budgets), isolation (agents can't affect each other), auditability (full provenance on every fact and proposal).
+**Guarantees**: determinism, termination (budgets), isolation (suggestors can't affect each other), auditability (full provenance on every fact and proposal).
 
 ## Feature Gates
 
 The workspace uses Cargo features so consumers only pull what they need.
 
-**Individual crates** (library consumers):
+**Individual crates** (supported library consumers):
 ```toml
-converge-core = "2"                                        # minimal
-converge-provider = { version = "2", features = ["anthropic"] }  # + LLM
-converge-knowledge = { version = "2", features = ["mcp"] }      # + knowledge + MCP
+converge-kernel = "3"     # embed the engine in-process
+converge-pack = "3"       # author suggestors and invariants
+converge-client = "3"     # connect to a remote runtime
 ```
 
 **Umbrella binary** (`converge-application`):
@@ -156,11 +185,28 @@ converge-knowledge = { version = "2", features = ["mcp"] }      # + knowledge + 
 
 ## API Surface
 
+The supported external Rust contracts are:
+
+- `converge-pack`
+- `converge-provider-api`
+- `converge-model`
+- `converge-kernel`
+- `converge-protocol`
+- `converge-client`
+
+The current external network contract is:
+
+- protobuf package `converge.v1` in `schema/proto/converge.proto`
+
+`converge-traits` is deprecated compatibility only.
+`converge-core` is implementation, not the intended external contract.
+`converge-remote` is a compatibility CLI, not the canonical Rust SDK.
+
 ### Engine
 ```rust
 let mut engine = Engine::new();
-engine.register(agent);                          // global agent
-engine.register_in_pack("pack-id", agent);       // pack-scoped agent
+engine.register_suggestor(suggestor);                      // global suggestor
+engine.register_suggestor_in_pack("pack-id", suggestor);   // pack-scoped suggestor
 engine.run(context);                             // basic convergence
 engine.run_with_types_intent_and_hooks(          // application-level truth execution
     context, &intent, TypesRunHooks {
@@ -177,30 +223,30 @@ context.has(ContextKey::Seeds);
 context.get(ContextKey::Seeds);          // → iterator of &Fact
 context.get(ContextKey::Evaluations);
 context.get(ContextKey::Diagnostic);
-context.add_fact(fact);
+context.add_input(ContextKey::Seeds, "seed-1", "initial observation");
+context.add_input_with_provenance(ContextKey::Seeds, "seed-2", "source data", "operator");
 ```
 
-### Agent trait
+### Suggestor trait
 ```rust
-trait Agent {
+trait Suggestor {
     fn name(&self) -> &str;
     fn dependencies(&self) -> &[ContextKey];
-    fn accepts(&self, ctx: &dyn ContextView) -> bool;
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect;
+    fn accepts(&self, ctx: &dyn Context) -> bool;
+    fn execute(&self, ctx: &dyn Context) -> AgentEffect;
 }
 ```
 
-Agents never call other agents. Agents never mutate context directly. Agents only emit effects.
+Suggestors never call other suggestors. Suggestors never mutate context directly. Suggestors only emit effects.
 
 ### AgentEffect
 ```rust
-// An agent can emit facts AND proposals in a single execution
+// A suggestor can emit draft proposals only.
 AgentEffect {
-    facts: vec![...],       // validated, authoritative
     proposals: vec![...],   // need promotion gate validation
 }
 AgentEffect::with_proposal(proposed_fact)  // convenience
-AgentEffect::with_fact(fact)               // convenience
+AgentEffect::with_proposals(vec![...])     // convenience
 AgentEffect::empty()                       // nothing to contribute
 ```
 
@@ -210,8 +256,8 @@ ProposedFact {
     key: ContextKey::Evaluations,
     id: "compliance:screen:acme".into(),
     content: payload_json,
-    confidence: 0.85,           // how confident the agent is (0.0–1.0)
-    provenance: "agent:screener".into(),  // who proposed it
+    confidence: 0.85,           // how confident the suggestor is (0.0–1.0)
+    provenance: "suggestor:screener".into(),  // who proposed it
 }
 ```
 
@@ -272,4 +318,4 @@ Protocol definitions live in `schema/`:
 
 ## One-sentence takeaway
 
-> Converge runs agents in parallel, but commits knowledge serially to guarantee convergence.
+> Converge executes suggestors against a read-only context and commits knowledge serially to guarantee convergence.

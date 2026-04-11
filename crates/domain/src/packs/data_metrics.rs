@@ -18,7 +18,7 @@
 //! distinguished by their ID prefixes (metric:, source:, pipeline:, etc.).
 
 use converge_core::{
-    Agent, AgentEffect, ContextKey, Fact,
+    Suggestor, AgentEffect, ContextKey,
     invariant::{Invariant, InvariantClass, InvariantResult, Violation},
 };
 
@@ -43,7 +43,7 @@ pub const ANOMALY_PREFIX: &str = "anomaly:";
 #[derive(Debug, Clone, Default)]
 pub struct MetricRegistrarAgent;
 
-impl Agent for MetricRegistrarAgent {
+impl Suggestor for MetricRegistrarAgent {
     fn name(&self) -> &str {
         "metric_registrar"
     }
@@ -66,10 +66,11 @@ impl Agent for MetricRegistrarAgent {
             if trigger.content.contains("metric.define")
                 || trigger.content.contains("metric.update")
             {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}", METRIC_PREFIX, trigger.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}", METRIC_PREFIX, trigger.id),
+                    serde_json::json!({
                         "type": "metric_definition",
                         "source_id": trigger.id,
                         "state": "draft",
@@ -78,11 +79,11 @@ impl Agent for MetricRegistrarAgent {
                         "created_at": "2026-01-12T12:00:00Z"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -90,7 +91,7 @@ impl Agent for MetricRegistrarAgent {
 #[derive(Debug, Clone, Default)]
 pub struct SourceConnectorAgent;
 
-impl Agent for SourceConnectorAgent {
+impl Suggestor for SourceConnectorAgent {
     fn name(&self) -> &str {
         "source_connector"
     }
@@ -113,10 +114,11 @@ impl Agent for SourceConnectorAgent {
             if trigger.content.contains("source.register")
                 || trigger.content.contains("source.connect")
             {
-                facts.push(Fact {
-                    key: ContextKey::Signals,
-                    id: format!("{}{}", SOURCE_PREFIX, trigger.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Signals,
+                    format!("{}{}", SOURCE_PREFIX, trigger.id),
+                    serde_json::json!({
                         "type": "data_source",
                         "source_id": trigger.id,
                         "state": "registered",
@@ -125,11 +127,11 @@ impl Agent for SourceConnectorAgent {
                         "registered_at": "2026-01-12T12:00:00Z"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -137,7 +139,7 @@ impl Agent for SourceConnectorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct PipelineCoordinatorAgent;
 
-impl Agent for PipelineCoordinatorAgent {
+impl Suggestor for PipelineCoordinatorAgent {
     fn name(&self) -> &str {
         "pipeline_coordinator"
     }
@@ -160,10 +162,11 @@ impl Agent for PipelineCoordinatorAgent {
             if source.id.starts_with(SOURCE_PREFIX)
                 && source.content.contains("\"state\":\"healthy\"")
             {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}", PIPELINE_PREFIX, source.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}", PIPELINE_PREFIX, source.id),
+                    serde_json::json!({
                         "type": "pipeline",
                         "source_id": source.id,
                         "state": "ready",
@@ -172,11 +175,11 @@ impl Agent for PipelineCoordinatorAgent {
                         "created_at": "2026-01-12T12:00:00Z"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -184,7 +187,7 @@ impl Agent for PipelineCoordinatorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct DataValidatorAgent;
 
-impl Agent for DataValidatorAgent {
+impl Suggestor for DataValidatorAgent {
     fn name(&self) -> &str {
         "data_validator"
     }
@@ -207,10 +210,11 @@ impl Agent for DataValidatorAgent {
             if pipeline.id.starts_with(PIPELINE_PREFIX)
                 && pipeline.content.contains("\"state\":\"succeeded\"")
             {
-                facts.push(Fact {
-                    key: ContextKey::Evaluations,
-                    id: format!("{}{}", VALIDATION_PREFIX, pipeline.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Evaluations,
+                    format!("{}{}", VALIDATION_PREFIX, pipeline.id),
+                    serde_json::json!({
                         "type": "data_validation",
                         "pipeline_id": pipeline.id,
                         "schema_valid": true,
@@ -220,11 +224,11 @@ impl Agent for DataValidatorAgent {
                         "validated_at": "2026-01-12T12:00:00Z"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -232,7 +236,7 @@ impl Agent for DataValidatorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct AnomalyDetectorAgent;
 
-impl Agent for AnomalyDetectorAgent {
+impl Suggestor for AnomalyDetectorAgent {
     fn name(&self) -> &str {
         "anomaly_detector"
     }
@@ -250,10 +254,11 @@ impl Agent for AnomalyDetectorAgent {
     fn execute(&self, _ctx: &dyn converge_core::ContextView) -> AgentEffect {
         // In real implementation, would analyze data for anomalies
         // For now, creates a placeholder showing no anomalies detected
-        AgentEffect::with_facts(vec![Fact {
-            key: ContextKey::Evaluations,
-            id: format!("{}scan:latest", ANOMALY_PREFIX),
-            content: serde_json::json!({
+        AgentEffect::with_proposal(crate::proposal(
+            self.name(),
+            ContextKey::Evaluations,
+            format!("{}scan:latest", ANOMALY_PREFIX),
+            serde_json::json!({
                 "type": "anomaly_scan",
                 "anomalies_detected": 0,
                 "metrics_scanned": 10,
@@ -261,7 +266,7 @@ impl Agent for AnomalyDetectorAgent {
                 "scanned_at": "2026-01-12T12:00:00Z"
             })
             .to_string(),
-        }])
+        ))
     }
 }
 
@@ -269,7 +274,7 @@ impl Agent for AnomalyDetectorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct DashboardBuilderAgent;
 
-impl Agent for DashboardBuilderAgent {
+impl Suggestor for DashboardBuilderAgent {
     fn name(&self) -> &str {
         "dashboard_builder"
     }
@@ -292,10 +297,11 @@ impl Agent for DashboardBuilderAgent {
             if trigger.content.contains("dashboard.create")
                 || trigger.content.contains("dashboard.update")
             {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}", DASHBOARD_PREFIX, trigger.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}", DASHBOARD_PREFIX, trigger.id),
+                    serde_json::json!({
                         "type": "dashboard",
                         "source_id": trigger.id,
                         "state": "draft",
@@ -304,11 +310,11 @@ impl Agent for DashboardBuilderAgent {
                         "created_at": "2026-01-12T12:00:00Z"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -316,7 +322,7 @@ impl Agent for DashboardBuilderAgent {
 #[derive(Debug, Clone, Default)]
 pub struct ReportGeneratorAgent;
 
-impl Agent for ReportGeneratorAgent {
+impl Suggestor for ReportGeneratorAgent {
     fn name(&self) -> &str {
         "report_generator"
     }
@@ -339,10 +345,11 @@ impl Agent for ReportGeneratorAgent {
             if trigger.content.contains("report.generate")
                 || trigger.content.contains("report.schedule")
             {
-                facts.push(Fact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}{}", REPORT_PREFIX, trigger.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{}{}", REPORT_PREFIX, trigger.id),
+                    serde_json::json!({
                         "type": "report",
                         "source_id": trigger.id,
                         "state": "generating",
@@ -351,11 +358,11 @@ impl Agent for ReportGeneratorAgent {
                         "generated_at": "2026-01-12T12:00:00Z"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -363,7 +370,7 @@ impl Agent for ReportGeneratorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct AlertEvaluatorAgent;
 
-impl Agent for AlertEvaluatorAgent {
+impl Suggestor for AlertEvaluatorAgent {
     fn name(&self) -> &str {
         "alert_evaluator"
     }
@@ -386,10 +393,11 @@ impl Agent for AlertEvaluatorAgent {
         for eval in evaluations.iter() {
             if eval.id.starts_with(ANOMALY_PREFIX) {
                 // Parse anomaly count - in real impl would check if > 0
-                facts.push(Fact {
-                    key: ContextKey::Evaluations,
-                    id: format!("{}evaluation:{}", ALERT_PREFIX, eval.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Evaluations,
+                    format!("{}evaluation:{}", ALERT_PREFIX, eval.id),
+                    serde_json::json!({
                         "type": "alert_evaluation",
                         "anomaly_scan_id": eval.id,
                         "alerts_triggered": 0,
@@ -397,11 +405,11 @@ impl Agent for AlertEvaluatorAgent {
                         "evaluated_at": "2026-01-12T12:00:00Z"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -409,7 +417,7 @@ impl Agent for AlertEvaluatorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct FreshnessMonitorAgent;
 
-impl Agent for FreshnessMonitorAgent {
+impl Suggestor for FreshnessMonitorAgent {
     fn name(&self) -> &str {
         "freshness_monitor"
     }
@@ -430,10 +438,11 @@ impl Agent for FreshnessMonitorAgent {
 
         for source in signals.iter() {
             if source.id.starts_with(SOURCE_PREFIX) {
-                facts.push(Fact {
-                    key: ContextKey::Evaluations,
-                    id: format!("freshness:{}", source.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Evaluations,
+                    format!("freshness:{}", source.id),
+                    serde_json::json!({
                         "type": "freshness_check",
                         "source_id": source.id,
                         "is_fresh": true,
@@ -442,11 +451,11 @@ impl Agent for FreshnessMonitorAgent {
                         "checked_at": "2026-01-12T12:00:00Z"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 
@@ -454,7 +463,7 @@ impl Agent for FreshnessMonitorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct MetricCalculatorAgent;
 
-impl Agent for MetricCalculatorAgent {
+impl Suggestor for MetricCalculatorAgent {
     fn name(&self) -> &str {
         "metric_calculator"
     }
@@ -483,10 +492,11 @@ impl Agent for MetricCalculatorAgent {
             if metric.id.starts_with(METRIC_PREFIX)
                 && metric.content.contains("\"state\":\"active\"")
             {
-                facts.push(Fact {
-                    key: ContextKey::Evaluations,
-                    id: format!("calculated:{}", metric.id),
-                    content: serde_json::json!({
+                facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Evaluations,
+                    format!("calculated:{}", metric.id),
+                    serde_json::json!({
                         "type": "metric_calculation",
                         "metric_id": metric.id,
                         "value": 0.0,
@@ -494,11 +504,11 @@ impl Agent for MetricCalculatorAgent {
                         "calculated_at": "2026-01-12T12:00:00Z"
                     })
                     .to_string(),
-                });
+                ));
             }
         }
 
-        AgentEffect::with_facts(facts)
+        AgentEffect::with_proposals(facts)
     }
 }
 

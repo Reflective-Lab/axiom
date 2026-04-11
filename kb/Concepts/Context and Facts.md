@@ -1,0 +1,60 @@
+---
+tags: [concepts]
+---
+# Context and Facts
+
+The context is the shared, typed state visible to all suggestors. It is the only communication channel between suggestors ([[Philosophy/Nine Axioms#2. Convergence Over Control Flow|Axiom 2]]).
+
+## Context
+
+```rust
+pub trait Context: Send + Sync {
+    fn has(&self, key: ContextKey) -> bool;
+    fn get(&self, key: ContextKey) -> &[Fact];
+    fn get_proposals(&self, key: ContextKey) -> &[ProposedFact];
+    fn count(&self, key: ContextKey) -> usize;
+}
+```
+
+Properties:
+- **Append-only** — facts are added, never removed or modified ([[Philosophy/Nine Axioms#3. Append-Only Truth|Axiom 3]])
+- **Partitioned** — facts are organized by [[Building/Context Keys|ContextKey]]
+- **Read-only for suggestors** — suggestors receive `&dyn Context`, not a mutable reference
+- **Scoped to a run** — context exists for one convergence run, not across runs
+
+## Facts
+
+A `Fact` is a piece of evidence in the context.
+
+```rust
+pub struct Fact {
+    pub id: String,
+    pub content: String,
+}
+
+impl Fact {
+    pub fn key(&self) -> ContextKey;
+    pub fn promotion_record(&self) -> &FactPromotionRecord;
+    pub fn created_at(&self) -> &str;
+}
+```
+
+Facts are authoritative and read-only. External code cannot construct them directly. Suggestors emit `ProposedFact`, the engine validates through the promotion gate, and only then does a `Fact` enter context.
+
+## Context Keys
+
+Facts are partitioned by `ContextKey`. Suggestors declare which keys they depend on — the engine only wakes suggestors when their dependencies change.
+
+| Key | Purpose |
+|---|---|
+| `Seeds` | Initial evidence, raw inputs |
+| `Hypotheses` | Tentative conclusions |
+| `Strategies` | Action plans and recommendations |
+| `Constraints` | Limitations and boundary conditions |
+| `Signals` | Observations, environmental data |
+| `Competitors` | Competitive intelligence |
+| `Evaluations` | Assessments, scores, rankings |
+| `Proposals` | LLM-generated suggestions awaiting validation |
+| `Diagnostic` | Debugging info (never blocks convergence) |
+
+See also: [[Concepts/Proposals and Promotion]], [[Building/Context Keys]], [[Philosophy/Nine Axioms]]
