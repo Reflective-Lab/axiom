@@ -52,30 +52,24 @@
 
 mod markdown;
 mod multimodal;
-mod ocr;
+// OCR, photos, screenshots moved to organism-intelligence
+// mod ocr;
 mod pdf;
-mod photos;
+// mod photos;
 mod rich_media;
 pub mod routing;
-mod screenshots;
+// mod screenshots;
 mod source;
 
 pub use markdown::{ChunkType, IngesterConfig, MarkdownChunk, MarkdownDocument, MarkdownIngester};
 pub use multimodal::{EmbeddingDescriptor, EmbeddingLocation, Modality, TemporalSpan};
-pub use ocr::{
-    AppleVisionOcrBackend, AppleVisionOcrConfig, AppleVisionRecognitionLevel, BoundingBox,
-    FixtureOcrBackend, ImageOcrRequest, OcrBackend, OcrBlockKind, OcrDocument, OcrEngine,
-    OcrTargetKind, OcrTextBlock, TesseractOcrBackend, TesseractOcrConfig,
-};
+// OCR types moved to organism-intelligence
 pub use pdf::{PdfChunk, PdfDocument, PdfIngester};
-pub use photos::{PhotoDocument, PhotoIngester, PhotoIngesterConfig, PhotoTextChunk};
 pub use rich_media::{
     MediaIngestRequest, MediaKind, TranscriptChunkPolicy, TranscriptDocument, TranscriptSegment,
     TranscriptionBackend, TranscriptionEngine, TranscriptionRequest,
 };
-pub use screenshots::{
-    ScreenshotDocument, ScreenshotIngester, ScreenshotIngesterConfig, ScreenshotTextChunk,
-};
+// Screenshot types moved to organism-intelligence
 pub use source::{SourceKind, SourceProvenance};
 
 // Re-export routing types
