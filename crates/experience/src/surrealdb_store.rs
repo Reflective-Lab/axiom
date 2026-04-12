@@ -11,7 +11,7 @@ use tokio::runtime::Runtime;
 
 use converge_core::{
     ArtifactKind, EventQuery, ExperienceEvent, ExperienceEventEnvelope, ExperienceEventKind,
-    ExperienceStore, ExperienceStoreError, ExperienceStoreResult, LifecycleEvent, TraceLink,
+    ExperienceStore, ExperienceStoreError, ExperienceStoreResult, LifecycleEvent, ReplayTrace,
 };
 
 /// Configuration for SurrealDB connection.
@@ -132,12 +132,12 @@ DEFINE INDEX trace_link_id_idx ON TABLE trace_link COLUMNS trace_link_id;
                 message: format!("Failed to insert event: {err}"),
             })?;
 
-        if let ExperienceEvent::TraceLinkRecorded {
+        if let ExperienceEvent::ReplayTraceRecorded {
             trace_link_id,
             trace_link,
         } = &event.event
         {
-            let record = TraceLinkRecord {
+            let record = ReplayTraceRecord {
                 trace_link_id: trace_link_id.clone(),
                 trace_link: trace_link.clone(),
             };
@@ -156,7 +156,7 @@ DEFINE INDEX trace_link_id_idx ON TABLE trace_link COLUMNS trace_link_id;
     async fn select_trace_link(
         &self,
         trace_link_id: &str,
-    ) -> ExperienceStoreResult<Option<TraceLink>> {
+    ) -> ExperienceStoreResult<Option<ReplayTrace>> {
         let mut response = self
             .db
             .query("SELECT trace_link FROM trace_link WHERE trace_link_id = $id LIMIT 1")
@@ -166,7 +166,7 @@ DEFINE INDEX trace_link_id_idx ON TABLE trace_link COLUMNS trace_link_id;
                 message: format!("Failed to query trace link: {err}"),
             })?;
 
-        let record: Option<TraceLinkRecord> =
+        let record: Option<ReplayTraceRecord> =
             response
                 .take(0)
                 .map_err(|err| ExperienceStoreError::StorageError {
@@ -291,7 +291,7 @@ impl ExperienceStore for SurrealDbExperienceStore {
         self.append_event(envelope)
     }
 
-    fn get_trace_link(&self, trace_link_id: &str) -> ExperienceStoreResult<Option<TraceLink>> {
+    fn get_trace_link(&self, trace_link_id: &str) -> ExperienceStoreResult<Option<ReplayTrace>> {
         self.runtime.block_on(self.select_trace_link(trace_link_id))
     }
 }
@@ -339,9 +339,9 @@ impl EventRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct TraceLinkRecord {
+struct ReplayTraceRecord {
     trace_link_id: String,
-    trace_link: TraceLink,
+    trace_link: ReplayTrace,
 }
 
 fn kind_to_str(kind: ExperienceEventKind) -> &'static str {
@@ -350,7 +350,7 @@ fn kind_to_str(kind: ExperienceEventKind) -> &'static str {
         ExperienceEventKind::ProposalValidated => "proposal_validated",
         ExperienceEventKind::FactPromoted => "fact_promoted",
         ExperienceEventKind::RecallExecuted => "recall_executed",
-        ExperienceEventKind::TraceLinkRecorded => "trace_link_recorded",
+        ExperienceEventKind::ReplayTraceRecorded => "trace_link_recorded",
         ExperienceEventKind::ReplayabilityDowngraded => "replayability_downgraded",
         ExperienceEventKind::ArtifactStateTransitioned => "artifact_state_transitioned",
         ExperienceEventKind::ArtifactRollbackRecorded => "artifact_rollback_recorded",
@@ -373,7 +373,7 @@ fn event_chain_id(event: &ExperienceEvent) -> Option<&str> {
 
 fn event_index_fields(event: &ExperienceEvent) -> (Option<String>, Option<String>, Option<String>) {
     match event {
-        ExperienceEvent::TraceLinkRecorded { trace_link_id, .. } => {
+        ExperienceEvent::ReplayTraceRecorded { trace_link_id, .. } => {
             (Some(trace_link_id.clone()), None, None)
         }
         ExperienceEvent::ReplayabilityDowngraded { trace_link_id, .. } => {

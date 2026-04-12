@@ -23,7 +23,7 @@ use tokio::runtime::Runtime;
 
 use converge_core::{
     ArtifactKind, EventQuery, ExperienceEvent, ExperienceEventEnvelope, ExperienceStore,
-    ExperienceStoreError, ExperienceStoreResult, LifecycleEvent, TraceLink,
+    ExperienceStoreError, ExperienceStoreResult, LifecycleEvent, ReplayTrace,
 };
 
 /// Configuration for LanceDB connection.
@@ -407,7 +407,7 @@ impl ExperienceStore for LanceDbExperienceStore {
         self.append_event(envelope)
     }
 
-    fn get_trace_link(&self, _trace_link_id: &str) -> ExperienceStoreResult<Option<TraceLink>> {
+    fn get_trace_link(&self, _trace_link_id: &str) -> ExperienceStoreResult<Option<ReplayTrace>> {
         // Trace links are not indexed in LanceDB.
         Ok(None)
     }

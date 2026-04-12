@@ -7,8 +7,10 @@
 //! Provides a builder pattern for configuring and running convergence jobs.
 
 use converge_core::suggestors::SeedSuggestor;
-use converge_core::{Budget, Context, ContextKey, ConvergeResult, Engine};
+use converge_core::{Budget, Context, ContextKey, ConvergeResult, Engine, ExperienceStore};
+use converge_experience::{InMemoryExperienceStore, StoreObserver};
 use serde::Serialize;
+use std::sync::Arc;
 use strum::IntoEnumIterator;
 use tracing::{info, info_span};
 
@@ -236,8 +238,10 @@ impl JobExecutor {
             "Starting job execution"
         );
 
-        // Create engine with budget
+        // Create engine with budget and event observer
         let mut engine = Engine::with_budget(self.budget);
+        let experience_store = Arc::new(InMemoryExperienceStore::new());
+        engine.set_event_observer(Arc::new(StoreObserver::new(experience_store.clone())));
 
         // Register seed agents
         for seed in &self.seeds {
@@ -252,11 +256,16 @@ impl JobExecutor {
         let result = engine.run(context).map_err(RuntimeError::Converge)?;
 
         let duration_ms = start.elapsed().as_millis() as u64;
+        let event_count = experience_store
+            .query_events(&converge_core::EventQuery::default())
+            .map(|e| e.len())
+            .unwrap_or(0);
 
         info!(
             converged = result.converged,
             cycles = result.cycles,
             duration_ms = duration_ms,
+            experience_events = event_count,
             "Job execution completed"
         );
 

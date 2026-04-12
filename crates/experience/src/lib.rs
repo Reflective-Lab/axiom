@@ -134,33 +134,39 @@ impl ExperienceStore for InMemoryExperienceStore {
 
 use converge_core::ExperienceEventObserver;
 
-/// Bridges engine events to an `InMemoryExperienceStore`.
+/// Bridges engine events to any `ExperienceStore` implementation.
 ///
 /// Pass this to `Engine::set_event_observer()` to capture all convergence
-/// events into the in-memory store for audit, debugging, and downstream consumption.
-pub struct StoreObserver {
-    store: Arc<InMemoryExperienceStore>,
+/// events into a store for audit, debugging, and downstream consumption.
+///
+/// Works with `InMemoryExperienceStore`, `SurrealDbExperienceStore`,
+/// `LanceDbExperienceStore`, or any custom `ExperienceStore` impl.
+pub struct StoreObserver<S: ExperienceStore = InMemoryExperienceStore> {
+    store: Arc<S>,
+    next_id: AtomicU64,
 }
 
-impl StoreObserver {
+impl<S: ExperienceStore> StoreObserver<S> {
     /// Create a new observer that appends to the given store.
     #[must_use]
-    pub fn new(store: Arc<InMemoryExperienceStore>) -> Self {
-        Self { store }
+    pub fn new(store: Arc<S>) -> Self {
+        Self {
+            store,
+            next_id: AtomicU64::new(0),
+        }
     }
 
     /// Access the underlying store (e.g., to query events after a run).
     #[must_use]
-    pub fn store(&self) -> &Arc<InMemoryExperienceStore> {
+    pub fn store(&self) -> &Arc<S> {
         &self.store
     }
 }
 
-impl ExperienceEventObserver for StoreObserver {
+impl<S: ExperienceStore + 'static> ExperienceEventObserver for StoreObserver<S> {
     fn on_event(&self, event: &ExperienceEvent) {
-        let id = self.store.next_id();
+        let id = format!("evt-{}", self.next_id.fetch_add(1, Ordering::Relaxed));
         let envelope = ExperienceEventEnvelope::new(id, event.clone());
-        // Best-effort append — don't panic if the store rejects (e.g., validation).
         let _ = self.store.append_event(envelope);
     }
 }

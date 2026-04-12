@@ -17,6 +17,7 @@ path = "src/main.rs"
 [dependencies]
 # Converge crates
 converge-core.workspace = true
+converge-experience.workspace = true
 converge-protocol = { workspace = true, optional = true }
 converge-provider.workspace = true
 converge-tool.workspace = true
