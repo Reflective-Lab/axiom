@@ -75,6 +75,24 @@ impl IntentId {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// Generates a new unique intent ID.
+    #[deprecated(
+        since = "2.0.0",
+        note = "Use converge-runtime with Randomness trait for random ID generation"
+    )]
+    #[must_use]
+    pub fn generate() -> Self {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        static COUNTER: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+        let counter = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let pid = std::process::id();
+        Self(format!("intent-{timestamp:x}-{pid:08x}-{counter:04x}"))
+    }
 }
 
 impl std::fmt::Display for IntentId {

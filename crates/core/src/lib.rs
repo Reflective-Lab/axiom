@@ -240,12 +240,14 @@ pub use model_selection::{
 };
 pub use prompt::{AgentPrompt, AgentRole, Constraint, OutputContract, PromptContext, PromptFormat};
 pub use root_intent::{
-    Budgets, ConstraintSeverity, IntentConstraint, IntentId, IntentKind, IntentValidationError,
-    Objective, RootIntent, Scope, ScopeConstraint, SuccessCriteria, SuccessCriterion,
+    Budgets, ConstraintSeverity, IntentConstraint, IntentKind, IntentValidationError, Objective,
+    RootIntent, Scope, ScopeConstraint, SuccessCriteria, SuccessCriterion,
 };
+// IntentId canonical definition is in types::frame, re-exported here
 pub use truth::{
     CriterionEvaluator, CriterionOutcome, CriterionResult, TruthCatalog, TruthDefinition, TruthKind,
 };
+pub use types::IntentId;
 
 // Re-export core capability types for convenience
 pub use capability::{
@@ -275,18 +277,17 @@ pub use kernel_boundary::{
     KernelPolicy,
     // Proposal types (kernel output boundary)
     KernelProposal,
-    LocalTraceLink,
+    LocalReplayTrace,
     ProposalKind,
     ProposedContent,
     RecallTrace,
-    RemoteTraceLink,
+    RemoteReplayTrace,
+    ReplayTrace,
     Replayability,
     // Routing policy types
     RiskTier,
     RoutingPolicy,
     SamplerParams,
-    // TraceLink types (replay vs audit semantics)
-    TraceLink,
 };
 
 // Re-export governed artifact types (lifecycle governance for any artifact that changes outcomes)

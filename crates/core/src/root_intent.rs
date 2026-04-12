@@ -40,50 +40,8 @@
 //! ```
 
 use crate::context::{Context, ContextKey, Fact};
+use crate::types::IntentId;
 use std::time::Duration;
-
-/// Unique identifier for a Root Intent.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct IntentId(pub String);
-
-impl IntentId {
-    /// Creates a new intent ID.
-    #[must_use]
-    pub fn new(id: impl Into<String>) -> Self {
-        Self(id.into())
-    }
-
-    /// Generates a new unique intent ID.
-    ///
-    /// # Deprecation Notice
-    ///
-    /// This method uses timestamp + process ID + counter for uniqueness.
-    /// For cryptographically random IDs, use `converge-runtime` with a
-    /// `Randomness` implementation.
-    #[deprecated(
-        since = "2.0.0",
-        note = "Use converge-runtime with Randomness trait for random ID generation"
-    )]
-    #[must_use]
-    pub fn generate() -> Self {
-        use std::time::{SystemTime, UNIX_EPOCH};
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos();
-        // Use process ID and a counter for uniqueness without rand
-        static COUNTER: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
-        let counter = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let pid = std::process::id();
-        Self(format!("intent-{timestamp:x}-{pid:08x}-{counter:04x}"))
-    }
-}
-
-impl std::fmt::Display for IntentId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
 
 /// The class of problem being solved.
 ///

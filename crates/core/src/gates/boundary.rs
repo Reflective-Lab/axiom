@@ -45,17 +45,17 @@ pub mod constitutional {
         KernelPolicy,
         KernelProposal,
         // Tracing types
-        LocalTraceLink,
+        LocalReplayTrace,
         ProposalKind,
         ProposedContent,
         RecallTrace,
-        RemoteTraceLink,
+        RemoteReplayTrace,
+        ReplayTrace,
         Replayability,
         ReplayabilityDowngradeReason,
         RiskTier,
         RoutingPolicy,
         SamplerParams,
-        TraceLink,
     };
 }
 

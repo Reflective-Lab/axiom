@@ -7,15 +7,15 @@
 //! (converge-llm) and the Converge platform. They encode core axioms:
 //!
 //! - **Proposed vs Fact**: Kernels emit `KernelProposal`, not `Fact`
-//! - **Replayable vs Audit-only**: `LocalTraceLink` vs `RemoteTraceLink`
-//! - **Explicit Authority**: All proposals have provenance via `TraceLink`
+//! - **Replayable vs Audit-only**: `LocalReplayTrace` vs `RemoteReplayTrace`
+//! - **Explicit Authority**: All proposals have provenance via `ReplayTrace`
 //!
 //! ## Axiom Compliance
 //!
 //! | Axiom | Enforcement |
 //! |-------|-------------|
 //! | Agents Suggest, Engines Decide | `KernelProposal` cannot become `Fact` without validation |
-//! | Transparent Determinism | `TraceLink` in every proposal |
+//! | Transparent Determinism | `ReplayTrace` in every proposal |
 //! | Human Authority First-Class | `requires_human` flag on proposals |
 //!
 //! ## Usage
@@ -426,35 +426,35 @@ impl Default for DecisionStep {
 }
 
 // ============================================================================
-// TraceLink: Two Concrete Shapes
+// ReplayTrace: Two Concrete Shapes
 // ============================================================================
 
 /// Trace link for audit and (possibly) replay.
 ///
 /// The shape depends on the backend type. This is the **constitutional type**
-/// that prevents "TraceLink + hope" semantics.
+/// that prevents "ReplayTrace + hope" semantics.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
-pub enum TraceLink {
+pub enum ReplayTrace {
     /// Local backend: replay-eligible (deterministic)
-    Local(LocalTraceLink),
+    Local(LocalReplayTrace),
     /// Remote backend: audit-eligible only (bounded stochasticity)
-    Remote(RemoteTraceLink),
+    Remote(RemoteReplayTrace),
 }
 
-impl TraceLink {
+impl ReplayTrace {
     /// Check if this trace is replay-eligible (only local).
     #[must_use]
     pub fn is_replay_eligible(&self) -> bool {
-        matches!(self, TraceLink::Local(_))
+        matches!(self, ReplayTrace::Local(_))
     }
 
     /// Get the replayability level.
     #[must_use]
     pub fn replayability(&self) -> Replayability {
         match self {
-            TraceLink::Local(_) => Replayability::Deterministic,
-            TraceLink::Remote(r) => r.replayability,
+            ReplayTrace::Local(_) => Replayability::Deterministic,
+            ReplayTrace::Remote(r) => r.replayability,
         }
     }
 }
@@ -507,7 +507,7 @@ pub enum ReplayabilityDowngradeReason {
 /// Contains all information needed to reproduce the exact output.
 /// Only local inference can provide this level of determinism.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LocalTraceLink {
+pub struct LocalReplayTrace {
     /// Hash of base model weights
     pub base_model_hash: String,
     /// Adapter ID + hash (if used)
@@ -586,7 +586,7 @@ impl Default for ExecutionEnv {
 /// Contains enough info to audit but NOT replay deterministically.
 /// This explicitly acknowledges the bounded stochasticity of remote providers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RemoteTraceLink {
+pub struct RemoteReplayTrace {
     /// Provider name (e.g., "anthropic", "openai")
     pub provider_name: String,
     /// Model ID as returned by provider
@@ -607,7 +607,7 @@ pub struct RemoteTraceLink {
     pub retried: bool,
     /// Retry reasons (if retried)
     pub retry_reasons: Vec<String>,
-    /// Explicit replayability flag — prevents "TraceLink + hope" semantics
+    /// Explicit replayability flag — prevents "ReplayTrace + hope" semantics
     pub replayability: Replayability,
 }
 
@@ -774,7 +774,7 @@ pub struct KernelProposal {
     /// Structured payload (if applicable)
     pub structured_payload: Option<serde_json::Value>,
     /// Link to the generation trace (for audit/replay)
-    pub trace_link: TraceLink,
+    pub trace_link: ReplayTrace,
     /// Contract/truth validation results
     pub contract_results: Vec<ContractResult>,
     /// Whether this proposal requires human approval
@@ -817,7 +817,7 @@ mod tests {
 
     #[test]
     fn trace_link_replayability() {
-        let local = TraceLink::Local(LocalTraceLink {
+        let local = ReplayTrace::Local(LocalReplayTrace {
             base_model_hash: "abc123".to_string(),
             adapter: None,
             tokenizer_hash: "tok123".to_string(),
@@ -829,7 +829,7 @@ mod tests {
             execution_env: ExecutionEnv::default(),
         });
 
-        let remote = TraceLink::Remote(RemoteTraceLink {
+        let remote = ReplayTrace::Remote(RemoteReplayTrace {
             provider_name: "anthropic".to_string(),
             provider_model_id: "claude-3-opus".to_string(),
             request_fingerprint: "req123".to_string(),
@@ -873,7 +873,7 @@ mod tests {
 
     #[test]
     fn kernel_proposal_auto_promotable() {
-        let local_trace = TraceLink::Local(LocalTraceLink {
+        let local_trace = ReplayTrace::Local(LocalReplayTrace {
             base_model_hash: "hash".to_string(),
             adapter: None,
             tokenizer_hash: "tok".to_string(),

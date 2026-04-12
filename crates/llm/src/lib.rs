@@ -113,20 +113,20 @@ pub use backend::{
     ExecutionEnv,
     // Core trait
     LlmBackend,
-    LocalTraceLink,
+    LocalReplayTrace,
     Message,
     MessageRole,
     // Proposals
     ProposedContent,
     RecallTrace,
-    RemoteTraceLink,
+    RemoteReplayTrace,
+    // ReplayTrace (two shapes)
+    ReplayTrace,
     Replayability,
     RiskTier,
     // Routing
     RoutingPolicy,
     SamplerParams,
-    // TraceLink (two shapes)
-    TraceLink,
 };
 
 // ============================================================================

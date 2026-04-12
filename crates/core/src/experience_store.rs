@@ -28,8 +28,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::governed_artifact::{GovernedArtifactState, LifecycleEvent, RollbackRecord};
 use crate::kernel_boundary::{
-    DecisionStep, KernelPolicy, KernelProposal, Replayability, ReplayabilityDowngradeReason,
-    RoutingPolicy, TraceLink,
+    DecisionStep, KernelPolicy, KernelProposal, ReplayTrace, Replayability,
+    ReplayabilityDowngradeReason, RoutingPolicy,
 };
 use crate::recall::{RecallPolicy, RecallProvenanceEnvelope, RecallQuery};
 
@@ -112,7 +112,7 @@ pub enum ExperienceEventKind {
     ProposalValidated,
     FactPromoted,
     RecallExecuted,
-    TraceLinkRecorded,
+    ReplayTraceRecorded,
     ReplayabilityDowngraded,
     ArtifactStateTransitioned,
     ArtifactRollbackRecorded,
@@ -157,9 +157,9 @@ pub enum ExperienceEvent {
         trace_link_id: Option<String>,
     },
     /// Trace link recorded as a first-class object.
-    TraceLinkRecorded {
+    ReplayTraceRecorded {
         trace_link_id: String,
-        trace_link: TraceLink,
+        trace_link: ReplayTrace,
     },
     /// Replayability downgraded for a trace.
     ReplayabilityDowngraded {
@@ -220,7 +220,7 @@ impl ExperienceEvent {
             Self::ProposalValidated { .. } => ExperienceEventKind::ProposalValidated,
             Self::FactPromoted { .. } => ExperienceEventKind::FactPromoted,
             Self::RecallExecuted { .. } => ExperienceEventKind::RecallExecuted,
-            Self::TraceLinkRecorded { .. } => ExperienceEventKind::TraceLinkRecorded,
+            Self::ReplayTraceRecorded { .. } => ExperienceEventKind::ReplayTraceRecorded,
             Self::ReplayabilityDowngraded { .. } => ExperienceEventKind::ReplayabilityDowngraded,
             Self::ArtifactStateTransitioned { .. } => {
                 ExperienceEventKind::ArtifactStateTransitioned
@@ -352,7 +352,7 @@ pub trait ExperienceStore: Send + Sync {
     ) -> ExperienceStoreResult<()>;
 
     /// Fetch a trace link by id.
-    fn get_trace_link(&self, trace_link_id: &str) -> ExperienceStoreResult<Option<TraceLink>>;
+    fn get_trace_link(&self, trace_link_id: &str) -> ExperienceStoreResult<Option<ReplayTrace>>;
 }
 
 /// Experience store error type.

@@ -458,6 +458,8 @@ pub enum FinishReason {
     Eos,
     /// Hit a stop sequence.
     StopSequence,
+    /// Other/unknown reason.
+    Other,
 }
 
 /// Inference envelope for deterministic, reproducible agent behavior.

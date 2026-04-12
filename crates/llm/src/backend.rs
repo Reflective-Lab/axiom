@@ -12,7 +12,7 @@
 //!
 //! All model invocations—local or remote—must produce the same top-level artifact:
 //! - `BackendResponse` containing `ProposedContent`(s)
-//! - Plus a `TraceLink` that makes the invocation auditable, budgeted, and comparable
+//! - Plus a `ReplayTrace` that makes the invocation auditable, budgeted, and comparable
 //!
 //! "Interchangeable" means:
 //! - Same request type
@@ -22,10 +22,10 @@
 //!
 //! # Determinism Guarantees
 //!
-//! | Backend | Determinism | TraceLink |
+//! | Backend | Determinism | ReplayTrace |
 //! |---------|-------------|-----------|
-//! | Local (converge-llm) | Strong (replay-eligible) | `LocalTraceLink` |
-//! | Remote (providers) | Bounded stochasticity (audit-eligible) | `RemoteTraceLink` |
+//! | Local (converge-llm) | Strong (replay-eligible) | `LocalReplayTrace` |
+//! | Remote (providers) | Bounded stochasticity (audit-eligible) | `RemoteReplayTrace` |
 //!
 //! Remote runs are:
 //! - **Auditable**: Full request/response + metadata
@@ -41,18 +41,18 @@ pub use converge_core::kernel_boundary::{
     ContentKind,
     DataClassification,
     ExecutionEnv,
-    LocalTraceLink,
+    LocalReplayTrace,
     // Proposal types
     ProposedContent,
     RecallTrace,
-    RemoteTraceLink,
+    RemoteReplayTrace,
+    // ReplayTrace types
+    ReplayTrace,
     Replayability,
     // Routing types (already in core)
     RiskTier,
     RoutingPolicy,
     SamplerParams,
-    // TraceLink types
-    TraceLink,
 };
 
 // Re-export backend types from converge-core
@@ -135,7 +135,7 @@ mod tests {
 
     #[test]
     fn test_trace_link_replayability() {
-        let local = TraceLink::Local(LocalTraceLink {
+        let local = ReplayTrace::Local(LocalReplayTrace {
             base_model_hash: "abc123".to_string(),
             adapter: None,
             tokenizer_hash: "tok123".to_string(),
@@ -155,7 +155,7 @@ mod tests {
             },
         });
 
-        let remote = TraceLink::Remote(RemoteTraceLink {
+        let remote = ReplayTrace::Remote(RemoteReplayTrace {
             provider_name: "anthropic".to_string(),
             provider_model_id: "claude-3-opus".to_string(),
             request_fingerprint: "req123".to_string(),
@@ -243,7 +243,7 @@ mod tests {
     /// Mock remote backend for testing without real API calls.
     ///
     /// This backend simulates a remote provider (like Anthropic) and:
-    /// - Returns `RemoteTraceLink` (audit-only, NOT replayable)
+    /// - Returns `RemoteReplayTrace` (audit-only, NOT replayable)
     /// - Can be configured to return different responses
     /// - Tracks calls for verification
     struct MockRemoteBackend {
@@ -296,7 +296,7 @@ mod tests {
                     results: vec![],
                     all_passed: true,
                 },
-                trace_link: TraceLink::Remote(RemoteTraceLink {
+                trace_link: ReplayTrace::Remote(RemoteReplayTrace {
                     provider_name: self.name.clone(),
                     provider_model_id: "mock-model-v1".to_string(),
                     request_fingerprint,
@@ -364,16 +364,16 @@ mod tests {
             "Remote backend should have BestEffort replayability"
         );
 
-        // Verify it's a RemoteTraceLink (not LocalTraceLink)
+        // Verify it's a RemoteReplayTrace (not LocalReplayTrace)
         match &response.trace_link {
-            TraceLink::Remote(remote) => {
+            ReplayTrace::Remote(remote) => {
                 assert_eq!(remote.provider_name, "mock-anthropic");
                 // Audit trail fields should be populated
                 assert!(!remote.request_fingerprint.is_empty());
                 assert!(!remote.response_fingerprint.is_empty());
             }
-            TraceLink::Local(_) => {
-                panic!("Remote backend should return RemoteTraceLink, not LocalTraceLink");
+            ReplayTrace::Local(_) => {
+                panic!("Remote backend should return RemoteReplayTrace, not LocalReplayTrace");
             }
         }
     }
@@ -466,7 +466,7 @@ mod tests {
     #[test]
     fn test_local_vs_remote_replayability_difference() {
         // Simulate a local trace (deterministic)
-        let local_trace = TraceLink::Local(LocalTraceLink {
+        let local_trace = ReplayTrace::Local(LocalReplayTrace {
             base_model_hash: "abc123".to_string(),
             adapter: None,
             tokenizer_hash: "tok123".to_string(),
@@ -487,7 +487,7 @@ mod tests {
         });
 
         // Simulate a remote trace (audit-only)
-        let remote_trace = TraceLink::Remote(RemoteTraceLink {
+        let remote_trace = ReplayTrace::Remote(RemoteReplayTrace {
             provider_name: "anthropic".to_string(),
             provider_model_id: "claude-3-opus".to_string(),
             request_fingerprint: "req123".to_string(),

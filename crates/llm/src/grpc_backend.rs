@@ -13,7 +13,7 @@ use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint, Identity
 
 use crate::backend::{
     BackendCapability, BackendRequest, BackendResponse, BackendUsage, ContentKind, ContractReport,
-    LlmBackend, ProposedContent, RemoteTraceLink, Replayability, TraceLink,
+    LlmBackend, ProposedContent, RemoteReplayTrace, ReplayTrace, Replayability,
 };
 use crate::error::{LlmError, LlmResult};
 
@@ -247,7 +247,7 @@ impl GrpcBackend {
                 results: vec![],
                 all_passed: true,
             },
-            trace_link: TraceLink::Remote(RemoteTraceLink {
+            trace_link: ReplayTrace::Remote(RemoteReplayTrace {
                 provider_name: "converge-gpu".to_string(),
                 provider_model_id: format!("converge-llm@{}", self.server_addr),
                 request_fingerprint,

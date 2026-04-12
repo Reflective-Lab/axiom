@@ -293,18 +293,8 @@ pub trait MetricsRecorder: Send + Sync {
     fn reset(&self);
 }
 
-/// Finish reason for inference (simplified for metrics).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FinishReason {
-    /// Hit max tokens limit
-    MaxTokens,
-    /// Generated EOS token
-    Eos,
-    /// Hit stop sequence
-    StopSequence,
-    /// Other/unknown
-    Other,
-}
+/// Re-export inference finish reason for metrics use.
+pub use crate::inference::FinishReason;
 
 /// Adapter operation type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -389,7 +379,7 @@ impl MetricsRecorder for InMemoryMetrics {
             .fetch_add(latency_ms, Ordering::Relaxed);
 
         match finish_reason {
-            FinishReason::MaxTokens => {
+            FinishReason::Length => {
                 self.inference_max_tokens_hits
                     .fetch_add(1, Ordering::Relaxed);
             }
@@ -681,7 +671,7 @@ mod tests {
         let metrics = InMemoryMetrics::new();
 
         metrics.record_inference(100, 50, 1000, FinishReason::Eos);
-        metrics.record_inference(200, 100, 2000, FinishReason::MaxTokens);
+        metrics.record_inference(200, 100, 2000, FinishReason::Length);
 
         let snapshot = metrics.snapshot();
         assert_eq!(snapshot.inference.total_calls, 2);

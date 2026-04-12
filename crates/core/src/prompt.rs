@@ -17,7 +17,7 @@
 //!
 //! Human explanations are generated downstream from provenance + context.
 
-use crate::context::{Context, ContextKey, Fact};
+use crate::context::{ContextKey, Fact};
 use std::collections::HashSet;
 use std::fmt::Write;
 
@@ -152,7 +152,7 @@ impl PromptContext {
 
     /// Builds context from a Context and dependency keys.
     #[must_use]
-    pub fn from_context(ctx: &Context, dependencies: &[ContextKey]) -> Self {
+    pub fn from_context(ctx: &dyn crate::ContextView, dependencies: &[ContextKey]) -> Self {
         let mut prompt_ctx = Self::new();
         for &key in dependencies {
             let facts = ctx.get(key).to_vec();
@@ -319,6 +319,9 @@ impl AgentPrompt {
 }
 
 /// Escapes special characters in strings for EDN.
+/// Alias for `OutputContract` used by the llm crate's prompt DSL.
+pub type DslOutputContract = OutputContract;
+
 fn escape_string(s: &str) -> String {
     s.replace('\\', "\\\\")
         .replace('"', "\\\"")

@@ -7,7 +7,7 @@
 //!
 //! All model invocations—local or remote—must produce the same top-level artifact:
 //! - `BackendResponse` containing `ProposedContent`(s)
-//! - Plus a `TraceLink` that makes the invocation auditable, budgeted, and comparable
+//! - Plus a `ReplayTrace` that makes the invocation auditable, budgeted, and comparable
 //!
 //! "Interchangeable" means:
 //! - Same request type
@@ -17,10 +17,10 @@
 //!
 //! # Determinism Guarantees
 //!
-//! | Backend | Determinism | TraceLink |
+//! | Backend | Determinism | ReplayTrace |
 //! |---------|-------------|-----------|
-//! | Local (converge-llm) | Strong (replay-eligible) | `LocalTraceLink` |
-//! | Remote (providers) | Bounded stochasticity (audit-eligible) | `RemoteTraceLink` |
+//! | Local (converge-llm) | Strong (replay-eligible) | `LocalReplayTrace` |
+//! | Remote (providers) | Bounded stochasticity (audit-eligible) | `RemoteReplayTrace` |
 //!
 //! Remote runs are:
 //! - **Auditable**: Full request/response + metadata
@@ -50,7 +50,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::kernel_boundary::{ProposedContent, TraceLink};
+use crate::kernel_boundary::{ProposedContent, ReplayTrace};
 
 // ============================================================================
 // Backend Error
@@ -660,7 +660,7 @@ pub struct BackendResponse {
     /// Contract validation report
     pub contract_report: ContractReport,
     /// Trace link (backend-specific but normalized interface)
-    pub trace_link: TraceLink,
+    pub trace_link: ReplayTrace,
     /// Resource usage
     pub usage: BackendUsage,
 }

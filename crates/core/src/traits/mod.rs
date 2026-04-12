@@ -47,12 +47,8 @@
 //! - [`DynRecallReader`]: Dyn-safe recall reader for runtime polymorphism
 //! - [`RecallError`]: Recall errors implementing [`CapabilityError`]
 //!
-//! ### ExperienceStore (Event Sourcing) Capabilities
-//! - [`ExperienceAppender`]: Append-only event storage (governance boundary)
-//! - [`ExperienceReplayer`]: Streaming replay access (audit, debugging)
+//! ### Store Capabilities
 //! - [`ContextStore`]: Durable context snapshots across runs
-//! - [`DynExperienceAppender`]: Dyn-safe appender for runtime polymorphism
-//! - [`DynExperienceReplayer`]: Dyn-safe replayer for runtime polymorphism
 //! - [`DynContextStore`]: Dyn-safe context store for runtime polymorphism
 //! - [`StoreError`]: Store errors implementing [`CapabilityError`]
 //!
@@ -114,11 +110,8 @@ pub use recall::{
     RecallWriter,
 };
 
-// ExperienceStore (event sourcing) capability traits
-pub use store::{
-    ContextStore, DynContextStore, DynExperienceAppender, DynExperienceReplayer,
-    ExperienceAppender, ExperienceReplayer, ReplayBatch, ReplayCursor, ReplayOptions, StoreError,
-};
+// Store capability traits
+pub use store::{ContextStore, DynContextStore, StoreError};
 
 // Validation capability traits
 pub use validator::{DynValidator, Validator, ValidatorError};

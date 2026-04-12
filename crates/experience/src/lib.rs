@@ -29,14 +29,14 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use converge_core::{
     ArtifactKind, EventQuery, ExperienceEvent, ExperienceEventEnvelope, ExperienceStore,
-    ExperienceStoreError, ExperienceStoreResult, LifecycleEvent, TimeRange, TraceLink,
+    ExperienceStoreError, ExperienceStoreResult, LifecycleEvent, ReplayTrace, TimeRange,
 };
 
 /// In-memory experience store (dev/test).
 #[derive(Debug, Default)]
 pub struct InMemoryExperienceStore {
     events: RwLock<Vec<ExperienceEventEnvelope>>,
-    trace_links: RwLock<HashMap<String, TraceLink>>,
+    trace_links: RwLock<HashMap<String, ReplayTrace>>,
     next_event_id: AtomicU64,
 }
 
@@ -53,7 +53,7 @@ impl InMemoryExperienceStore {
     }
 
     fn record_trace_link(&self, event: &ExperienceEvent) {
-        if let ExperienceEvent::TraceLinkRecorded {
+        if let ExperienceEvent::ReplayTraceRecorded {
             trace_link_id,
             trace_link,
         } = event
@@ -117,7 +117,7 @@ impl ExperienceStore for InMemoryExperienceStore {
         self.append_event(envelope)
     }
 
-    fn get_trace_link(&self, trace_link_id: &str) -> ExperienceStoreResult<Option<TraceLink>> {
+    fn get_trace_link(&self, trace_link_id: &str) -> ExperienceStoreResult<Option<ReplayTrace>> {
         let map = self
             .trace_links
             .read()
@@ -221,7 +221,7 @@ mod tests {
     #[test]
     fn trace_link_is_recorded_and_retrievable() {
         let store = InMemoryExperienceStore::new();
-        let trace_link = TraceLink::Remote(converge_core::RemoteTraceLink {
+        let trace_link = ReplayTrace::Remote(converge_core::RemoteReplayTrace {
             provider_name: "anthropic".to_string(),
             provider_model_id: "claude".to_string(),
             request_fingerprint: "req".to_string(),
@@ -234,7 +234,7 @@ mod tests {
             retry_reasons: vec![],
             replayability: converge_core::Replayability::BestEffort,
         });
-        let event = ExperienceEvent::TraceLinkRecorded {
+        let event = ExperienceEvent::ReplayTraceRecorded {
             trace_link_id: "trace-1".to_string(),
             trace_link: trace_link.clone(),
         };
