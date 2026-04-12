@@ -192,7 +192,6 @@ zeroize = "1"
 # Workspace lints — inherited by all crates via [lints] workspace = true
 [workspace.lints.rust]
 unsafe_code = "forbid"
-deprecated = "allow"                 # BOUNDARY.md trait migration in progress
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }

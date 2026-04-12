@@ -3,10 +3,11 @@
 ## Current: v3.3 — Contract Enforcement
 Deadline: 2026-05-10
 
-- [ ] Add `#[warn(missing_docs)]` to all publishable crates
+- [ ] Add `#[warn(missing_docs)]` to all publishable crates (~830 warnings to resolve)
 - [ ] Migrate async traits: ChatBackend/EmbedBackend adoption across providers
 - [x] Canonize ExperienceStore as the live trait (removed stale #[deprecated], added test)
-- [ ] Write ADR-005: Type ownership boundaries (which crate owns which types)
+- [x] Write ADR-005: Type ownership boundaries (which crate owns which types)
+- [x] Export CriterionResult/CriterionOutcome/Criterion from converge-kernel
 
 ## Completed: v3.2 — Type Duplication Cleanup
 Completed: 2026-04-12

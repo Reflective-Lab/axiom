@@ -16,3 +16,4 @@ Current sequence:
 - `ADR-002` Truth Pipeline
 - `ADR-003` Pack Authoring Contract
 - `ADR-004` Contract Stabilization
+- `ADR-005` Type Ownership Boundaries
