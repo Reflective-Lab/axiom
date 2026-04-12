@@ -100,5 +100,6 @@ pub mod secrets;
 #[cfg(feature = "wasm")]
 pub mod wasm;
 
-#[cfg(feature = "billing")]
-pub mod billing;
+// Billing moved to organism-intelligence crate (SaaS product concern)
+// #[cfg(feature = "billing")]
+// pub mod billing;
