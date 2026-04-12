@@ -310,21 +310,12 @@ pub struct TimeRange {
 
 /// Experience store trait (append-only ledger boundary).
 ///
-/// # Deprecation Notice
+/// This is the canonical audit trail interface. Implementations provide
+/// append-only event storage and query access for governance, debugging,
+/// and downstream analytics.
 ///
-/// This trait is deprecated in favor of the capability boundary traits in
-/// `converge_core::traits`:
-///
-/// - [`ExperienceAppender`](crate::traits::ExperienceAppender) - Append-only event storage
-/// - [`ExperienceReplayer`](crate::traits::ExperienceReplayer) - Streaming replay access
-///
-/// The new traits split read/write capabilities for finer-grained authorization
-/// and use the GAT async pattern for zero-cost async.
-/// See `converge-core/BOUNDARY.md` for migration guide.
-#[deprecated(
-    since = "0.2.0",
-    note = "Use converge_core::traits::{ExperienceAppender, ExperienceReplayer} instead. See BOUNDARY.md for migration."
-)]
+/// See [`converge_experience`] for concrete implementations:
+/// `InMemoryExperienceStore`, `SurrealDbExperienceStore`, `LanceDbExperienceStore`.
 pub trait ExperienceStore: Send + Sync {
     /// Append a single event.
     fn append_event(&self, event: ExperienceEventEnvelope) -> ExperienceStoreResult<()>;

@@ -1946,6 +1946,37 @@ mod tests {
     }
 
     #[test]
+    fn set_event_observer_fires_on_run() {
+        use crate::suggestors::ReactOnceSuggestor;
+
+        let mut engine = Engine::new();
+        engine.register_suggestor(SeedSuggestor);
+        engine.register_suggestor(ReactOnceSuggestor::new("h1", "hypothesis from seed"));
+
+        let observer = Arc::new(TestObserver::default());
+        engine.set_event_observer(observer.clone());
+
+        let mut context = Context::new();
+        context
+            .add_fact(crate::context::new_fact(
+                ContextKey::Seeds,
+                "seed-1",
+                "test",
+            ))
+            .unwrap();
+
+        let _ = engine.run(context).expect("should converge");
+
+        let events = observer.events.lock().expect("observer lock");
+        assert!(
+            events
+                .iter()
+                .any(|event| matches!(event, ExperienceEvent::FactPromoted { .. })),
+            "set_event_observer must cause FactPromoted events during engine.run()"
+        );
+    }
+
+    #[test]
     fn typed_intent_run_surfaces_human_intervention_required() {
         let mut engine = Engine::new();
         engine.register_suggestor(SeedSuggestor);

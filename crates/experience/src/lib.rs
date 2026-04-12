@@ -1,9 +1,6 @@
 // Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 
-// TODO: Migrate to ExperienceAppender/ExperienceReplayer traits when converge-core BOUNDARY.md migration completes.
-#![allow(deprecated)]
-
 //! # Experience Store Implementations
 //!
 //! This crate provides concrete implementations of the `ExperienceStore` trait.
