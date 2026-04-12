@@ -102,8 +102,7 @@ async fn main() -> Result<()> {
             .is_some();
         info!(
             jwt_configured,
-            firebase_configured,
-            "Protected routes require configured authentication"
+            firebase_configured, "Protected routes require configured authentication"
         );
     }
 

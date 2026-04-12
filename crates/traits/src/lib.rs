@@ -9,8 +9,8 @@
 //! - `converge-provider-api` for backend identity and capability routing
 
 pub use converge_pack::{
-    Suggestor, AgentEffect, Context, ContextKey, Fact, Invariant, InvariantClass, InvariantResult,
-    ProposedFact, ValidationError,
+    AgentEffect, Context, ContextKey, Fact, Invariant, InvariantClass, InvariantResult,
+    ProposedFact, Suggestor, ValidationError,
 };
 pub use converge_provider_api::{
     Backend, BackendError, BackendErrorKind, BackendKind, BackendRequirements, BackendSelector,

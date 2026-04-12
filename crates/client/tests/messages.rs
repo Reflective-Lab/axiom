@@ -4,8 +4,8 @@
 // Prove: observation vocabulary is used, not fact injection.
 
 use converge_client::messages;
-use converge_client::v1::*;
 use converge_client::v1::client_message::Message;
+use converge_client::v1::*;
 
 #[test]
 fn submit_job_envelope() {
@@ -92,19 +92,31 @@ fn all_message_types_wrap_correctly() {
             reason: None,
         },
     );
-    let _ = messages::pause("r", PauseRunRequest { run_id: "r".into(), reason: None });
+    let _ = messages::pause(
+        "r",
+        PauseRunRequest {
+            run_id: "r".into(),
+            reason: None,
+        },
+    );
     let _ = messages::resume("r", ResumeRunRequest { run_id: "r".into() });
-    let _ = messages::update_budget("r", UpdateBudgetRequest {
-        run_id: "r".into(),
-        budget: None,
-    });
-    let _ = messages::subscribe("r", SubscribeRequest {
-        job_id: None,
-        run_id: Some("r".into()),
-        correlation_id: None,
-        since_sequence: 0,
-        entry_types: vec![],
-    });
+    let _ = messages::update_budget(
+        "r",
+        UpdateBudgetRequest {
+            run_id: "r".into(),
+            budget: None,
+        },
+    );
+    let _ = messages::subscribe(
+        "r",
+        SubscribeRequest {
+            job_id: None,
+            run_id: Some("r".into()),
+            correlation_id: None,
+            since_sequence: 0,
+            entry_types: vec![],
+        },
+    );
     let _ = messages::unsubscribe(
         "r",
         UnsubscribeRequest {
@@ -113,10 +125,13 @@ fn all_message_types_wrap_correctly() {
             correlation_id: None,
         },
     );
-    let _ = messages::resume_from("r", ResumeFromSequenceRequest {
-        sequence: 42,
-        allow_snapshot: false,
-    });
+    let _ = messages::resume_from(
+        "r",
+        ResumeFromSequenceRequest {
+            sequence: 42,
+            allow_snapshot: false,
+        },
+    );
     let _ = messages::ping("r", Ping { client_time_ns: 0 });
 }
 

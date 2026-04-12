@@ -80,7 +80,6 @@ pub use generated::{
     JobCreated,
     PackInfo,
     PauseRunRequest,
-    SubmitObservationRequest,
     // Heartbeat
     Ping,
     Pong,
@@ -99,6 +98,7 @@ pub use generated::{
     SubmitJobRequest,
     SubmitJobResponse,
 
+    SubmitObservationRequest,
     SubscribeRequest,
     Subscribed,
     TransportInfo,

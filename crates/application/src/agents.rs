@@ -10,7 +10,7 @@ use converge_core::traits::{
     ChatBackend, ChatMessage, ChatRequest, ChatResponse, ChatRole, DynChatBackend, FinishReason,
     LlmError, TokenUsage,
 };
-use converge_core::{Suggestor, AgentEffect, ContextKey, ProposedFact};
+use converge_core::{AgentEffect, ContextKey, ProposedFact, Suggestor};
 use std::fmt::Write;
 use std::sync::Arc;
 
@@ -515,7 +515,12 @@ mod tests {
         let effect = agent.execute(&ctx);
 
         assert!(!effect.proposals.is_empty());
-        assert!(effect.proposals.iter().any(|f| f.id.starts_with("insight:")));
+        assert!(
+            effect
+                .proposals
+                .iter()
+                .any(|f| f.id.starts_with("insight:"))
+        );
     }
 
     #[test]

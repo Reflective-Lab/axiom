@@ -111,7 +111,7 @@ impl ConvergeClient {
 /// Helpers for wrapping typed requests into stream `ClientMessage` envelopes.
 pub mod messages {
     use super::v1::{
-        ApproveProposalRequest, CancelJobRequest, ClientMessage, Ping, PauseRunRequest,
+        ApproveProposalRequest, CancelJobRequest, ClientMessage, PauseRunRequest, Ping,
         RejectProposalRequest, ResumeFromSequenceRequest, ResumeRunRequest, SubmitJobRequest,
         SubmitObservationRequest, SubscribeRequest, UnsubscribeRequest, UpdateBudgetRequest,
         client_message,
@@ -142,10 +142,7 @@ pub mod messages {
         envelope(request_id, client_message::Message::Approve(request))
     }
 
-    pub fn reject(
-        request_id: impl Into<String>,
-        request: RejectProposalRequest,
-    ) -> ClientMessage {
+    pub fn reject(request_id: impl Into<String>, request: RejectProposalRequest) -> ClientMessage {
         envelope(request_id, client_message::Message::Reject(request))
     }
 
@@ -186,10 +183,7 @@ pub mod messages {
         envelope(request_id, client_message::Message::Ping(request))
     }
 
-    fn envelope(
-        request_id: impl Into<String>,
-        message: client_message::Message,
-    ) -> ClientMessage {
+    fn envelope(request_id: impl Into<String>, message: client_message::Message) -> ClientMessage {
         ClientMessage {
             request_id: request_id.into(),
             message: Some(message),

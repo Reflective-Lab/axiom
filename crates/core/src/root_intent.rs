@@ -860,7 +860,11 @@ mod tests {
         let mut ctx = Context::new();
         assert!(!intent.is_successful(&ctx));
 
-        ctx.add_fact(crate::context::new_fact(ContextKey::Strategies, "s1", "strategy"))
+        ctx.add_fact(crate::context::new_fact(
+            ContextKey::Strategies,
+            "s1",
+            "strategy",
+        ))
         .unwrap();
 
         assert!(intent.is_successful(&ctx));

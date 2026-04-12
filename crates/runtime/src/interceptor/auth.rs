@@ -295,7 +295,9 @@ mod tests {
         let claims = crate::auth::Claims {
             sub: "user-123".to_string(),
             iss: Some("https://auth.test.com".to_string()),
-            aud: Some(crate::auth::Audience::Single("converge-runtime".to_string())),
+            aud: Some(crate::auth::Audience::Single(
+                "converge-runtime".to_string(),
+            )),
             exp: Some(u64::MAX / 2),
             nbf: None,
             iat: None,

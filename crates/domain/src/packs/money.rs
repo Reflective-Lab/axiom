@@ -32,7 +32,7 @@
 //! distinguished by their ID prefixes (invoice:, payment:, ledger:, etc.).
 
 use converge_core::{
-    Suggestor, AgentEffect, ContextKey,
+    AgentEffect, ContextKey, Suggestor,
     invariant::{Invariant, InvariantClass, InvariantResult, Violation},
 };
 

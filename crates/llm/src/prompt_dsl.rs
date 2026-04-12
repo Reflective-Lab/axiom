@@ -324,11 +324,7 @@ mod tests {
         let mut ctx = PromptContext::new();
         ctx.add_facts(
             ContextKey::Signals,
-            vec![promoted_fact(
-                ContextKey::Signals,
-                "s1",
-                "Revenue +15% Q3",
-            )],
+            vec![promoted_fact(ContextKey::Signals, "s1", "Revenue +15% Q3")],
         );
 
         let prompt = AgentPrompt::new(

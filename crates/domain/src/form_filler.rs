@@ -7,7 +7,7 @@
 //! This module produces a governed, reviewable fill plan and proposed field values.
 //! It is intentionally minimal and deterministic to keep invariants in focus.
 
-use converge_core::{Suggestor, AgentEffect, ContextKey, ProposedFact};
+use converge_core::{AgentEffect, ContextKey, ProposedFact, Suggestor};
 use serde::{Deserialize, Serialize};
 
 const FORM_REQUEST_SEED_ID: &str = "form_filler:request";

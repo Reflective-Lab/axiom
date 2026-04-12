@@ -107,7 +107,10 @@ pub(crate) async fn validate_token(token: &str) -> Result<UserIdentity, RuntimeE
     validate_token_with_mode(configured_auth_mode()?, token).await
 }
 
-async fn validate_token_with_mode(mode: AuthMode, token: &str) -> Result<UserIdentity, RuntimeError> {
+async fn validate_token_with_mode(
+    mode: AuthMode,
+    token: &str,
+) -> Result<UserIdentity, RuntimeError> {
     match mode {
         AuthMode::Jwt(config) => JwtValidator::new(config)
             .validate(token)

@@ -364,7 +364,7 @@ pub fn build_openai_prompt(
 #[allow(clippy::float_cmp)] // Known constant values in tests
 mod tests {
     use super::*;
-    use converge_core::{Context, Fact, Engine};
+    use converge_core::{Context, Engine, Fact};
 
     fn promoted_fact(key: ContextKey, id: &str, content: &str) -> Fact {
         let mut ctx = Context::new();

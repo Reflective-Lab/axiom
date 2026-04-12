@@ -9,7 +9,9 @@ fn advisory_cannot_validate() {
     let engine = test_engine();
     let req = make_request("advisory", "validate");
 
-    let decision = engine.evaluate(&req).expect("policy evaluation should succeed");
+    let decision = engine
+        .evaluate(&req)
+        .expect("policy evaluation should succeed");
 
     assert_eq!(decision.outcome, PolicyOutcome::Reject);
 }
@@ -19,7 +21,9 @@ fn supervisory_can_validate() {
     let engine = test_engine();
     let req = make_request("supervisory", "validate");
 
-    let decision = engine.evaluate(&req).expect("policy evaluation should succeed");
+    let decision = engine
+        .evaluate(&req)
+        .expect("policy evaluation should succeed");
 
     assert_eq!(decision.outcome, PolicyOutcome::Promote);
 }
@@ -29,7 +33,9 @@ fn participatory_can_validate() {
     let engine = test_engine();
     let req = make_request("participatory", "validate");
 
-    let decision = engine.evaluate(&req).expect("policy evaluation should succeed");
+    let decision = engine
+        .evaluate(&req)
+        .expect("policy evaluation should succeed");
 
     assert_eq!(decision.outcome, PolicyOutcome::Promote);
 }
@@ -39,7 +45,9 @@ fn supervisory_can_promote_without_approval() {
     let engine = test_engine();
     let req = make_request("supervisory", "promote");
 
-    let decision = engine.evaluate(&req).expect("policy evaluation should succeed");
+    let decision = engine
+        .evaluate(&req)
+        .expect("policy evaluation should succeed");
 
     assert_eq!(decision.outcome, PolicyOutcome::Promote);
 }
@@ -49,7 +57,9 @@ fn participatory_promotion_escalates_without_approval() {
     let engine = test_engine();
     let req = make_request("participatory", "promote");
 
-    let decision = engine.evaluate(&req).expect("policy evaluation should succeed");
+    let decision = engine
+        .evaluate(&req)
+        .expect("policy evaluation should succeed");
 
     assert_eq!(decision.outcome, PolicyOutcome::Escalate);
 }
@@ -63,7 +73,9 @@ fn participatory_promotion_with_approval_still_rejects() {
         .expect("context should exist")
         .human_approval_present = Some(true);
 
-    let decision = engine.evaluate(&req).expect("policy evaluation should succeed");
+    let decision = engine
+        .evaluate(&req)
+        .expect("policy evaluation should succeed");
 
     assert_eq!(decision.outcome, PolicyOutcome::Reject);
 }
@@ -76,7 +88,9 @@ fn advisory_spend_proposal_above_cap_rejects() {
     ctx.commitment_type = Some("spend".into());
     ctx.amount = Some(10_001);
 
-    let decision = engine.evaluate(&req).expect("policy evaluation should succeed");
+    let decision = engine
+        .evaluate(&req)
+        .expect("policy evaluation should succeed");
 
     assert_eq!(decision.outcome, PolicyOutcome::Reject);
 }
@@ -89,7 +103,9 @@ fn advisory_spend_proposal_at_cap_promotes() {
     ctx.commitment_type = Some("spend".into());
     ctx.amount = Some(10_000);
 
-    let decision = engine.evaluate(&req).expect("policy evaluation should succeed");
+    let decision = engine
+        .evaluate(&req)
+        .expect("policy evaluation should succeed");
 
     assert_eq!(decision.outcome, PolicyOutcome::Promote);
 }
@@ -103,7 +119,9 @@ fn advance_phase_requires_gates() {
         .expect("context should exist")
         .required_gates_met = Some(false);
 
-    let decision = engine.evaluate(&req).expect("policy evaluation should succeed");
+    let decision = engine
+        .evaluate(&req)
+        .expect("policy evaluation should succeed");
 
     assert_eq!(decision.outcome, PolicyOutcome::Reject);
 }
@@ -116,7 +134,9 @@ fn supervisory_commit_over_fifty_thousand_with_approval_promotes() {
     ctx.amount = Some(75_000);
     ctx.human_approval_present = Some(true);
 
-    let decision = engine.evaluate(&req).expect("policy evaluation should succeed");
+    let decision = engine
+        .evaluate(&req)
+        .expect("policy evaluation should succeed");
 
     assert_eq!(decision.outcome, PolicyOutcome::Promote);
 }

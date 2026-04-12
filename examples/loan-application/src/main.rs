@@ -6,8 +6,7 @@
 //! Demonstrates: parallel execution, conditional HITL (borderline cases), consensus.
 
 use converge_core::{
-    Suggestor, AgentEffect, Context, ContextKey, Engine, EngineHitlPolicy, ProposedFact,
-    RunResult,
+    AgentEffect, Context, ContextKey, Engine, EngineHitlPolicy, ProposedFact, RunResult, Suggestor,
     gates::hitl::GateDecision,
     gates::{TimeoutAction, TimeoutPolicy},
 };
@@ -34,8 +33,13 @@ impl Suggestor for ApplicationIngestionAgent {
         if let Some(s) = seed {
             if let Ok(app) = serde_json::from_str::<serde_json::Value>(&s.content) {
                 return AgentEffect::with_proposal(
-                    ProposedFact::new(ContextKey::Signals, "application", app.to_string(), self.name())
-                        .with_confidence(1.0),
+                    ProposedFact::new(
+                        ContextKey::Signals,
+                        "application",
+                        app.to_string(),
+                        self.name(),
+                    )
+                    .with_confidence(1.0),
                 );
             }
         }

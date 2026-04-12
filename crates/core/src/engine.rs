@@ -9,12 +9,12 @@
 //! - Merges effects serially
 //! - Detects fixed point
 
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 use converge_pack::{
     FactActor, FactActorKind, FactEvidenceRef, FactLocalTrace, FactPromotionRecord,
     FactRemoteTrace, FactTraceLink, FactValidationSummary,
 };
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 use strum::IntoEnumIterator;
 use tracing::{debug, info, info_span, warn};
 
@@ -23,10 +23,10 @@ use crate::context::{Context, ContextKey, Fact, ProposedFact, ValidationError};
 use crate::effect::AgentEffect;
 use crate::error::ConvergeError;
 use crate::experience_store::ExperienceEvent;
-use crate::gates::promotion::PromotionGate;
-use crate::gates::validation::{ValidationContext, ValidationPolicy};
 use crate::gates::StopReason;
 use crate::gates::hitl::{GateDecision, GateEvent, GateRequest, GateVerdict, TimeoutPolicy};
+use crate::gates::promotion::PromotionGate;
+use crate::gates::validation::{ValidationContext, ValidationPolicy};
 use crate::invariant::{Invariant, InvariantError, InvariantId, InvariantRegistry};
 use crate::kernel_boundary::DecisionStep;
 use crate::truth::{CriterionEvaluator, CriterionOutcome, CriterionResult};
@@ -783,7 +783,9 @@ impl Engine {
         match key {
             ContextKey::Strategies => ProposedContentKind::Plan,
             ContextKey::Evaluations => ProposedContentKind::Evaluation,
-            ContextKey::Competitors | ContextKey::Constraints => ProposedContentKind::Classification,
+            ContextKey::Competitors | ContextKey::Constraints => {
+                ProposedContentKind::Classification
+            }
             ContextKey::Proposals => ProposedContentKind::Draft,
             ContextKey::Seeds
             | ContextKey::Hypotheses
@@ -850,14 +852,12 @@ impl Engine {
                 local.parent_span_id.clone(),
                 local.sampled,
             )),
-            crate::types::TraceLink::Remote(remote) => {
-                FactTraceLink::Remote(FactRemoteTrace::new(
-                    remote.system.clone(),
-                    remote.reference.clone(),
-                    remote.retrieval_auth.clone(),
-                    remote.retention_hint.clone(),
-                ))
-            }
+            crate::types::TraceLink::Remote(remote) => FactTraceLink::Remote(FactRemoteTrace::new(
+                remote.system.clone(),
+                remote.reference.clone(),
+                remote.retrieval_auth.clone(),
+                remote.retention_hint.clone(),
+            )),
         }
     }
 
@@ -895,8 +895,11 @@ impl Engine {
 
         let draft = Proposal::<Draft>::new(
             ProposalId::new(&proposal.id),
-            ProposedContent::new(self.proposal_kind_for(proposal.key), proposal.content.clone())
-                .with_confidence(proposal.confidence as f32),
+            ProposedContent::new(
+                self.proposal_kind_for(proposal.key),
+                proposal.content.clone(),
+            )
+            .with_confidence(proposal.confidence as f32),
             provenance,
         );
 
@@ -1202,8 +1205,7 @@ impl Engine {
     ) -> RunResult {
         if context.has_pending_proposals() {
             context.clear_dirty();
-            if let Err(e) = self.promote_pending_context_proposals(&mut context, from_cycle, None)
-            {
+            if let Err(e) = self.promote_pending_context_proposals(&mut context, from_cycle, None) {
                 return RunResult::Complete(Err(e));
             }
         }
@@ -2038,7 +2040,14 @@ mod tests {
                 let n = ctx.get(ContextKey::Seeds).len();
                 AgentEffect::with_proposals(
                     (0..10)
-                        .map(|i| proposal(ContextKey::Seeds, format!("flood-{n}-{i}"), "flood", self.name()))
+                        .map(|i| {
+                            proposal(
+                                ContextKey::Seeds,
+                                format!("flood-{n}-{i}"),
+                                "flood",
+                                self.name(),
+                            )
+                        })
                         .collect(),
                 )
             }
@@ -2238,8 +2247,10 @@ mod tests {
         });
         let mut context = Context::new();
 
-        let effect_a = AgentEffect::with_proposal(proposal(ContextKey::Seeds, "a", "first", "AgentA"));
-        let effect_b = AgentEffect::with_proposal(proposal(ContextKey::Seeds, "b", "second", "AgentB"));
+        let effect_a =
+            AgentEffect::with_proposal(proposal(ContextKey::Seeds, "a", "first", "AgentA"));
+        let effect_b =
+            AgentEffect::with_proposal(proposal(ContextKey::Seeds, "b", "second", "AgentB"));
 
         // Intentionally feed merge_effects in reverse order.
         let (dirty, facts_added) = engine
@@ -2656,7 +2667,12 @@ mod tests {
             fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
                 AgentEffect::with_proposals(vec![
                     proposal(ContextKey::Seeds, "seed-1", "good content", self.name()),
-                    proposal(ContextKey::Seeds, "seed-2", "more good content", self.name()),
+                    proposal(
+                        ContextKey::Seeds,
+                        "seed-2",
+                        "more good content",
+                        self.name(),
+                    ),
                 ])
             }
         }

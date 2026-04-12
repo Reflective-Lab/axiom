@@ -1,7 +1,7 @@
 // Copyright 2024-2026 Reflective Labs
 
 use anyhow::{Result, anyhow};
-use converge_core::{Suggestor, AgentEffect, ContextKey, ProposedFact};
+use converge_core::{AgentEffect, ContextKey, ProposedFact, Suggestor};
 use polars::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;

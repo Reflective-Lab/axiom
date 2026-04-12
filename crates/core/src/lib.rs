@@ -190,8 +190,6 @@
 //! See `deny.toml` at the crate root for CI enforcement of these rules.
 
 mod agent;
-#[path = "agents.rs"]
-pub mod suggestors;
 pub mod backend;
 pub mod capability;
 mod context;
@@ -210,6 +208,8 @@ pub mod model_selection;
 pub mod prompt;
 pub mod recall;
 pub mod root_intent;
+#[path = "agents.rs"]
+pub mod suggestors;
 pub mod traits;
 pub mod truth;
 pub mod types;

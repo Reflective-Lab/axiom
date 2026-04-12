@@ -659,15 +659,66 @@ impl CapabilityRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::InMemoryGraphStore;
     use crate::vector::InMemoryVectorStore;
+    use converge_core::capability::{
+        CapabilityError, GraphEdge, GraphNode, GraphQuery, GraphRecall, GraphResult,
+    };
+
+    struct TestGraphStore;
+
+    impl TestGraphStore {
+        fn new() -> Self {
+            Self
+        }
+    }
+
+    impl GraphRecall for TestGraphStore {
+        fn name(&self) -> &str {
+            "test-graph"
+        }
+
+        fn add_node(&self, _node: &GraphNode) -> Result<(), CapabilityError> {
+            Ok(())
+        }
+
+        fn add_edge(&self, _edge: &GraphEdge) -> Result<(), CapabilityError> {
+            Ok(())
+        }
+
+        fn traverse(&self, _query: &GraphQuery) -> Result<GraphResult, CapabilityError> {
+            Ok(GraphResult {
+                nodes: Vec::new(),
+                edges: Vec::new(),
+            })
+        }
+
+        fn find_nodes(
+            &self,
+            _label: &str,
+            _properties: Option<&serde_json::Value>,
+        ) -> Result<Vec<GraphNode>, CapabilityError> {
+            Ok(Vec::new())
+        }
+
+        fn get_node(&self, _id: &str) -> Result<Option<GraphNode>, CapabilityError> {
+            Ok(None)
+        }
+
+        fn delete_node(&self, _id: &str) -> Result<(), CapabilityError> {
+            Ok(())
+        }
+
+        fn clear(&self) -> Result<(), CapabilityError> {
+            Ok(())
+        }
+    }
 
     #[test]
     fn registry_with_local_defaults() {
         let registry = CapabilityRegistry::with_local_defaults();
 
         assert!(registry.default_vector_store().is_some());
-        assert!(registry.default_graph_store().is_some());
+        assert!(registry.default_graph_store().is_none());
     }
 
     #[test]
@@ -675,7 +726,7 @@ mod tests {
         let mut registry = CapabilityRegistry::new();
 
         registry.add_vector_store("test", Arc::new(InMemoryVectorStore::new()));
-        registry.add_graph_store("test", Arc::new(InMemoryGraphStore::new()));
+        registry.add_graph_store("test", Arc::new(TestGraphStore::new()));
 
         assert!(registry.get_vector_store("test").is_some());
         assert!(registry.get_graph_store("test").is_some());
@@ -690,7 +741,7 @@ mod tests {
         assert!(vector_stores.contains(&"default"));
 
         let graph_stores = registry.graph_store_names();
-        assert!(graph_stores.contains(&"default"));
+        assert!(graph_stores.is_empty());
     }
 
     #[test]

@@ -7,7 +7,7 @@
 //! loop. It runs registered evals when their dependencies change and stores
 //! results as facts in context.
 
-use converge_core::{Suggestor, AgentEffect, ContextKey, Eval, EvalId, EvalRegistry};
+use converge_core::{AgentEffect, ContextKey, Eval, EvalId, EvalRegistry, Suggestor};
 
 /// Suggestor that executes evals and stores results in context.
 ///

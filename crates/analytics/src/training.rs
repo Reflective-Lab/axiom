@@ -1,7 +1,7 @@
 // Copyright 2024-2026 Reflective Labs
 
 use anyhow::{Context as _, Result, anyhow};
-use converge_core::{Suggestor, AgentEffect, ContextKey, ProposedFact};
+use converge_core::{AgentEffect, ContextKey, ProposedFact, Suggestor};
 use polars::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -210,7 +210,8 @@ impl Suggestor for DataValidationAgent {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "data-validation-error",
                     err.to_string(),
@@ -221,7 +222,8 @@ impl Suggestor for DataValidationAgent {
         let df = match load_dataframe(Path::new(&split.train_path)) {
             Ok(df) => df,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "data-validation-error",
                     err.to_string(),
@@ -267,7 +269,8 @@ impl Suggestor for DataValidationAgent {
         };
 
         let content = serde_json::to_string(&report).unwrap_or_default();
-        AgentEffect::with_proposal(proposal(self.name(), 
+        AgentEffect::with_proposal(proposal(
+            self.name(),
             ContextKey::Signals,
             format!("data-quality-{}", split.iteration),
             content,
@@ -305,7 +308,8 @@ impl Suggestor for FeatureEngineeringAgent {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "feature-engineering-error",
                     err.to_string(),
@@ -316,7 +320,8 @@ impl Suggestor for FeatureEngineeringAgent {
         let df = match load_dataframe(Path::new(&split.train_path)) {
             Ok(df) => df,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "feature-engineering-error",
                     err.to_string(),
@@ -327,7 +332,8 @@ impl Suggestor for FeatureEngineeringAgent {
         let (target_column, _) = match select_target_column(&df) {
             Ok(value) => value,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "feature-engineering-error",
                     err.to_string(),
@@ -358,7 +364,8 @@ impl Suggestor for FeatureEngineeringAgent {
         };
 
         let content = serde_json::to_string(&spec).unwrap_or_default();
-        AgentEffect::with_proposal(proposal(self.name(), 
+        AgentEffect::with_proposal(proposal(
+            self.name(),
             ContextKey::Constraints,
             format!("feature-spec-{}", split.iteration),
             content,
@@ -398,7 +405,8 @@ impl Suggestor for HyperparameterSearchAgent {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "hyperparam-search-error",
                     err.to_string(),
@@ -443,12 +451,14 @@ impl Suggestor for HyperparameterSearchAgent {
         let result_content = serde_json::to_string(&result).unwrap_or_default();
 
         let mut effect = AgentEffect::empty();
-        effect.proposals.push(proposal(self.name(), 
+        effect.proposals.push(proposal(
+            self.name(),
             ContextKey::Constraints,
             format!("hyperparam-plan-{}", split.iteration),
             plan_content,
         ));
-        effect.proposals.push(proposal(self.name(), 
+        effect.proposals.push(proposal(
+            self.name(),
             ContextKey::Evaluations,
             format!("hyperparam-result-{}", split.iteration),
             result_content,
@@ -481,7 +491,8 @@ impl Suggestor for DatasetAgent {
 
     fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         if let Err(err) = create_dir_all(&self.data_dir) {
-            return AgentEffect::with_proposal(proposal(self.name(), 
+            return AgentEffect::with_proposal(proposal(
+                self.name(),
                 ContextKey::Diagnostic,
                 "dataset-agent-error",
                 err.to_string(),
@@ -490,7 +501,8 @@ impl Suggestor for DatasetAgent {
 
         let dataset_path = self.dataset_path();
         if let Err(err) = download_dataset_if_missing(&dataset_path) {
-            return AgentEffect::with_proposal(proposal(self.name(), 
+            return AgentEffect::with_proposal(proposal(
+                self.name(),
                 ContextKey::Diagnostic,
                 "dataset-agent-error",
                 err.to_string(),
@@ -500,7 +512,8 @@ impl Suggestor for DatasetAgent {
         let df = match load_dataframe(&dataset_path) {
             Ok(df) => df,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "dataset-agent-error",
                     err.to_string(),
@@ -510,7 +523,8 @@ impl Suggestor for DatasetAgent {
 
         let total_rows = df.height();
         if total_rows < 10 {
-            return AgentEffect::with_proposal(proposal(self.name(), 
+            return AgentEffect::with_proposal(proposal(
+                self.name(),
                 ContextKey::Diagnostic,
                 "dataset-agent-error",
                 "dataset too small for splitting",
@@ -550,7 +564,8 @@ impl Suggestor for DatasetAgent {
             .and_then(|_| write_parquet(&val_df, &val_path))
             .and_then(|_| write_parquet(&infer_df, &infer_path))
         {
-            return AgentEffect::with_proposal(proposal(self.name(), 
+            return AgentEffect::with_proposal(proposal(
+                self.name(),
                 ContextKey::Diagnostic,
                 "dataset-agent-error",
                 err.to_string(),
@@ -571,7 +586,8 @@ impl Suggestor for DatasetAgent {
         };
 
         let content = serde_json::to_string(&split).unwrap_or_default();
-        AgentEffect::with_proposal(proposal(self.name(), 
+        AgentEffect::with_proposal(proposal(
+            self.name(),
             ContextKey::Signals,
             format!("dataset-split-{}", plan.iteration),
             content,
@@ -618,7 +634,8 @@ impl Suggestor for ModelTrainingAgent {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "model-training-error",
                     err.to_string(),
@@ -627,7 +644,8 @@ impl Suggestor for ModelTrainingAgent {
         };
 
         if let Err(err) = create_dir_all(&self.model_dir) {
-            return AgentEffect::with_proposal(proposal(self.name(), 
+            return AgentEffect::with_proposal(proposal(
+                self.name(),
                 ContextKey::Diagnostic,
                 "model-training-error",
                 err.to_string(),
@@ -637,7 +655,8 @@ impl Suggestor for ModelTrainingAgent {
         let raw_train_df = match load_dataframe(Path::new(&split.train_path)) {
             Ok(df) => df,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "model-training-error",
                     err.to_string(),
@@ -650,7 +669,8 @@ impl Suggestor for ModelTrainingAgent {
             Some(spec) => match apply_feature_spec(&raw_train_df, &spec) {
                 Ok(df) => df,
                 Err(err) => {
-                    return AgentEffect::with_proposal(proposal(self.name(), 
+                    return AgentEffect::with_proposal(proposal(
+                        self.name(),
                         ContextKey::Diagnostic,
                         "model-training-error",
                         format!("feature spec application failed: {}", err),
@@ -663,7 +683,8 @@ impl Suggestor for ModelTrainingAgent {
         let (target_name, target) = match select_target_column(&train_df) {
             Ok(value) => value,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "model-training-error",
                     err.to_string(),
@@ -674,7 +695,8 @@ impl Suggestor for ModelTrainingAgent {
         let mean = match mean_of_series(&target) {
             Ok(value) => value,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "model-training-error",
                     err.to_string(),
@@ -689,7 +711,8 @@ impl Suggestor for ModelTrainingAgent {
 
         let model_path = self.model_path();
         if let Err(err) = write_json(&model_path, &model) {
-            return AgentEffect::with_proposal(proposal(self.name(), 
+            return AgentEffect::with_proposal(proposal(
+                self.name(),
                 ContextKey::Diagnostic,
                 "model-training-error",
                 err.to_string(),
@@ -705,7 +728,8 @@ impl Suggestor for ModelTrainingAgent {
         };
 
         let content = serde_json::to_string(&meta).unwrap_or_default();
-        AgentEffect::with_proposal(proposal(self.name(), 
+        AgentEffect::with_proposal(proposal(
+            self.name(),
             ContextKey::Strategies,
             format!("trained-model-{}", split.iteration),
             content,
@@ -753,7 +777,8 @@ impl Suggestor for ModelRegistryAgent {
         let meta = match read_latest_model_meta_from_ctx(ctx) {
             Ok(meta) => meta,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "model-registry-error",
                     err.to_string(),
@@ -777,7 +802,8 @@ impl Suggestor for ModelRegistryAgent {
         };
 
         let content = serde_json::to_string(&record).unwrap_or_default();
-        AgentEffect::with_proposal(proposal(self.name(), 
+        AgentEffect::with_proposal(proposal(
+            self.name(),
             ContextKey::Strategies,
             format!("model-registry-{}", record.iteration),
             content,
@@ -833,7 +859,8 @@ impl Suggestor for MonitoringAgent {
         };
 
         let content = serde_json::to_string(&monitoring).unwrap_or_default();
-        AgentEffect::with_proposal(proposal(self.name(), 
+        AgentEffect::with_proposal(proposal(
+            self.name(),
             ContextKey::Evaluations,
             format!("monitoring-{}", report.iteration),
             content,
@@ -893,7 +920,8 @@ impl Suggestor for DeploymentAgent {
         };
 
         let content = serde_json::to_string(&decision).unwrap_or_default();
-        AgentEffect::with_proposal(proposal(self.name(), 
+        AgentEffect::with_proposal(proposal(
+            self.name(),
             ContextKey::Strategies,
             format!("deployment-{}", report.iteration),
             content,
@@ -923,7 +951,8 @@ impl Suggestor for ModelEvaluationAgent {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "model-eval-error",
                     err.to_string(),
@@ -934,7 +963,8 @@ impl Suggestor for ModelEvaluationAgent {
         let model = match read_model_from_ctx(ctx) {
             Ok(model) => model,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "model-eval-error",
                     err.to_string(),
@@ -945,7 +975,8 @@ impl Suggestor for ModelEvaluationAgent {
         let raw_val_df = match load_dataframe(Path::new(&split.val_path)) {
             Ok(df) => df,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "model-eval-error",
                     err.to_string(),
@@ -962,7 +993,8 @@ impl Suggestor for ModelEvaluationAgent {
         let target = match get_numeric_series(&val_df, &model.target_column) {
             Ok(series) => series,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "model-eval-error",
                     err.to_string(),
@@ -973,7 +1005,8 @@ impl Suggestor for ModelEvaluationAgent {
         let mae = match mean_abs_error(&target, model.mean) {
             Ok(value) => value,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "model-eval-error",
                     err.to_string(),
@@ -984,7 +1017,8 @@ impl Suggestor for ModelEvaluationAgent {
         let mean_abs = match mean_abs_value(&target) {
             Ok(value) => value,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "model-eval-error",
                     err.to_string(),
@@ -1009,7 +1043,8 @@ impl Suggestor for ModelEvaluationAgent {
         };
 
         let content = serde_json::to_string(&report).unwrap_or_default();
-        AgentEffect::with_proposal(proposal(self.name(), 
+        AgentEffect::with_proposal(proposal(
+            self.name(),
             ContextKey::Evaluations,
             format!("model-eval-{}", split.iteration),
             content,
@@ -1050,7 +1085,8 @@ impl Suggestor for SampleInferenceAgent {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "model-infer-error",
                     err.to_string(),
@@ -1061,7 +1097,8 @@ impl Suggestor for SampleInferenceAgent {
         let model = match read_model_from_ctx(ctx) {
             Ok(model) => model,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "model-infer-error",
                     err.to_string(),
@@ -1072,7 +1109,8 @@ impl Suggestor for SampleInferenceAgent {
         let infer_df = match load_dataframe(Path::new(&split.infer_path)) {
             Ok(df) => df,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "model-infer-error",
                     err.to_string(),
@@ -1083,7 +1121,8 @@ impl Suggestor for SampleInferenceAgent {
         let target = match get_numeric_series(&infer_df, &model.target_column) {
             Ok(series) => series,
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "model-infer-error",
                     err.to_string(),
@@ -1098,7 +1137,8 @@ impl Suggestor for SampleInferenceAgent {
                 .take(sample_rows)
                 .collect::<Vec<_>>(),
             Err(err) => {
-                return AgentEffect::with_proposal(proposal(self.name(), 
+                return AgentEffect::with_proposal(proposal(
+                    self.name(),
                     ContextKey::Diagnostic,
                     "model-infer-error",
                     err.to_string(),
@@ -1117,7 +1157,8 @@ impl Suggestor for SampleInferenceAgent {
         };
 
         let content = serde_json::to_string(&sample).unwrap_or_default();
-        AgentEffect::with_proposal(proposal(self.name(), 
+        AgentEffect::with_proposal(proposal(
+            self.name(),
             ContextKey::Hypotheses,
             format!("inference-sample-{}", split.iteration),
             content,

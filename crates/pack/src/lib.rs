@@ -16,11 +16,11 @@
 //! Provider selection and backend capability routing do not live here.
 //! Those contracts belong to `converge-provider-api`.
 
+mod agent;
 pub mod context;
 pub mod effect;
 pub mod fact;
 pub mod invariant;
-mod agent;
 
 pub mod suggestor {
     pub use super::agent::Suggestor;

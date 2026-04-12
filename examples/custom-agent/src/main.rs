@@ -5,7 +5,7 @@
 //!
 //! Shows: Suggestor trait, accepts/execute contract, AgentEffect, ProposedFact.
 
-use converge_core::{Suggestor, AgentEffect, Context, ContextKey, Engine, ProposedFact};
+use converge_core::{AgentEffect, Context, ContextKey, Engine, ProposedFact, Suggestor};
 
 /// A custom agent that reads Seeds and emits a summary as a Hypothesis.
 struct SummaryAgent {

@@ -108,7 +108,12 @@ impl ServerConfig {
             .unwrap_or_else(|_| PathBuf::from("policies/policy.cedar"));
 
         let issue_delegation_enabled = std::env::var("POLICY_ENABLE_DELEGATION_ISSUANCE")
-            .map(|value| matches!(value.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
+            .map(|value| {
+                matches!(
+                    value.trim().to_ascii_lowercase().as_str(),
+                    "1" | "true" | "yes"
+                )
+            })
             .unwrap_or(false);
 
         let issue_admin_token = std::env::var("POLICY_ISSUE_ADMIN_TOKEN")
@@ -167,9 +172,9 @@ fn load_signing_key(encoded: &str) -> Result<SigningKey, ServerError> {
         .or_else(|_| general_purpose::STANDARD.decode(encoded))
         .map_err(|err| ServerError::Config(format!("invalid POLICY_SIGNING_KEY_B64: {err}")))?;
 
-    let bytes: [u8; 32] = raw
-        .try_into()
-        .map_err(|_| ServerError::Config("POLICY_SIGNING_KEY_B64 must decode to 32 bytes".into()))?;
+    let bytes: [u8; 32] = raw.try_into().map_err(|_| {
+        ServerError::Config("POLICY_SIGNING_KEY_B64 must decode to 32 bytes".into())
+    })?;
 
     Ok(SigningKey::from_bytes(&bytes))
 }
@@ -295,9 +300,7 @@ async fn issue_delegation(
     Ok(Json(resp))
 }
 
-async fn pubkey(
-    State(state): State<AppState>,
-) -> Result<Json<PubKeyResp>, ServerError> {
+async fn pubkey(State(state): State<AppState>) -> Result<Json<PubKeyResp>, ServerError> {
     let verifying_key = state.verifying_key.as_deref().ok_or_else(|| {
         ServerError::NotFound("delegation verification is not configured".to_string())
     })?;

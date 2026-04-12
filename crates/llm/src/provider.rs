@@ -12,7 +12,7 @@ use std::fmt;
 use std::sync::Arc;
 
 // Import types from converge-core using public re-exports
-use converge_core::{Suggestor, AgentEffect, ContextKey, ProposedFact};
+use converge_core::{AgentEffect, ContextKey, ProposedFact, Suggestor};
 
 // Re-export core LLM types - these are the canonical types
 // NOTE: LlmProvider is deprecated in converge-core. We define ChatProvider below as the replacement.

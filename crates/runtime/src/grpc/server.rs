@@ -186,8 +186,7 @@ impl ConvergeServiceImpl {
             return Ok(());
         }
 
-        let token =
-            bearer_token.ok_or_else(|| Status::unauthenticated("Missing bearer token"))?;
+        let token = bearer_token.ok_or_else(|| Status::unauthenticated("Missing bearer token"))?;
 
         crate::http_auth::validate_token(&token)
             .await

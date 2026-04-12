@@ -11,7 +11,7 @@ use crate::inference::{GenerationParams, InferenceEngine};
 use crate::model::LlamaModel;
 use crate::tokenizer::Tokenizer;
 use burn::backend::NdArray;
-use converge_core::{Suggestor, AgentEffect, ContextKey, ProposedFact};
+use converge_core::{AgentEffect, ContextKey, ProposedFact, Suggestor};
 use serde::{Deserialize, Serialize};
 
 /// An agent that uses an LLM for reasoning and generation.

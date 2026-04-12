@@ -239,7 +239,7 @@ impl std::error::Error for InvariantError {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::context::{ContextKey, Fact};
+    use crate::context::ContextKey;
 
     /// Invariant that requires at least one seed.
     struct RequireSeeds;

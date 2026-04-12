@@ -330,7 +330,7 @@ fn escape_string(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::context::{Context, Fact};
+    use crate::context::Context;
 
     #[test]
     fn test_edn_serialization() {
@@ -365,7 +365,11 @@ mod tests {
     fn test_context_building() {
         let mut context = Context::new();
         context
-            .add_fact(crate::context::new_fact(ContextKey::Seeds, "seed1", "Test seed"))
+            .add_fact(crate::context::new_fact(
+                ContextKey::Seeds,
+                "seed1",
+                "Test seed",
+            ))
             .unwrap();
 
         let prompt_ctx = PromptContext::from_context(&context, &[ContextKey::Seeds]);
@@ -386,7 +390,11 @@ mod tests {
         let mut ctx = PromptContext::new();
         ctx.add_facts(
             ContextKey::Signals,
-            vec![crate::context::new_fact(ContextKey::Signals, "s1", "Revenue +15% Q3")],
+            vec![crate::context::new_fact(
+                ContextKey::Signals,
+                "s1",
+                "Revenue +15% Q3",
+            )],
         );
 
         let prompt = AgentPrompt::new(

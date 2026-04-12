@@ -62,7 +62,7 @@
 // Suggestor trait returns &str, but we return literals. This is fine.
 #![allow(clippy::unnecessary_literal_bound)]
 
-use converge_core::{Suggestor, AgentEffect, ContextKey, Fact};
+use converge_core::{AgentEffect, ContextKey, Fact, Suggestor};
 
 /// Suggestor that retrieves availability for participants.
 ///

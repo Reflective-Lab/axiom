@@ -6,8 +6,7 @@
 //! Demonstrates: long-running workflows, humans in the loop, multi-tier approvals.
 
 use converge_core::{
-    Suggestor, AgentEffect, Context, ContextKey, Engine, EngineHitlPolicy, ProposedFact,
-    RunResult,
+    AgentEffect, Context, ContextKey, Engine, EngineHitlPolicy, ProposedFact, RunResult, Suggestor,
     gates::hitl::GateDecision,
     gates::{TimeoutAction, TimeoutPolicy},
 };

@@ -13,11 +13,7 @@ use std::collections::HashMap;
 // Re-export canonical types from converge-pack
 pub use converge_pack::{ContextKey, Fact, ProposedFact, ValidationError};
 
-pub(crate) fn new_fact(
-    key: ContextKey,
-    id: impl Into<String>,
-    content: impl Into<String>,
-) -> Fact {
+pub(crate) fn new_fact(key: ContextKey, id: impl Into<String>, content: impl Into<String>) -> Fact {
     converge_pack::fact::kernel_authority::new_fact(key, id, content)
 }
 
@@ -263,10 +259,18 @@ mod tests {
     #[test]
     fn detects_conflict() {
         let mut ctx = Context::new();
-        ctx.add_fact(crate::context::new_fact(ContextKey::Seeds, "fact-1", "version A"))
-            .unwrap();
+        ctx.add_fact(crate::context::new_fact(
+            ContextKey::Seeds,
+            "fact-1",
+            "version A",
+        ))
+        .unwrap();
 
-        let result = ctx.add_fact(crate::context::new_fact(ContextKey::Seeds, "fact-1", "version B"));
+        let result = ctx.add_fact(crate::context::new_fact(
+            ContextKey::Seeds,
+            "fact-1",
+            "version B",
+        ));
 
         match result {
             Err(ConvergeError::Conflict {

@@ -18,7 +18,7 @@
 //! distinguished by their ID prefixes (session:, audit:, compliance:, etc.).
 
 use converge_core::{
-    Suggestor, AgentEffect, ContextKey,
+    AgentEffect, ContextKey, Suggestor,
     invariant::{Invariant, InvariantClass, InvariantResult, Violation},
 };
 

@@ -17,7 +17,10 @@ fn main() {
     // 2. Register agents
     //    SeedSuggestor:      writes a fact once, then goes idle
     //    ReactOnceSuggestor: waits for Seeds, then writes Hypotheses once
-    engine.register_suggestor(SeedSuggestor::new("seed-1", "Monthly active users grew 15%"));
+    engine.register_suggestor(SeedSuggestor::new(
+        "seed-1",
+        "Monthly active users grew 15%",
+    ));
     engine.register_suggestor(ReactOnceSuggestor::new(
         "hypothesis-1",
         "Growth driven by new onboarding flow",

@@ -513,8 +513,7 @@ impl App {
             match serde_json::from_str::<Vec<crate::packs::SeedFact>>(&seeds_json) {
                 Ok(seed_facts) => {
                     for seed in seed_facts {
-                        if let Err(e) =
-                            context.add_input(ContextKey::Seeds, seed.id, seed.content)
+                        if let Err(e) = context.add_input(ContextKey::Seeds, seed.id, seed.content)
                         {
                             self.submit_form.error = Some(format!("Failed to add seed: {e}"));
                             return;

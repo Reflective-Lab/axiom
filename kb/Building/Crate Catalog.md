@@ -65,26 +65,26 @@ These are implementation crates. Not stable external contracts.
 For pack authors:
 ```toml
 [dependencies]
-converge-pack = "3.0.0"
+converge-pack = "3.0.1"
 ```
 
 For embedded applications:
 ```toml
 [dependencies]
-converge-kernel = "3.0.0"
-converge-model = "3.0.0"
+converge-kernel = "3.0.1"
+converge-model = "3.0.1"
 ```
 
 For remote Rust consumers:
 ```toml
 [dependencies]
-converge-client = "3.0.0"
+converge-client = "3.0.1"
 ```
 
 For provider adapters:
 ```toml
 [dependencies]
-converge-provider-api = "3.0.0"
+converge-provider-api = "3.0.1"
 ```
 
 If you need something that doesn't exist in any of these crates, say so. We patch Converge. We don't work around it.

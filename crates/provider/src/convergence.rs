@@ -6,7 +6,7 @@
 //! This module bridges the gap between the simple `LlmProvider` invocation
 //! trait and the platform-wide convergence contract (`Backend`, `Suggestor`).
 
-use converge_pack::{Suggestor, AgentEffect, Context, ContextKey, ProposedFact};
+use converge_pack::{AgentEffect, Context, ContextKey, ProposedFact, Suggestor};
 use converge_provider_api::{Backend, BackendKind, Capability};
 
 use crate::provider_api::{LlmProvider, LlmRequest};

@@ -1,10 +1,6 @@
 mod common;
 
-use converge_policy::{
-    DecideRequest, PolicyEngine,
-    delegation::verify,
-    engine::EngineError,
-};
+use converge_policy::{DecideRequest, PolicyEngine, delegation::verify, engine::EngineError};
 
 use common::{fixed_signing_key, make_request};
 

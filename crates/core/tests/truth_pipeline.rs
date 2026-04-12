@@ -87,7 +87,7 @@ fn seed_input_promoted_through_gate() {
         "external observation",
         "test-harness",
     )
-        .expect("add_input should succeed");
+    .expect("add_input should succeed");
 
     let result = engine.run(ctx).expect("should converge");
 

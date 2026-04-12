@@ -49,11 +49,7 @@ impl AgentEffect {
     /// Returns the context keys affected by this effect.
     #[must_use]
     pub fn affected_keys(&self) -> Vec<ContextKey> {
-        let mut keys: Vec<ContextKey> = self
-            .proposals
-            .iter()
-            .map(|p| p.key)
-            .collect();
+        let mut keys: Vec<ContextKey> = self.proposals.iter().map(|p| p.key).collect();
         keys.sort();
         keys.dedup();
         keys

@@ -5,7 +5,7 @@
 //! Demonstrates how to use the LlmAgent within a Converge context.
 //! This example shows the agent API without requiring actual model weights.
 
-use converge_core::{Suggestor, Context, ContextKey, Engine};
+use converge_core::{Context, ContextKey, Engine, Suggestor};
 use converge_llm::{GenerationParams, LlmAgent, LlmConfig, PromptTemplate};
 
 fn main() {
@@ -75,7 +75,10 @@ fn main() {
     let effect = agent.execute(&ctx);
 
     // Examine the effect
-    println!("\nSuggestor produced {} proposal(s):", effect.proposals.len());
+    println!(
+        "\nSuggestor produced {} proposal(s):",
+        effect.proposals.len()
+    );
     for proposal in &effect.proposals {
         println!(
             "  [{:?}] {}: {}",

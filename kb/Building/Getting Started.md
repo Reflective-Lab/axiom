@@ -7,7 +7,7 @@ tags: [building]
 
 ```toml
 [dependencies]
-converge-kernel = "3.0.0"
+converge-kernel = "3.0.1"
 ```
 
 That's enough to embed the Converge engine in-process.
@@ -15,10 +15,10 @@ That's enough to embed the Converge engine in-process.
 Need more?
 
 ```toml
-converge-pack = "3.0.0"       # Author suggestors and invariants
-converge-model = "3.0.0"      # Curated semantic types
-converge-domain = "3.0.0"     # Pre-built domain packs
-converge-client = "3.0.0"     # Remote Rust client
+converge-pack = "3.0.1"       # Author suggestors and invariants
+converge-model = "3.0.1"      # Curated semantic types
+converge-domain = "3.0.1"     # Pre-built domain packs
+converge-client = "3.0.1"     # Remote Rust client
 ```
 
 See [[Building/Crate Catalog]] for the full list.

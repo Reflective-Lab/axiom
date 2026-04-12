@@ -11,7 +11,7 @@
 //! distinguished by their ID prefixes (promise:, task:, blocker:, etc.).
 
 use converge_core::{
-    Suggestor, AgentEffect, ContextKey,
+    AgentEffect, ContextKey, Suggestor,
     invariant::{Invariant, InvariantClass, InvariantResult, Violation},
 };
 
