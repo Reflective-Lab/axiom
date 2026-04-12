@@ -217,6 +217,8 @@ pub struct Engine {
     hitl_policy: Option<EngineHitlPolicy>,
     /// Optional active pack filter for the current run.
     active_packs: Option<HashSet<String>>,
+    /// Optional event observer for audit trail capture.
+    event_observer: Option<Arc<dyn ExperienceEventObserver>>,
     /// Proposal IDs that were HITL-rejected. Re-proposals with the same ID
     /// are silently discarded (a human already said no).
     rejected_proposals: HashSet<String>,
@@ -243,6 +245,7 @@ impl Engine {
             streaming_callback: None,
             hitl_policy: None,
             active_packs: None,
+            event_observer: None,
             rejected_proposals: HashSet::new(),
         }
     }
@@ -292,6 +295,14 @@ impl Engine {
     /// ```
     pub fn set_streaming(&mut self, callback: Arc<dyn StreamingCallback>) {
         self.streaming_callback = Some(callback);
+    }
+
+    /// Sets the event observer for audit trail capture.
+    ///
+    /// When set, the engine emits `ExperienceEvent`s during convergence:
+    /// `FactPromoted`, `OutcomeRecorded`, `BudgetExceeded`.
+    pub fn set_event_observer(&mut self, observer: Arc<dyn ExperienceEventObserver>) {
+        self.event_observer = Some(observer);
     }
 
     /// Clears the streaming callback.
@@ -558,7 +569,8 @@ impl Engine {
     /// - `max_cycles` is exceeded
     /// - `max_facts` is exceeded
     pub fn run(&mut self, context: Context) -> Result<ConvergeResult, ConvergeError> {
-        self.run_observed(context, None)
+        let observer = self.event_observer.clone();
+        self.run_observed(context, observer.as_ref())
     }
 
     fn run_observed(

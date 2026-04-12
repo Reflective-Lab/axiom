@@ -45,7 +45,8 @@ use tracing_subscriber::EnvFilter;
 use crate::agents::MockInsightProvider;
 
 use converge_core::traits::DynChatBackend;
-use converge_core::{Context, ContextKey, Engine};
+use converge_core::{Context, ContextKey, Engine, ExperienceStore};
+use converge_experience::{InMemoryExperienceStore, StoreObserver};
 use converge_provider::AnthropicBackend;
 use strum::IntoEnumIterator;
 
@@ -296,6 +297,11 @@ async fn main() -> Result<()> {
 
             let mut engine = Engine::new();
 
+            // Wire experience event observer for audit trail capture
+            let experience_store = Arc::new(InMemoryExperienceStore::new());
+            let observer = Arc::new(StoreObserver::new(experience_store.clone()));
+            engine.set_event_observer(observer);
+
             // Domain-specific agent registration should be provided by
             // organism-application or via a plugin mechanism.
             warn!(
@@ -336,6 +342,14 @@ async fn main() -> Result<()> {
             } else {
                 engine.run(context)?
             };
+
+            // Report experience events captured during the run
+            if let Ok(events) = experience_store.query_events(&converge_core::EventQuery::default())
+            {
+                if !events.is_empty() && !quiet {
+                    info!(events = events.len(), "Experience events captured");
+                }
+            }
 
             if !stream && !quiet {
                 if result.converged {

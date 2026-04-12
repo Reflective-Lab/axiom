@@ -24,8 +24,8 @@ pub use surrealdb_store::{SurrealDbConfig, SurrealDbExperienceStore};
 pub use validate::validate_envelope;
 
 use std::collections::HashMap;
-use std::sync::RwLock;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, RwLock};
 
 use converge_core::{
     ArtifactKind, EventQuery, ExperienceEvent, ExperienceEventEnvelope, ExperienceStore,
@@ -125,6 +125,43 @@ impl ExperienceStore for InMemoryExperienceStore {
                 message: "trace link lock poisoned".to_string(),
             })?;
         Ok(map.get(trace_link_id).cloned())
+    }
+}
+
+// ============================================================================
+// ExperienceEventObserver bridge
+// ============================================================================
+
+use converge_core::ExperienceEventObserver;
+
+/// Bridges engine events to an `InMemoryExperienceStore`.
+///
+/// Pass this to `Engine::set_event_observer()` to capture all convergence
+/// events into the in-memory store for audit, debugging, and downstream consumption.
+pub struct StoreObserver {
+    store: Arc<InMemoryExperienceStore>,
+}
+
+impl StoreObserver {
+    /// Create a new observer that appends to the given store.
+    #[must_use]
+    pub fn new(store: Arc<InMemoryExperienceStore>) -> Self {
+        Self { store }
+    }
+
+    /// Access the underlying store (e.g., to query events after a run).
+    #[must_use]
+    pub fn store(&self) -> &Arc<InMemoryExperienceStore> {
+        &self.store
+    }
+}
+
+impl ExperienceEventObserver for StoreObserver {
+    fn on_event(&self, event: &ExperienceEvent) {
+        let id = self.store.next_id();
+        let envelope = ExperienceEventEnvelope::new(id, event.clone());
+        // Best-effort append — don't panic if the store rejects (e.g., validation).
+        let _ = self.store.append_event(envelope);
     }
 }
 
