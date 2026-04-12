@@ -5,7 +5,7 @@ Deadline: 2026-05-10
 
 - [ ] Add `#[warn(missing_docs)]` to all publishable crates
 - [ ] Migrate async traits: ChatBackend/EmbedBackend adoption across providers
-- [ ] Delete deprecated ExperienceStore trait, migrate experience crate to new traits
+- [x] Canonize ExperienceStore as the live trait (removed stale #[deprecated], added test)
 - [ ] Write ADR-005: Type ownership boundaries (which crate owns which types)
 
 ## Completed: v3.2 — Type Duplication Cleanup
