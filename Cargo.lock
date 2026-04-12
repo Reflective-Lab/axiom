@@ -2528,6 +2528,7 @@ dependencies = [
  "config",
  "converge-analytics",
  "converge-core",
+ "converge-experience",
  "converge-knowledge",
  "converge-llm",
  "converge-mcp",
@@ -2583,6 +2584,7 @@ name = "converge-domain"
 version = "3.0.2"
 dependencies = [
  "converge-core",
+ "converge-policy",
  "converge-provider",
  "dotenv",
  "proptest",
@@ -2863,6 +2865,7 @@ dependencies = [
  "clap",
  "config",
  "converge-core",
+ "converge-experience",
  "converge-protocol",
  "converge-provider",
  "converge-tool",
@@ -5206,6 +5209,7 @@ version = "0.0.0"
 dependencies = [
  "converge-core",
  "converge-domain",
+ "converge-policy",
  "converge-traits",
  "serde",
  "serde_json",
@@ -5264,6 +5268,7 @@ version = "0.0.0"
 dependencies = [
  "converge-core",
  "converge-domain",
+ "converge-policy",
  "converge-traits",
  "serde",
  "serde_json",

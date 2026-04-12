@@ -414,6 +414,7 @@ pub use types::{
 
 // Gate Pattern (suggestors suggest, engine decides)
 pub use gates::{
+    AllowAllFlowGateAuthorizer,
     // Boundary types (constitutional kernel-platform contract)
     AuthorityGrant,
     AuthorityGrantor,
@@ -425,10 +426,20 @@ pub use gates::{
     ErrorCategory,
     ExecutionBudget,
     FactBudget,
+    FlowAction,
+    FlowGateAuthorizer,
+    FlowGateContext,
+    FlowGateDecision,
+    FlowGateError,
+    FlowGateInput,
+    FlowGateOutcome,
+    FlowGatePrincipal,
+    FlowGateResource,
     // Gate implementation
     PromotionGate,
     // Trait
     ProposalLifecycle,
+    RejectAllFlowGateAuthorizer,
     SimpleIntent,
     // Stop reasons (exhaustive termination enumeration)
     StopReason,

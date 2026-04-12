@@ -32,9 +32,10 @@
 //! distinguished by their ID prefixes (invoice:, payment:, ledger:, etc.).
 
 use converge_core::{
-    AgentEffect, ContextKey, Suggestor,
+    AgentEffect, ContextKey, FlowAction, FlowGateAuthorizer, FlowGateOutcome, Suggestor,
     invariant::{Invariant, InvariantClass, InvariantResult, Violation},
 };
+use std::sync::Arc;
 
 // ============================================================================
 // Fact ID Prefixes
@@ -48,6 +49,41 @@ pub const PAYMENT_PREFIX: &str = "payment:";
 pub const LEDGER_PREFIX: &str = "ledger:";
 /// Prefix for period facts
 pub const PERIOD_PREFIX: &str = "period:";
+
+fn invoice_issue_request_exists(ctx: &dyn converge_core::ContextView, invoice_id: &str) -> bool {
+    let request_id = format!("{INVOICE_PREFIX}issue_request:{invoice_id}");
+    ctx.get(ContextKey::Proposals)
+        .iter()
+        .any(|fact| fact.id == request_id)
+}
+
+fn invoice_issue_final_output_exists(
+    ctx: &dyn converge_core::ContextView,
+    invoice_id: &str,
+) -> bool {
+    let issued_id = format!("{INVOICE_PREFIX}issued:{invoice_id}");
+    let rejected_id = format!("{INVOICE_PREFIX}issue_rejected:{invoice_id}");
+
+    ctx.get(ContextKey::Proposals)
+        .iter()
+        .any(|fact| fact.id == issued_id || fact.id == rejected_id)
+}
+
+fn period_close_request_exists(ctx: &dyn converge_core::ContextView, period_id: &str) -> bool {
+    let request_id = format!("{PERIOD_PREFIX}close_request:{period_id}");
+    ctx.get(ContextKey::Proposals)
+        .iter()
+        .any(|fact| fact.id == request_id)
+}
+
+fn period_close_final_output_exists(ctx: &dyn converge_core::ContextView, period_id: &str) -> bool {
+    let closed_id = format!("{PERIOD_PREFIX}closed:{period_id}");
+    let rejected_id = format!("{PERIOD_PREFIX}close_rejected:{period_id}");
+
+    ctx.get(ContextKey::Proposals)
+        .iter()
+        .any(|fact| fact.id == closed_id || fact.id == rejected_id)
+}
 
 // ============================================================================
 // Agents
@@ -108,6 +144,168 @@ impl Suggestor for InvoiceCreatorAgent {
                     })
                     .to_string(),
                 ));
+            }
+        }
+
+        AgentEffect::with_proposals(facts)
+    }
+}
+
+/// Routes ready invoices through the default flow gate authorizer before issue.
+#[derive(Clone)]
+pub struct InvoiceIssuerAgent {
+    policy: Arc<dyn FlowGateAuthorizer>,
+}
+
+impl InvoiceIssuerAgent {
+    #[must_use]
+    pub fn new(policy: Arc<dyn FlowGateAuthorizer>) -> Self {
+        Self { policy }
+    }
+}
+
+impl Default for InvoiceIssuerAgent {
+    fn default() -> Self {
+        Self::new(crate::flow_governance::default_flow_authorizer())
+    }
+}
+
+impl std::fmt::Debug for InvoiceIssuerAgent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("InvoiceIssuerAgent")
+    }
+}
+
+impl Suggestor for InvoiceIssuerAgent {
+    fn name(&self) -> &str {
+        "invoice_issuer"
+    }
+
+    fn dependencies(&self) -> &[ContextKey] {
+        &[ContextKey::Proposals]
+    }
+
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
+        ctx.get(ContextKey::Proposals).iter().any(|invoice| {
+            invoice.id.starts_with(INVOICE_PREFIX)
+                && invoice.content.contains("\"state\":\"ready_to_issue\"")
+                && !invoice_issue_final_output_exists(ctx, &invoice.id)
+        })
+    }
+
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+        let proposals = ctx.get(ContextKey::Proposals);
+        let mut facts = Vec::new();
+
+        for invoice in proposals.iter() {
+            if !invoice.id.starts_with(INVOICE_PREFIX)
+                || !invoice.content.contains("\"state\":\"ready_to_issue\"")
+                || invoice_issue_final_output_exists(ctx, &invoice.id)
+            {
+                continue;
+            }
+
+            let Ok(invoice_json) = serde_json::from_str::<serde_json::Value>(&invoice.content)
+            else {
+                continue;
+            };
+
+            let customer_validated = invoice_json
+                .get("customer_id")
+                .and_then(serde_json::Value::as_str)
+                .is_some();
+            let line_items_balanced =
+                crate::flow_governance::json_has_array_items(&invoice_json, "line_items")
+                    && invoice_json
+                        .get("amount")
+                        .and_then(serde_json::Value::as_i64)
+                        .unwrap_or(0)
+                        > 0;
+            let required_gates_met = customer_validated && line_items_balanced;
+
+            let mut gates_passed = Vec::new();
+            if customer_validated {
+                gates_passed.push("customer_validated".to_string());
+            }
+            if line_items_balanced {
+                gates_passed.push("line_items_balanced".to_string());
+            }
+
+            let human_approval_present = crate::flow_governance::has_approval(
+                ctx,
+                "invoice",
+                &invoice.id,
+                "finance_manager",
+            );
+            let amount = invoice_json
+                .get("amount")
+                .and_then(serde_json::Value::as_i64);
+
+            let decision = self
+                .policy
+                .decide(&crate::flow_governance::flow_input(
+                    "agent:finance-supervisor",
+                    "supervisory",
+                    "finance",
+                    format!("invoice-issuance:{}", invoice.id),
+                    "invoice",
+                    gates_passed,
+                    amount,
+                    human_approval_present,
+                    required_gates_met,
+                    FlowAction::Commit,
+                ))
+                .expect("built-in invoice issuance policy should evaluate");
+
+            match decision.outcome {
+                FlowGateOutcome::Promote => facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{INVOICE_PREFIX}issued:{}", invoice.id),
+                    serde_json::json!({
+                        "type": "invoice",
+                        "source_invoice_id": invoice.id,
+                        "state": "issued",
+                        "customer_id": invoice_json.get("customer_id").cloned().unwrap_or_default(),
+                        "line_items": invoice_json.get("line_items").cloned().unwrap_or_default(),
+                        "amount": amount.unwrap_or(0),
+                        "currency": invoice_json.get("currency").cloned().unwrap_or(serde_json::json!("USD")),
+                        "human_approval_present": human_approval_present,
+                        "policy_reason": decision.reason
+                    })
+                    .to_string(),
+                )),
+                FlowGateOutcome::Escalate => {
+                    if !invoice_issue_request_exists(ctx, &invoice.id) {
+                        facts.push(crate::proposal(
+                            self.name(),
+                            ContextKey::Proposals,
+                            format!("{INVOICE_PREFIX}issue_request:{}", invoice.id),
+                            serde_json::json!({
+                                "type": "invoice_issue_request",
+                                "invoice_id": invoice.id,
+                                "action": "request_authority",
+                                "required_role": "finance_manager",
+                                "pending_approval": true,
+                                "policy_outcome": decision.outcome,
+                                "policy_reason": decision.reason
+                            })
+                            .to_string(),
+                        ));
+                    }
+                }
+                FlowGateOutcome::Reject => facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{INVOICE_PREFIX}issue_rejected:{}", invoice.id),
+                    serde_json::json!({
+                        "type": "invoice_issue_rejected",
+                        "invoice_id": invoice.id,
+                        "policy_outcome": decision.outcome,
+                        "policy_reason": decision.reason
+                    })
+                    .to_string(),
+                )),
             }
         }
 
@@ -305,8 +503,29 @@ impl Suggestor for OverdueDetectorAgent {
 /// Closes accounting periods after reconciliation.
 ///
 /// Requires authority approval before transitioning to closed.
-#[derive(Debug, Clone, Default)]
-pub struct PeriodCloserAgent;
+#[derive(Clone)]
+pub struct PeriodCloserAgent {
+    policy: Arc<dyn FlowGateAuthorizer>,
+}
+
+impl PeriodCloserAgent {
+    #[must_use]
+    pub fn new(policy: Arc<dyn FlowGateAuthorizer>) -> Self {
+        Self { policy }
+    }
+}
+
+impl Default for PeriodCloserAgent {
+    fn default() -> Self {
+        Self::new(crate::flow_governance::default_flow_authorizer())
+    }
+}
+
+impl std::fmt::Debug for PeriodCloserAgent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("PeriodCloserAgent")
+    }
+}
 
 impl Suggestor for PeriodCloserAgent {
     fn name(&self) -> &str {
@@ -319,9 +538,11 @@ impl Suggestor for PeriodCloserAgent {
 
     fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
         // Accept when period is in "closing" state and all reconciliation complete
-        ctx.get(ContextKey::Proposals)
-            .iter()
-            .any(|p| p.id.starts_with(PERIOD_PREFIX) && p.content.contains("\"state\":\"closing\""))
+        ctx.get(ContextKey::Proposals).iter().any(|period| {
+            period.id.starts_with(PERIOD_PREFIX)
+                && period.content.contains("\"state\":\"closing\"")
+                && !period_close_final_output_exists(ctx, &period.id)
+        })
     }
 
     fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
@@ -329,22 +550,88 @@ impl Suggestor for PeriodCloserAgent {
         let mut facts = Vec::new();
 
         for period in proposals.iter() {
-            if period.id.starts_with(PERIOD_PREFIX)
-                && period.content.contains("\"state\":\"closing\"")
+            if !period.id.starts_with(PERIOD_PREFIX)
+                || !period.content.contains("\"state\":\"closing\"")
+                || period_close_final_output_exists(ctx, &period.id)
             {
-                facts.push(crate::proposal(
+                continue;
+            }
+
+            let Ok(period_json) = serde_json::from_str::<serde_json::Value>(&period.content) else {
+                continue;
+            };
+
+            let reconciliation_complete = period_json
+                .get("reconciliation_complete")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false);
+            let human_approval_present =
+                crate::flow_governance::has_approval(ctx, "period", &period.id, "finance_manager");
+            let decision = self
+                .policy
+                .decide(&crate::flow_governance::flow_input(
+                    "agent:finance-supervisor",
+                    "supervisory",
+                    "finance",
+                    format!("period-close:{}", period.id),
+                    "period",
+                    if reconciliation_complete {
+                        vec!["reconciliation_complete".to_string()]
+                    } else {
+                        Vec::new()
+                    },
+                    None,
+                    human_approval_present,
+                    reconciliation_complete,
+                    FlowAction::Commit,
+                ))
+                .expect("built-in period close policy should evaluate");
+
+            match decision.outcome {
+                FlowGateOutcome::Promote => facts.push(crate::proposal(
                     self.name(),
                     ContextKey::Proposals,
-                    format!("{}close_request:{}", PERIOD_PREFIX, period.id),
+                    format!("{PERIOD_PREFIX}closed:{}", period.id),
                     serde_json::json!({
-                        "type": "period_close_request",
-                        "period_id": period.id,
-                        "action": "request_authority",
-                        "required_role": "finance_manager",
-                        "pending_approval": true
+                        "type": "period",
+                        "source_period_id": period.id,
+                        "state": "closed",
+                        "human_approval_present": human_approval_present,
+                        "policy_reason": decision.reason
                     })
                     .to_string(),
-                ));
+                )),
+                FlowGateOutcome::Escalate => {
+                    if !period_close_request_exists(ctx, &period.id) {
+                        facts.push(crate::proposal(
+                            self.name(),
+                            ContextKey::Proposals,
+                            format!("{PERIOD_PREFIX}close_request:{}", period.id),
+                            serde_json::json!({
+                                "type": "period_close_request",
+                                "period_id": period.id,
+                                "action": "request_authority",
+                                "required_role": "finance_manager",
+                                "pending_approval": true,
+                                "policy_outcome": decision.outcome,
+                                "policy_reason": decision.reason
+                            })
+                            .to_string(),
+                        ));
+                    }
+                }
+                FlowGateOutcome::Reject => facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("{PERIOD_PREFIX}close_rejected:{}", period.id),
+                    serde_json::json!({
+                        "type": "period_close_rejected",
+                        "period_id": period.id,
+                        "policy_outcome": decision.outcome,
+                        "policy_reason": decision.reason
+                    })
+                    .to_string(),
+                )),
             }
         }
 
@@ -468,11 +755,102 @@ mod tests {
     }
 
     #[test]
+    fn invoice_issuer_requests_finance_approval_before_issue() {
+        let mut engine = Engine::new();
+        engine.register_suggestor(InvoiceIssuerAgent::default());
+
+        let mut ctx = Context::new();
+        let _ = ctx.add_input(
+            ContextKey::Proposals,
+            "invoice:draft:deal_123",
+            r#"{"type":"invoice","state":"ready_to_issue","customer_id":"cust_123","line_items":[{"sku":"svc","amount":12500}],"amount":12500,"currency":"USD"}"#,
+        );
+
+        let result = engine.run(ctx).expect("should converge");
+        assert!(result.converged);
+        assert!(
+            result
+                .context
+                .get(ContextKey::Proposals)
+                .iter()
+                .any(|fact| {
+                    fact.id == "invoice:issue_request:invoice:draft:deal_123"
+                        && fact
+                            .content
+                            .contains("\"required_role\":\"finance_manager\"")
+                })
+        );
+    }
+
+    #[test]
+    fn invoice_issuer_promotes_when_finance_approval_exists() {
+        let mut engine = Engine::new();
+        engine.register_suggestor(InvoiceIssuerAgent::default());
+
+        let mut ctx = Context::new();
+        let _ = ctx.add_input(
+            ContextKey::Proposals,
+            "invoice:draft:deal_123",
+            r#"{"type":"invoice","state":"ready_to_issue","customer_id":"cust_123","line_items":[{"sku":"svc","amount":12500}],"amount":12500,"currency":"USD"}"#,
+        );
+        let _ = ctx.add_input(
+            ContextKey::Proposals,
+            "approval:invoice:invoice:draft:deal_123",
+            r#"{"target_id":"invoice:draft:deal_123","required_role":"finance_manager"}"#,
+        );
+
+        let result = engine.run(ctx).expect("should converge");
+        assert!(result.converged);
+        assert!(
+            result
+                .context
+                .get(ContextKey::Proposals)
+                .iter()
+                .any(|fact| {
+                    fact.id == "invoice:issued:invoice:draft:deal_123"
+                        && fact.content.contains("\"state\":\"issued\"")
+                })
+        );
+    }
+
+    #[test]
+    fn period_closer_promotes_when_finance_approval_exists() {
+        let mut engine = Engine::new();
+        engine.register_suggestor(PeriodCloserAgent::default());
+
+        let mut ctx = Context::new();
+        let _ = ctx.add_input(
+            ContextKey::Proposals,
+            "period:2026-03",
+            r#"{"type":"period","state":"closing","reconciliation_complete":true}"#,
+        );
+        let _ = ctx.add_input(
+            ContextKey::Proposals,
+            "approval:period:period:2026-03",
+            r#"{"target_id":"period:2026-03","required_role":"finance_manager"}"#,
+        );
+
+        let result = engine.run(ctx).expect("should converge");
+        assert!(result.converged);
+        assert!(
+            result
+                .context
+                .get(ContextKey::Proposals)
+                .iter()
+                .any(|fact| {
+                    fact.id == "period:closed:period:2026-03"
+                        && fact.content.contains("\"state\":\"closed\"")
+                })
+        );
+    }
+
+    #[test]
     fn agents_have_correct_names() {
         assert_eq!(InvoiceCreatorAgent.name(), "invoice_creator");
+        assert_eq!(InvoiceIssuerAgent::default().name(), "invoice_issuer");
         assert_eq!(PaymentAllocatorAgent.name(), "payment_allocator");
         assert_eq!(ReconciliationMatcherAgent.name(), "reconciliation_matcher");
         assert_eq!(OverdueDetectorAgent.name(), "overdue_detector");
-        assert_eq!(PeriodCloserAgent.name(), "period_closer");
+        assert_eq!(PeriodCloserAgent::default().name(), "period_closer");
     }
 }

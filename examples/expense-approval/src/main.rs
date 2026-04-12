@@ -3,18 +3,90 @@
 
 //! Expense Approval Workflow — multi-level approval with HITL gates.
 //!
-//! Demonstrates: long-running workflows, humans in the loop, multi-tier approvals.
+//! Demonstrates: long-running workflows, humans in the loop, and Cedar-backed
+//! gate decisions projected from flow state.
 
 use converge_core::{
     AgentEffect, Context, ContextKey, Engine, EngineHitlPolicy, ProposedFact, RunResult, Suggestor,
     gates::hitl::GateDecision,
-    gates::{TimeoutAction, TimeoutPolicy},
+    gates::{
+        FlowAction, FlowGateAuthorizer, FlowGateContext, FlowGateInput, FlowGateOutcome,
+        FlowGatePrincipal, FlowGateResource, TimeoutAction, TimeoutPolicy,
+    },
 };
-
-const MANAGER_THRESHOLD: f64 = 1_000.0;
-const FINANCE_THRESHOLD: f64 = 10_000.0;
+use converge_policy::PolicyEngine;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 struct ExpenseParsingAgent;
+
+fn parse_expense(value: &str) -> serde_json::Value {
+    serde_json::from_str(value).unwrap_or_default()
+}
+
+fn receipt_attached(expense: &serde_json::Value) -> bool {
+    expense
+        .get("receipt_attached")
+        .and_then(|value| value.as_bool())
+        .unwrap_or(true)
+}
+
+fn expense_amount(expense: &serde_json::Value) -> i64 {
+    expense
+        .get("amount")
+        .and_then(|value| value.as_f64())
+        .unwrap_or(0.0) as i64
+}
+
+fn has_human_approval(ctx: &dyn converge_core::ContextView) -> bool {
+    ctx.get(ContextKey::Proposals)
+        .iter()
+        .any(|fact| fact.id.ends_with("-approval"))
+}
+
+fn expense_policy_input(
+    expense: &serde_json::Value,
+    action: FlowAction,
+    human_approval_present: bool,
+) -> FlowGateInput {
+    let mut gates_passed = Vec::new();
+    if receipt_attached(expense) {
+        gates_passed.push("receipt".to_string());
+    }
+    if human_approval_present {
+        gates_passed.push("manager_approval".to_string());
+    }
+
+    FlowGateInput {
+        principal: FlowGatePrincipal {
+            id: "agent:finance-supervisor".into(),
+            authority: "supervisory".into(),
+            domains: vec!["finance".into()],
+            policy_version: Some("expense_v1".into()),
+        },
+        resource: FlowGateResource {
+            id: "expense:demo-001".into(),
+            kind: "expense".into(),
+            phase: "commitment".into(),
+            gates_passed,
+        },
+        action,
+        context: FlowGateContext {
+            commitment_type: Some("expense".into()),
+            amount: Some(expense_amount(expense)),
+            human_approval_present: Some(human_approval_present),
+            required_gates_met: Some(receipt_attached(expense)),
+        },
+    }
+}
+
+fn load_expense_policy_engine() -> Arc<dyn FlowGateAuthorizer> {
+    let policy_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../crates/policy/policies/expense_approval.cedar");
+    let policy = std::fs::read_to_string(policy_path)
+        .expect("expense approval Cedar policy should exist in converge-policy");
+    Arc::new(PolicyEngine::from_policy_str(&policy).expect("expense approval policy should parse"))
+}
 
 impl Suggestor for ExpenseParsingAgent {
     fn name(&self) -> &str {
@@ -51,7 +123,9 @@ impl Suggestor for ExpenseParsingAgent {
     }
 }
 
-struct PolicyValidationAgent;
+struct PolicyValidationAgent {
+    policy: Arc<dyn FlowGateAuthorizer>,
+}
 
 impl Suggestor for PolicyValidationAgent {
     fn name(&self) -> &str {
@@ -63,41 +137,45 @@ impl Suggestor for PolicyValidationAgent {
     }
 
     fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
-        ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
+        ctx.has(ContextKey::Strategies)
+            && !ctx
+                .get(ContextKey::Evaluations)
+                .iter()
+                .any(|fact| fact.id == "expense-validate-policy")
     }
 
     fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
         let strategy = strategies.first();
 
-        let mut is_compliant = true;
-        let mut violations = Vec::new();
+        let result = strategy
+            .map(|fact| parse_expense(&fact.content))
+            .map(|expense| {
+                let decision = self
+                    .policy
+                    .decide(&expense_policy_input(&expense, FlowAction::Validate, false))
+                    .expect("policy evaluation should succeed for expense validation");
 
-        if let Some(s) = strategy {
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&s.content) {
-                let amount = json.get("amount").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let category = json.get("category").and_then(|v| v.as_str()).unwrap_or("");
-
-                if category == "entertainment" && amount > 500.0 {
-                    is_compliant = false;
-                    violations.push("Entertainment over $500 requires executive approval");
-                }
-                if amount > 50_000.0 {
-                    is_compliant = false;
-                    violations.push("Amount exceeds single approval limit");
-                }
-            }
-        }
-
-        let result = serde_json::json!({
-            "compliant": is_compliant,
-            "violations": violations
-        });
+                serde_json::json!({
+                    "gate": "validate",
+                    "outcome": decision.outcome,
+                    "reason": decision.reason,
+                    "amount": expense_amount(&expense),
+                    "receipt_attached": receipt_attached(&expense)
+                })
+            })
+            .unwrap_or_else(|| {
+                serde_json::json!({
+                    "gate": "validate",
+                    "outcome": FlowGateOutcome::Reject,
+                    "reason": "missing parsed expense"
+                })
+            });
 
         AgentEffect::with_proposal(
             ProposedFact::new(
                 ContextKey::Evaluations,
-                "policy-validation",
+                "expense-validate-policy",
                 result.to_string(),
                 self.name(),
             )
@@ -106,7 +184,11 @@ impl Suggestor for PolicyValidationAgent {
     }
 }
 
-struct ApprovalRoutingAgent;
+struct ApprovalRoutingAgent {
+    policy: Arc<dyn FlowGateAuthorizer>,
+}
+
+const ROUTING_DEPS: [ContextKey; 2] = [ContextKey::Strategies, ContextKey::Evaluations];
 
 impl Suggestor for ApprovalRoutingAgent {
     fn name(&self) -> &str {
@@ -114,50 +196,145 @@ impl Suggestor for ApprovalRoutingAgent {
     }
 
     fn dependencies(&self) -> &[ContextKey] {
-        &[ContextKey::Evaluations]
+        &ROUTING_DEPS
     }
 
     fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
-        ctx.has(ContextKey::Evaluations) && !ctx.has(ContextKey::Constraints)
+        ctx.has(ContextKey::Strategies)
+            && ctx
+                .get(ContextKey::Evaluations)
+                .iter()
+                .any(|fact| fact.id == "expense-validate-policy")
+            && !ctx
+                .get(ContextKey::Constraints)
+                .iter()
+                .any(|fact| fact.id == "expense-approval-routing")
     }
 
     fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let evaluations = ctx.get(ContextKey::Evaluations);
         let strategies = ctx.get(ContextKey::Strategies);
 
-        let mut required_approvers = vec!["manager".to_string()];
-
         if let (Some(e), Some(s)) = (evaluations.first(), strategies.first()) {
             let eval: serde_json::Value = serde_json::from_str(&e.content).unwrap_or_default();
-            let strat: serde_json::Value = serde_json::from_str(&s.content).unwrap_or_default();
+            let expense = parse_expense(&s.content);
+            let validate_outcome = eval
+                .get("outcome")
+                .and_then(|value| value.as_str())
+                .unwrap_or("reject");
 
-            let amount = strat.get("amount").and_then(|v| v.as_f64()).unwrap_or(0.0);
-            let compliant = eval
-                .get("compliant")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(true);
+            let commit_decision = self
+                .policy
+                .decide(&expense_policy_input(&expense, FlowAction::Commit, false))
+                .expect("policy evaluation should succeed for commit routing");
 
-            if !compliant {
-                required_approvers.push("finance".to_string());
-            } else if amount >= FINANCE_THRESHOLD {
-                required_approvers.push("finance".to_string());
-                required_approvers.push("executive".to_string());
-            } else if amount >= MANAGER_THRESHOLD {
-                required_approvers.push("finance".to_string());
+            let (required_approvers, current_approver) = match commit_decision.outcome {
+                FlowGateOutcome::Escalate => (vec!["manager".to_string()], Some("manager")),
+                FlowGateOutcome::Reject if validate_outcome != "promote" => {
+                    (vec!["finance".to_string()], Some("finance"))
+                }
+                FlowGateOutcome::Reject => (vec!["finance".to_string()], Some("finance")),
+                FlowGateOutcome::Promote => (Vec::new(), None),
+            };
+
+            let routing = serde_json::json!({
+                "required_approvers": required_approvers,
+                "current_approver": current_approver,
+                "pending": if current_approver.is_some() { 1 } else { 0 },
+                "validate_outcome": validate_outcome,
+                "commit_outcome": commit_decision.outcome,
+                "commit_reason": commit_decision.reason
+            });
+
+            return AgentEffect::with_proposal(
+                ProposedFact::new(
+                    ContextKey::Constraints,
+                    "expense-approval-routing",
+                    routing.to_string(),
+                    self.name(),
+                )
+                .with_confidence(1.0),
+            );
+        }
+
+        AgentEffect::default()
+    }
+}
+
+struct CommitDecisionAgent {
+    policy: Arc<dyn FlowGateAuthorizer>,
+}
+
+const COMMIT_DEPS: [ContextKey; 3] = [
+    ContextKey::Strategies,
+    ContextKey::Constraints,
+    ContextKey::Proposals,
+];
+
+impl Suggestor for CommitDecisionAgent {
+    fn name(&self) -> &str {
+        "CommitDecisionAgent"
+    }
+
+    fn dependencies(&self) -> &[ContextKey] {
+        &COMMIT_DEPS
+    }
+
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
+        ctx.has(ContextKey::Strategies)
+            && ctx
+                .get(ContextKey::Constraints)
+                .iter()
+                .any(|fact| fact.id == "expense-approval-routing")
+            && !ctx
+                .get(ContextKey::Evaluations)
+                .iter()
+                .any(|fact| fact.id == "expense-commit-policy")
+    }
+
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+        let Some(strategy) = ctx.get(ContextKey::Strategies).first() else {
+            return AgentEffect::default();
+        };
+
+        let expense = parse_expense(&strategy.content);
+        let human_approval_present = has_human_approval(ctx);
+        let constraint = ctx
+            .get(ContextKey::Constraints)
+            .iter()
+            .find(|fact| fact.id == "expense-approval-routing");
+
+        if !human_approval_present {
+            let pending = constraint
+                .and_then(|fact| serde_json::from_str::<serde_json::Value>(&fact.content).ok())
+                .and_then(|json| json.get("pending").and_then(|value| value.as_u64()))
+                .unwrap_or(0);
+            if pending > 0 {
+                return AgentEffect::default();
             }
         }
 
-        let routing = serde_json::json!({
-            "required_approvers": required_approvers,
-            "current_approver": "manager",
-            "pending": required_approvers.len()
+        let decision = self
+            .policy
+            .decide(&expense_policy_input(
+                &expense,
+                FlowAction::Commit,
+                human_approval_present,
+            ))
+            .expect("policy evaluation should succeed for final commit");
+
+        let result = serde_json::json!({
+            "gate": "commit",
+            "outcome": decision.outcome,
+            "reason": decision.reason,
+            "human_approval_present": human_approval_present
         });
 
         AgentEffect::with_proposal(
             ProposedFact::new(
-                ContextKey::Constraints,
-                "approval-routing",
-                routing.to_string(),
+                ContextKey::Evaluations,
+                "expense-commit-policy",
+                result.to_string(),
                 self.name(),
             )
             .with_confidence(1.0),
@@ -177,29 +354,41 @@ impl Suggestor for ApprovalSimulationAgent {
     }
 
     fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
-        ctx.has(ContextKey::Constraints)
+        ctx.get(ContextKey::Constraints)
+            .iter()
+            .any(|fact| fact.id == "expense-approval-routing")
+            && !has_human_approval(ctx)
     }
 
     fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
-        let constraints = ctx.get(ContextKey::Constraints);
-
-        if let Some(c) = constraints.first() {
-            if let Ok(routing) = serde_json::from_str::<serde_json::Value>(&c.content) {
-                let current = routing
-                    .get("current_approver")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("manager");
-
-                let proposal = ProposedFact {
-                    key: ContextKey::Proposals,
-                    id: format!("{}-approval", current),
-                    content: format!("Approved by {}", current),
-                    confidence: 0.95,
-                    provenance: format!("{} approval agent", current),
-                };
-
-                return AgentEffect::with_proposal(proposal);
+        if let Some(c) = ctx
+            .get(ContextKey::Constraints)
+            .iter()
+            .find(|fact| fact.id == "expense-approval-routing")
+        {
+            let routing: serde_json::Value = serde_json::from_str(&c.content).unwrap_or_default();
+            let pending = routing
+                .get("pending")
+                .and_then(|value| value.as_u64())
+                .unwrap_or(0);
+            if pending == 0 {
+                return AgentEffect::default();
             }
+
+            let current = routing
+                .get("current_approver")
+                .and_then(|v| v.as_str())
+                .unwrap_or("manager");
+
+            let proposal = ProposedFact {
+                key: ContextKey::Proposals,
+                id: format!("{current}-approval"),
+                content: format!("Approved by {current}"),
+                confidence: 0.95,
+                provenance: format!("{current} approval agent"),
+            };
+
+            return AgentEffect::with_proposal(proposal);
         }
 
         AgentEffect::default()
@@ -210,11 +399,17 @@ fn main() {
     println!("=== Expense Approval Workflow Example ===\n");
 
     let mut engine = Engine::new();
+    let policy = load_expense_policy_engine();
 
     engine.register_suggestor(ExpenseParsingAgent);
-    engine.register_suggestor(PolicyValidationAgent);
-    engine.register_suggestor(ApprovalRoutingAgent);
+    engine.register_suggestor(PolicyValidationAgent {
+        policy: Arc::clone(&policy),
+    });
+    engine.register_suggestor(ApprovalRoutingAgent {
+        policy: Arc::clone(&policy),
+    });
     engine.register_suggestor(ApprovalSimulationAgent);
+    engine.register_suggestor(CommitDecisionAgent { policy });
 
     let hitl_policy = EngineHitlPolicy {
         confidence_threshold: Some(0.8),
@@ -228,10 +423,11 @@ fn main() {
 
     let expense = serde_json::json!({
         "employee": "john.doe@example.com",
-        "amount": 600.00,
+        "amount": 4200.00,
         "category": "entertainment",
         "description": "Client dinner",
-        "date": "2026-04-15"
+        "date": "2026-04-15",
+        "receipt_attached": true
     });
 
     let mut ctx = Context::new();
@@ -245,7 +441,7 @@ fn main() {
 
     match engine.run_with_hitl(ctx) {
         RunResult::HitlPause(pause) => {
-            println!("⏸️  HITL Gate: Approval Required");
+            println!("⏸️  HITL Gate: Cedar required human approval");
             println!("    Proposal: {}", pause.request.summary);
             println!(
                 "    Approver: {}",
@@ -259,37 +455,20 @@ fn main() {
             println!("▶️  Manager approved. Resuming workflow...\n");
 
             match engine.resume(*pause, decision) {
-                RunResult::HitlPause(pause2) => {
-                    println!("⏸️  HITL Gate: Finance Approval Required");
-                    let decision2 = GateDecision::approve(
-                        pause2.request.gate_id.clone(),
-                        "finance@company.com",
-                    );
-                    println!("▶️  Finance approved. Resuming...\n");
-
-                    match engine.resume(*pause2, decision2) {
-                        RunResult::Complete(Ok(result)) => {
-                            println!("✅ Expense Approved!\n");
-                            for fact in result.context.get(ContextKey::Proposals) {
-                                println!("  {}", fact.content);
-                            }
-                        }
-                        _ => println!("❌ Final approval failed"),
-                    }
-                }
                 RunResult::Complete(Ok(result)) => {
-                    println!("✅ Expense Approved!\n");
-                    for fact in result.context.get(ContextKey::Proposals) {
-                        println!("  {}", fact.content);
+                    println!("✅ Expense flow completed.\n");
+                    for fact in result.context.get(ContextKey::Evaluations) {
+                        println!("  [{}] {}", fact.id, fact.content);
                     }
                 }
+                RunResult::HitlPause(_) => println!("❌ Unexpected extra approval stage"),
                 _ => println!("❌ Approval workflow failed"),
             }
         }
         RunResult::Complete(Ok(result)) => {
-            println!("✅ Expense Approved (no HITL needed)!\n");
-            for fact in result.context.get(ContextKey::Proposals) {
-                println!("  {}", fact.content);
+            println!("✅ Expense flow completed without HITL.\n");
+            for fact in result.context.get(ContextKey::Evaluations) {
+                println!("  [{}] {}", fact.id, fact.content);
             }
         }
         RunResult::Complete(Err(e)) => {

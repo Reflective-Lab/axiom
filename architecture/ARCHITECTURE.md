@@ -64,14 +64,14 @@ crates/
   core/           Kernel implementation and truth pipeline enforcement
   provider-api/   Canonical provider capability contract
   provider/       LLM backends (Anthropic, OpenAI, Gemini, Ollama, …)
-  domain/         Domain suggestors and packs
+  domain/         Domain suggestors, packs, and governed flow actions
   experience/     Event-sourced audit ledger
   knowledge/      Vector search knowledge base
   mcp/            Model Context Protocol (client + server)
   optimization/   Constraint solving (optional OR-Tools FFI)
   analytics/      Polars + Burn analytics (publish = false)
   llm/            Local inference kernel (publish = false)
-  policy/         Cedar policy engine (publish = false)
+  policy/         Cedar policy engine and default flow gate authorizer (publish = false)
   runtime/        HTTP/gRPC servers (publish = false)
   remote/         Compatibility CLI on top of client + protocol
   tool/           Dev tools, Gherkin validator (`cz` binary)
@@ -98,7 +98,7 @@ converge-kernel          -> core, pack
 converge-client          -> protocol
 converge-mcp             (no internal deps)
 converge-provider        → core, pack, provider-api
-converge-domain          → core, provider
+converge-domain          → core, policy, provider
 converge-experience      → core
 converge-knowledge       → mcp (server feature)
 ortools-sys              (no deps, FFI)

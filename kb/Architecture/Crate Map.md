@@ -33,14 +33,15 @@ converge-core            → pack                 Engine, context, promotion gat
 converge-mcp             (no internal deps)     MCP server/client
 converge-provider        → core, pack,          LLM provider adapters
                            provider-api, mcp
-converge-domain          → core, provider       Domain packs (trust, money, delivery, ...)
+converge-domain          → core, policy,        Domain packs (trust, money, delivery, ...)
+                           provider             including governed flow transitions
 converge-experience      → core                 Experience tracking
 converge-knowledge       → mcp                  Knowledge management
 ortools-sys              (no deps, FFI)         OR-Tools bindings
 converge-optimization    → ortools-sys          Constraint solvers
 converge-analytics       → core, domain         ML/analytics agents
 converge-llm             → core, domain         Local LLM inference (Burn)
-converge-policy          → core                 Cedar policy engine
+converge-policy          → core                 Cedar policy engine and default FlowGateAuthorizer
 converge-tool            → core, provider       Gherkin validation, spec tools
 converge-storage         (no internal deps)     Object store abstraction
 converge-remote          → client, protocol     gRPC CLI client
@@ -75,5 +76,8 @@ Internal crates (`publish = false`): traits, analytics, llm, policy, storage, ru
 - `converge-pack` owns the pack authoring contract (Suggestor, Context, Invariant)
 - `converge-provider-api` owns the backend capability contract (Backend, Capability, Selection)
 - `converge-core` owns the engine implementation (internal, not a public contract)
+- `converge-core` also owns the neutral flow gate contract (`FlowGateAuthorizer`, `FlowGateInput`)
+- `converge-policy` owns the default Cedar implementation of that contract
+- `converge-domain` applies that contract to built-in governed pack actions
 
 See also: [[Architecture/API Surfaces]], [[Architecture/Dependency Rules]], [[Architecture/Purity Rules]]

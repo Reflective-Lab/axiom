@@ -11,8 +11,8 @@ Each subdirectory is a standalone project with its own `Cargo.toml`.
 | [custom-agent](custom-agent/) | Implement the `Suggestor` trait | `cargo run -p example-custom-agent` |
 | [meeting-scheduler](meeting-scheduler/) | Domain pack with constraint agents | `cargo run -p example-meeting-scheduler` |
 | [custom-provider](custom-provider/) | Implement an LLM provider adapter | `cargo run -p example-custom-provider` |
-| [vendor-selection](vendor-selection/) | Multi-criteria vendor selection | `cargo run -p example-vendor-selection` |
-| [expense-approval](expense-approval/) | Governed expense approval flow | `cargo run -p example-expense-approval` |
+| [vendor-selection](vendor-selection/) | Multi-criteria vendor selection with default Cedar-backed commit gating | `cargo run -p example-vendor-selection` |
+| [expense-approval](expense-approval/) | Governed expense approval through the default `FlowGateAuthorizer` contract | `cargo run -p example-expense-approval` |
 | [loan-application](loan-application/) | Loan application processing | `cargo run -p example-loan-application` |
 | [local-inference](local-inference/) | Run LLM inference on Apple Silicon | See [local-inference/README.md](local-inference/README.md) |
 | [gemma-inference](gemma-inference/) | Gemma GGUF inference via llama.cpp | `cargo run -p example-gemma-inference` |
@@ -22,3 +22,12 @@ Each subdirectory is a standalone project with its own `Cargo.toml`.
 Start with **hello-convergence** to understand the core model, then move to
 **custom-agent** to build your own. The remaining examples show specific
 capabilities you can compose.
+
+If you need the canonical governance pattern, start with **expense-approval**
+and **vendor-selection**. They show the intended default path for consequential
+business actions:
+
+- flow state projects into `FlowGateInput`
+- `converge-policy` evaluates Cedar rules through `FlowGateAuthorizer`
+- outcomes are `promote`, `reject`, or `escalate`
+- HITL approval resumes the same convergence loop

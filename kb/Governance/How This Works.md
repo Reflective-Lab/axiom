@@ -91,6 +91,13 @@ Everything else is Extended (escalating or advisory).
 
 The runtime's governance ([[Concepts/Invariants]], [[Concepts/HITL Gates]], [[Concepts/Proposals and Promotion]]) governs **agent decisions at execution time**.
 
+For consequential business transitions, the runtime now uses a default gated path:
+
+- flow code projects state into a neutral `FlowGateInput`
+- `converge-policy` evaluates Cedar through `FlowGateAuthorizer`
+- the result is `promote`, `reject`, or `escalate`
+- HITL approval resumes the same flow instead of bypassing governance
+
 This section governs **human decisions at development time** — what to build, what to ship, what to say publicly.
 
 Both follow the same principle: **no promotion without review** ([[Philosophy/Nine Axioms#1. Explicit Authority|Axiom 1]]).

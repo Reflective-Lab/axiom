@@ -67,6 +67,7 @@
 //! - `stop.rs`: StopReason, ErrorCategory
 //! - `boundary.rs`: constitutional module, AuthorityGrant, AuthorityScope
 
+pub mod authorization;
 pub mod boundary;
 pub mod budget;
 pub mod hitl;
@@ -90,6 +91,13 @@ pub use stop::{ErrorCategory, StopReason};
 
 // Boundary types
 pub use boundary::{AuthorityGrant, AuthorityGrantor, AuthorityScope, constitutional};
+
+// Flow gate authorization contract
+pub use authorization::{
+    AllowAllFlowGateAuthorizer, FlowAction, FlowGateAuthorizer, FlowGateContext, FlowGateDecision,
+    FlowGateError, FlowGateInput, FlowGateOutcome, FlowGatePrincipal, FlowGateResource,
+    RejectAllFlowGateAuthorizer,
+};
 
 // HITL gate types
 pub use hitl::{

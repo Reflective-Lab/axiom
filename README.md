@@ -11,7 +11,8 @@ Agents collaborate through shared context, not by calling each other. The engine
 3. **Append-only truth.** Facts are never mutated; corrections are new facts.
 4. **Convergence is observable.** `CriterionEvaluator` checks success conditions. `CriterionResult::Blocked` triggers honest stopping with `HumanInterventionRequired`.
 5. **Truths are typed.** `TruthDefinition` declares jobs, policies, and invariants with success criteria, constraints, and pack participation — not string descriptions.
-6. **Safety by construction.** `unsafe_code = "forbid"` everywhere. Type-state enforcement on proposals → facts.
+6. **Consequential transitions are policy-gated.** Real business flow actions project into a neutral `FlowGateAuthorizer` contract, with Cedar as the default implementation.
+7. **Safety by construction.** `unsafe_code = "forbid"` everywhere. Type-state enforcement on proposals → facts.
 
 ## Quick Start
 
@@ -35,6 +36,19 @@ just example custom-provider     # implement an LLM provider
 
 See [examples/README.md](examples/README.md) for the full list.
 
+## Governed Flow Gates
+
+Converge now has a default gate path for consequential flow transitions:
+
+- `converge-core` defines the neutral `FlowGateAuthorizer` contract
+- `converge-policy` implements that contract with Cedar
+- `converge-domain` applies it to real pack transitions like invoice issuance, period close, and contract execution
+
+The same shape is exercised in the governed examples:
+
+- `expense-approval` — finance commit escalation and approval
+- `vendor-selection` — procurement commit escalation and approval
+
 ## Architecture
 
 ```
@@ -48,13 +62,13 @@ crates/
 ├── core/          # Convergence engine (implementation)
 ├── traits/        # Deprecated compatibility facade
 ├── provider/      # LLM backends (Anthropic, OpenAI, Gemini, Ollama, ...)
-├── domain/        # Domain packs (scheduling, routing, drafting, ...)
+├── domain/        # Domain packs (scheduling, routing, drafting, governed flows)
 ├── experience/    # Event-sourced audit store
 ├── knowledge/     # Vector knowledge base
 ├── mcp/           # Model Context Protocol (client + server)
 ├── optimization/  # Constraint solving (OR-Tools)
 ├── storage/       # Object storage abstraction
-├── policy/        # Cedar policy engine
+├── policy/        # Cedar policy engine and default flow gate authorizer
 ├── llm/           # Local LLM inference (Burn)
 ├── analytics/     # ML/analytics agents
 ├── tool/          # Development toolchain (Gherkin, JTBD)
@@ -66,8 +80,8 @@ examples/
 ├── custom-agent/        # Implement the Suggestor trait
 ├── meeting-scheduler/   # Domain pack with constraints
 ├── custom-provider/     # LLM provider adapter
-├── vendor-selection/    # Multi-criteria vendor selection
-├── expense-approval/    # Governed expense approval
+├── vendor-selection/    # Multi-criteria vendor selection with Cedar commit gating
+├── expense-approval/    # Governed expense approval via default flow gate contract
 ├── loan-application/    # Loan application processing
 ├── local-inference/     # Local inference on Apple Silicon
 └── gemma-inference/     # Gemma GGUF inference via llama.cpp

@@ -53,10 +53,16 @@ Self-learning knowledgebase with vector search and agentic memory.
 Cedar-based Policy Decision Point.
 
 - Real Amazon Cedar authorizer
+- Neutral `FlowGateAuthorizer` contract in `converge-core`
+- Cedar is the default authorizer implementation for consequential flow transitions
+- Canonical flow actions: `validate`, `promote`, `commit`, `advance_phase`
 - Agent authority levels: advisory, participatory, supervisory, sovereign
 - Commitment actions: propose, commit, promote
 - Amount thresholds and human approval requirements
 - Phase gate enforcement
+- Built-in governed flow policies for `quote`, `spend`, `contract`, `invoice`, and `period`
+- Real examples: expense approval and vendor selection both route through the same default contract
+- Real domain pack gates: invoice issuance, accounting period close, and legal contract execution
 - Ed25519-signed, CBOR-encoded delegation tokens with time-scoping and replay protection
 
 ## Analytics & ML

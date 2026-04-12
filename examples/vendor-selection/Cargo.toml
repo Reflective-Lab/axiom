@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 converge-core = { path = "../../crates/core" }
+converge-policy = { path = "../../crates/policy" }
 converge-traits = { path = "../../crates/traits" }
 converge-domain = { path = "../../crates/domain" }
 serde = { workspace = true }

@@ -13,6 +13,7 @@ categories = ["algorithms", "simulation"]
 
 [dependencies]
 converge-core.workspace = true
+converge-policy.workspace = true
 converge-provider.workspace = true
 tracing.workspace = true
 serde.workspace = true

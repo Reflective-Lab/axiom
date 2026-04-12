@@ -30,6 +30,7 @@ pub mod drafting;
 pub mod drafting_llm;
 pub mod eval_agent;
 pub mod evals;
+mod flow_governance;
 pub mod form_filler;
 pub mod meeting_scheduler;
 pub mod packs;

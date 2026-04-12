@@ -18,9 +18,10 @@
 //! distinguished by their ID prefixes (session:, audit:, compliance:, etc.).
 
 use converge_core::{
-    AgentEffect, ContextKey, Suggestor,
+    AgentEffect, ContextKey, FlowAction, FlowGateAuthorizer, FlowGateOutcome, Suggestor,
     invariant::{Invariant, InvariantClass, InvariantResult, Violation},
 };
+use std::sync::Arc;
 
 // ============================================================================
 // Fact ID Prefixes
@@ -34,6 +35,28 @@ pub const COMPLIANCE_PREFIX: &str = "compliance:";
 pub const VIOLATION_PREFIX: &str = "violation:";
 pub const REMEDIATION_PREFIX: &str = "remediation:";
 pub const REDACTED_PREFIX: &str = "redacted:";
+
+fn contract_execution_request_exists(
+    ctx: &dyn converge_core::ContextView,
+    contract_id: &str,
+) -> bool {
+    let request_id = format!("contract:execution_request:{contract_id}");
+    ctx.get(ContextKey::Proposals)
+        .iter()
+        .any(|fact| fact.id == request_id)
+}
+
+fn contract_execution_final_output_exists(
+    ctx: &dyn converge_core::ContextView,
+    contract_id: &str,
+) -> bool {
+    let executed_id = format!("contract:executed:{contract_id}");
+    let rejected_id = format!("contract:execution_rejected:{contract_id}");
+
+    ctx.get(ContextKey::Proposals)
+        .iter()
+        .any(|fact| fact.id == executed_id || fact.id == rejected_id)
+}
 
 // ============================================================================
 // Agents
@@ -346,6 +369,173 @@ impl Suggestor for ViolationRemediatorAgent {
     }
 }
 
+/// Routes legal contract execution through the default flow gate authorizer.
+#[derive(Clone)]
+pub struct ContractExecutionAgent {
+    policy: Arc<dyn FlowGateAuthorizer>,
+}
+
+impl ContractExecutionAgent {
+    #[must_use]
+    pub fn new(policy: Arc<dyn FlowGateAuthorizer>) -> Self {
+        Self { policy }
+    }
+}
+
+impl Default for ContractExecutionAgent {
+    fn default() -> Self {
+        Self::new(crate::flow_governance::default_flow_authorizer())
+    }
+}
+
+impl std::fmt::Debug for ContractExecutionAgent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("ContractExecutionAgent")
+    }
+}
+
+impl Suggestor for ContractExecutionAgent {
+    fn name(&self) -> &str {
+        "contract_execution"
+    }
+
+    fn dependencies(&self) -> &[ContextKey] {
+        &[ContextKey::Proposals]
+    }
+
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
+        ctx.get(ContextKey::Proposals).iter().any(|contract| {
+            contract.id.starts_with(LEGAL_CONTRACT_PREFIX)
+                && contract.content.contains("\"state\":\"ready_to_execute\"")
+                && !contract_execution_final_output_exists(ctx, &contract.id)
+        })
+    }
+
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+        let proposals = ctx.get(ContextKey::Proposals);
+        let mut facts = Vec::new();
+
+        for contract in proposals.iter() {
+            if !contract.id.starts_with(LEGAL_CONTRACT_PREFIX)
+                || !contract.content.contains("\"state\":\"ready_to_execute\"")
+                || contract_execution_final_output_exists(ctx, &contract.id)
+            {
+                continue;
+            }
+
+            let Ok(contract_json) = serde_json::from_str::<serde_json::Value>(&contract.content)
+            else {
+                continue;
+            };
+
+            let legal_review = contract_json
+                .get("legal_review_complete")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false);
+            let counterparty_signed = contract_json
+                .get("counterparty_signed")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false);
+            let required_gates_met = legal_review && counterparty_signed;
+
+            let mut gates_passed = Vec::new();
+            if legal_review {
+                gates_passed.push("legal_review".to_string());
+            }
+            if counterparty_signed {
+                gates_passed.push("counterparty_signed".to_string());
+            }
+
+            let human_approval_present = crate::flow_governance::has_approval(
+                ctx,
+                "contract",
+                &contract.id,
+                "legal_counsel",
+            );
+
+            let decision = self
+                .policy
+                .decide(&crate::flow_governance::flow_input(
+                    "agent:legal-supervisor",
+                    "supervisory",
+                    "legal",
+                    format!("contract-execution:{}", contract.id),
+                    "contract",
+                    gates_passed,
+                    None,
+                    human_approval_present,
+                    required_gates_met,
+                    FlowAction::Commit,
+                ))
+                .expect("built-in contract execution policy should evaluate");
+
+            match decision.outcome {
+                FlowGateOutcome::Promote => {
+                    facts.push(crate::proposal(
+                        self.name(),
+                        ContextKey::Proposals,
+                        format!("contract:executed:{}", contract.id),
+                        serde_json::json!({
+                            "type": "contract",
+                            "source_contract_id": contract.id,
+                            "state": "executed",
+                            "immutable": true,
+                            "human_approval_present": human_approval_present,
+                            "policy_reason": decision.reason
+                        })
+                        .to_string(),
+                    ));
+                    facts.push(crate::proposal(
+                        self.name(),
+                        ContextKey::Proposals,
+                        format!("{AUDIT_PREFIX}{}", contract.id),
+                        serde_json::json!({
+                            "type": "audit_entry",
+                            "action": "contract_executed",
+                            "contract_id": format!("contract:executed:{}", contract.id),
+                            "immutable": true
+                        })
+                        .to_string(),
+                    ));
+                }
+                FlowGateOutcome::Escalate => {
+                    if !contract_execution_request_exists(ctx, &contract.id) {
+                        facts.push(crate::proposal(
+                            self.name(),
+                            ContextKey::Proposals,
+                            format!("contract:execution_request:{}", contract.id),
+                            serde_json::json!({
+                                "type": "contract_execution_request",
+                                "contract_id": contract.id,
+                                "action": "request_authority",
+                                "required_role": "legal_counsel",
+                                "pending_approval": true,
+                                "policy_outcome": decision.outcome,
+                                "policy_reason": decision.reason
+                            })
+                            .to_string(),
+                        ));
+                    }
+                }
+                FlowGateOutcome::Reject => facts.push(crate::proposal(
+                    self.name(),
+                    ContextKey::Proposals,
+                    format!("contract:execution_rejected:{}", contract.id),
+                    serde_json::json!({
+                        "type": "contract_execution_rejected",
+                        "contract_id": contract.id,
+                        "policy_outcome": decision.outcome,
+                        "policy_reason": decision.reason
+                    })
+                    .to_string(),
+                )),
+            }
+        }
+
+        AgentEffect::with_proposals(facts)
+    }
+}
+
 /// Redacts PII from content before external sharing.
 #[derive(Debug, Clone, Default)]
 pub struct PiiRedactorAgent;
@@ -612,6 +802,10 @@ mod tests {
         assert_eq!(ComplianceScannerAgent.name(), "compliance_scanner");
         assert_eq!(ViolationRemediatorAgent.name(), "violation_remediator");
         assert_eq!(PiiRedactorAgent.name(), "pii_redactor");
+        assert_eq!(
+            ContractExecutionAgent::default().name(),
+            "contract_execution"
+        );
     }
 
     #[test]
@@ -716,5 +910,74 @@ mod tests {
 
         let result = LegalActionsAuditedInvariant.check(&ctx);
         assert!(matches!(result, InvariantResult::Ok));
+    }
+
+    #[test]
+    fn contract_execution_requests_legal_approval_before_execute() {
+        let mut engine = Engine::new();
+        engine.register_suggestor(ContractExecutionAgent::default());
+
+        let mut ctx = Context::new();
+        let _ = ctx.add_input(
+            ContextKey::Proposals,
+            "contract:msa:deal-123",
+            r#"{"type":"contract","state":"ready_to_execute","legal_review_complete":true,"counterparty_signed":true}"#,
+        );
+
+        let result = engine.run(ctx).expect("should converge");
+        assert!(result.converged);
+        assert!(
+            result
+                .context
+                .get(ContextKey::Proposals)
+                .iter()
+                .any(|fact| {
+                    fact.id == "contract:execution_request:contract:msa:deal-123"
+                        && fact.content.contains("\"required_role\":\"legal_counsel\"")
+                })
+        );
+    }
+
+    #[test]
+    fn contract_execution_emits_executed_fact_and_audit_after_approval() {
+        let mut engine = Engine::new();
+        engine.register_suggestor(ContractExecutionAgent::default());
+
+        let mut ctx = Context::new();
+        let _ = ctx.add_input(
+            ContextKey::Proposals,
+            "contract:msa:deal-123",
+            r#"{"type":"contract","state":"ready_to_execute","legal_review_complete":true,"counterparty_signed":true}"#,
+        );
+        let _ = ctx.add_input(
+            ContextKey::Proposals,
+            "approval:contract:contract:msa:deal-123",
+            r#"{"target_id":"contract:msa:deal-123","required_role":"legal_counsel"}"#,
+        );
+
+        let result = engine.run(ctx).expect("should converge");
+        assert!(result.converged);
+        assert!(
+            result
+                .context
+                .get(ContextKey::Proposals)
+                .iter()
+                .any(|fact| {
+                    fact.id == "contract:executed:contract:msa:deal-123"
+                        && fact.content.contains("\"state\":\"executed\"")
+                })
+        );
+        assert!(
+            result
+                .context
+                .get(ContextKey::Proposals)
+                .iter()
+                .any(|fact| {
+                    fact.id == "audit:contract:msa:deal-123"
+                        && fact
+                            .content
+                            .contains("contract:executed:contract:msa:deal-123")
+                })
+        );
     }
 }

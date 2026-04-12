@@ -57,14 +57,14 @@ pub use delivery::{
 
 pub use money::{
     ClosedPeriodReadonlyInvariant, InvoiceCreatorAgent, InvoiceHasCustomerInvariant,
-    OverdueDetectorAgent, PaymentAllocationCompleteInvariant, PaymentAllocatorAgent,
-    PeriodCloserAgent, ReconciliationMatcherAgent,
+    InvoiceIssuerAgent, OverdueDetectorAgent, PaymentAllocationCompleteInvariant,
+    PaymentAllocatorAgent, PeriodCloserAgent, ReconciliationMatcherAgent,
 };
 
 pub use trust::{
     AllActionsAuditedInvariant, AuditImmutabilityInvariant, AuditWriterAgent,
-    ComplianceScannerAgent, LegalActionsAuditedInvariant, PiiRedactorAgent, ProvenanceTrackerAgent,
-    RbacEnforcerAgent, SessionValidatorAgent, ViolationRemediatorAgent,
+    ComplianceScannerAgent, ContractExecutionAgent, LegalActionsAuditedInvariant, PiiRedactorAgent,
+    ProvenanceTrackerAgent, RbacEnforcerAgent, SessionValidatorAgent, ViolationRemediatorAgent,
     ViolationsHaveRemediationInvariant,
 };
 

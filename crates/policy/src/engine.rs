@@ -78,6 +78,10 @@ impl PolicyEngine {
                     req.principal.policy_version.clone().unwrap_or_default(),
                 ),
             ),
+            (
+                "domains".to_string(),
+                string_set(req.principal.domains.clone()),
+            ),
         ]);
         let principal_entity = Entity::new(p_uid.clone(), p_attrs, HashSet::new());
 
@@ -99,6 +103,10 @@ impl PolicyEngine {
                 "phase".to_string(),
                 RestrictedExpression::new_string(req.resource.phase.clone().unwrap_or_default()),
             ),
+            (
+                "gates_passed".to_string(),
+                string_set(req.resource.gates_passed.clone().unwrap_or_default()),
+            ),
         ]);
         let resource_entity = Entity::new(r_uid.clone(), r_attrs, HashSet::new());
 
@@ -112,6 +120,8 @@ impl PolicyEngine {
             "amount": ctx.amount.unwrap_or(0),
             "human_approval_present": ctx.human_approval_present.unwrap_or(false),
             "required_gates_met": ctx.required_gates_met.unwrap_or(false),
+            "principal_domains": req.principal.domains.clone(),
+            "gates_passed": req.resource.gates_passed.clone().unwrap_or_default(),
         });
         let context = Context::from_json_value(ctx_json, None)
             .map_err(|e| EngineError::ContextBuild(e.to_string()))?;
@@ -156,6 +166,10 @@ impl PolicyEngine {
             req.resource.id.clone(),
         ))
     }
+}
+
+fn string_set(values: Vec<String>) -> RestrictedExpression {
+    RestrictedExpression::new_set(values.into_iter().map(RestrictedExpression::new_string))
 }
 
 /// Determine if a denied action should escalate rather than reject.

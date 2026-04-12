@@ -3,13 +3,106 @@
 
 //! Vendor Selection — swarm evaluation with consensus and HITL gates.
 //!
-//! Demonstrates: swarms, consensus/aggregation, multi-criteria scoring.
+//! Demonstrates: swarms, consensus/aggregation, multi-criteria scoring, and
+//! Cedar-backed procurement gating.
 
 use converge_core::{
     AgentEffect, Context, ContextKey, Engine, EngineHitlPolicy, ProposedFact, RunResult, Suggestor,
     gates::hitl::GateDecision,
-    gates::{TimeoutAction, TimeoutPolicy},
+    gates::{
+        FlowAction, FlowGateAuthorizer, FlowGateContext, FlowGateInput, FlowGateOutcome,
+        FlowGatePrincipal, FlowGateResource, TimeoutAction, TimeoutPolicy,
+    },
 };
+use converge_policy::PolicyEngine;
+use std::path::PathBuf;
+use std::sync::Arc;
+
+fn parse_vendor(value: &str) -> serde_json::Value {
+    serde_json::from_str(value).unwrap_or_default()
+}
+
+fn vendor_selection_input(
+    vendor: &serde_json::Value,
+    action: FlowAction,
+    human_approval_present: bool,
+) -> FlowGateInput {
+    let compliant = vendor
+        .get("compliant")
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false);
+    let years = vendor
+        .get("years_in_business")
+        .and_then(|value| value.as_u64())
+        .unwrap_or(0);
+    let mut gates_passed = vec!["competitive_review".to_string()];
+    if compliant && years >= 5 {
+        gates_passed.push("vendor_due_diligence".to_string());
+    }
+
+    FlowGateInput {
+        principal: FlowGatePrincipal {
+            id: "agent:procurement-supervisor".into(),
+            authority: "supervisory".into(),
+            domains: vec!["procurement".into()],
+            policy_version: Some("vendor_v1".into()),
+        },
+        resource: FlowGateResource {
+            id: format!(
+                "vendor-selection:{}",
+                vendor
+                    .get("id")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or("unknown")
+            ),
+            kind: "spend".into(),
+            phase: "commitment".into(),
+            gates_passed,
+        },
+        action,
+        context: FlowGateContext {
+            commitment_type: Some("spend".into()),
+            amount: Some(
+                vendor
+                    .get("price")
+                    .and_then(|value| value.as_f64())
+                    .unwrap_or(0.0) as i64,
+            ),
+            human_approval_present: Some(human_approval_present),
+            required_gates_met: Some(compliant && years >= 5),
+        },
+    }
+}
+
+fn top_vendor(ctx: &dyn converge_core::ContextView) -> Option<serde_json::Value> {
+    let recommendation = ctx
+        .get(ContextKey::Strategies)
+        .iter()
+        .find(|fact| fact.id == "recommendation-1")?;
+    let recommendation_json: serde_json::Value =
+        serde_json::from_str(&recommendation.content).ok()?;
+    let vendor_id = recommendation_json.get("vendor_id")?.as_str()?;
+
+    ctx.get(ContextKey::Signals).iter().find_map(|fact| {
+        let vendor = parse_vendor(&fact.content);
+        let id = vendor.get("id").and_then(|value| value.as_str())?;
+        if id == vendor_id { Some(vendor) } else { None }
+    })
+}
+
+fn has_procurement_approval(ctx: &dyn converge_core::ContextView) -> bool {
+    ctx.get(ContextKey::Proposals)
+        .iter()
+        .any(|fact| fact.id == "procurement-approval")
+}
+
+fn load_vendor_policy_engine() -> Arc<dyn FlowGateAuthorizer> {
+    let policy_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../crates/policy/policies/vendor_selection.cedar");
+    let policy = std::fs::read_to_string(policy_path)
+        .expect("vendor selection Cedar policy should exist in converge-policy");
+    Arc::new(PolicyEngine::from_policy_str(&policy).expect("vendor selection policy should parse"))
+}
 
 struct VendorDataAgent;
 
@@ -300,7 +393,7 @@ impl Suggestor for ConsensusAgent {
     }
 
     fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
-        ctx.has(ContextKey::Evaluations) && !ctx.has(ContextKey::Proposals)
+        ctx.has(ContextKey::Evaluations) && !ctx.has(ContextKey::Strategies)
     }
 
     fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
@@ -348,7 +441,7 @@ impl Suggestor for ConsensusAgent {
             .iter()
             .enumerate()
             .map(|(i, (vendor_id, score))| ProposedFact {
-                key: ContextKey::Proposals,
+                key: ContextKey::Strategies,
                 id: format!("recommendation-{}", i + 1),
                 content: serde_json::json!({
                     "vendor_id": vendor_id,
@@ -366,10 +459,201 @@ impl Suggestor for ConsensusAgent {
     }
 }
 
+struct ProcurementRoutingAgent {
+    policy: Arc<dyn FlowGateAuthorizer>,
+}
+
+const PROCUREMENT_ROUTING_DEPS: [ContextKey; 2] = [ContextKey::Signals, ContextKey::Strategies];
+
+impl Suggestor for ProcurementRoutingAgent {
+    fn name(&self) -> &str {
+        "ProcurementRoutingAgent"
+    }
+
+    fn dependencies(&self) -> &[ContextKey] {
+        &PROCUREMENT_ROUTING_DEPS
+    }
+
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
+        ctx.has(ContextKey::Signals)
+            && ctx
+                .get(ContextKey::Strategies)
+                .iter()
+                .any(|fact| fact.id == "recommendation-1")
+            && !ctx
+                .get(ContextKey::Constraints)
+                .iter()
+                .any(|fact| fact.id == "vendor-procurement-routing")
+    }
+
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+        let Some(vendor) = top_vendor(ctx) else {
+            return AgentEffect::default();
+        };
+
+        let decision = self
+            .policy
+            .decide(&vendor_selection_input(&vendor, FlowAction::Commit, false))
+            .expect("policy evaluation should succeed for vendor selection routing");
+
+        let (required_approvers, current_approver) = match decision.outcome {
+            FlowGateOutcome::Escalate => (vec!["procurement".to_string()], Some("procurement")),
+            FlowGateOutcome::Reject => (vec!["procurement".to_string()], Some("procurement")),
+            FlowGateOutcome::Promote => (Vec::new(), None),
+        };
+
+        let routing = serde_json::json!({
+            "required_approvers": required_approvers,
+            "current_approver": current_approver,
+            "pending": if current_approver.is_some() { 1 } else { 0 },
+            "commit_outcome": decision.outcome,
+            "commit_reason": decision.reason
+        });
+
+        AgentEffect::with_proposal(
+            ProposedFact::new(
+                ContextKey::Constraints,
+                "vendor-procurement-routing",
+                routing.to_string(),
+                self.name(),
+            )
+            .with_confidence(1.0),
+        )
+    }
+}
+
+struct ProcurementApprovalSimulationAgent;
+
+impl Suggestor for ProcurementApprovalSimulationAgent {
+    fn name(&self) -> &str {
+        "ProcurementApprovalSimulationAgent"
+    }
+
+    fn dependencies(&self) -> &[ContextKey] {
+        &[ContextKey::Constraints]
+    }
+
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
+        ctx.get(ContextKey::Constraints)
+            .iter()
+            .any(|fact| fact.id == "vendor-procurement-routing")
+            && !has_procurement_approval(ctx)
+    }
+
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+        let Some(constraint) = ctx
+            .get(ContextKey::Constraints)
+            .iter()
+            .find(|fact| fact.id == "vendor-procurement-routing")
+        else {
+            return AgentEffect::default();
+        };
+
+        let routing: serde_json::Value =
+            serde_json::from_str(&constraint.content).unwrap_or_default();
+        let pending = routing
+            .get("pending")
+            .and_then(|value| value.as_u64())
+            .unwrap_or(0);
+        if pending == 0 {
+            return AgentEffect::default();
+        }
+
+        AgentEffect::with_proposal(ProposedFact {
+            key: ContextKey::Proposals,
+            id: "procurement-approval".into(),
+            content: "Approved by procurement".into(),
+            confidence: 0.95,
+            provenance: "procurement approval agent".into(),
+        })
+    }
+}
+
+struct VendorCommitDecisionAgent {
+    policy: Arc<dyn FlowGateAuthorizer>,
+}
+
+const VENDOR_COMMIT_DEPS: [ContextKey; 3] = [
+    ContextKey::Signals,
+    ContextKey::Constraints,
+    ContextKey::Proposals,
+];
+
+impl Suggestor for VendorCommitDecisionAgent {
+    fn name(&self) -> &str {
+        "VendorCommitDecisionAgent"
+    }
+
+    fn dependencies(&self) -> &[ContextKey] {
+        &VENDOR_COMMIT_DEPS
+    }
+
+    fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
+        ctx.has(ContextKey::Signals)
+            && ctx
+                .get(ContextKey::Constraints)
+                .iter()
+                .any(|fact| fact.id == "vendor-procurement-routing")
+            && !ctx
+                .get(ContextKey::Evaluations)
+                .iter()
+                .any(|fact| fact.id == "vendor-commit-policy")
+    }
+
+    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+        let Some(vendor) = top_vendor(ctx) else {
+            return AgentEffect::default();
+        };
+
+        let human_approval_present = has_procurement_approval(ctx);
+        let constraint = ctx
+            .get(ContextKey::Constraints)
+            .iter()
+            .find(|fact| fact.id == "vendor-procurement-routing");
+
+        if !human_approval_present {
+            let pending = constraint
+                .and_then(|fact| serde_json::from_str::<serde_json::Value>(&fact.content).ok())
+                .and_then(|json| json.get("pending").and_then(|value| value.as_u64()))
+                .unwrap_or(0);
+            if pending > 0 {
+                return AgentEffect::default();
+            }
+        }
+
+        let decision = self
+            .policy
+            .decide(&vendor_selection_input(
+                &vendor,
+                FlowAction::Commit,
+                human_approval_present,
+            ))
+            .expect("policy evaluation should succeed for vendor selection commit");
+
+        let result = serde_json::json!({
+            "gate": "commit",
+            "outcome": decision.outcome,
+            "reason": decision.reason,
+            "human_approval_present": human_approval_present
+        });
+
+        AgentEffect::with_proposal(
+            ProposedFact::new(
+                ContextKey::Evaluations,
+                "vendor-commit-policy",
+                result.to_string(),
+                self.name(),
+            )
+            .with_confidence(1.0),
+        )
+    }
+}
+
 fn main() {
     println!("=== Vendor Selection Example ===\n");
 
     let mut engine = Engine::new();
+    let policy = load_vendor_policy_engine();
 
     engine.register_suggestor(VendorDataAgent);
     engine.register_suggestor(PriceEvaluatorAgent);
@@ -377,9 +661,14 @@ fn main() {
     engine.register_suggestor(RiskEvaluatorAgent);
     engine.register_suggestor(TimelineEvaluatorAgent);
     engine.register_suggestor(ConsensusAgent);
+    engine.register_suggestor(ProcurementRoutingAgent {
+        policy: Arc::clone(&policy),
+    });
+    engine.register_suggestor(ProcurementApprovalSimulationAgent);
+    engine.register_suggestor(VendorCommitDecisionAgent { policy });
 
     let hitl_policy = EngineHitlPolicy {
-        confidence_threshold: Some(0.75),
+        confidence_threshold: None,
         gated_keys: vec![ContextKey::Proposals],
         timeout: TimeoutPolicy {
             timeout_secs: 300,
@@ -424,14 +713,12 @@ fn main() {
 
     match engine.run_with_hitl(ctx) {
         RunResult::HitlPause(pause) => {
-            println!("⏸️  HITL Gate: Procurement Approval Required");
-            println!("    Recommendation: {}", pause.request.summary);
+            println!("⏸️  HITL Gate: Cedar required procurement approval");
+            println!("    Approval request: {}", pause.request.summary);
             println!();
-
-            if let Ok(proposal) = serde_json::from_str::<serde_json::Value>(&pause.request.summary)
-            {
-                if let Some(vendor) = proposal.get("vendor_id").and_then(|v| v.as_str()) {
-                    println!("    Top vendor: {}", vendor);
+            if let Some(vendor) = top_vendor(&pause.context) {
+                if let Some(id) = vendor.get("id").and_then(|value| value.as_str()) {
+                    println!("    Top vendor: {}", id);
                 }
             }
 
@@ -443,7 +730,7 @@ fn main() {
             match engine.resume(*pause, decision) {
                 RunResult::Complete(Ok(result)) => {
                     println!("✅ Vendor Selected!\n");
-                    for fact in result.context.get(ContextKey::Proposals) {
+                    for fact in result.context.get(ContextKey::Strategies) {
                         if let Ok(p) = serde_json::from_str::<serde_json::Value>(&fact.content) {
                             let rank = p.get("rank").and_then(|v| v.as_u64()).unwrap_or(0);
                             let vendor = p.get("vendor_id").and_then(|v| v.as_str()).unwrap_or("?");
@@ -455,13 +742,18 @@ fn main() {
                             println!("  #{}. {} (score: {:.2}) - {}", rank, vendor, score, rec);
                         }
                     }
+                    for fact in result.context.get(ContextKey::Evaluations) {
+                        if fact.id == "vendor-commit-policy" {
+                            println!("  [commit] {}", fact.content);
+                        }
+                    }
                 }
                 _ => println!("❌ Selection failed"),
             }
         }
         RunResult::Complete(Ok(result)) => {
             println!("✅ Vendor Selected!\n");
-            for fact in result.context.get(ContextKey::Proposals) {
+            for fact in result.context.get(ContextKey::Strategies) {
                 if let Ok(p) = serde_json::from_str::<serde_json::Value>(&fact.content) {
                     let rank = p.get("rank").and_then(|v| v.as_u64()).unwrap_or(0);
                     let vendor = p.get("vendor_id").and_then(|v| v.as_str()).unwrap_or("?");
@@ -471,6 +763,11 @@ fn main() {
                         .and_then(|v| v.as_str())
                         .unwrap_or("?");
                     println!("  #{}. {} (score: {:.2}) - {}", rank, vendor, score, rec);
+                }
+            }
+            for fact in result.context.get(ContextKey::Evaluations) {
+                if fact.id == "vendor-commit-policy" {
+                    println!("  [commit] {}", fact.content);
                 }
             }
         }
