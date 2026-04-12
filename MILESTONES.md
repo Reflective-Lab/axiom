@@ -1,16 +1,24 @@
 # Milestones
 
-## Current: v3.2 — Type Duplication Cleanup
-Deadline: 2026-05-03
+## Current: v3.3 — Contract Enforcement
+Deadline: 2026-05-10
+
+- [ ] Add `#[warn(missing_docs)]` to all publishable crates
+- [ ] Migrate async traits: ChatBackend/EmbedBackend adoption across providers
+- [ ] Delete deprecated ExperienceStore trait, migrate experience crate to new traits
+- [ ] Write ADR-005: Type ownership boundaries (which crate owns which types)
+
+## Completed: v3.2 — Type Duplication Cleanup
+Completed: 2026-04-12
 
 - [x] Unify LlmProvider trait: provider re-exports from core (REF-36)
 - [x] Delete deprecated LlmBackend trait from core/backend.rs
 - [x] Delete dead converge_pack::Invariant fork
-- [ ] Delete dead ExperienceAppender/ExperienceReplayer from core/traits/store.rs (keep ContextStore)
-- [ ] Unify FinishReason within converge-llm (merge observability's into inference's)
-- [ ] Rename kernel_boundary::TraceLink to ReplayTrace (disambiguate from types::TraceLink)
-- [ ] Consolidate IntentId to single definition in core
-- [ ] Replace llm/prompt_dsl.rs with re-exports from core (352 lines -> 6)
+- [x] Delete dead ExperienceAppender/ExperienceReplayer from core/traits/store.rs
+- [x] Unify FinishReason within converge-llm
+- [x] Rename kernel_boundary::TraceLink to ReplayTrace
+- [x] Consolidate IntentId to single definition in core
+- [x] Replace llm/prompt_dsl.rs with re-exports from core (354 -> 10 lines)
 
 ## Completed: v3.1 — Documentation & Contract Hardening
 Completed: 2026-04-12
