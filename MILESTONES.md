@@ -1,7 +1,19 @@
 # Milestones
 
-## Current: v3.1 — Documentation & Contract Hardening
-Deadline: 2026-04-26
+## Current: v3.2 — Type Duplication Cleanup
+Deadline: 2026-05-03
+
+- [x] Unify LlmProvider trait: provider re-exports from core (REF-36)
+- [x] Delete deprecated LlmBackend trait from core/backend.rs
+- [x] Delete dead converge_pack::Invariant fork
+- [ ] Delete dead ExperienceAppender/ExperienceReplayer from core/traits/store.rs (keep ContextStore)
+- [ ] Unify FinishReason within converge-llm (merge observability's into inference's)
+- [ ] Rename kernel_boundary::TraceLink to ReplayTrace (disambiguate from types::TraceLink)
+- [ ] Consolidate IntentId to single definition in core
+- [ ] Replace llm/prompt_dsl.rs with re-exports from core (352 lines -> 6)
+
+## Completed: v3.1 — Documentation & Contract Hardening
+Completed: 2026-04-12
 
 - [x] Fix dead `docs/` links in README.md and SECURITY.md (8 broken refs)
 - [x] Update SECURITY.md supported versions to 3.0.x
