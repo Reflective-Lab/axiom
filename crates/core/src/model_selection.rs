@@ -28,6 +28,7 @@
 //! injection of provider-specific selection logic.
 
 use crate::llm::LlmError;
+use serde::{Deserialize, Serialize};
 
 // =============================================================================
 // DIMENSION 1: JURISDICTION
@@ -214,8 +215,9 @@ impl RequiredCapabilities {
 // =============================================================================
 
 /// Cost classification for model selection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum CostClass {
+    Free,
     VeryLow,
     Low,
     Medium,
@@ -227,11 +229,19 @@ impl CostClass {
     #[must_use]
     pub fn allowed_classes(self) -> Vec<CostClass> {
         match self {
-            Self::VeryLow => vec![Self::VeryLow],
-            Self::Low => vec![Self::VeryLow, Self::Low],
-            Self::Medium => vec![Self::VeryLow, Self::Low, Self::Medium],
-            Self::High => vec![Self::VeryLow, Self::Low, Self::Medium, Self::High],
+            Self::Free => vec![Self::Free],
+            Self::VeryLow => vec![Self::Free, Self::VeryLow],
+            Self::Low => vec![Self::Free, Self::VeryLow, Self::Low],
+            Self::Medium => vec![Self::Free, Self::VeryLow, Self::Low, Self::Medium],
+            Self::High => vec![
+                Self::Free,
+                Self::VeryLow,
+                Self::Low,
+                Self::Medium,
+                Self::High,
+            ],
             Self::VeryHigh => vec![
+                Self::Free,
                 Self::VeryLow,
                 Self::Low,
                 Self::Medium,
@@ -252,7 +262,7 @@ impl CostClass {
 }
 
 /// Data sovereignty requirements.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DataSovereignty {
     Any,
     EU,
@@ -280,7 +290,7 @@ impl DataSovereignty {
 }
 
 /// Compliance and explainability requirements.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ComplianceLevel {
     None,
     GDPR,
@@ -485,6 +495,25 @@ impl AgentRequirements {
     }
 
     #[must_use]
+    pub fn powerful() -> Self {
+        Self {
+            max_cost_class: CostClass::High,
+            max_latency_ms: 10000,
+            requires_reasoning: true,
+            requires_web_search: false,
+            min_quality: 0.9,
+            data_sovereignty: DataSovereignty::Any,
+            compliance: ComplianceLevel::None,
+            requires_multilingual: false,
+        }
+    }
+
+    #[must_use]
+    pub fn with_quality(self, quality: f64) -> Self {
+        self.with_min_quality(quality)
+    }
+
+    #[must_use]
     pub fn with_web_search(mut self, requires: bool) -> Self {
         self.requires_web_search = requires;
         self
@@ -617,7 +646,8 @@ mod tests {
 
     #[test]
     fn test_cost_class_allowed() {
-        assert_eq!(CostClass::VeryLow.allowed_classes().len(), 1);
-        assert_eq!(CostClass::VeryHigh.allowed_classes().len(), 5);
+        assert_eq!(CostClass::Free.allowed_classes().len(), 1);
+        assert_eq!(CostClass::VeryLow.allowed_classes().len(), 2);
+        assert_eq!(CostClass::VeryHigh.allowed_classes().len(), 6);
     }
 }

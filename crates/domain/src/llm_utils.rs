@@ -16,11 +16,6 @@ use converge_core::{
 };
 use std::sync::Arc;
 
-// NOTE: `create_llm_agent` (using ProviderRegistry + create_provider) is temporarily
-// disabled. converge-provider's LlmProvider trait and converge-core's LlmProvider trait
-// diverged in core 1.0.2 — the bridge function needs updating once the trait unification
-// lands. See REF-36 for context.
-
 /// Creates an LLM agent with a mock provider (for testing).
 ///
 /// This bypasses model selection and uses a mock provider directly.

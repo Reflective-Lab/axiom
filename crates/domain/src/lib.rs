@@ -44,7 +44,6 @@ pub mod meeting_scheduler_llm;
 
 pub use ask_converge::{AskConvergeAgent, GroundedAnswerInvariant, RecallNotEvidenceInvariant};
 pub use drafting::{DraftingComposerAgent, DraftingResearchAgent};
-// NOTE: setup_llm_drafting temporarily disabled — see drafting_llm.rs and REF-36
 
 pub use form_filler::{
     CompletenessAgent, FieldMappingAgent, FillPlanAgent, FormSchemaAgent, NormalizationAgent,

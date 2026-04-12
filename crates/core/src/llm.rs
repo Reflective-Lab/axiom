@@ -76,6 +76,10 @@ impl LlmError {
     pub fn provider(message: impl Into<String>) -> Self {
         Self::new(LlmErrorKind::ProviderError, message, false)
     }
+
+    pub fn timeout(message: impl Into<String>) -> Self {
+        Self::new(LlmErrorKind::Timeout, message, true)
+    }
 }
 
 // =============================================================================
@@ -190,6 +194,21 @@ pub trait LlmProvider: Send + Sync {
     /// Returns a provenance string for tracking (e.g., "claude-3-opus:abc123").
     fn provenance(&self, request_id: &str) -> String {
         format!("{}:{}", self.model(), request_id)
+    }
+
+    /// Quick health check — sends a minimal request to verify the provider is reachable
+    /// and the API key/quota is valid.
+    ///
+    /// The default implementation sends a trivial completion request. Providers can
+    /// override this with a lighter-weight check if available.
+    ///
+    /// # Errors
+    ///
+    /// Returns `LlmError` if the provider is unreachable, the key is invalid,
+    /// or the quota is exhausted.
+    fn health_check(&self) -> Result<(), LlmError> {
+        let request = LlmRequest::new("Say OK").with_max_tokens(1);
+        self.complete(&request).map(|_| ())
     }
 }
 
