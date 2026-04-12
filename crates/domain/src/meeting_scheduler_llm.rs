@@ -81,11 +81,12 @@ mod tests {
         let result = engine.run(Context::new()).expect("should converge");
 
         assert!(result.converged);
-        // LLM agents emit proposals to ContextKey::Proposals
-        let proposals = result.context.get(ContextKey::Proposals);
+        // LLM agents emit proposals that get promoted to facts on their target keys
+        let signals = result.context.get(ContextKey::Signals);
+        let strategies = result.context.get(ContextKey::Strategies);
         assert!(
-            !proposals.is_empty(),
-            "At least one LLM agent should have produced proposals"
+            !signals.is_empty() || !strategies.is_empty(),
+            "At least one LLM agent should have produced facts"
         );
     }
 }
