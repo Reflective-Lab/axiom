@@ -67,14 +67,6 @@ pub use rich_media::{
 pub use source::{SourceKind, SourceProvenance};
 
 pub use routing::{
-    AccessPattern,
-    BackgroundKnowledge,
-    CaseKnowledge,
-    KnowledgeRouter,
-    KnowledgeType,
-    KnowledgeTypeHint,
-    Permanence,
-    RoutingCondition,
-    RoutingRule,
-    ScoringWeights,
+    AccessPattern, BackgroundKnowledge, CaseKnowledge, KnowledgeRouter, KnowledgeType,
+    KnowledgeTypeHint, Permanence, RoutingCondition, RoutingRule, ScoringWeights,
 };

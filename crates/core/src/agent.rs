@@ -81,7 +81,12 @@ mod tests {
             fact_id: "test-1".into(),
         };
         let mut ctx = crate::context::Context::new();
-        let _ = ctx.add_input_with_provenance(ContextKey::Seeds, "test-1", "already here", "test");
+        let fact = converge_pack::fact::kernel_authority::new_fact(
+            ContextKey::Seeds,
+            "test-1",
+            "already here",
+        );
+        let _ = ctx.add_fact(fact);
         assert!(!suggestor.accepts(&ctx));
     }
 
