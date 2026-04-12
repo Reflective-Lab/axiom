@@ -10,9 +10,9 @@
 pub use converge_core::{
     Budget, Context, ConvergeError, ConvergeResult, CriterionEvaluator, Engine, EngineHitlPolicy,
     ExperienceEvent, ExperienceEventEnvelope, ExperienceEventKind, ExperienceEventObserver,
-    HitlPause, RunResult, StreamingCallback, SuggestorId, TypesRunHooks,
+    HitlPause, Invariant, InvariantClass, InvariantResult, RunResult, StreamingCallback,
+    SuggestorId, TypesRunHooks,
 };
 pub use converge_pack::{
-    AgentEffect, Context as ContextView, ContextKey, Fact, Invariant, InvariantClass,
-    InvariantResult, ProposedFact, Suggestor, ValidationError,
+    AgentEffect, Context as ContextView, ContextKey, Fact, ProposedFact, Suggestor, ValidationError,
 };

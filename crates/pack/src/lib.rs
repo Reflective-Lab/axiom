@@ -11,7 +11,6 @@
 //! - [`Context`] for read-only context access
 //! - [`AgentEffect`] for buffered proposal output
 //! - [`Fact`] / [`ProposedFact`] for the current context boundary
-//! - [`Invariant`] for executable guarantees
 //!
 //! Provider selection and backend capability routing do not live here.
 //! Those contracts belong to `converge-provider-api`.
@@ -20,8 +19,6 @@ mod agent;
 pub mod context;
 pub mod effect;
 pub mod fact;
-pub mod invariant;
-
 pub mod suggestor {
     pub use super::agent::Suggestor;
 }
@@ -33,4 +30,3 @@ pub use fact::{
     Fact, FactActor, FactActorKind, FactEvidenceRef, FactLocalTrace, FactPromotionRecord,
     FactRemoteTrace, FactTraceLink, FactValidationSummary, ProposedFact, ValidationError,
 };
-pub use invariant::{Invariant, InvariantClass, InvariantResult};

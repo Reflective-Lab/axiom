@@ -327,8 +327,6 @@ pub use backend::{
     CircuitState,
     ContractReport,
     ContractSpec,
-    // Trait
-    LlmBackend,
     Message,
     MessageRole,
     // Retry and circuit breaker types (production error handling)
