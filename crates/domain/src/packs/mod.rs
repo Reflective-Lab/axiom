@@ -11,7 +11,6 @@
 //! - [`money`]: Finance operations (AR -> AP -> Reconcile -> Close)
 //! - [`trust`]: Cross-cutting substrate (Identity -> Access -> Audit -> Provenance)
 //! - [`delivery`]: Promise fulfillment (Promise -> Execute -> Blockers -> Complete)
-//! - [`knowledge`]: Organizational learning (Signal -> Hypothesis -> Experiment -> Canonical)
 //! - [`data_metrics`]: Single source of truth (Instrument -> Collect -> Validate -> Report -> Alert)
 //!
 //! # Suggestor Wiring
@@ -40,12 +39,10 @@
 //! - Money: `invoice:`, `payment:`, `ledger:`, `period:`
 //! - Trust: `session:`, `audit:`, `compliance:`, `violation:`, `remediation:`
 //! - Delivery: `promise:`, `scope:`, `task:`, `blocker:`, `risk:`
-//! - Knowledge: `signal:`, `hypothesis:`, `experiment:`, `decision:`, `canonical:`
 //! - Data Metrics: `metric:`, `source:`, `pipeline:`, `validation:`, `dashboard:`, `report:`, `alert:`, `anomaly:`
 
 pub mod data_metrics;
 pub mod delivery;
-pub mod knowledge;
 pub mod money;
 pub mod trust;
 
@@ -56,14 +53,6 @@ pub use delivery::{
     PromiseCreatorAgent, PromiseHasDealInvariant, RiskAssessorAgent,
     ScopeChangeRequiresApprovalInvariant, ScopeExtractorAgent, StatusAggregatorAgent,
     WorkBreakdownAgent,
-};
-
-pub use knowledge::{
-    CanonicalKnowledgeAgent, ClaimHasProvenanceInvariant, ClaimValidatorAgent,
-    DecisionHasOwnerInvariant, DecisionMemoAgent, ExperimentHasMetricsInvariant,
-    ExperimentRunnerAgent, ExperimentSchedulerAgent, HypothesisGeneratorAgent,
-    HypothesisReviewerAgent, NoOrphanExperimentsInvariant, PatentEvidenceHasProvenanceInvariant,
-    SignalCaptureAgent,
 };
 
 pub use money::{

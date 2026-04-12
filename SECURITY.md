@@ -1,12 +1,6 @@
 # Security Policy
 
-This policy covers vulnerability reporting for the repository. For enterprise
-review material, see:
-
-- `docs/security/SECURITY_OVERVIEW.md`
-- `docs/security/DATA_HANDLING_DECLARATION.md`
-- `docs/security/COMPLIANCE_READINESS.md`
-- `docs/security/THREAT_MODEL.md`
+This policy covers vulnerability reporting for the repository.
 
 ## Supported Versions
 
@@ -14,9 +8,9 @@ We provide security updates for the following versions:
 
 | Version | Supported          |
 |---------|--------------------|
-| 1.1.x   | :white_check_mark: |
-| 1.0.x   | :x:                |
-| < 1.0   | :x:                |
+| 3.0.x   | :white_check_mark: |
+| 2.x     | :x:                |
+| < 2.0   | :x:                |
 
 ## Reporting a Vulnerability
 

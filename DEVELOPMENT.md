@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Rust 1.90+ (`rustup update`)
+- Rust 1.94+ (`rustup update`)
 - [just](https://github.com/casey/just) (`brew install just`)
 - Optional: [jj (Jujutsu)](https://martinvonz.github.io/jj/) for version control
 - Optional: CUDA / Vulkan / WGPU for GPU acceleration
@@ -34,21 +34,31 @@ See [examples/README.md](examples/README.md) for the full list.
 
 ```
 crates/
-├── traits/        # Public contract — partners implement these
-├── core/          # Convergence engine
-├── provider/      # Remote LLM providers (Anthropic, OpenAI, Gemini, ...)
+├── pack/          # Canonical pack authoring contract
+├── provider-api/  # Canonical provider capability contract
+├── model/         # Curated semantic model surface
+├── kernel/        # Curated in-process embedding API
+├── protocol/      # Generated wire contract (converge.v1)
+├── client/        # Canonical remote Rust SDK
+├── core/          # Convergence engine (implementation)
+├── traits/        # Deprecated compatibility facade
+├── provider/      # LLM backends (Anthropic, OpenAI, Gemini, Ollama, ...)
 ├── domain/        # Domain packs (scheduling, routing, drafting, ...)
 ├── experience/    # Event-sourced audit store
 ├── knowledge/     # Vector knowledge base
+├── mcp/           # Model Context Protocol (client + server)
 ├── optimization/  # Constraint solving (OR-Tools)
+├── storage/       # Object storage abstraction
 ├── policy/        # Cedar policy engine
 ├── llm/           # Local LLM inference (Burn)
 ├── analytics/     # ML/analytics agents
 ├── tool/          # Development toolchain (Gherkin, JTBD)
 ├── runtime/       # HTTP/gRPC execution service
-├── remote/        # gRPC client to runtime
+├── remote/        # Compatibility CLI on top of client + protocol
 └── application/   # Reference distribution
 ```
+
+See [architecture/ARCHITECTURE.md](architecture/ARCHITECTURE.md) for the full dependency graph and API surface.
 
 ## Build Profiles
 
@@ -137,17 +147,24 @@ just compliance-check
 
 ## Publishing to crates.io
 
-Nine crates are publishable in dependency order:
+Publishable crates in dependency order (see [ADR-001](architecture/adr/ADR-001-canonical-public-crates.md)):
 
-1. `converge-traits`
-2. `converge-core`
-3. `converge-provider`
-4. `converge-experience`
-5. `converge-knowledge`
-6. `ortools-sys`
-7. `converge-optimization`
-8. `converge-domain`
-9. `converge-tool`
+1. `converge-pack`
+2. `converge-provider-api`
+3. `converge-protocol`
+4. `converge-core`
+5. `converge-mcp`
+6. `converge-model`
+7. `converge-kernel`
+8. `converge-client`
+9. `converge-provider`
+10. `converge-experience`
+11. `converge-knowledge`
+12. `ortools-sys`
+13. `converge-optimization`
+14. `converge-domain`
+15. `converge-storage`
+16. `converge-tool`
 
 ```bash
 # Validate readiness

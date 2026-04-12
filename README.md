@@ -39,43 +39,52 @@ See [examples/README.md](examples/README.md) for the full list.
 
 ```
 crates/
-├── traits/        # Public contract — partners implement these
-├── core/          # Convergence engine
-├── provider/      # Remote LLM providers (Anthropic, OpenAI, Gemini, ...)
+├── pack/          # Canonical pack authoring contract
+├── provider-api/  # Canonical provider capability contract
+├── model/         # Curated semantic model surface
+├── kernel/        # Curated in-process embedding API
+├── protocol/      # Generated wire contract (converge.v1)
+├── client/        # Canonical remote Rust SDK
+├── core/          # Convergence engine (implementation)
+├── traits/        # Deprecated compatibility facade
+├── provider/      # LLM backends (Anthropic, OpenAI, Gemini, Ollama, ...)
 ├── domain/        # Domain packs (scheduling, routing, drafting, ...)
 ├── experience/    # Event-sourced audit store
 ├── knowledge/     # Vector knowledge base
+├── mcp/           # Model Context Protocol (client + server)
 ├── optimization/  # Constraint solving (OR-Tools)
+├── storage/       # Object storage abstraction
 ├── policy/        # Cedar policy engine
 ├── llm/           # Local LLM inference (Burn)
 ├── analytics/     # ML/analytics agents
 ├── tool/          # Development toolchain (Gherkin, JTBD)
 ├── runtime/       # HTTP/gRPC execution service
-├── remote/        # gRPC client to runtime
+├── remote/        # Compatibility CLI on top of client + protocol
 └── application/   # Reference distribution
 examples/
 ├── hello-convergence/   # Minimal convergence loop
-├── custom-agent/        # Implement the Agent trait
+├── custom-agent/        # Implement the Suggestor trait
 ├── meeting-scheduler/   # Domain pack with constraints
 ├── custom-provider/     # LLM provider adapter
-└── local-inference/     # Local inference on Apple Silicon
+├── vendor-selection/    # Multi-criteria vendor selection
+├── expense-approval/    # Governed expense approval
+├── loan-application/    # Loan application processing
+├── local-inference/     # Local inference on Apple Silicon
+└── gemma-inference/     # Gemma GGUF inference via llama.cpp
 ```
 
-## Publishable Crates
+## Canonical Public Crates
 
-Nine crates are published to [crates.io](https://crates.io):
+Six crates form the supported external API (see [ADR-001](architecture/adr/ADR-001-canonical-public-crates.md)):
 
 | Crate | Role |
 |-------|------|
-| `converge-traits` | Public contract — traits and types |
-| `converge-core` | Convergence engine |
-| `converge-provider` | Remote LLM provider adapters |
-| `converge-domain` | Domain packs and use cases |
-| `converge-experience` | Event-sourced audit store |
-| `converge-knowledge` | Vector knowledge base |
-| `converge-optimization` | Constraint solving |
-| `converge-tool` | Development toolchain |
-| `ortools-sys` | OR-Tools FFI bindings |
+| `converge-pack` | Pack authoring contract (Suggestor, Invariant, Context) |
+| `converge-provider-api` | Provider capability and routing contract |
+| `converge-model` | Curated semantic model surface |
+| `converge-kernel` | In-process embedding API |
+| `converge-protocol` | Generated wire contract (`converge.v1`) |
+| `converge-client` | Remote Rust SDK |
 
 ## Configuration
 
@@ -89,16 +98,11 @@ RUST_LOG=info
 
 ## Documentation
 
+- [architecture/ARCHITECTURE.md](architecture/ARCHITECTURE.md) — system design, dependency graph, API surface
 - [DEVELOPMENT.md](DEVELOPMENT.md) — setup, build, git workflow (worktrees, jj)
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guidelines
-- [SECURITY.md](SECURITY.md) — vulnerability reporting
-- [docs/deployment/QUICKSTART.md](docs/deployment/QUICKSTART.md) — local, container, and hosted startup
-- [docs/deployment/TERRAFORM_GCP.md](docs/deployment/TERRAFORM_GCP.md) — default Google Cloud + Secret Manager deployment path
-- [docs/deployment/GPU_WORKERS.md](docs/deployment/GPU_WORKERS.md) — Modal / Runpod guidance for GPU inference and training
+- [SECURITY.md](SECURITY.md) — vulnerability reporting and security baseline
 - [crates/provider/.env.example](crates/provider/.env.example) — provider API key and endpoint catalog
-- [docs/security/README.md](docs/security/README.md) — enterprise security and compliance package
-- [docs/security/DATA_HANDLING_DECLARATION.md](docs/security/DATA_HANDLING_DECLARATION.md) — what this project is designed to handle and what it is not
-- [docs/security/COMPLIANCE_READINESS.md](docs/security/COMPLIANCE_READINESS.md) — current declarations, recommendations, and non-claims
 - [examples/](examples/) — runnable examples
 
 ## License

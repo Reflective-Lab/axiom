@@ -12,7 +12,6 @@
 //! - [`packs::money`]: Financial transaction substrate
 //! - [`packs::trust`]: Audit/access/provenance substrate
 //! - [`packs::delivery`]: Promise fulfillment protocol
-//! - [`packs::knowledge`]: Signal->hypothesis->experiment->decision lifecycle
 //! - [`packs::data_metrics`]: Instrumentation substrate
 //!
 //! # Use Cases
@@ -80,19 +79,13 @@ pub use resource_routing::{
 
 pub use domain_invariants::{AuditTrailRequired, AuthorityRequired};
 
-// Knowledge Pack re-exports (patent-related)
-pub use packs::knowledge::PatentEvidenceHasProvenanceInvariant;
-
 // Pack-specific evals
 pub use evals::{
     // Trust Pack
     AccessComplianceEval,
     AuditCoverageEval,
-    // Knowledge Pack
-    ClaimProvenanceEval,
     // Data Metrics Pack
     DashboardSourceEval,
-    ExperimentMetricsEval,
     // Money Pack
     InvoiceAccuracyEval,
     // General kernel evals

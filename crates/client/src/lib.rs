@@ -20,12 +20,16 @@ pub type EventStream = Streaming<v1::ServerEvent>;
 /// The generated tonic client used underneath the stable SDK wrapper.
 pub type RawConvergeClient = v1::converge_service_client::ConvergeServiceClient<Channel>;
 
+/// Errors returned by [`ConvergeClient`] operations.
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {
+    /// The endpoint URI could not be parsed.
     #[error("invalid endpoint: {0}")]
     InvalidEndpoint(String),
+    /// Transport-level failure (connection refused, TLS error, etc.).
     #[error(transparent)]
     Transport(#[from] tonic::transport::Error),
+    /// The server returned a gRPC status error.
     #[error(transparent)]
     Status(#[from] tonic::Status),
 }
@@ -72,6 +76,7 @@ impl ConvergeClient {
         self.inner
     }
 
+    /// Submit a new job to the runtime.
     pub async fn submit_job(
         &mut self,
         request: v1::SubmitJobRequest,
@@ -79,6 +84,7 @@ impl ConvergeClient {
         Ok(self.inner.submit_job(request).await?.into_inner())
     }
 
+    /// Retrieve the current state of a job.
     pub async fn get_job(
         &mut self,
         request: v1::GetJobRequest,
@@ -86,6 +92,7 @@ impl ConvergeClient {
         Ok(self.inner.get_job(request).await?.into_inner())
     }
 
+    /// Retrieve events for a job or run.
     pub async fn get_events(
         &mut self,
         request: v1::GetEventsRequest,
@@ -93,6 +100,7 @@ impl ConvergeClient {
         Ok(self.inner.get_events(request).await?.into_inner())
     }
 
+    /// Query the runtime's advertised capabilities.
     pub async fn get_capabilities(
         &mut self,
         request: v1::GetCapabilitiesRequest,
@@ -100,6 +108,7 @@ impl ConvergeClient {
         Ok(self.inner.get_capabilities(request).await?.into_inner())
     }
 
+    /// Open a bidirectional stream for real-time interaction with the runtime.
     pub async fn stream<S>(&mut self, request: S) -> Result<EventStream, ClientError>
     where
         S: tonic::IntoStreamingRequest<Message = v1::ClientMessage>,
@@ -108,7 +117,10 @@ impl ConvergeClient {
     }
 }
 
-/// Helpers for wrapping typed requests into stream `ClientMessage` envelopes.
+/// Helpers for wrapping typed requests into stream [`ClientMessage`](v1::ClientMessage) envelopes.
+///
+/// Each function constructs a `ClientMessage` with the appropriate variant
+/// and a caller-provided `request_id` for correlation.
 pub mod messages {
     use super::v1::{
         ApproveProposalRequest, CancelJobRequest, ClientMessage, PauseRunRequest, Ping,
@@ -117,14 +129,17 @@ pub mod messages {
         client_message,
     };
 
+    /// Wrap a [`SubmitJobRequest`] for the stream.
     pub fn submit_job(request_id: impl Into<String>, request: SubmitJobRequest) -> ClientMessage {
         envelope(request_id, client_message::Message::SubmitJob(request))
     }
 
+    /// Wrap a [`CancelJobRequest`] for the stream.
     pub fn cancel_job(request_id: impl Into<String>, request: CancelJobRequest) -> ClientMessage {
         envelope(request_id, client_message::Message::CancelJob(request))
     }
 
+    /// Wrap a [`SubmitObservationRequest`] for the stream.
     pub fn submit_observation(
         request_id: impl Into<String>,
         request: SubmitObservationRequest,
@@ -135,6 +150,7 @@ pub mod messages {
         )
     }
 
+    /// Wrap an [`ApproveProposalRequest`] for the stream.
     pub fn approve(
         request_id: impl Into<String>,
         request: ApproveProposalRequest,
@@ -142,18 +158,22 @@ pub mod messages {
         envelope(request_id, client_message::Message::Approve(request))
     }
 
+    /// Wrap a [`RejectProposalRequest`] for the stream.
     pub fn reject(request_id: impl Into<String>, request: RejectProposalRequest) -> ClientMessage {
         envelope(request_id, client_message::Message::Reject(request))
     }
 
+    /// Wrap a [`PauseRunRequest`] for the stream.
     pub fn pause(request_id: impl Into<String>, request: PauseRunRequest) -> ClientMessage {
         envelope(request_id, client_message::Message::Pause(request))
     }
 
+    /// Wrap a [`ResumeRunRequest`] for the stream.
     pub fn resume(request_id: impl Into<String>, request: ResumeRunRequest) -> ClientMessage {
         envelope(request_id, client_message::Message::Resume(request))
     }
 
+    /// Wrap an [`UpdateBudgetRequest`] for the stream.
     pub fn update_budget(
         request_id: impl Into<String>,
         request: UpdateBudgetRequest,
@@ -161,10 +181,12 @@ pub mod messages {
         envelope(request_id, client_message::Message::UpdateBudget(request))
     }
 
+    /// Wrap a [`SubscribeRequest`] for the stream.
     pub fn subscribe(request_id: impl Into<String>, request: SubscribeRequest) -> ClientMessage {
         envelope(request_id, client_message::Message::Subscribe(request))
     }
 
+    /// Wrap an [`UnsubscribeRequest`] for the stream.
     pub fn unsubscribe(
         request_id: impl Into<String>,
         request: UnsubscribeRequest,
@@ -172,6 +194,7 @@ pub mod messages {
         envelope(request_id, client_message::Message::Unsubscribe(request))
     }
 
+    /// Wrap a [`ResumeFromSequenceRequest`] for the stream.
     pub fn resume_from(
         request_id: impl Into<String>,
         request: ResumeFromSequenceRequest,
@@ -179,6 +202,7 @@ pub mod messages {
         envelope(request_id, client_message::Message::ResumeFrom(request))
     }
 
+    /// Wrap a [`Ping`] for the stream.
     pub fn ping(request_id: impl Into<String>, request: Ping) -> ClientMessage {
         envelope(request_id, client_message::Message::Ping(request))
     }
