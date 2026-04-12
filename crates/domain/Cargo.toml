@@ -13,7 +13,7 @@ categories = ["algorithms", "simulation"]
 
 [dependencies]
 converge-core.workspace = true
-converge-provider = { workspace = true, features = ["patent", "linkedin"] }
+converge-provider.workspace = true
 tracing.workspace = true
 serde.workspace = true
 serde_json.workspace = true

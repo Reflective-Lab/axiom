@@ -52,40 +52,28 @@
 
 mod markdown;
 mod multimodal;
-// OCR, photos, screenshots moved to organism-intelligence
-// mod ocr;
 mod pdf;
-// mod photos;
 mod rich_media;
 pub mod routing;
-// mod screenshots;
 mod source;
 
 pub use markdown::{ChunkType, IngesterConfig, MarkdownChunk, MarkdownDocument, MarkdownIngester};
 pub use multimodal::{EmbeddingDescriptor, EmbeddingLocation, Modality, TemporalSpan};
-// OCR types moved to organism-intelligence
 pub use pdf::{PdfChunk, PdfDocument, PdfIngester};
 pub use rich_media::{
     MediaIngestRequest, MediaKind, TranscriptChunkPolicy, TranscriptDocument, TranscriptSegment,
     TranscriptionBackend, TranscriptionEngine, TranscriptionRequest,
 };
-// Screenshot types moved to organism-intelligence
 pub use source::{SourceKind, SourceProvenance};
 
-// Re-export routing types
 pub use routing::{
-    // Enums
     AccessPattern,
     BackgroundKnowledge,
-    // Core knowledge types
     CaseKnowledge,
-    // Routing
     KnowledgeRouter,
     KnowledgeType,
-
     KnowledgeTypeHint,
     Permanence,
-
     RoutingCondition,
     RoutingRule,
     ScoringWeights,

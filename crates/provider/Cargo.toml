@@ -58,24 +58,16 @@ baidu = ["dep:reqwest", "dep:serde_json", "dep:urlencoding"]
 zhipu = ["dep:reqwest", "dep:serde_json"]
 apertus = ["dep:reqwest", "dep:serde_json"]
 brave = ["dep:reqwest", "dep:serde_json", "dep:urlencoding"]
-patent = []
-linkedin = []
-
 # Registry and Matchmaking
 registry = []
 
 # Stores
 lancedb = ["dep:lancedb", "dep:arrow-array", "dep:arrow-schema", "dep:futures"]
 qdrant = []
-neo4j = []
 all-vector = ["lancedb", "qdrant"]
-all-stores = ["lancedb", "qdrant", "neo4j"]
 
 # Security hardening (zeroize secrets on drop)
 secure = ["dep:zeroize"]
-
-# OCR providers
-tesseract = []
 
 [dev-dependencies]
 tempfile.workspace = true

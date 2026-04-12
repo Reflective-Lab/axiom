@@ -149,7 +149,6 @@ mod baidu;
 #[cfg(feature = "brave")]
 pub mod brave;
 
-// OCR / Document AI providers
 mod capability_registry;
 mod common;
 #[cfg(feature = "deepseek")]
@@ -169,8 +168,6 @@ mod minmax;
 #[cfg(feature = "mistral")]
 mod mistral;
 mod model_selection;
-// Moved to organism-intelligence crate
-// pub mod ocr;
 #[cfg(feature = "ollama")]
 mod ollama;
 #[cfg(feature = "openai")]
@@ -185,21 +182,11 @@ mod qwen;
 #[cfg(feature = "zhipu")]
 mod zhipu;
 
-// Patent providers — moved to organism-intelligence crate
-// #[cfg(feature = "patent")]
-// pub mod patent;
-
 // Tool integration (MCP, OpenAPI, GraphQL)
 pub mod tools;
 
-// LinkedIn providers — moved to organism-intelligence crate
-// #[cfg(feature = "linkedin")]
-// mod linkedin;
-
 // Capability providers
 pub mod embedding;
-// Graph store — moved to organism-intelligence crate
-// pub mod graph;
 #[cfg(feature = "registry")]
 pub mod registry_loader;
 pub mod reranker;
@@ -289,18 +276,12 @@ pub use contract::{
 #[cfg(feature = "anthropic")]
 pub use llm::AnthropicBackend;
 
-// Patent providers — moved to organism-intelligence crate
-
-// LinkedIn providers — moved to organism-intelligence crate
-
 // Search providers
 #[cfg(feature = "brave")]
 pub use brave::{
     BraveCapability, BraveSearchError, BraveSearchProvider, BraveSearchRequest,
     BraveSearchResponse, BraveSearchResult,
 };
-
-// OCR / Document AI — moved to organism-intelligence crate
 
 // Tool integration
 pub use tools::{
