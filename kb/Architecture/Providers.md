@@ -28,9 +28,9 @@ All four backends accept `ResponseFormat::Json` on `ChatRequest`. The enforcemen
 | OpenAI | API flag `response_format: {"type": "json_object"}` | API-enforced |
 | Gemini | API field `response_mime_type: "application/json"` | API-enforced |
 | Mistral | API flag `response_format: {"type": "json_object"}` | API-enforced |
-| Anthropic | System instruction prepend | Instruction-level (best-effort) |
+| Anthropic | System instruction prepend | Instruction-level (provider-native) |
 
-Callers should not assume identical enforcement semantics. Anthropic's instruction-based approach is the documented provider pattern — not a workaround — but it does not carry API-level schema guarantees.
+Callers should not assume identical enforcement semantics. Anthropic's instruction-based approach is the documented provider pattern, not a workaround. It is the correct way to request JSON on Anthropic today, but it does not provide the same API-level schema guarantee as providers with a dedicated JSON/response-format field.
 
 Search providers are intentionally separate from chat:
 

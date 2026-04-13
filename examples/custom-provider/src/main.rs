@@ -58,6 +58,7 @@ async fn main() {
         messages: vec![ChatMessage {
             role: ChatRole::User,
             content: "What is the convergence model?".to_string(),
+            tool_calls: Vec::new(),
             tool_call_id: None,
         }],
         system: None,

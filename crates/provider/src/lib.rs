@@ -41,6 +41,18 @@
 //! - [`OpenAiBackend`] - GPT-4, GPT-3.5 (OpenAI)
 //! - [`GeminiBackend`] - Gemini Pro (Google)
 //! - [`MistralBackend`] - Mistral chat completions (Mistral AI)
+//!
+//! ## Structured Output
+//!
+//! All live chat backends accept [`ResponseFormat::Json`](converge_core::traits::ResponseFormat::Json),
+//! but providers do not enforce it identically:
+//! - OpenAI and Mistral use native `response_format` API fields
+//! - Gemini uses native `response_mime_type`
+//! - Anthropic uses the documented system-instruction JSON pattern
+//!
+//! Anthropic's instruction-based JSON handling is provider-native and correct for Claude.
+//! The difference is enforcement strength, not correctness: Anthropic does not currently
+//! expose a dedicated API-level JSON flag.
 
 // Secret management (SecretProvider trait, EnvSecretProvider default)
 pub mod secret;

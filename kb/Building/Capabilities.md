@@ -116,6 +116,19 @@ Local inference with adapter lifecycle governance.
 
 Plus: fitness-based model selection, fallback chaining, provider-specific prompt builders, and secret management with zeroizing.
 
+### Structured Output Semantics
+
+`ResponseFormat::Json` is supported across the live chat backends, but not all providers enforce it the same way:
+
+| Backend | Mechanism |
+|---|---|
+| OpenAI | Native `response_format` API field |
+| Gemini | Native `response_mime_type` API field |
+| Mistral | Native `response_format` API field |
+| Anthropic | System-instruction JSON request |
+
+Anthropic's instruction-based JSON behavior is provider-native and correct for Claude. It should not be treated as a hack. The distinction is that Anthropic does not currently expose an API-level JSON flag, so callers should not assume identical schema guarantees across providers.
+
 ## Tool Integration
 
 - **OpenAPI**: parse specs, convert operations to tool definitions with tag filtering

@@ -1706,7 +1706,8 @@ mod tests {
         let _ = engine.run(Context::new()).unwrap();
 
         assert!(logs_contain("Starting convergence cycle"));
-        assert!(logs_contain("Found eligible suggestors"));
+        assert!(logs_contain("Merged effects"));
+        assert!(logs_contain("Convergence reached"));
     }
 
     /// Suggestor that emits a seed fact once.

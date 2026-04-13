@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.3] - 2026-04-14
+
+### Added
+- Live endpoint coverage for OpenAI, Anthropic, Gemini, Mistral, Brave, and Tavily, including happy-path and negative credential/model tests
+- `MistralBackend` as a live `ChatBackend`
+- `BraveSearchProvider` and `TavilySearchProvider` as `WebSearchBackend` implementations
+
+### Changed
+- Unified the live provider path on `ChatBackend`, with OpenAI, Anthropic, Gemini, and Mistral using the canonical multi-turn request/response types
+- Canonical `ChatMessage` history now carries assistant `tool_calls`, so real tool loops can round-trip without provider-specific patching
+- Anthropic tool-call and tool-result history now round-trip against the live API
+- Model selection now filters unavailable providers before choosing a backend and routes chat independently from web search
+
+### Fixed
+- GitHub Actions now install `protoc` before protobuf builds
+- Provider feature builds now include the async runtime dependency they actually use
+- Repo docs and KB pages now describe the canonical chat/search split and Anthropic's provider-native JSON behavior correctly
+
 ### Removed
 - **Knowledge lifecycle pack** (`packs::knowledge`) — moved to `organism-domain`. Includes all knowledge agents (`SignalCaptureAgent`, `HypothesisGeneratorAgent`, etc.), invariants (`ClaimHasProvenanceInvariant`, etc.), and evals (`ClaimProvenanceEval`, `ExperimentMetricsEval`).
 
@@ -101,7 +119,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic agent runtime
 - Core traits and abstractions
 
-[Unreleased]: https://github.com/Reflective-Lab/converge/compare/v3.0.2...HEAD
+[Unreleased]: https://github.com/Reflective-Lab/converge/compare/v3.0.3...HEAD
+[3.0.3]: https://github.com/Reflective-Lab/converge/compare/v3.0.2...v3.0.3
 [3.0.2]: https://github.com/Reflective-Lab/converge/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/Reflective-Lab/converge/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/Reflective-Lab/converge/compare/v2.1.2...v3.0.0

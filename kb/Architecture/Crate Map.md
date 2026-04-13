@@ -67,15 +67,16 @@ converge-application     → core, provider,      CLI/TUI distribution
 6. converge-kernel
 7. converge-protocol
 8. converge-client
-9. converge-provider
-10. converge-experience
-11. converge-knowledge
-12. ortools-sys
-13. converge-optimization
-14. converge-domain
-15. converge-tool
+9. converge-storage
+10. converge-provider
+11. converge-experience
+12. converge-knowledge
+13. ortools-sys
+14. converge-optimization
+15. converge-domain
+16. converge-tool
 
-Internal crates (`publish = false`): traits, analytics, auth, consensus, ledger, llm, nats, observability, policy, storage, runtime, remote, application.
+Internal crates (`publish = false`): traits, analytics, auth, consensus, ledger, llm, nats, observability, policy, runtime, remote, application.
 
 ## Ownership
 
