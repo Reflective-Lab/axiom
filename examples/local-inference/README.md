@@ -4,6 +4,9 @@ Run LLM inference locally on Apple Silicon (M1/M2/M3/M4).
 
 The default path is now embedded Gemma GGUF inference via `llama.cpp`.
 
+The Gemma examples expect a local GGUF file either in `~/models/` or at the
+path pointed to by `CONVERGE_GEMMA_MODEL_PATH`.
+
 ## Quick Start
 
 ```bash

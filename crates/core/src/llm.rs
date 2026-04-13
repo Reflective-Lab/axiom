@@ -86,13 +86,78 @@ impl LlmError {
 // LLM REQUEST / RESPONSE
 // =============================================================================
 
+/// Role of a message in a chat completion.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChatRole {
+    /// System instruction.
+    System,
+    /// User message.
+    User,
+    /// Assistant (model) message.
+    Assistant,
+    /// Tool/function result.
+    Tool,
+}
+
+/// A single message in a chat completion.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatMessage {
+    /// The role of the message author.
+    pub role: ChatRole,
+    /// The message content.
+    pub content: String,
+    /// Optional tool call ID (for tool messages).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
+}
+
+/// Definition of a tool the model can call.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolDefinition {
+    /// The name of the tool.
+    pub name: String,
+    /// Description of what the tool does.
+    pub description: String,
+    /// JSON schema for the tool's parameters.
+    pub parameters: serde_json::Value,
+}
+
+/// A call to a tool suggested by the model.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolCall {
+    /// Unique ID for this tool call.
+    pub id: String,
+    /// The name of the tool being called.
+    pub name: String,
+    /// Arguments for the tool (as a JSON string).
+    pub arguments: String,
+}
+
+/// Format for the model's response.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResponseFormat {
+    /// Plain text.
+    #[default]
+    Text,
+    /// Structured JSON.
+    Json,
+}
+
 /// Request to an LLM provider.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LlmRequest {
-    /// The user prompt.
+    /// The user prompt (or the last message in a multi-turn conversation).
     pub prompt: String,
     /// Optional system prompt.
     pub system: Option<String>,
+    /// Optional chat history (if providing multiple turns).
+    pub messages: Vec<ChatMessage>,
+    /// Optional tools the model can use.
+    pub tools: Vec<ToolDefinition>,
+    /// Preferred response format.
+    pub response_format: ResponseFormat,
     /// Maximum tokens to generate.
     pub max_tokens: u32,
     /// Temperature (0.0 = deterministic, 1.0 = creative).
@@ -107,6 +172,9 @@ impl LlmRequest {
         Self {
             prompt: prompt.into(),
             system: None,
+            messages: Vec::new(),
+            tools: Vec::new(),
+            response_format: ResponseFormat::Text,
             max_tokens: 1024,
             temperature: 0.7,
             stop_sequences: Vec::new(),
@@ -116,6 +184,28 @@ impl LlmRequest {
     #[must_use]
     pub fn with_system(mut self, system: impl Into<String>) -> Self {
         self.system = Some(system.into());
+        self
+    }
+
+    #[must_use]
+    pub fn with_message(mut self, role: ChatRole, content: impl Into<String>) -> Self {
+        self.messages.push(ChatMessage {
+            role,
+            content: content.into(),
+            tool_call_id: None,
+        });
+        self
+    }
+
+    #[must_use]
+    pub fn with_tool(mut self, tool: ToolDefinition) -> Self {
+        self.tools.push(tool);
+        self
+    }
+
+    #[must_use]
+    pub fn with_json_mode(mut self) -> Self {
+        self.response_format = ResponseFormat::Json;
         self
     }
 
@@ -143,6 +233,8 @@ impl LlmRequest {
 pub struct LlmResponse {
     /// The generated content.
     pub content: String,
+    /// Optional tool calls suggested by the model.
+    pub tool_calls: Vec<ToolCall>,
     /// The model that generated this response.
     pub model: String,
     /// Token usage statistics.

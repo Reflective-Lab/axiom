@@ -23,6 +23,7 @@ llama-burn = { workspace = true, optional = true }
 
 # In-process GGUF inference for Gemma on laptops
 llama-cpp-2 = { workspace = true, optional = true }
+encoding_rs = { workspace = true, optional = true }
 
 # Tokenization
 tiktoken-rs.workspace = true
@@ -95,7 +96,7 @@ tch-gpu = ["dep:llama-burn", "llama-burn/tch-gpu"]
 # Model variants
 llama3 = ["dep:llama-burn", "llama-burn/llama3"]
 tiny = ["dep:llama-burn", "llama-burn/tiny"]
-gemma = ["dep:llama-cpp-2"]
+gemma = ["dep:llama-cpp-2", "dep:encoding_rs"]
 # Training support
 lora = ["dep:llama-burn"]
 # Import weights from other formats

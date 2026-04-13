@@ -17,7 +17,7 @@ use llama_cpp_2::context::params::LlamaContextParams;
 use llama_cpp_2::llama_backend::LlamaBackend;
 use llama_cpp_2::llama_batch::LlamaBatch;
 use llama_cpp_2::model::params::LlamaModelParams;
-use llama_cpp_2::model::{AddBos, LlamaChatMessage, LlamaModel, Special};
+use llama_cpp_2::model::{AddBos, LlamaChatMessage, LlamaModel};
 use llama_cpp_2::sampling::LlamaSampler;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -274,6 +274,7 @@ impl GemmaEngine {
         sampler.accept_many(prompt_tokens.iter());
 
         let mut decode_batch = LlamaBatch::new(1, 1);
+        let mut decoder = encoding_rs::UTF_8.new_decoder();
         let mut output = String::new();
         let mut generated_tokens = 0usize;
         let mut finish_reason = FinishReason::Length;
@@ -298,7 +299,7 @@ impl GemmaEngine {
 
             let piece = self
                 .model
-                .token_to_str(token, Special::Tokenize)
+                .token_to_piece(token, &mut decoder, true, None)
                 .map_err(|error| {
                     LlmError::InferenceError(format!("failed to decode Gemma token: {error}"))
                 })?;
