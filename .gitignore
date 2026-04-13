@@ -1,4 +1,9 @@
 /target
+node_modules/
+build/
+dist/
+.svelte-kit/
+.obsidian/
 **/*.rs.bk
 *.swp
 *.swo
