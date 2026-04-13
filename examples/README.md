@@ -32,6 +32,21 @@ or extra setup. See the notes below before running them.
 | [local-inference](local-inference/) | Local inference example; defaults to the `gemma` feature | See [local-inference/README.md](local-inference/README.md) |
 | [gemma-inference](gemma-inference/) | Minimal Gemma GGUF inference via `llama.cpp` | `cargo run -p example-gemma-inference` |
 
+## Verified Results (Apple M2 Max, 2026-04-13)
+
+| Example | Model | Result |
+|---------|-------|--------|
+| hello-convergence | — | Converged in 3 cycles |
+| custom-agent | — | Converged in 3 cycles |
+| custom-provider | — | Echo provider works |
+| meeting-scheduler | — | Converged in 6 cycles |
+| expense-approval | — | Cedar-gated approval flow |
+| vendor-selection | — | 3 vendors scored, Cedar commit gate |
+| loan-application | — | HITL gate, approved |
+| local-inference | gemma-3-4b | 39.6 tok/s, structured output |
+| local-inference | gemma-4-E4B | 35.6 tok/s, structured output |
+| gemma-inference | gemma-4-E4B | Loaded 5.1 GiB, interactive chat ready |
+
 ## Notes
 
 - Gemma examples require a local GGUF model file in `~/models/` or at the path pointed to by `CONVERGE_GEMMA_MODEL_PATH`.
