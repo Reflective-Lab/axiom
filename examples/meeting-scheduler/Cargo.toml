@@ -7,4 +7,5 @@ publish = false
 [dependencies]
 converge-core = { path = "../../crates/core" }
 converge-domain = { path = "../../crates/domain" }
+converge-experience = { path = "../../crates/experience" }
 serde_json = "1"

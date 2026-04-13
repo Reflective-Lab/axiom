@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.4] - 2026-04-14
+
+### Fixed
+- `converge-protocol` now bundles `converge.proto` inside the crate so packaged builds no longer depend on the workspace `schema/` path
+- Superseded the partial `3.0.3` crates.io publish with a coherent patch release
+
 ## [3.0.3] - 2026-04-14
 
 ### Added
@@ -119,7 +125,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic agent runtime
 - Core traits and abstractions
 
-[Unreleased]: https://github.com/Reflective-Lab/converge/compare/v3.0.3...HEAD
+[Unreleased]: https://github.com/Reflective-Lab/converge/compare/v3.0.4...HEAD
+[3.0.4]: https://github.com/Reflective-Lab/converge/compare/v3.0.3...v3.0.4
 [3.0.3]: https://github.com/Reflective-Lab/converge/compare/v3.0.2...v3.0.3
 [3.0.2]: https://github.com/Reflective-Lab/converge/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/Reflective-Lab/converge/compare/v3.0.0...v3.0.1
