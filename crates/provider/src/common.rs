@@ -7,14 +7,18 @@
 //! This module provides shared types and utilities to reduce code duplication
 //! across provider implementations.
 
-use crate::provider_api::{
-    FinishReason, LlmError, LlmErrorKind, LlmRequest, LlmResponse, TokenUsage,
-};
-use crate::secret::{SecretProvider, SecretString};
-use reqwest::blocking::Client;
+use crate::provider_api::{FinishReason, LlmError, LlmRequest, LlmResponse, TokenUsage};
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "_http")]
+use crate::provider_api::LlmErrorKind;
+#[cfg(feature = "_http")]
+use crate::secret::{SecretProvider, SecretString};
+#[cfg(feature = "_http")]
+use reqwest::blocking::Client;
+
 /// Base configuration for HTTP-based LLM providers.
+#[cfg(feature = "_http")]
 #[derive(Clone)]
 pub struct HttpProviderConfig {
     /// API key for authentication (wrapped for redaction and optional zeroize).
@@ -27,6 +31,7 @@ pub struct HttpProviderConfig {
     pub client: Client,
 }
 
+#[cfg(feature = "_http")]
 #[allow(clippy::missing_fields_in_debug)]
 impl std::fmt::Debug for HttpProviderConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -38,6 +43,7 @@ impl std::fmt::Debug for HttpProviderConfig {
     }
 }
 
+#[cfg(feature = "_http")]
 impl HttpProviderConfig {
     /// Creates a new HTTP provider configuration.
     #[must_use]
@@ -239,6 +245,7 @@ pub fn chat_response_to_llm_response(
 /// # Errors
 ///
 /// Returns error if the HTTP request fails or response cannot be parsed.
+#[cfg(feature = "_http")]
 pub fn make_chat_completion_request(
     config: &HttpProviderConfig,
     endpoint: &str,
@@ -299,6 +306,7 @@ pub struct OpenAiStyleErrorDetail {
 /// - Error type indicates authentication failure → `LlmError::auth()`
 /// - Error type indicates rate limit → `LlmError::rate_limit()`
 /// - Other errors → `LlmError::provider()`
+#[cfg(feature = "_http")]
 pub fn handle_openai_style_error(
     http_response: reqwest::blocking::Response,
 ) -> Result<LlmResponse, LlmError> {
@@ -341,6 +349,7 @@ pub fn handle_openai_style_error(
 /// Helper for providers that use OpenAI-compatible API.
 ///
 /// This trait can be implemented by providers to reduce boilerplate.
+#[cfg(feature = "_http")]
 pub trait OpenAiCompatibleProvider {
     /// Gets the provider configuration.
     fn config(&self) -> &HttpProviderConfig;

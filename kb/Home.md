@@ -1,11 +1,14 @@
 ---
 tags: [moc]
+source: mixed
 ---
 # Converge Suggestor OS
 
 Knowledge base for the Converge platform — a correctness-first, context-driven multi-suggestor runtime.
 
 **Start here:** [[Ecosystem]] for the helicopter view, then [[Philosophy/Why Converge]] and [[Philosophy/Nine Axioms]].
+
+**Meta:** [[INDEX]] — entity catalog | [[LOG]] — mutation log
 
 ## Ecosystem
 
@@ -34,6 +37,7 @@ Knowledge base for the Converge platform — a correctness-first, context-driven
 ## Building with Converge
 
 - [[Building/Getting Started]] — toolchain, first run, quick reference
+- [[Building/Capabilities]] — what the platform already provides
 - [[Building/Writing Agents]] — implement the `Suggestor` trait
 - [[Building/Context Keys]] — partitioning evidence
 - [[Building/Streaming]] — real-time convergence callbacks
@@ -41,8 +45,10 @@ Knowledge base for the Converge platform — a correctness-first, context-driven
 
 ## Architecture
 
+- [[Architecture/System Overview]] — system design, dependency graph, and runtime shape
 - [[Architecture/Hexagonal Architecture]] — ports and adapters, the big picture
 - [[Architecture/API Surfaces]] — the six public crates and who uses what
+- [[Architecture/ADRs/README]] — binding architecture decisions
 - [[Architecture/Known Drift]] — where code diverges from axioms (and how we fix it)
 - [[Architecture/Ports]] — trait definitions (the boundary)
 - [[Architecture/Providers]] — adapter implementations (the outside world)

@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Community Pulse
 
 > **Usage**: Run weekly to understand community sentiment and surface feedback.

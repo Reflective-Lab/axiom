@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Demo Preparation
 
 > **Usage**: Before any prospect demo to ensure tailored, compelling presentation.

@@ -23,6 +23,7 @@ governance:
     release-approval:
       may_contribute: true
       may_block: true
+source: mixed
 ---
 
 # Marketing Lead Eval

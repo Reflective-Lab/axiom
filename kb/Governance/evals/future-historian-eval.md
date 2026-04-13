@@ -43,6 +43,7 @@ evidence:
     - Ethical stance and policies
   format: markdown report with hindsight analysis and legacy projection
   location: eval-reports/future-historian/
+source: mixed
 ---
 
 # Future Historian Eval

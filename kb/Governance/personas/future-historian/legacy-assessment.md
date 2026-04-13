@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Future Historian: Legacy Assessment
 
 ## Mission

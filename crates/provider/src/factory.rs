@@ -48,6 +48,7 @@ use std::sync::Arc;
 /// - Provider name is unknown
 /// - Required environment variables are not set
 /// - Provider creation fails
+#[allow(unused_variables)]
 pub fn create_provider(
     provider_name: &str,
     model_id: &str,
@@ -143,6 +144,7 @@ pub fn create_provider(
 /// # Errors
 ///
 /// Returns error if the provider name is unknown or secret loading fails.
+#[allow(unused_variables)]
 pub fn create_provider_with_secrets(
     provider_name: &str,
     model_id: &str,

@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **ADR-003**: Pack authoring contract (`Suggestor`, `Validator`, `Invariant`, `CriterionEvaluator`, `Pack`)
 - **ADR-004**: Contract stabilization and regression gate freeze
 - `converge-storage` crate — object storage abstraction (local, S3, GCS)
-- `architecture/ARCHITECTURE.md` as canonical architecture reference
+- `kb/Architecture/System Overview.md` as canonical architecture reference
 
 ### Changed
 - `converge-traits` deprecated — replaced by `converge-pack` and `converge-provider-api`

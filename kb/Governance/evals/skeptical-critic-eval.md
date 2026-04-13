@@ -43,6 +43,7 @@ evidence:
     - Business model assumptions
   format: markdown report with assumption and claim audit tables
   location: eval-reports/skeptical-critic/
+source: mixed
 ---
 
 # Skeptical Critic Eval

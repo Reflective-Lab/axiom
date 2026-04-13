@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Skeptical Critic: Claim Challenge
 
 ## Mission

@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Technical Qualification
 
 > **Usage**: Early in sales cycle to assess fit and identify risks.

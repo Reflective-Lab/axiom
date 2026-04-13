@@ -22,6 +22,7 @@ governance:
     release-approval:
       may_contribute: true
       may_block: false
+source: mixed
 ---
 
 # Insurance Underwriter Eval

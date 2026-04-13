@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Due Diligence
 
 > **Usage**: Before making investment decision or major commitment.

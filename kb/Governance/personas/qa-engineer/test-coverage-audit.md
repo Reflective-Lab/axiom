@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Test Coverage Audit
 
 > **Usage**: Run monthly to assess test coverage health and identify gaps.

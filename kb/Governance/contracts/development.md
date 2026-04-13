@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Development Phase Contracts
 
 Responsibilities during feature development and implementation.

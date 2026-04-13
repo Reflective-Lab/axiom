@@ -3,11 +3,8 @@ set -euo pipefail
 
 required_files=(
   "SECURITY.md"
-  "docs/security/README.md"
-  "docs/security/SECURITY_OVERVIEW.md"
-  "docs/security/DATA_HANDLING_DECLARATION.md"
-  "docs/security/COMPLIANCE_READINESS.md"
-  "docs/security/THREAT_MODEL.md"
+  "kb/Architecture/Audits/2026-04-11 Security Review.md"
+  "kb/Architecture/Security Review Plan.md"
 )
 
 for file in "${required_files[@]}"; do
@@ -18,20 +15,19 @@ for file in "${required_files[@]}"; do
 done
 
 for needle in \
-  "Designed To Handle" \
-  "Not Declared As Supported By Default" \
-  "What We Should Not Claim Without Evidence" \
-  "Shared Responsibility Model"
+  "## Current Security Baseline" \
+  "## Security Regression Gate" \
+  "## Shared Responsibility" \
+  "## Compliance Declarations"
 do
-  rg -q "$needle" docs/security SECURITY.md || {
+  rg -q "$needle" SECURITY.md || {
     echo "Missing required declaration text: $needle" >&2
     exit 1
   }
 done
 
 claim_pattern='SOC 2 certified|ISO 27001 certified|HIPAA compliant|PCI compliant|GDPR compliant'
-if rg -n "$claim_pattern" README.md SECURITY.md docs/security scripts .github \
-  --glob '!docs/security/COMPLIANCE_READINESS.md' \
+if rg -n "$claim_pattern" README.md SECURITY.md CONTRIBUTING.md AGENTS.md CODEX.md CLAUDE.md GEMINI.md scripts .github kb/Building kb/Workflow \
   --glob '!scripts/validate-security-docs.sh'
 then
   echo "Found unsupported compliance claim outside the approved disclaimer docs." >&2

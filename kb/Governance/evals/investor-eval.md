@@ -44,6 +44,7 @@ evidence:
     - Team credentials and execution evidence
   format: markdown report with investability scoring
   location: eval-reports/investor/
+source: mixed
 ---
 
 # Investor Eval

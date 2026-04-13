@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Content Planning Session
 
 > **Usage**: Run weekly to plan and prioritize content creation.

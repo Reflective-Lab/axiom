@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Strategic Review
 
 > **Usage**: Run monthly to assess strategic health and adjust course.

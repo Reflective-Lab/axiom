@@ -1,5 +1,6 @@
 ---
 tags: [architecture]
+source: mixed
 ---
 # Crate Map
 
@@ -43,6 +44,11 @@ converge-analytics       → core, domain         ML/analytics agents
 converge-llm             → core, domain         Local LLM inference (Burn)
 converge-policy          → core                 Cedar policy engine and default FlowGateAuthorizer
 converge-tool            → core, provider       Gherkin validation, spec tools
+converge-auth            (no internal deps)     Authentication, authorization, cryptography
+converge-consensus       (no internal deps)     Raft consensus adapter
+converge-ledger          (no internal deps)     Append-only context ledger
+converge-nats            (no internal deps)     NATS messaging adapter
+converge-observability   (no internal deps)     Audit, telemetry, and metrics
 converge-storage         (no internal deps)     Object store abstraction
 converge-remote          → client, protocol     gRPC CLI client
 converge-runtime         → core, provider,      HTTP/gRPC server, SSE
@@ -69,7 +75,7 @@ converge-application     → core, provider,      CLI/TUI distribution
 14. converge-domain
 15. converge-tool
 
-Internal crates (`publish = false`): traits, analytics, llm, policy, storage, runtime, remote, application.
+Internal crates (`publish = false`): traits, analytics, auth, consensus, ledger, llm, nats, observability, policy, storage, runtime, remote, application.
 
 ## Ownership
 

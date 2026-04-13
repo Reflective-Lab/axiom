@@ -1,9 +1,10 @@
 ---
 tags: [workflow, codex]
+source: mixed
 ---
 # Working with Codex
 
-Start from the root `CODEX.md` entrypoint, then use this page for workflow guidance. Codex does not use Claude slash commands directly. Instead, it uses `AGENTS.md`, the knowledgebase, the shared `just` recipes, and plain-language workflow requests.
+Start from the root `CODEX.md` entrypoint, then use this page for workflow guidance. Keep the same workflow names used in Claude docs. In Codex, name the workflow directly in plain text: `focus`, `run focus`, `check`, `done`, `audit`, `fix issue 42`, `review PR 5`.
 
 ## What to Read First
 
@@ -18,22 +19,32 @@ Do not bulk-read the whole knowledgebase.
 ```bash
 just focus     # Session opener — repo health + recent activity
 just sync      # Team sync — PRs, issues, recent commits
-just status    # Build health, test results
 ```
 
 Use those when you want deterministic output from the repo itself.
 
-## Workflow Equivalents
+## Repo-Local Codex Files
 
-| Claude workflow | Use with Codex |
+- `CODEX.md` is the root Codex entrypoint
+- `.codex/settings.local.json` is reserved for repo-local command allowlists
+- `.codex/skills/*/SKILL.md` mirrors the workflow set listed in the cheat sheet
+- `.codex/skills/README.md` explains the role of the repo-local Codex skill set
+
+## Canonical Workflows
+
+| Workflow | Use with Codex |
 |---|---|
-| `/focus` | "Run the focus workflow" or `just focus` |
-| `/sync` | "Run a team sync" or `just sync` |
-| `/status` | "Run the project status workflow" or `just status` |
-| `/fix 42` | "Fix issue 42 end to end: read issue, make smallest safe change, run `just check && just test && just lint`, prepare PR" |
-| `/ticket add risk agent` | "Create an agent-ready GitHub issue for adding the risk agent" |
-| `/review 17` | "Review PR 17; findings first, with blockers, suggestions, and questions" |
-| `/checkpoint` | "Write a session checkpoint: what moved, what kb pages changed, what the next teammate needs to know" |
+| `/focus` | `focus`, `run focus`, or `just focus` |
+| `/sync` | `sync`, `run sync`, or `just sync` |
+| `/next` | `next` or `show remaining tasks for the current milestone` |
+| `/check` | `check` or `run lint and check` |
+| `/fix 42` | `fix 42` or `fix issue #42` |
+| `/pr` | `pr` or `create a PR from the current branch` |
+| `/ticket` | `ticket` or `create issue for <description>` |
+| `/done` | `done` or `update MILESTONES.md and CHANGELOG.md` |
+| `/review 5` | `review 5` or `review PR #5` |
+
+`/done` may still be backed by the `checkpoint` workflow internally, and `/check` by `quality`. Keep `/done` and `/check` as the public names in docs and day-to-day use.
 
 ## Knowledgebase Discipline
 

@@ -17,8 +17,8 @@ Agents collaborate through shared context, not by calling each other. The engine
 ## Quick Start
 
 ```bash
-git clone https://github.com/Reflective-Labs/converge.zone.git
-cd converge.zone
+git clone https://github.com/Reflective-Lab/converge.git
+cd converge
 
 just build-quick    # build (fast iteration)
 just test           # run tests
@@ -69,6 +69,11 @@ crates/
 ├── optimization/  # Constraint solving (OR-Tools)
 ├── storage/       # Object storage abstraction
 ├── policy/        # Cedar policy engine and default flow gate authorizer
+├── auth/          # Authentication, authorization, and cryptography
+├── consensus/     # Raft consensus adapter for distributed Converge
+├── ledger/        # Append-only context ledger
+├── nats/          # NATS messaging adapter
+├── observability/ # Audit, telemetry, and metrics
 ├── llm/           # Local LLM inference (Burn)
 ├── analytics/     # ML/analytics agents
 ├── tool/          # Development toolchain (Gherkin, JTBD)
@@ -89,7 +94,7 @@ examples/
 
 ## Canonical Public Crates
 
-Six crates form the supported external API (see [ADR-001](architecture/adr/ADR-001-canonical-public-crates.md)):
+Six crates form the supported external API (see [ADR-001](kb/Architecture/ADRs/ADR-001-canonical-public-crates.md)):
 
 | Crate | Role |
 |-------|------|
@@ -112,7 +117,8 @@ RUST_LOG=info
 
 ## Documentation
 
-- [architecture/ARCHITECTURE.md](architecture/ARCHITECTURE.md) — system design, dependency graph, API surface
+- [kb/Architecture/System Overview.md](kb/Architecture/System%20Overview.md) — system design and dependency graph
+- [kb/Architecture/API Surfaces.md](kb/Architecture/API%20Surfaces.md) — canonical public contracts
 - [DEVELOPMENT.md](DEVELOPMENT.md) — setup, build, git workflow (worktrees, jj)
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guidelines
 - [SECURITY.md](SECURITY.md) — vulnerability reporting and security baseline
@@ -127,4 +133,4 @@ Copyright 2024-2026 Reflective Labs
 
 Kenneth Pernyer — [kenneth@reflective.se](mailto:kenneth@reflective.se)
 
-Project: [github.com/Reflective-Labs/converge.zone](https://github.com/Reflective-Labs/converge.zone)
+Project: [github.com/Reflective-Lab/converge](https://github.com/Reflective-Lab/converge)

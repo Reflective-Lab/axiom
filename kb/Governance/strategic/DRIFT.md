@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Drift Taxonomy
 
 Drift is governance entropy that compounds. It occurs when documented standards, validated patterns, and operational reality gradually diverge. Left unmonitored, drift accumulates until governance mechanisms lose authority.

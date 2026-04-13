@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Threat Model Review
 
 > **Usage**: Run quarterly or before major releases to maintain threat model currency.

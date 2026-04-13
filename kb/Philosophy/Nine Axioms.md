@@ -1,5 +1,6 @@
 ---
 tags: [philosophy]
+source: mixed
 ---
 # Nine Axioms
 

@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Tutorial Creation
 
 > **Usage**: When creating a new tutorial or educational content.

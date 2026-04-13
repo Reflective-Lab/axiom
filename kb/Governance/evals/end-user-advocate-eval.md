@@ -44,6 +44,7 @@ evidence:
     - Recourse mechanisms
   format: markdown report with user rights audit
   location: eval-reports/end-user-advocate/
+source: mixed
 ---
 
 # End User Advocate Eval

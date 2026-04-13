@@ -26,6 +26,7 @@ context:
     No functionality loss detected. Strip debug symbols reduces to 16.2MB.
   related_escalations: []
   recommended_disposition: approve
+source: mixed
 ---
 
 # Approved Escalation Example: Binary Size Bloat

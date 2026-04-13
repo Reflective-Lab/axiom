@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Purpose Reflection
 
 > **Usage**: Monthly reflection on the deeper purpose of the work.

@@ -29,6 +29,7 @@ governance:
     production-deploy:
       may_contribute: true
       may_block: true
+source: mixed
 ---
 
 # System Architect Eval

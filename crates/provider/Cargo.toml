@@ -18,7 +18,7 @@ converge-provider-api.workspace = true
 converge-mcp = { workspace = true, features = ["client"] }
 reqwest = { workspace = true, optional = true }
 serde.workspace = true
-serde_json = { workspace = true, optional = true }
+serde_json.workspace = true
 serde_yaml.workspace = true
 schemars.workspace = true
 thiserror.workspace = true
@@ -41,23 +41,26 @@ futures = { workspace = true, optional = true }
 [features]
 default = ["anthropic", "gemini", "openai", "registry", "brave"]
 
+# Private convenience feature: any provider that needs HTTP pulls this in
+_http = ["dep:reqwest"]
+
 # Providers
-anthropic = ["dep:reqwest", "dep:serde_json"]
-gemini = ["dep:reqwest", "dep:serde_json"]
-openai = ["dep:reqwest", "dep:serde_json"]
-ollama = ["dep:reqwest", "dep:serde_json", "dep:tokio"]
-qwen = ["dep:reqwest", "dep:serde_json"]
-deepseek = ["dep:reqwest", "dep:serde_json"]
-mistral = ["dep:reqwest", "dep:serde_json"]
-perplexity = ["dep:reqwest", "dep:serde_json"]
-grok = ["dep:reqwest", "dep:serde_json"]
-kimi = ["dep:reqwest", "dep:serde_json"]
-kong = ["dep:reqwest", "dep:serde_json"]
-minmax = ["dep:reqwest", "dep:serde_json"]
-baidu = ["dep:reqwest", "dep:serde_json", "dep:urlencoding"]
-zhipu = ["dep:reqwest", "dep:serde_json"]
-apertus = ["dep:reqwest", "dep:serde_json"]
-brave = ["dep:reqwest", "dep:serde_json", "dep:urlencoding"]
+anthropic = ["_http"]
+gemini = ["_http"]
+openai = ["_http"]
+ollama = ["_http", "dep:tokio"]
+qwen = ["_http"]
+deepseek = ["_http"]
+mistral = ["_http"]
+perplexity = ["_http"]
+grok = ["_http"]
+kimi = ["_http"]
+kong = ["_http"]
+minmax = ["_http"]
+baidu = ["_http", "dep:urlencoding"]
+zhipu = ["_http"]
+apertus = ["_http"]
+brave = ["_http", "dep:urlencoding"]
 # Registry and Matchmaking
 registry = []
 

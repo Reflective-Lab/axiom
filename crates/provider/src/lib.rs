@@ -186,9 +186,11 @@ mod zhipu;
 pub mod tools;
 
 // Capability providers
+#[cfg(feature = "_http")]
 pub mod embedding;
 #[cfg(feature = "registry")]
 pub mod registry_loader;
+#[cfg(feature = "_http")]
 pub mod reranker;
 pub mod vector;
 
@@ -203,10 +205,13 @@ pub use capability_registry::{
     CapabilityRegistry, CapabilityRequirements, SearchProviderMeta, WebSearchRequirements,
 };
 pub use common::{
-    ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatUsage, HttpProviderConfig,
-    OpenAiCompatibleProvider, OpenAiStyleError, OpenAiStyleErrorDetail,
-    chat_response_to_llm_response, handle_openai_style_error, make_chat_completion_request,
-    parse_finish_reason,
+    ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatUsage, OpenAiStyleError,
+    OpenAiStyleErrorDetail, chat_response_to_llm_response, parse_finish_reason,
+};
+#[cfg(feature = "_http")]
+pub use common::{
+    HttpProviderConfig, OpenAiCompatibleProvider, handle_openai_style_error,
+    make_chat_completion_request,
 };
 #[cfg(feature = "deepseek")]
 pub use deepseek::DeepSeekProvider;

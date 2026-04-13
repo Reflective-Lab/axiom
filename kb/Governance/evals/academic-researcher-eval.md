@@ -44,6 +44,7 @@ evidence:
     - Limitations and constraints disclosure
   format: markdown report with claims audit and methodology assessment
   location: eval-reports/academic-researcher/
+source: mixed
 ---
 
 # Academic Researcher Eval

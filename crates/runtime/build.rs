@@ -17,7 +17,7 @@ fn main() {
                 .build_server(false)
                 .build_client(true)
                 .out_dir("src/ledger/generated")
-                .compile(&[&context_proto], &[schema_dir])
+                .compile_protos(&[&context_proto], &[schema_dir])
                 .expect("Failed to compile context.proto");
         }
     }

@@ -1,5 +1,6 @@
 ---
 tags: [moc, philosophy]
+source: mixed
 ---
 # Ecosystem — The Helicopter View
 

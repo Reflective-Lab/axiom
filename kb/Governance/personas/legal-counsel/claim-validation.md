@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Marketing Claim Validation
 
 > **Usage**: Before publishing any marketing materials, website copy, or public statements.

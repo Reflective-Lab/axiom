@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Strategic Lens Voices
 
 Strategic advisory personas for periodic company-state review. These are not software delivery reviewers — they are decision-making lenses invoked at inflection points.

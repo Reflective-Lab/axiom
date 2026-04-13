@@ -37,7 +37,7 @@ Converge exposes six public crates. See `kb/Architecture/API Surfaces.md` for th
 | `converge-protocol` | Generated `converge.v1` wire types |
 | `converge-client` | Remote Rust SDK |
 
-Everything else is internal. See `architecture/API_SURFACES.md` for who should use what.
+Everything else is internal. See `kb/Architecture/API Surfaces.md` for who should use what.
 
 ## Build
 
@@ -91,17 +91,21 @@ Run `just focus` at session start. See `kb/Workflow/Daily Journey.md` for the fu
 |---|---|
 | `/focus` / `just focus` | Session opener — orient yourself, see team activity |
 | `/sync` / `just sync` | Team sync — who did what, PRs waiting, unclaimed issues |
-| `/status` / `just status` | Build health, test results |
-| `/checkpoint` | End-of-session — what you moved, what's left for the team |
+| `/next` | Pick the next task from the current milestone |
+| `/dev` | Start local development environment |
+| `/check` | Code quality — lint, check, test |
 | `/fix` | Fix a GitHub issue by number |
-| `/ticket` | Create an issue any teammate can pick up |
-| `/parallel` | Run tasks in parallel worktrees (PRs need team review) |
-| `/review` | Review a pull request |
 | `/pr` | Create a pull request |
-| `/merge` | Squash-merge a PR |
-| `/quality` | Code quality metrics and trends |
-| `/audit` | Security and dependency audit |
+| `/ticket` | Create an issue any teammate can pick up |
+| `/done` | End-of-session — what you moved, what's left for the team |
+| `/review` | Review a pull request |
 | `/wip` | Save work-in-progress and push |
-| `/feedback` | Turn observations into GitHub issues |
+| `/deploy` | Deploy to target environment |
+| `/audit` | Security, dependency, compliance, and drift audit |
+| `/help` | Show available skills and usage |
 
 Agent-specific workflow details: `kb/Workflow/Working with Claude.md`, `kb/Workflow/Working with Codex.md`, `kb/Workflow/Working with Gemini.md`.
+
+## Milestones
+
+Read `MILESTONES.md` at the start of every session. Scope all work to the current milestone. See `~/dev/work/EPIC.md` for the strategic context (Converge = E1) and `~/dev/work/MILESTONES.md` for the cross-project rollup.

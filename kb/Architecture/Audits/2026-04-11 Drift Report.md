@@ -1,5 +1,6 @@
 ---
 tags: [audit, architecture]
+source: mixed
 ---
 # Drift Report: Philosophy vs Implementation
 

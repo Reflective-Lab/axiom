@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Dignity Assessment
 
 > **Usage**: Before implementing features that affect how people are treated.

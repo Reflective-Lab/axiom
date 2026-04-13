@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Licensing Audit Prompt
 
 > **Usage**: Run quarterly or before major releases to audit licensing posture.

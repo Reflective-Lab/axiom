@@ -3,6 +3,7 @@ schema_id: escalation-packet
 version: 1.0
 description: Schema for Extended team escalation packets to Core team
 created: 2026-01-26
+source: mixed
 ---
 
 # Escalation Packet Schema

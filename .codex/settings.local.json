@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(cargo build:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo test:*)",
+      "Bash(cargo publish:*)",
+      "Bash(just check:*)",
+      "Bash(just lint:*)",
+      "Bash(just test:*)",
+      "Bash(just focus:*)",
+      "Bash(just sync:*)",
+      "Bash(grep -rn \"AgentEffect::with_fact\\\\|AgentEffect::with_facts\" /Users/kpernyer/dev/work/converge/examples/ --include=*.rs)",
+      "Bash(grep -rn qdrant /Users/kpernyer/dev/work/converge/crates/provider/src/ --include=*.rs)",
+      "Bash(sed -n '220,265p' /Users/kpernyer/dev/work/converge/crates/core/src/llm.rs)",
+      "Bash(sed -n '292,330p' /Users/kpernyer/dev/work/converge/crates/llm/src/provider.rs)",
+      "Bash(sed -n '140,175p' /Users/kpernyer/dev/work/converge/crates/llm/src/model.rs)",
+      "Bash(sed -n '138,175p' /Users/kpernyer/dev/work/converge/crates/provider/src/model_selection.rs)",
+      "Bash(sed -n '760,800p' /Users/kpernyer/dev/work/converge/crates/core/src/kernel_boundary.rs)",
+      "Bash(sed -n '205,250p' /Users/kpernyer/dev/work/converge/crates/llm/src/kernel.rs)",
+      "Bash(head -20 /Users/kpernyer/dev/work/converge/kb/Architecture/*.md)"
+    ]
+  }
+}

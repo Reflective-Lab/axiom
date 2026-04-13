@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Ethics & Safety Officer
 
 ## Role

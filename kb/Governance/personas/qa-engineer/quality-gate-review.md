@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Quality Gate Review
 
 > **Usage**: Before each release to verify quality criteria are met.

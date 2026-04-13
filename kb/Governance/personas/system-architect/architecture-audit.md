@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Converge Architecture Drift Audit
 
 > **Usage**: Paste this prompt into Claude (or Claude Desktop) with access to the Converge codebase(s).

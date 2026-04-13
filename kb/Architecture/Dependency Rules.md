@@ -1,5 +1,6 @@
 ---
 tags: [architecture]
+source: mixed
 ---
 # Dependency Rules
 
@@ -10,7 +11,7 @@ Dependencies flow downward only. Core never imports from provider. Provider neve
 1. All deps use `workspace = true` — never inline versions in crate `Cargo.toml` files
 2. All crates use `[lints] workspace = true`
 3. `unsafe_code = "forbid"` everywhere — no exceptions
-4. Edition 2024, rust-version 1.90
+4. Edition 2024, rust-version 1.94
 5. Internal path deps include both `path` and `version` for crates.io compatibility
 6. Clippy pedantic with allowed exceptions defined at workspace level
 

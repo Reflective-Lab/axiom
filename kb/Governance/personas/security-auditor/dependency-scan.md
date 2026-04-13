@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Dependency Security Scan
 
 > **Usage**: Run weekly or before releases to identify vulnerable dependencies.

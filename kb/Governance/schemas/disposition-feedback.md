@@ -3,6 +3,7 @@ schema_id: disposition-feedback
 version: 1.0
 description: Schema for Core team disposition response to escalation packets
 created: 2026-01-26
+source: mixed
 ---
 
 # Disposition Feedback Schema

@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Competitive Analysis
 
 > **Usage**: Run monthly or when significant competitor news emerges.

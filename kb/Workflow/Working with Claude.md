@@ -1,5 +1,6 @@
 ---
 tags: [workflow, claude]
+source: mixed
 ---
 # Working with Claude
 
@@ -13,12 +14,18 @@ This project has two layers of automation: **Claude Code skills** (slash command
 | Run tests | `just test` | Deterministic shell command |
 | Run clippy | `just lint` | Deterministic shell command |
 | Orient myself at session start | `/focus` | Reads kb, checks build, shows team activity |
+| See team activity | `/sync` | PRs waiting, unclaimed issues, recent commits |
+| Pick next task | `/next` | Reads milestone, picks highest-priority task |
 | Fix a GitHub issue end-to-end | `/fix 42` | Multi-step: read issue, branch, code, test, PR |
+| Run quality checks | `/check` | Lint, check, test in one pass |
 | Create a well-defined ticket | `/ticket add risk agent` | Needs to explore code, write requirements |
+| Create a PR | `/pr` | Creates PR from current branch |
 | Review a PR | `/review 17` | Reads diff, reasons about security/correctness |
-| Run 3 tasks in parallel | `/parallel a \| b \| c` | Launches agents in worktrees |
 | Save and push WIP | `/wip` | Multi-step git workflow |
-| Capture end-of-session state | `/checkpoint` | Reads git state, updates kb, writes summary |
+| Run a full audit | `/audit` | Security, dependency, compliance, drift |
+| Deploy | `/deploy` | Deploy to target environment |
+| Capture end-of-session state | `/done` | Reads git state, updates kb, writes summary |
+| Get help | `/help` | Shows available skills and usage |
 
 **Rule of thumb:** if it's a single deterministic command, use `just`. If it requires reading, thinking, or multi-step orchestration, use a skill.
 

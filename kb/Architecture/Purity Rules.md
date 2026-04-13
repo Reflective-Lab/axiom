@@ -1,5 +1,6 @@
 ---
 tags: [architecture]
+source: mixed
 ---
 # Purity Rules
 

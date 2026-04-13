@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Security Audit
 
 > **Usage**: Run monthly to assess security posture of the codebase.

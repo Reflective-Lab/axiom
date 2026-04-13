@@ -44,6 +44,7 @@ evidence:
     - Ethical decision rationale
   format: markdown report with dignity and purpose assessment
   location: eval-reports/spiritual-advisor/
+source: mixed
 ---
 
 # Spiritual Advisor Eval

@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Team Registry
 
 > Defines Core vs Extended team membership and authority tiers for the Converge Personas governance system.

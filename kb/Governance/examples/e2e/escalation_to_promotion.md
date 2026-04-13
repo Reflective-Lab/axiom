@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Escalation-to-Promotion Linkage Example
 
 > How escalation packets flow through disposition review to influence gate decisions.

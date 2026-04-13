@@ -58,7 +58,9 @@ crates/
 └── application/   # Reference distribution
 ```
 
-See [architecture/ARCHITECTURE.md](architecture/ARCHITECTURE.md) for the full dependency graph and API surface.
+See [kb/Architecture/System Overview.md](kb/Architecture/System%20Overview.md) for the full
+dependency graph and [kb/Architecture/API Surfaces.md](kb/Architecture/API%20Surfaces.md) for
+the canonical public contracts.
 
 ## Build Profiles
 
@@ -147,7 +149,7 @@ just compliance-check
 
 ## Publishing to crates.io
 
-Publishable crates in dependency order (see [ADR-001](architecture/adr/ADR-001-canonical-public-crates.md)):
+Publishable crates in dependency order (see [ADR-001](kb/Architecture/ADRs/ADR-001-canonical-public-crates.md)):
 
 1. `converge-pack`
 2. `converge-provider-api`

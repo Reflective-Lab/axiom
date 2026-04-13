@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Skeptical Critic: Pre-Mortem
 
 ## Mission

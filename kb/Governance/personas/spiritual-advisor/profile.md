@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Spiritual Advisor
 
 ## Role

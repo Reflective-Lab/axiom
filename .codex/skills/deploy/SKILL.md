@@ -1,0 +1,20 @@
+---
+name: deploy
+description: Deploy the Converge runtime using the documented repo path.
+user-invocable: true
+argument-hint: [cloud-run]
+---
+# Deploy
+
+## Steps
+1. Run `check` first. Stop if anything fails.
+2. Read `kb/Building/Deployment.md`.
+3. Default runtime deploy: `just deploy-cloud-run`.
+4. If infra or image-tag orchestration is needed, use the matching `just infra-*`, `just cloud-build`, or `just deploy-runtime` recipes and explain why.
+5. Verify health or deployment status after deploy.
+6. Report status and any required follow-up.
+
+## Rules
+- Confirm with the user before each deploy step.
+- If required env vars, auth, or cloud tools are missing, stop and report them.
+- Do not invent deploy targets that are not present in the repo.

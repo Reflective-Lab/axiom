@@ -23,6 +23,7 @@ context:
     GDPR Article 17 requires both explicit retention periods and user-accessible deletion.
   related_escalations: []
   recommended_disposition: approve
+source: mixed
 ---
 
 # Denied Escalation Example: GDPR Data Retention Concern

@@ -25,9 +25,9 @@ cd converge.zone
 # Set up upstream remote
 git remote add upstream https://github.com/Reflective-Labs/converge.zone.git
 
-# Install Rust 1.90+
+# Install Rust 1.94+
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-rustup override set 1.90.0
+rustup override set 1.94.0
 
 # Install dependencies
 # For CUDA support: install CUDA toolkit
@@ -65,7 +65,7 @@ just security-gate
 ```
 
 5. Update documentation if needed
-6. If data handling, security posture, or policy boundaries changed, update `docs/security/` and the relevant KB audit or plan pages
+6. If data handling, security posture, or policy boundaries changed, update `SECURITY.md` and the relevant KB audit or plan pages
 7. Submit a pull request to the `main` branch
 8. Wait for code review and address feedback
 

@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Prioritization Session
 
 > **Usage**: Run weekly to maintain focus and make prioritization decisions.

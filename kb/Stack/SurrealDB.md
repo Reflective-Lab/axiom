@@ -1,5 +1,6 @@
 ---
 tags: [stack, storage]
+source: mixed
 ---
 # SurrealDB
 

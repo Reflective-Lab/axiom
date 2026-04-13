@@ -1,5 +1,6 @@
 ---
 tags: [architecture, philosophy]
+source: mixed
 ---
 # Hexagonal Architecture
 

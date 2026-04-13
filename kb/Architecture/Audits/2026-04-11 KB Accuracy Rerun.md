@@ -1,5 +1,6 @@
 ---
 tags: [audit, architecture]
+source: mixed
 ---
 # KB Accuracy Rerun: Documentation vs Code
 

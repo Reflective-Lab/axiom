@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Efficiency Review
 
 > **Usage**: Monthly review of resource efficiency and waste reduction.

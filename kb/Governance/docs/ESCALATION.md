@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Escalation Guide
 
 > How Extended team personas escalate concerns to Core team for blocking review.

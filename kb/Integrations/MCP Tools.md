@@ -1,5 +1,6 @@
 ---
 tags: [integrations, mcp]
+source: mixed
 ---
 # MCP Tools
 

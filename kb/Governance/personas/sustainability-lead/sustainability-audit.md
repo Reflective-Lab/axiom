@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Sustainability Audit
 
 > **Usage**: Quarterly comprehensive sustainability assessment.

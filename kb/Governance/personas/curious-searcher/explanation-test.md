@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Explanation Test
 
 > **Usage**: Test whether a concept or feature can be explained clearly.

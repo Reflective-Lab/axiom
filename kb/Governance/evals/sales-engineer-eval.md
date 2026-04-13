@@ -20,6 +20,7 @@ governance:
     customer-commitment:
       may_contribute: true
       may_block: true
+source: mixed
 ---
 
 # Sales Engineer Eval

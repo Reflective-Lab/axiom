@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Operational Readiness Review
 
 > **Usage**: Before each release to verify operational readiness.

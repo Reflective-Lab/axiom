@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Phase Gates
 
 > Concrete checklists that must pass before transitioning between phases.

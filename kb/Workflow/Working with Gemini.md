@@ -1,5 +1,6 @@
 ---
 tags: [workflow, gemini]
+source: mixed
 ---
 # Working with Gemini
 

@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Build vs Buy Analyst
 
 ## Role

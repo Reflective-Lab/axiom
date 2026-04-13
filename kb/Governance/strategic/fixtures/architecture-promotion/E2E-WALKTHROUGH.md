@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Architecture Promotion Gate: E2E Walkthrough
 
 ## Overview

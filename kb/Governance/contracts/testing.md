@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Testing Phase Contracts
 
 Responsibilities during testing and quality validation.

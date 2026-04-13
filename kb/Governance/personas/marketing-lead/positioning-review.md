@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Positioning Review
 
 > **Usage**: Run monthly to validate and refine Converge's market positioning.

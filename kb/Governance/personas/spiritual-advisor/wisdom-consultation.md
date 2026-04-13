@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Wisdom Consultation
 
 > **Usage**: On-demand consultation for difficult decisions requiring deeper reflection.

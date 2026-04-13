@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Strategy Gates
 
 Strategic validation gates for high-consequence company decisions. These gates invoke strategic lenses at decision points where drift would compound.

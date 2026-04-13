@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Roadmap Promotion Gate: E2E Walkthrough
 
 ## Overview

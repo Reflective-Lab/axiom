@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Review Phase Contracts
 
 Pre-release review and multi-stakeholder approval.

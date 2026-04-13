@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # MergeToMain Gate E2E Walkthrough
 
 > Narrative walkthrough of the PR Merge gate flow with pass and blocked scenarios.

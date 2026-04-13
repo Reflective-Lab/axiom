@@ -43,6 +43,7 @@ evidence:
     - Example code or demos
   format: markdown report with clarity scoring
   location: eval-reports/curious-searcher/
+source: mixed
 ---
 
 # Curious Searcher Eval

@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Product Manager: User Research Synthesis
 
 ## Mission

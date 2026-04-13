@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Thesis Validation
 
 > **Usage**: Run quarterly to stress-test the core Converge thesis.

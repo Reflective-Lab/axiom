@@ -23,6 +23,7 @@ context:
     may not cover SLA penalty claims if infrastructure known to be insufficient.
   related_escalations: []
   recommended_disposition: conditional
+source: mixed
 ---
 
 # Need More Info Escalation Example: Insurance Risk Concern

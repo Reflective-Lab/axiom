@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Customer Commitment Gate: E2E Walkthrough
 
 ## Overview

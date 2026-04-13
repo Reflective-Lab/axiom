@@ -1,33 +1,19 @@
 ---
 name: deploy
-description: Deploy backend and/or web to production
-disable-model-invocation: true
-argument-hint: [backend|web|all]
+description: Deploy to production. Confirms before every destructive step.
+user-invocable: true
+argument-hint: [cloud-run]
 allowed-tools: Bash, Read
 ---
-
-# Deploy to Production
-
-Deploy the specified target ($ARGUMENTS or "all" if not specified).
-
-## Backend deploy
-```bash
-just deploy-backend
-```
-1. Builds Docker image from `deploy/backend/Dockerfile.cloudrun`
-2. Pushes to Artifact Registry
-3. Updates Cloud Run via Terraform
-
-## Web deploy
-```bash
-just deploy-web
-```
-1. Builds SvelteKit app
-2. Deploys to Firebase Hosting
-
-## After deploy
-- Verify the service is healthy: `just status`
-- Check logs: `gcloud run services logs read wolfgang-backend --region=europe-west1 --limit=20`
-
-If deploying "all", deploy backend first, verify it's healthy, then deploy web.
-Always confirm before running destructive commands.
+# Deploy
+## Steps
+1. Run `/check` first. Stop if anything fails.
+2. Use the documented Converge deploy path from `kb/Building/Deployment.md`.
+3. Default runtime deploy: `just deploy-cloud-run`
+4. If infra or image-tag orchestration is needed, use the matching `just infra-*`, `just cloud-build`, or `just deploy-runtime` recipes and explain why.
+5. Verify health or deployment status after deploy.
+6. Report status.
+## Rules
+- Confirm with user before each deploy step.
+- If required env vars, auth, or cloud tools are missing, stop and report them.
+- Do not invent deploy targets that are not present in the repo.

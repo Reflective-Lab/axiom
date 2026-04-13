@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Responsible AI Audit
 
 > **Usage**: Monthly audit of our own AI usage practices.

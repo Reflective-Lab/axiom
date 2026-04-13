@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Insurance Underwriter: Risk Assessment
 
 ## Mission

@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Build vs Buy Decision
 
 > **Usage**: When deciding whether to build something ourselves or adopt an existing solution.

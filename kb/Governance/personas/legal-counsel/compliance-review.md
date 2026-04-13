@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # AI Regulatory Compliance Review
 
 > **Usage**: Run monthly or when entering new markets/releasing major features.

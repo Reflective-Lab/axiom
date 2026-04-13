@@ -1,5 +1,6 @@
 ---
 tags: [architecture, security, audit]
+source: mixed
 ---
 # 2026-04-11 Security Review
 

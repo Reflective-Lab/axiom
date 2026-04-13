@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Production Phase Contracts
 
 Responsibilities during live operation.

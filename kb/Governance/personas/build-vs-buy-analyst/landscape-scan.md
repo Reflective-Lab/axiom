@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Landscape Scan
 
 > **Usage**: Run monthly to track the OSS landscape and identify opportunities.

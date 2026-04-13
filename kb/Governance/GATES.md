@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Gate Framework
 
 > Defines gates that control promotion and which personas participate at each gate.

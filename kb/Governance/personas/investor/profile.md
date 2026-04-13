@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Investor
 
 ## Role

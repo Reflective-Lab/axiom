@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Marketing Phase Contracts
 
 Responsibilities during positioning, messaging, and content creation.

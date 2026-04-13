@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Journalist / Investigator: Investigation Preparation
 
 ## Mission

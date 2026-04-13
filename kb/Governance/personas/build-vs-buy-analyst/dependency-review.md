@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Dependency Review
 
 > **Usage**: Quarterly review of our dependency health and strategy.

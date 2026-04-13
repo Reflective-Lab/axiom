@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Documentation Audit
 
 > **Usage**: Run monthly to assess documentation health and identify gaps.

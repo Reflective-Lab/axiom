@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # ReleaseCut Gate E2E Walkthrough
 
 > Narrative walkthrough of the Release Candidate gate flow with pass, blocked, and override scenarios.

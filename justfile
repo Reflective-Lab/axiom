@@ -18,6 +18,10 @@ build-quick:
 build-ci:
     cargo build --workspace --profile ci
 
+# Check workspace without producing release artifacts
+check:
+    cargo check --workspace
+
 # ── Test ───────────────────────────────────────────────────────────────
 
 # Run tests (default members)

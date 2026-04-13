@@ -1,4 +1,4 @@
-FROM rust:1.90-bookworm AS builder
+FROM rust:1.94-bookworm AS builder
 
 WORKDIR /app
 ARG CONVERGE_RUNTIME_FEATURES=gcp,auth,firebase
@@ -6,6 +6,7 @@ ARG CONVERGE_RUNTIME_FEATURES=gcp,auth,firebase
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 COPY examples ./examples
+COPY schema ./schema
 
 RUN cargo build -p converge-runtime --release --features "${CONVERGE_RUNTIME_FEATURES}"
 

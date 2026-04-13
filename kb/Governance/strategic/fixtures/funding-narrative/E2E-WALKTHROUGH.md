@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Funding Narrative Gate: E2E Walkthrough
 
 ## Overview

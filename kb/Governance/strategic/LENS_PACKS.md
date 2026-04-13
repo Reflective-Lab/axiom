@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Lens Packs
 
 Lens packs specify which voices run at strategy gates, what they check, and how results are recorded.

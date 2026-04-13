@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Capacity Planning
 
 > **Usage**: Quarterly capacity planning and projection review.

@@ -1,5 +1,6 @@
 ---
 tags: [stack, llm]
+source: mixed
 ---
 # vLLM
 

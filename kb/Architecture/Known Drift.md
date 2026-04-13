@@ -1,5 +1,6 @@
 ---
 tags: [architecture, philosophy]
+source: mixed
 ---
 # Known Drift
 

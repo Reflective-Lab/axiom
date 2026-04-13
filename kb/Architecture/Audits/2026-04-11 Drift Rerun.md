@@ -1,5 +1,6 @@
 ---
 tags: [audit, architecture]
+source: mixed
 ---
 # Drift Rerun: Philosophy vs Implementation
 

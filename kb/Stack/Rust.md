@@ -1,5 +1,6 @@
 ---
 tags: [stack]
+source: mixed
 ---
 # Rust
 
@@ -7,7 +8,7 @@ Converge is Rust-first. Orchestration, domain logic, policy enforcement, and int
 
 ## Conventions
 
-- Edition 2024, rust-version 1.90
+- Edition 2024, rust-version 1.94
 - `unsafe_code = "forbid"` — no exceptions
 - Clippy pedantic with allowed exceptions at workspace level
 - All deps use `workspace = true`

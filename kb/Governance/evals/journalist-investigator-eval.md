@@ -43,6 +43,7 @@ evidence:
     - Response readiness for negative coverage scenarios
   format: markdown report with story angle analysis and headline tests
   location: eval-reports/journalist-investigator/
+source: mixed
 ---
 
 # Journalist / Investigator Eval

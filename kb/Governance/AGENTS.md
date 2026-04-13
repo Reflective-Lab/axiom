@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # AGENTS - converge-personas
 
 Short entrypoint for agent work. Load deeper docs only when needed.

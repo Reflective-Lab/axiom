@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Sales Phase Contracts
 
 Responsibilities during customer engagement and sales.

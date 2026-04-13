@@ -29,6 +29,8 @@
 //! The `LlmBackend` interface is used by converge-llm's kernel and supports
 //! both local (replay-eligible) and remote (audit-only) backends.
 
+#[cfg(feature = "anthropic")]
 mod anthropic;
 
+#[cfg(feature = "anthropic")]
 pub use anthropic::AnthropicBackend;

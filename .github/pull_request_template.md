@@ -19,4 +19,4 @@
 ## Compliance Notes
 
 - [ ] No new compliance claim is introduced without evidence
-- [ ] Data handling scope is unchanged or updated in `docs/security/`
+- [ ] Data handling scope is unchanged or updated in `SECURITY.md` and the relevant KB pages

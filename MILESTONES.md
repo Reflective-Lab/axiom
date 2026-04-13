@@ -1,7 +1,9 @@
 # Milestones
 
+> See `~/dev/work/EPIC.md` for the coarse-grained outcomes these milestones advance.
+
 ## Current: v3.3 — Contract Enforcement
-Deadline: 2026-05-10
+**Deadline:** 2026-05-10 | **Epic:** E1 (Converge is a publishable platform)
 
 - [ ] Add `#[warn(missing_docs)]` to all publishable crates (~830 warnings to resolve)
 - [ ] Migrate async traits: ChatBackend/EmbedBackend adoption across providers

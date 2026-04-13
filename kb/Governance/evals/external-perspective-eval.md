@@ -51,6 +51,7 @@ evidence:
     - Strategic decisions and long-term rationale
   format: markdown report with multi-lens perspective summary
   location: eval-reports/external-perspective/
+source: mixed
 ---
 
 # External Perspective Eval

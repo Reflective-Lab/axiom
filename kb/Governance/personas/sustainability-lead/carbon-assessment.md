@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Carbon Assessment
 
 > **Usage**: Annual assessment of carbon footprint and environmental impact.

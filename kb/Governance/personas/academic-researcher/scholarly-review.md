@@ -1,3 +1,6 @@
+---
+source: mixed
+---
 # Academic Researcher: Scholarly Review
 
 ## Mission
