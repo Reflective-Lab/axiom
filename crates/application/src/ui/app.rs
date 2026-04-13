@@ -24,10 +24,10 @@ use std::time::Duration;
 
 use converge_core::traits::DynChatBackend;
 use converge_core::{Context, ContextKey, Engine};
-use converge_provider::AnthropicBackend;
 use strum::IntoEnumIterator;
 
-use crate::agents::{MockInsightProvider, RiskAssessmentAgent, StrategicInsightAgent};
+use crate::agents::{RiskAssessmentAgent, StrategicInsightAgent};
+use crate::llm_backend;
 use crate::packs;
 
 pub type AppResult<T> = Result<T>;
@@ -721,9 +721,5 @@ pub async fn run_app(
 
 /// Creates a chat backend from environment variables.
 fn create_chat_backend() -> Arc<dyn DynChatBackend> {
-    if let Ok(backend) = AnthropicBackend::from_env() {
-        return Arc::new(backend.with_model("claude-sonnet-4-20250514")) as Arc<dyn DynChatBackend>;
-    }
-
-    Arc::new(MockInsightProvider::default_insights()) as Arc<dyn DynChatBackend>
+    llm_backend::create_chat_backend_or_mock()
 }

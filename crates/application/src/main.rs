@@ -17,6 +17,7 @@
 mod agents;
 mod config;
 mod evals;
+mod llm_backend;
 mod packs;
 mod streaming;
 #[cfg(feature = "tui")]
@@ -42,12 +43,9 @@ use std::sync::Arc;
 use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
 
-use crate::agents::MockInsightProvider;
-
 use converge_core::traits::DynChatBackend;
 use converge_core::{Context, ContextKey, Engine, ExperienceStore};
 use converge_experience::{InMemoryExperienceStore, StoreObserver};
-use converge_provider::AnthropicBackend;
 use strum::IntoEnumIterator;
 
 /// Converge - Semantic convergence engine for agentic workflows
@@ -529,16 +527,5 @@ async fn run_tui() -> Result<()> {
 
 /// Creates a chat backend from environment variables.
 fn create_chat_backend() -> Arc<dyn DynChatBackend> {
-    if let Ok(backend) = AnthropicBackend::from_env() {
-        info!(
-            provider = "anthropic",
-            model = "claude-sonnet-4-20250514",
-            "Using Anthropic Claude for LLM insights"
-        );
-        return Arc::new(backend.with_model("claude-sonnet-4-20250514")) as Arc<dyn DynChatBackend>;
-    }
-
-    warn!("No LLM API keys found (ANTHROPIC_API_KEY). Using mock provider.");
-    info!("Set ANTHROPIC_API_KEY in .env for real LLM insights");
-    Arc::new(MockInsightProvider::default_insights()) as Arc<dyn DynChatBackend>
+    llm_backend::create_chat_backend_or_mock()
 }

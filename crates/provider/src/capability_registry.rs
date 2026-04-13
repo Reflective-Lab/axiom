@@ -28,11 +28,13 @@
 
 #[cfg(feature = "brave")]
 use crate::brave::BraveSearchProvider;
-use crate::provider_api::DataSovereignty;
-use crate::provider_api::LlmProvider;
+use crate::search::WebSearchBackend;
+#[cfg(feature = "tavily")]
+use crate::tavily::TavilySearchProvider;
 use converge_core::capability::{
     CapabilityKind, CapabilityMetadata, Embedding, GraphRecall, Modality, Reranking, VectorRecall,
 };
+use converge_core::model_selection::DataSovereignty;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -147,8 +149,6 @@ impl CapabilityRequirements {
 struct RegisteredProvider {
     /// Provider metadata.
     metadata: CapabilityMetadata,
-    /// LLM provider instance (if applicable).
-    llm: Option<Arc<dyn LlmProvider>>,
     /// Embedding provider instance (if applicable).
     embedder: Option<Arc<dyn Embedding>>,
     /// Reranker provider instance (if applicable).
@@ -253,6 +253,27 @@ impl WebSearchRequirements {
         self.data_sovereignty = sovereignty;
         self
     }
+
+    /// Requires news search support.
+    #[must_use]
+    pub fn with_news(mut self, required: bool) -> Self {
+        self.requires_news = required;
+        self
+    }
+
+    /// Requires image search support.
+    #[must_use]
+    pub fn with_images(mut self, required: bool) -> Self {
+        self.requires_images = required;
+        self
+    }
+
+    /// Requires local/POI search support.
+    #[must_use]
+    pub fn with_local(mut self, required: bool) -> Self {
+        self.requires_local = required;
+        self
+    }
 }
 
 /// Unified capability registry.
@@ -267,9 +288,14 @@ pub struct CapabilityRegistry {
     graph_stores: HashMap<String, Arc<dyn GraphRecall>>,
     /// Web search providers by name.
     search_providers: HashMap<String, SearchProviderMeta>,
+    /// Executable web search backends by name.
+    search_backends: HashMap<String, Arc<dyn WebSearchBackend>>,
     /// Brave search provider instance (if available).
     #[cfg(feature = "brave")]
-    brave_provider: Option<BraveSearchProvider>,
+    brave_provider: Option<Arc<BraveSearchProvider>>,
+    /// Tavily search provider instance (if available).
+    #[cfg(feature = "tavily")]
+    tavily_provider: Option<Arc<TavilySearchProvider>>,
 }
 
 impl Default for CapabilityRegistry {
@@ -287,8 +313,11 @@ impl CapabilityRegistry {
             vector_stores: HashMap::new(),
             graph_stores: HashMap::new(),
             search_providers: HashMap::new(),
+            search_backends: HashMap::new(),
             #[cfg(feature = "brave")]
             brave_provider: None,
+            #[cfg(feature = "tavily")]
+            tavily_provider: None,
         }
     }
 
@@ -299,6 +328,7 @@ impl CapabilityRegistry {
     /// - In-memory vector store (always available)
     /// - In-memory graph store (always available)
     /// - Brave Search (if `BRAVE_API_KEY` is set)
+    /// - Tavily Search (if `TAVILY_API_KEY` is set)
     #[must_use]
     pub fn with_local_defaults() -> Self {
         let mut registry = Self::new();
@@ -313,6 +343,7 @@ impl CapabilityRegistry {
 
         // Try to add Brave Search if available
         registry.try_add_brave_from_env();
+        registry.try_add_tavily_from_env();
 
         registry
     }
@@ -323,7 +354,10 @@ impl CapabilityRegistry {
     pub fn try_add_brave_from_env(&mut self) -> bool {
         #[cfg(feature = "brave")]
         if let Ok(provider) = BraveSearchProvider::from_env() {
-            self.brave_provider = Some(provider);
+            let provider = Arc::new(provider);
+            self.brave_provider = Some(provider.clone());
+            self.search_backends
+                .insert("brave".to_string(), provider.clone());
             self.search_providers.insert(
                 "brave".to_string(),
                 SearchProviderMeta {
@@ -341,10 +375,40 @@ impl CapabilityRegistry {
         false
     }
 
+    /// Attempts to add Tavily Search provider from environment.
+    ///
+    /// Returns `true` if Tavily Search was added successfully.
+    pub fn try_add_tavily_from_env(&mut self) -> bool {
+        #[cfg(feature = "tavily")]
+        if let Ok(provider) = TavilySearchProvider::from_env() {
+            let provider = Arc::new(provider);
+            self.tavily_provider = Some(provider.clone());
+            self.search_backends
+                .insert("tavily".to_string(), provider.clone());
+            self.search_providers.insert(
+                "tavily".to_string(),
+                SearchProviderMeta {
+                    name: "tavily".to_string(),
+                    available: true,
+                    typical_latency_ms: 1200,
+                    supports_ai_summary: true,
+                    supports_news: true,
+                    supports_images: true,
+                    supports_local: false,
+                },
+            );
+            return true;
+        }
+        false
+    }
+
     /// Adds Brave Search provider with a specific API key.
     #[cfg(feature = "brave")]
     pub fn add_brave(&mut self, api_key: impl Into<String>) {
-        self.brave_provider = Some(BraveSearchProvider::new(api_key));
+        let provider = Arc::new(BraveSearchProvider::new(api_key));
+        self.brave_provider = Some(provider.clone());
+        self.search_backends
+            .insert("brave".to_string(), provider.clone());
         self.search_providers.insert(
             "brave".to_string(),
             SearchProviderMeta {
@@ -359,11 +423,39 @@ impl CapabilityRegistry {
         );
     }
 
+    /// Adds Tavily Search provider with a specific API key.
+    #[cfg(feature = "tavily")]
+    pub fn add_tavily(&mut self, api_key: impl Into<String>) {
+        let provider = Arc::new(TavilySearchProvider::new(api_key));
+        self.tavily_provider = Some(provider.clone());
+        self.search_backends
+            .insert("tavily".to_string(), provider.clone());
+        self.search_providers.insert(
+            "tavily".to_string(),
+            SearchProviderMeta {
+                name: "tavily".to_string(),
+                available: true,
+                typical_latency_ms: 1200,
+                supports_ai_summary: true,
+                supports_news: true,
+                supports_images: true,
+                supports_local: false,
+            },
+        );
+    }
+
     /// Gets the Brave Search provider if available.
     #[cfg(feature = "brave")]
     #[must_use]
     pub fn brave(&self) -> Option<&BraveSearchProvider> {
-        self.brave_provider.as_ref()
+        self.brave_provider.as_deref()
+    }
+
+    /// Gets the Tavily Search provider if available.
+    #[cfg(feature = "tavily")]
+    #[must_use]
+    pub fn tavily(&self) -> Option<&TavilySearchProvider> {
+        self.tavily_provider.as_deref()
     }
 
     /// Checks if web search capability is available.
@@ -409,19 +501,19 @@ impl CapabilityRegistry {
                 true
             })
             .max_by_key(|p| {
-                // Score providers by their capabilities
+                // Score providers by capabilities the caller actually asked for.
                 let mut score = 0i32;
-                if p.supports_ai_summary {
+                if requirements.requires_ai_summary && p.supports_ai_summary {
                     score += 100;
                 }
-                if p.supports_news {
-                    score += 20;
+                if requirements.requires_news && p.supports_news {
+                    score += 30;
                 }
-                if p.supports_images {
-                    score += 20;
+                if requirements.requires_images && p.supports_images {
+                    score += 30;
                 }
-                if p.supports_local {
-                    score += 10;
+                if requirements.requires_local && p.supports_local {
+                    score += 20;
                 }
                 // Prefer lower latency
                 score -= (p.typical_latency_ms / 100) as i32;
@@ -429,24 +521,14 @@ impl CapabilityRegistry {
             })
     }
 
-    /// Registers an LLM provider.
-    pub fn add_llm_provider(
-        &mut self,
-        name: &str,
-        provider: Arc<dyn LlmProvider>,
-        metadata: CapabilityMetadata,
-    ) {
-        let entry = self
-            .providers
-            .entry(name.to_string())
-            .or_insert_with(|| RegisteredProvider {
-                metadata: metadata.clone(),
-                llm: None,
-                embedder: None,
-                reranker: None,
-            });
-        entry.llm = Some(provider);
-        entry.metadata = metadata;
+    /// Selects an executable search backend matching the requirements.
+    #[must_use]
+    pub fn select_search_backend(
+        &self,
+        requirements: &WebSearchRequirements,
+    ) -> Option<Arc<dyn WebSearchBackend>> {
+        self.select_search_provider(requirements)
+            .and_then(|meta| self.search_backends.get(&meta.name).cloned())
     }
 
     /// Registers an embedding provider.
@@ -462,7 +544,6 @@ impl CapabilityRegistry {
             .entry(name.to_string())
             .or_insert_with(|| RegisteredProvider {
                 metadata: metadata.clone(),
-                llm: None,
                 embedder: None,
                 reranker: None,
             });
@@ -488,7 +569,6 @@ impl CapabilityRegistry {
             .entry(name.to_string())
             .or_insert_with(|| RegisteredProvider {
                 metadata: metadata.clone(),
-                llm: None,
                 embedder: None,
                 reranker: None,
             });
@@ -509,19 +589,6 @@ impl CapabilityRegistry {
     /// Registers a graph store.
     pub fn add_graph_store(&mut self, name: &str, store: Arc<dyn GraphRecall>) {
         self.graph_stores.insert(name.to_string(), store);
-    }
-
-    /// Selects an LLM provider matching requirements.
-    #[must_use]
-    pub fn select_llm(
-        &self,
-        requirements: &CapabilityRequirements,
-    ) -> Option<Arc<dyn LlmProvider>> {
-        self.providers
-            .values()
-            .filter(|p| p.llm.is_some() && self.matches_requirements(&p.metadata, requirements))
-            .max_by_key(|p| self.score_provider(&p.metadata, requirements))
-            .and_then(|p| p.llm.clone())
     }
 
     /// Selects an embedding provider matching requirements.
@@ -755,5 +822,36 @@ mod tests {
         assert!(reqs.modalities.contains(&Modality::Image));
         assert!(reqs.prefer_local);
         assert_eq!(reqs.max_latency_ms, 1000);
+    }
+
+    #[cfg(all(feature = "brave", feature = "tavily"))]
+    #[test]
+    fn search_provider_selection_prefers_tavily_for_ai_summary() {
+        let mut registry = CapabilityRegistry::new();
+        registry.add_brave("brave-key");
+        registry.add_tavily("tavily-key");
+
+        let selected = registry
+            .select_search_provider(&WebSearchRequirements::grounded())
+            .unwrap();
+        assert_eq!(selected.name, "tavily");
+
+        let backend = registry
+            .select_search_backend(&WebSearchRequirements::grounded())
+            .unwrap();
+        assert_eq!(backend.provider_name(), "tavily");
+    }
+
+    #[cfg(all(feature = "brave", feature = "tavily"))]
+    #[test]
+    fn search_provider_selection_prefers_brave_for_local_search() {
+        let mut registry = CapabilityRegistry::new();
+        registry.add_brave("brave-key");
+        registry.add_tavily("tavily-key");
+
+        let selected = registry
+            .select_search_provider(&WebSearchRequirements::web_search().with_local(true))
+            .unwrap();
+        assert_eq!(selected.name, "brave");
     }
 }

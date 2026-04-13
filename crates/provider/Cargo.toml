@@ -29,8 +29,8 @@ base64.workspace = true
 sha2.workspace = true
 zeroize = { workspace = true, optional = true }
 
-# Async runtime (for blocking on async in sync traits)
-tokio = { workspace = true, optional = true }
+# Async runtime used by async backend implementations
+tokio.workspace = true
 
 # Optional dependencies for vector stores
 lancedb = { workspace = true, optional = true }
@@ -39,7 +39,7 @@ arrow-schema = { workspace = true, optional = true }
 futures = { workspace = true, optional = true }
 
 [features]
-default = ["anthropic", "gemini", "openai", "registry", "brave"]
+default = ["anthropic", "gemini", "openai", "mistral", "registry", "brave", "tavily"]
 
 # Private convenience feature: any provider that needs HTTP pulls this in
 _http = ["dep:reqwest"]
@@ -48,7 +48,7 @@ _http = ["dep:reqwest"]
 anthropic = ["_http"]
 gemini = ["_http"]
 openai = ["_http"]
-ollama = ["_http", "dep:tokio"]
+ollama = ["_http"]
 qwen = ["_http"]
 deepseek = ["_http"]
 mistral = ["_http"]
@@ -61,6 +61,7 @@ baidu = ["_http", "dep:urlencoding"]
 zhipu = ["_http"]
 apertus = ["_http"]
 brave = ["_http", "dep:urlencoding"]
+tavily = ["_http"]
 # Registry and Matchmaking
 registry = []
 
@@ -77,6 +78,8 @@ tempfile.workspace = true
 proptest.workspace = true
 wiremock.workspace = true
 tokio.workspace = true
+parking_lot.workspace = true
+dotenv.workspace = true
 
 [lints]
 workspace = true

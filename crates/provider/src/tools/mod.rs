@@ -26,7 +26,6 @@ pub mod config;
 pub mod graphql;
 pub mod mcp;
 pub mod openapi;
-pub mod tool_aware;
 
 // Re-exports
 pub use definition::{
@@ -44,4 +43,12 @@ pub use config::{
 pub use graphql::GraphQlConverter;
 pub use mcp::{McpClient, McpClientBuilder, McpTransport};
 pub use openapi::OpenApiConverter;
-pub use tool_aware::{ParsedToolCall, ToolAwareProvider, ToolAwareResponse, ToolFormat};
+
+/// Tool format for tool definitions injected into prompts.
+#[derive(Debug, Clone, Copy, Default)]
+pub enum ToolFormat {
+    #[default]
+    Anthropic,
+    OpenAi,
+    Generic,
+}

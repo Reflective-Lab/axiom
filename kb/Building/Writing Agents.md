@@ -62,18 +62,33 @@ struct ComplianceSuggestor {
 
 ```rust
 struct SynthesisSuggestor {
-    provider: Arc<dyn LlmProvider>,
+    backend: Arc<dyn DynChatBackend>,
 }
 
 impl Suggestor for SynthesisSuggestor {
     fn execute(&self, ctx: &dyn Context) -> AgentEffect {
-        let prompt = format!("Synthesize a recommendation from: {:?}",
-            ctx.get(ContextKey::Evaluations));
-        let response = self.provider.complete(&prompt);
+        let request = ChatRequest {
+            messages: vec![ChatMessage {
+                role: ChatRole::User,
+                content: format!("Synthesize a recommendation from: {:?}", ctx.get(ContextKey::Evaluations)),
+                tool_call_id: None,
+            }],
+            system: Some("Be concise and propose only supported claims.".into()),
+            tools: Vec::new(),
+            response_format: ResponseFormat::Text,
+            max_tokens: Some(256),
+            temperature: Some(0.0),
+            stop_sequences: Vec::new(),
+            model: None,
+        };
+
+        let response = run_chat_sync(&self.backend, request);
         // Parse response into ProposedFact
     }
 }
 ```
+
+The `Suggestor` trait is synchronous, but the canonical LLM boundary is async. Bridge that once at the application edge with a helper such as `run_chat_sync(...)` rather than inventing a second provider contract.
 
 ## Suggestor Packs
 

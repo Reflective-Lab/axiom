@@ -443,20 +443,6 @@ providers:
           input_per_m: 0.075
           output_per_m: 0.30
 
-      gemini-1.5-pro:
-        cost_class: Medium
-        typical_latency_ms: 3000
-        quality: 0.88
-        context_tokens: 2000000
-        max_output_tokens: 8192
-        capabilities: [tool_use, vision, structured_output, code, reasoning, multilingual]
-        architecture: moe
-        native_multimodal: true
-        modalities: [text, image, video, audio]
-        pricing:
-          input_per_m: 1.25
-          output_per_m: 5.00
-
       gemini-2.0-flash:
         cost_class: VeryLow
         typical_latency_ms: 700
@@ -488,7 +474,7 @@ providers:
       gemini-2.5-flash:
         cost_class: VeryLow
         typical_latency_ms: 800
-        quality: 0.82
+        quality: 0.84
         context_tokens: 1000000
         max_output_tokens: 8192
         capabilities: [tool_use, vision, structured_output, code, reasoning, multilingual]
@@ -498,66 +484,6 @@ providers:
         pricing:
           input_per_m: 0.15
           output_per_m: 0.60
-
-      gemini-3-flash-preview:
-        cost_class: VeryLow
-        typical_latency_ms: 900
-        quality: 0.90
-        context_tokens: 1050000
-        max_output_tokens: 8192
-        capabilities: [tool_use, vision, structured_output, code, reasoning, multilingual, audio, prompt_caching]
-        architecture: moe
-        native_multimodal: true
-        modalities: [text, image, video, audio]
-        thinking_mode: true
-        pricing:
-          input_per_m: 0.50
-          output_per_m: 3.00
-        publisher: Google
-        family: Gemini
-        beta: true
-        tags: [agentic, coding, long_context, prompt_caching, low_latency]
-        notes: "Preview model; high-speed, high-value reasoning with configurable thinking levels and context caching. Audio input priced separately."
-
-      gemini-3-pro:
-        cost_class: Medium
-        typical_latency_ms: 2500
-        quality: 0.96
-        context_tokens: 2000000
-        max_output_tokens: 16384
-        capabilities: [tool_use, vision, structured_output, code, reasoning, multilingual]
-        architecture: moe
-        native_multimodal: true
-        modalities: [text, image, video, audio]
-        thinking_mode: true
-        agentic:
-          max_parallel_agents: 20
-          supports_orchestration: true
-        pricing:
-          input_per_m: 2.00
-          output_per_m: 8.00
-
-      gemini-3-pro-preview:
-        cost_class: High
-        typical_latency_ms: 3200
-        quality: 0.97
-        context_tokens: 1050000
-        max_output_tokens: 16384
-        capabilities: [tool_use, vision, structured_output, code, reasoning, multilingual, audio, prompt_caching]
-        architecture: moe
-        native_multimodal: true
-        modalities: [text, image, video, audio]
-        thinking_mode: true
-        agentic:
-          max_parallel_agents: 20
-          supports_orchestration: true
-        pricing:
-          input_per_m: 2.00
-          output_per_m: 12.00
-        publisher: Google
-        family: Gemini
-        beta: true
-        tags: [agentic, coding, long_context, multimodal]
         notes: "Preview flagship model; strong tool-calling and long-horizon planning with 1.05M context. Audio input priced separately."
 
   perplexity:
@@ -2517,6 +2443,24 @@ providers:
         capabilities: [web_search]
         pricing:
           input_per_m: 3.00  # ~$0.003 per query
+
+  tavily:
+    env_key: TAVILY_API_KEY
+    key_url: https://app.tavily.com/home
+    api_url: https://api.tavily.com
+    country: US
+    region: US
+    provider_type: direct
+    models:
+      # Tavily Search API - agent-oriented web search service
+      tavily-search:
+        cost_class: VeryLow
+        typical_latency_ms: 1200
+        quality: 0.88
+        context_tokens: 8192
+        capabilities: [web_search, structured_output]
+        pricing:
+          input_per_m: 1.00
 
   # ===========================================================================
   # OCR / DOCUMENT AI PROVIDERS

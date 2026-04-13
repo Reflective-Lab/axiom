@@ -13,8 +13,8 @@ Short entrypoint for agent work. Load deeper docs only when needed.
 
 ## Load On Demand
 
-- Shared workflow: `../docs/agent/workflow.md`
-- Docs/content editing rules: `../docs/agent/docs-content.md`
+- Shared workflow: `../../AGENTS.md`
+- Governance docs index: `README.md`
 - Eval/contract files: `contracts/`, `evals/`, `personas/`
 
 ## Local Rules

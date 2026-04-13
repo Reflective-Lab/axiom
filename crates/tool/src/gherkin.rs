@@ -38,7 +38,7 @@
 //!                                            └── Convention check
 //! ```
 
-use converge_core::llm::{LlmProvider, LlmRequest};
+use converge_core::traits::{ChatMessage, ChatRequest, ChatResponse, ChatRole, DynChatBackend};
 use regex::Regex;
 use std::path::Path;
 use std::sync::Arc;
@@ -363,7 +363,7 @@ impl SpecValidation {
 
 /// LLM-powered Gherkin specification validator.
 pub struct GherkinValidator {
-    provider: Arc<dyn LlmProvider>,
+    backend: Arc<dyn DynChatBackend>,
     config: ValidationConfig,
 }
 
@@ -376,10 +376,10 @@ impl std::fmt::Debug for GherkinValidator {
 }
 
 impl GherkinValidator {
-    /// Creates a new validator with the given LLM provider.
+    /// Creates a new validator with the given chat backend.
     #[must_use]
-    pub fn new(provider: Arc<dyn LlmProvider>, config: ValidationConfig) -> Self {
-        Self { provider, config }
+    pub fn new(backend: Arc<dyn DynChatBackend>, config: ValidationConfig) -> Self {
+        Self { backend, config }
     }
 
     /// Validates a Gherkin specification from a string.
@@ -598,44 +598,13 @@ Respond with ONLY one of:
         );
 
         let system_prompt = "You are a strict business requirements validator. Be concise.";
-        let request = LlmRequest::new(prompt.clone())
-            .with_system(system_prompt)
-            .with_max_tokens(200)
-            .with_temperature(0.3);
 
-        eprintln!("\n📤 Business Sense Check - Sending to LLM:");
-        eprintln!("   Scenario: {}", scenario.name);
-        eprintln!("   System Prompt: {system_prompt}");
-        eprintln!(
-            "   User Prompt (first 200 chars): {}...",
-            prompt.chars().take(200).collect::<String>()
-        );
-        eprintln!("   Request params: max_tokens=200, temperature=0.3");
-
-        let response = self.provider.complete(&request).map_err(|e| {
-            // LLM API errors are not Gherkin validation issues
-            ValidationError::LlmError(format!("NOT_RELATED_ERROR: LLM API call failed: {e}"))
-        })?;
-
-        eprintln!("\n📥 Business Sense Check - Response from LLM:");
-        eprintln!("   Raw response: {}", response.content);
-        eprintln!("   Model: {}", response.model);
-        eprintln!(
-            "   Token usage: prompt={}, completion={}, total={}",
-            response.usage.prompt_tokens,
-            response.usage.completion_tokens,
-            response.usage.total_tokens
-        );
-        eprintln!("   Finish reason: {:?}", response.finish_reason);
+        let response = chat_sync(&self.backend, system_prompt, &prompt, Some(200), Some(0.3))?;
 
         let content = response.content.trim();
-        eprintln!("\n🔍 Business Sense Check - Reasoning:");
 
         if content.starts_with("INVALID:") {
             let reason = content.strip_prefix("INVALID:").unwrap_or("").trim();
-            eprintln!("   → Detected: INVALID");
-            eprintln!("   → Reason: {reason}");
-            eprintln!("   → Action: Creating Error-level ValidationIssue");
             Ok(Some(ValidationIssue {
                 location: format!("Scenario: {}", scenario.name),
                 category: IssueCategory::BusinessSense,
@@ -645,9 +614,6 @@ Respond with ONLY one of:
             }))
         } else if content.starts_with("UNCLEAR:") {
             let question = content.strip_prefix("UNCLEAR:").unwrap_or("").trim();
-            eprintln!("   → Detected: UNCLEAR");
-            eprintln!("   → Question: {question}");
-            eprintln!("   → Action: Creating Warning-level ValidationIssue with suggestion");
             Ok(Some(ValidationIssue {
                 location: format!("Scenario: {}", scenario.name),
                 category: IssueCategory::BusinessSense,
@@ -656,8 +622,6 @@ Respond with ONLY one of:
                 suggestion: Some("Clarify the scenario requirements".to_string()),
             }))
         } else {
-            eprintln!("   → Detected: VALID (or response doesn't match expected format)");
-            eprintln!("   → Action: No issue created (scenario passes business sense check)");
             Ok(None) // VALID
         }
     }
@@ -700,44 +664,13 @@ Respond with ONLY one of:
 
         let system_prompt =
             "You are a Rust expert. Be precise about what can be checked at runtime.";
-        let request = LlmRequest::new(prompt.clone())
-            .with_system(system_prompt)
-            .with_max_tokens(200)
-            .with_temperature(0.3);
 
-        eprintln!("\n📤 Compilability Check - Sending to LLM:");
-        eprintln!("   Scenario: {}", scenario.name);
-        eprintln!("   System Prompt: {system_prompt}");
-        eprintln!(
-            "   User Prompt (first 200 chars): {}...",
-            prompt.chars().take(200).collect::<String>()
-        );
-        eprintln!("   Request params: max_tokens=200, temperature=0.3");
-
-        let response = self.provider.complete(&request).map_err(|e| {
-            // LLM API errors are not Gherkin validation issues
-            ValidationError::LlmError(format!("NOT_RELATED_ERROR: LLM API call failed: {e}"))
-        })?;
-
-        eprintln!("\n📥 Compilability Check - Response from LLM:");
-        eprintln!("   Raw response: {}", response.content);
-        eprintln!("   Model: {}", response.model);
-        eprintln!(
-            "   Token usage: prompt={}, completion={}, total={}",
-            response.usage.prompt_tokens,
-            response.usage.completion_tokens,
-            response.usage.total_tokens
-        );
-        eprintln!("   Finish reason: {:?}", response.finish_reason);
+        let response = chat_sync(&self.backend, system_prompt, &prompt, Some(200), Some(0.3))?;
 
         let content = response.content.trim();
-        eprintln!("\n🔍 Compilability Check - Reasoning:");
 
         if content.starts_with("NOT_COMPILABLE:") {
             let reason = content.strip_prefix("NOT_COMPILABLE:").unwrap_or("").trim();
-            eprintln!("   → Detected: NOT_COMPILABLE");
-            eprintln!("   → Reason: {reason}");
-            eprintln!("   → Action: Creating Error-level ValidationIssue");
             Ok(Some(ValidationIssue {
                 location: format!("Scenario: {}", scenario.name),
                 category: IssueCategory::Compilability,
@@ -747,11 +680,6 @@ Respond with ONLY one of:
             }))
         } else if content.starts_with("NEEDS_REFACTOR:") {
             let suggestion = content.strip_prefix("NEEDS_REFACTOR:").unwrap_or("").trim();
-            eprintln!("   → Detected: NEEDS_REFACTOR");
-            eprintln!("   → Suggestion: {suggestion}");
-            eprintln!(
-                "   → Action: Creating Warning-level ValidationIssue with refactoring suggestion"
-            );
             Ok(Some(ValidationIssue {
                 location: format!("Scenario: {}", scenario.name),
                 category: IssueCategory::Compilability,
@@ -759,17 +687,8 @@ Respond with ONLY one of:
                 message: "Scenario needs refactoring to be compilable".to_string(),
                 suggestion: Some(suggestion.to_string()),
             }))
-        } else if content.starts_with("COMPILABLE:") {
-            let details = content.strip_prefix("COMPILABLE:").unwrap_or("").trim();
-            eprintln!("   → Detected: COMPILABLE");
-            eprintln!("   → Details: {details}");
-            eprintln!("   → Action: No issue created (scenario is compilable)");
-            Ok(None) // COMPILABLE
         } else {
-            eprintln!("   → Warning: Response doesn't match expected format");
-            eprintln!("   → Raw response: {content}");
-            eprintln!("   → Action: Treating as COMPILABLE (no issue created)");
-            Ok(None) // Default to compilable if format doesn't match
+            Ok(None) // COMPILABLE or unrecognized format
         }
     }
 
@@ -847,7 +766,7 @@ Respond with ONLY one of:
 
 /// LLM-powered Gherkin specification generator.
 pub struct SpecGenerator {
-    provider: Arc<dyn LlmProvider>,
+    backend: Arc<dyn DynChatBackend>,
 }
 
 impl std::fmt::Debug for SpecGenerator {
@@ -857,10 +776,10 @@ impl std::fmt::Debug for SpecGenerator {
 }
 
 impl SpecGenerator {
-    /// Creates a new generator with the given LLM provider.
+    /// Creates a new generator with the given chat backend.
     #[must_use]
-    pub fn new(provider: Arc<dyn LlmProvider>) -> Self {
-        Self { provider }
+    pub fn new(backend: Arc<dyn DynChatBackend>) -> Self {
+        Self { backend }
     }
 
     /// Generates a Gherkin/Truth specification from free text.
@@ -899,18 +818,40 @@ Truth: <name>
 
         let system_prompt =
             "You are an expert Gherkin spec writer. Respond with ONLY the specification.";
-        let request = LlmRequest::new(prompt)
-            .with_system(system_prompt)
-            .with_max_tokens(1000)
-            .with_temperature(0.3);
 
-        let response = self
-            .provider
-            .complete(&request)
-            .map_err(|e| ValidationError::LlmError(format!("LLM API call failed: {e}")))?;
+        let response = chat_sync(&self.backend, system_prompt, &prompt, Some(1000), Some(0.3))?;
 
         Ok(response.content.trim().to_string())
     }
+}
+
+/// Synchronously execute a chat request against a `DynChatBackend`.
+fn chat_sync(
+    backend: &Arc<dyn DynChatBackend>,
+    system: &str,
+    user_prompt: &str,
+    max_tokens: Option<u32>,
+    temperature: Option<f32>,
+) -> Result<ChatResponse, ValidationError> {
+    let request = ChatRequest {
+        messages: vec![ChatMessage {
+            role: ChatRole::User,
+            content: user_prompt.to_string(),
+            tool_calls: Vec::new(),
+            tool_call_id: None,
+        }],
+        system: Some(system.to_string()),
+        tools: Vec::new(),
+        response_format: Default::default(),
+        max_tokens,
+        temperature,
+        stop_sequences: Vec::new(),
+        model: None,
+    };
+
+    futures::executor::block_on(backend.chat(request)).map_err(|e| {
+        ValidationError::LlmError(format!("NOT_RELATED_ERROR: LLM API call failed: {e}"))
+    })
 }
 
 /// Formats Gherkin steps for display.
@@ -948,10 +889,10 @@ impl std::error::Error for ValidationError {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mock_llm::StaticLlmProvider;
+    use crate::mock_llm::StaticChatBackend;
 
-    fn mock_valid_provider() -> Arc<dyn LlmProvider> {
-        Arc::new(StaticLlmProvider::queued([
+    fn mock_valid_backend() -> Arc<dyn DynChatBackend> {
+        Arc::new(StaticChatBackend::queued([
             "VALID",
             "COMPILABLE: Acceptance - check strategy count",
         ]))
@@ -1003,7 +944,7 @@ Truth: Get paid for delivered work
     Then invoice is issued
 ";
 
-        let validator = GherkinValidator::new(mock_valid_provider(), ValidationConfig::default());
+        let validator = GherkinValidator::new(mock_valid_backend(), ValidationConfig::default());
 
         let result = validator.validate(content, "money.truth").unwrap();
 
@@ -1031,7 +972,7 @@ Truth: Governed release
     Then deployment MUST NOT occur without approval
 "#;
 
-        let validator = GherkinValidator::new(mock_valid_provider(), ValidationConfig::default());
+        let validator = GherkinValidator::new(mock_valid_backend(), ValidationConfig::default());
         let result = validator.validate(content, "release.truths").unwrap();
 
         assert_eq!(result.scenario_count, 1);
@@ -1051,7 +992,7 @@ Feature: Growth Strategy Validation
     Then at least two distinct growth strategies exist
 ";
 
-        let validator = GherkinValidator::new(mock_valid_provider(), ValidationConfig::default());
+        let validator = GherkinValidator::new(mock_valid_backend(), ValidationConfig::default());
 
         let result = validator.validate(content, "test.feature").unwrap();
 
@@ -1069,7 +1010,7 @@ Feature: Bad Spec
 ";
 
         let validator = GherkinValidator::new(
-            mock_valid_provider(),
+            mock_valid_backend(),
             ValidationConfig {
                 check_business_sense: false,
                 check_compilability: false,
@@ -1099,7 +1040,7 @@ Feature: Uncertain Spec
 ";
 
         let validator = GherkinValidator::new(
-            mock_valid_provider(),
+            mock_valid_backend(),
             ValidationConfig {
                 check_business_sense: false,
                 check_compilability: false,
@@ -1116,7 +1057,7 @@ Feature: Uncertain Spec
 
     #[test]
     fn handles_llm_invalid_response() {
-        let provider = Arc::new(StaticLlmProvider::queued([
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::queued([
             "INVALID: The scenario describes an untestable state",
             "COMPILABLE: Acceptance",
         ]));
@@ -1128,7 +1069,7 @@ Feature: Test
     Then everything is perfect forever
 ";
 
-        let validator = GherkinValidator::new(provider, ValidationConfig::default());
+        let validator = GherkinValidator::new(backend, ValidationConfig::default());
 
         let result = validator.validate(content, "test.feature").unwrap();
 
@@ -1142,9 +1083,9 @@ Feature: Test
     #[test]
     fn generates_spec_from_text() {
         let mock_spec = "Truth: Test\n  Scenario: Test\n    Given X\n    Then Y";
-        let provider = Arc::new(StaticLlmProvider::queued([mock_spec]));
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::queued([mock_spec]));
 
-        let generator = SpecGenerator::new(provider);
+        let generator = SpecGenerator::new(backend);
         let result = generator.generate_from_text("Make a test spec").unwrap();
 
         assert_eq!(result, mock_spec);
@@ -1341,7 +1282,7 @@ Truth: Test
     Then outcome is verified
 "#;
 
-        let validator = GherkinValidator::new(mock_valid_provider(), ValidationConfig::default());
+        let validator = GherkinValidator::new(mock_valid_backend(), ValidationConfig::default());
         let result = validator.validate(content, "test.truth").unwrap();
 
         assert_eq!(result.scenario_metas.len(), 1);

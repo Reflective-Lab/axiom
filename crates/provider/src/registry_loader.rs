@@ -26,7 +26,7 @@
 //! ```
 
 use crate::model_selection::{ModelMetadata, ModelSelector};
-use crate::provider_api::{ComplianceLevel, CostClass, DataSovereignty};
+use converge_core::model_selection::{ComplianceLevel, CostClass, DataSovereignty};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -1403,7 +1403,7 @@ providers:
         let selector = registry.to_model_selector();
 
         // Should have 1 LLM model (embedding is excluded)
-        let reqs = crate::provider_api::AgentRequirements::balanced();
+        let reqs = converge_core::model_selection::AgentRequirements::balanced();
         let satisfying = selector.list_satisfying(&reqs);
         assert_eq!(satisfying.len(), 1);
     }

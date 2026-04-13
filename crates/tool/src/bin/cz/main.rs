@@ -1,7 +1,5 @@
 // Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
-#![allow(deprecated)] // converge_core::llm::LlmProvider is deprecated upstream
-
 //! cz - Converge Zone CLI
 //!
 //! The workspace orchestrator that bootstraps, builds, and enforces governance.
@@ -24,6 +22,7 @@ use std::process::ExitCode;
 
 #[tokio::main]
 async fn main() -> ExitCode {
+    dotenv::dotenv().ok();
     let cli = Cli::parse();
 
     let result = match cli.command {

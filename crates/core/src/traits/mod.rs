@@ -101,7 +101,7 @@ pub use error::{CapabilityError, ErrorCategory};
 pub use llm::{
     BoxFuture, ChatBackend, ChatMessage, ChatRequest, ChatResponse, ChatRole, DynChatBackend,
     DynEmbedBackend, EmbedBackend, EmbedRequest, EmbedResponse, FinishReason, LlmBackend, LlmError,
-    TokenUsage,
+    ResponseFormat, TokenUsage, ToolCall, ToolDefinition,
 };
 
 // Recall (semantic memory) capability traits

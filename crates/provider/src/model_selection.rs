@@ -10,9 +10,10 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::provider_api::{
-    AgentRequirements, ComplianceLevel, CostClass, DataSovereignty, LlmError, ModelSelectorTrait,
+use converge_core::model_selection::{
+    AgentRequirements, ComplianceLevel, CostClass, DataSovereignty, ModelSelectorTrait,
 };
+use converge_core::traits::LlmError;
 
 /// Breakdown of fitness score components.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -77,6 +78,19 @@ pub enum RejectionReason {
     ReasoningRequired,
     /// Web search required but not supported.
     WebSearchRequired,
+    /// Tool use required but not supported.
+    ToolUseRequired,
+    /// Vision required but not supported.
+    VisionRequired,
+    /// Context window too small.
+    ContextWindowTooSmall {
+        model_context_tokens: usize,
+        min_required_tokens: usize,
+    },
+    /// Structured output required but not supported.
+    StructuredOutputRequired,
+    /// Code capability required but not supported.
+    CodeRequired,
     /// Data sovereignty mismatch.
     DataSovereigntyMismatch {
         required: DataSovereignty,
@@ -118,6 +132,21 @@ impl std::fmt::Display for RejectionReason {
             }
             Self::ReasoningRequired => write!(f, "reasoning required but not supported"),
             Self::WebSearchRequired => write!(f, "web search required but not supported"),
+            Self::ToolUseRequired => write!(f, "tool use required but not supported"),
+            Self::VisionRequired => write!(f, "vision required but not supported"),
+            Self::ContextWindowTooSmall {
+                model_context_tokens,
+                min_required_tokens,
+            } => {
+                write!(
+                    f,
+                    "context window {model_context_tokens} below required {min_required_tokens}"
+                )
+            }
+            Self::StructuredOutputRequired => {
+                write!(f, "structured output required but not supported")
+            }
+            Self::CodeRequired => write!(f, "code capability required but not supported"),
             Self::DataSovereigntyMismatch {
                 required,
                 model_has,
@@ -313,6 +342,28 @@ impl ModelMetadata {
             return false;
         }
 
+        if requirements.requires_tool_use && !self.supports_tool_use {
+            return false;
+        }
+
+        if requirements.requires_vision && !self.supports_vision {
+            return false;
+        }
+
+        if let Some(min_context_tokens) = requirements.min_context_tokens
+            && self.context_tokens < min_context_tokens
+        {
+            return false;
+        }
+
+        if requirements.requires_structured_output && !self.supports_structured_output {
+            return false;
+        }
+
+        if requirements.requires_code && !self.supports_code {
+            return false;
+        }
+
         // Quality check
         if self.quality < requirements.min_quality {
             return false;
@@ -442,6 +493,31 @@ impl ModelMetadata {
             return Some(RejectionReason::WebSearchRequired);
         }
 
+        if requirements.requires_tool_use && !self.supports_tool_use {
+            return Some(RejectionReason::ToolUseRequired);
+        }
+
+        if requirements.requires_vision && !self.supports_vision {
+            return Some(RejectionReason::VisionRequired);
+        }
+
+        if let Some(min_context_tokens) = requirements.min_context_tokens
+            && self.context_tokens < min_context_tokens
+        {
+            return Some(RejectionReason::ContextWindowTooSmall {
+                model_context_tokens: self.context_tokens,
+                min_required_tokens: min_context_tokens,
+            });
+        }
+
+        if requirements.requires_structured_output && !self.supports_structured_output {
+            return Some(RejectionReason::StructuredOutputRequired);
+        }
+
+        if requirements.requires_code && !self.supports_code {
+            return Some(RejectionReason::CodeRequired);
+        }
+
         // Quality check
         if self.quality < requirements.min_quality {
             return Some(RejectionReason::QualityTooLow {
@@ -522,6 +598,11 @@ impl ModelSelectorTrait for ModelSelector {
             .models
             .iter()
             .filter_map(|m| {
+                // Check if provider is available before considering the model
+                if !is_provider_available(&m.provider) {
+                    return None;
+                }
+
                 if m.satisfies(requirements) {
                     Some((m, m.fitness_score(requirements)))
                 } else {
@@ -531,17 +612,20 @@ impl ModelSelectorTrait for ModelSelector {
             .collect();
 
         if candidates.is_empty() {
-            return Err(LlmError::provider(format!(
-                "No model found satisfying requirements: cost <= {:?}, latency <= {}ms, reasoning = {}, web_search = {}, quality >= {:.2}, data_sovereignty = {:?}, compliance = {:?}, multilingual = {}",
-                requirements.max_cost_class,
-                requirements.max_latency_ms,
-                requirements.requires_reasoning,
-                requirements.requires_web_search,
-                requirements.min_quality,
-                requirements.data_sovereignty,
-                requirements.compliance,
-                requirements.requires_multilingual
-            )));
+            return Err(LlmError::ProviderError {
+                message: format!(
+                    "No model found satisfying requirements: cost <= {:?}, latency <= {}ms, reasoning = {}, web_search = {}, quality >= {:.2}, data_sovereignty = {:?}, compliance = {:?}, multilingual = {}",
+                    requirements.max_cost_class,
+                    requirements.max_latency_ms,
+                    requirements.requires_reasoning,
+                    requirements.requires_web_search,
+                    requirements.min_quality,
+                    requirements.data_sovereignty,
+                    requirements.compliance,
+                    requirements.requires_multilingual
+                ),
+                code: None,
+            });
         }
 
         // Sort by fitness score (descending)
@@ -639,15 +723,6 @@ impl Default for ModelSelector {
                     .with_multilingual(true)
                     .with_context_tokens(1_000_000),
                 #[cfg(feature = "gemini")]
-                ModelMetadata::new("gemini", "gemini-1.5-pro", CostClass::Medium, 3000, 0.88)
-                    .with_tool_use(true)
-                    .with_vision(true)
-                    .with_structured_output(true)
-                    .with_code(true)
-                    .with_reasoning(true)
-                    .with_multilingual(true)
-                    .with_context_tokens(2_000_000),
-                #[cfg(feature = "gemini")]
                 ModelMetadata::new("gemini", "gemini-2.0-flash", CostClass::VeryLow, 700, 0.82)
                     .with_tool_use(true)
                     .with_vision(true)
@@ -657,7 +732,7 @@ impl Default for ModelSelector {
                     .with_multilingual(true)
                     .with_context_tokens(1_000_000),
                 #[cfg(feature = "gemini")]
-                ModelMetadata::new("gemini", "gemini-2.5-flash", CostClass::VeryLow, 800, 0.82)
+                ModelMetadata::new("gemini", "gemini-2.5-flash", CostClass::VeryLow, 800, 0.84)
                     .with_tool_use(true)
                     .with_vision(true)
                     .with_structured_output(true)
@@ -665,30 +740,6 @@ impl Default for ModelSelector {
                     .with_reasoning(true)
                     .with_multilingual(true)
                     .with_context_tokens(1_000_000),
-                #[cfg(feature = "gemini")]
-                ModelMetadata::new(
-                    "gemini",
-                    "gemini-3-flash-preview",
-                    CostClass::VeryLow,
-                    900,
-                    0.90,
-                )
-                .with_tool_use(true)
-                .with_vision(true)
-                .with_structured_output(true)
-                .with_code(true)
-                .with_reasoning(true)
-                .with_multilingual(true)
-                .with_context_tokens(1_050_000),
-                #[cfg(feature = "gemini")]
-                ModelMetadata::new("gemini", "gemini-3-pro", CostClass::Medium, 2500, 0.96)
-                    .with_tool_use(true)
-                    .with_vision(true)
-                    .with_structured_output(true)
-                    .with_code(true)
-                    .with_reasoning(true)
-                    .with_multilingual(true)
-                    .with_context_tokens(2_000_000),
                 // Perplexity (web search)
                 #[cfg(feature = "perplexity")]
                 ModelMetadata::new(
@@ -731,22 +782,30 @@ impl Default for ModelSelector {
                 ModelMetadata::new(
                     "mistral",
                     "mistral-large-latest",
-                    CostClass::Low,
-                    3000,
-                    0.85,
-                )
-                .with_reasoning(true)
-                .with_multilingual(true),
-                #[cfg(feature = "mistral")]
-                ModelMetadata::new(
-                    "mistral",
-                    "mistral-medium-latest",
                     CostClass::Medium,
                     4000,
                     0.88,
                 )
                 .with_reasoning(true)
-                .with_multilingual(true),
+                .with_tool_use(true)
+                .with_structured_output(true)
+                .with_code(true)
+                .with_multilingual(true)
+                .with_context_tokens(128_000),
+                #[cfg(feature = "mistral")]
+                ModelMetadata::new(
+                    "mistral",
+                    "mistral-medium-latest",
+                    CostClass::Low,
+                    2500,
+                    0.82,
+                )
+                .with_reasoning(true)
+                .with_tool_use(true)
+                .with_structured_output(true)
+                .with_code(true)
+                .with_multilingual(true)
+                .with_context_tokens(32_000),
                 // DeepSeek
                 #[cfg(feature = "deepseek")]
                 ModelMetadata::new("deepseek", "deepseek-chat", CostClass::VeryLow, 1500, 0.75)
@@ -792,11 +851,26 @@ impl Default for ModelSelector {
     }
 }
 
+#[cfg(test)]
+static SKIP_AVAILABILITY_CHECK: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+#[cfg(test)]
+pub fn set_skip_availability_check(skip: bool) {
+    SKIP_AVAILABILITY_CHECK.store(skip, std::sync::atomic::Ordering::SeqCst);
+}
+
 /// Checks if a provider is available (has API key set).
 ///
 /// Returns `true` if the environment variable for the provider is set.
 #[must_use]
 pub fn is_provider_available(provider: &str) -> bool {
+    // In test mode, we can bypass availability checks to allow mock providers
+    #[cfg(test)]
+    if SKIP_AVAILABILITY_CHECK.load(std::sync::atomic::Ordering::SeqCst) {
+        return true;
+    }
+
     match provider {
         #[cfg(feature = "anthropic")]
         "anthropic" => std::env::var("ANTHROPIC_API_KEY").is_ok(),
@@ -1011,14 +1085,17 @@ impl ProviderRegistry {
                 .map(std::string::String::as_str)
                 .collect::<Vec<_>>()
                 .join(", ");
-            return Err(LlmError::provider(format!(
-                "No available model found satisfying requirements. Available providers: [{}]",
-                if available.is_empty() {
-                    "none (set API keys)".to_string()
-                } else {
-                    available
-                }
-            )));
+            return Err(LlmError::ProviderError {
+                message: format!(
+                    "No available model found satisfying requirements. Available providers: [{}]",
+                    if available.is_empty() {
+                        "none (set API keys)".to_string()
+                    } else {
+                        available
+                    }
+                ),
+                code: None,
+            });
         }
 
         // Sort by fitness score (descending)
@@ -1066,14 +1143,17 @@ impl ModelSelectorTrait for ProviderRegistry {
                 .map(std::string::String::as_str)
                 .collect::<Vec<_>>()
                 .join(", ");
-            return Err(LlmError::provider(format!(
-                "No available model found satisfying requirements. Available providers: [{}]",
-                if available.is_empty() {
-                    "none (set API keys)".to_string()
-                } else {
-                    available
-                }
-            )));
+            return Err(LlmError::ProviderError {
+                message: format!(
+                    "No available model found satisfying requirements. Available providers: [{}]",
+                    if available.is_empty() {
+                        "none (set API keys)".to_string()
+                    } else {
+                        available
+                    }
+                ),
+                code: None,
+            });
         }
 
         // Sort by fitness score (descending)
@@ -1094,12 +1174,29 @@ impl Default for ProviderRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::provider_api::CostClass;
+    use converge_core::model_selection::CostClass;
+    use parking_lot::Mutex;
+
+    static TEST_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
-    fn test_provider_availability_check() {
-        // This test depends on environment, so we just check the function exists
-        let _ = is_provider_available("anthropic");
+    fn test_gemini_rejection_when_unconfigured() {
+        let _guard = TEST_LOCK.lock();
+        set_skip_availability_check(false);
+
+        let selector = ModelSelector::new();
+        let reqs = AgentRequirements::balanced();
+
+        // If GEMINI_API_KEY is not set, Gemini should NOT be selected even if it matches
+        if std::env::var("GEMINI_API_KEY").is_err() {
+            let result = selector.select(&reqs);
+            if let Ok((provider, _)) = result {
+                assert_ne!(
+                    provider, "gemini",
+                    "Gemini should NOT be selected when API key is missing"
+                );
+            }
+        }
     }
 
     #[test]
@@ -1131,6 +1228,8 @@ mod tests {
 
     #[test]
     fn test_model_selection() {
+        let _guard = TEST_LOCK.lock();
+        set_skip_availability_check(true);
         let selector = ModelSelector::new();
         let reqs = AgentRequirements::fast_cheap();
 
@@ -1152,6 +1251,8 @@ mod tests {
 
     #[test]
     fn test_selection_requires_reasoning_and_web_search() {
+        let _guard = TEST_LOCK.lock();
+        set_skip_availability_check(true);
         let selector = ModelSelector::empty()
             .with_model(ModelMetadata::new(
                 "alpha",
@@ -1178,6 +1279,8 @@ mod tests {
 
     #[test]
     fn test_selection_respects_data_sovereignty_and_compliance() {
+        let _guard = TEST_LOCK.lock();
+        set_skip_availability_check(true);
         let selector = ModelSelector::empty()
             .with_model(
                 ModelMetadata::new("us", "us-model", CostClass::Low, 1500, 0.85)
@@ -1199,6 +1302,8 @@ mod tests {
 
     #[test]
     fn test_selection_requires_multilingual() {
+        let _guard = TEST_LOCK.lock();
+        set_skip_availability_check(true);
         let selector = ModelSelector::empty()
             .with_model(
                 ModelMetadata::new("mono", "fast", CostClass::VeryLow, 800, 0.80)
@@ -1213,5 +1318,49 @@ mod tests {
         let (provider, model) = selector.select(&reqs).unwrap();
         assert_eq!(provider, "multi");
         assert_eq!(model, "polyglot");
+    }
+
+    #[test]
+    fn test_selection_respects_context_window() {
+        let _guard = TEST_LOCK.lock();
+        set_skip_availability_check(true);
+        let selector = ModelSelector::empty()
+            .with_model(
+                ModelMetadata::new("gemini", "flash", CostClass::VeryLow, 700, 0.82)
+                    .with_context_tokens(1_000_000),
+            )
+            .with_model(
+                ModelMetadata::new("gemini", "pro", CostClass::Medium, 3000, 0.88)
+                    .with_context_tokens(2_000_000),
+            );
+
+        let reqs = AgentRequirements::balanced().with_min_context(2_000_000);
+        let (provider, model) = selector.select(&reqs).unwrap();
+        assert_eq!(provider, "gemini");
+        assert_eq!(model, "pro");
+    }
+
+    #[test]
+    fn test_selection_respects_tool_use_and_structured_output() {
+        let _guard = TEST_LOCK.lock();
+        set_skip_availability_check(true);
+        let selector = ModelSelector::empty()
+            .with_model(
+                ModelMetadata::new("plain", "text-only", CostClass::Low, 1000, 0.90)
+                    .with_tool_use(false)
+                    .with_structured_output(false),
+            )
+            .with_model(
+                ModelMetadata::new("agentic", "tool-json", CostClass::Low, 1200, 0.88)
+                    .with_tool_use(true)
+                    .with_structured_output(true),
+            );
+
+        let reqs = AgentRequirements::balanced()
+            .with_tool_use(true)
+            .with_structured_output(true);
+        let (provider, model) = selector.select(&reqs).unwrap();
+        assert_eq!(provider, "agentic");
+        assert_eq!(model, "tool-json");
     }
 }

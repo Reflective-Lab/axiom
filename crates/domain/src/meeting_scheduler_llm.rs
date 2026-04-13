@@ -5,17 +5,17 @@
 //! LLM-enabled Meeting Scheduler use case.
 
 use crate::llm_utils::{create_mock_llm_agent, requirements};
-use crate::mock::{MockProvider, MockResponse};
+use crate::mock::{MockChatBackend, MockResponse};
 use converge_core::{ContextKey, Engine};
 use std::sync::Arc;
 
-/// Sets up LLM-enabled Meeting Scheduler agents with mock providers (for testing).
+/// Sets up LLM-enabled Meeting Scheduler agents with mock backends (for testing).
 #[must_use]
-pub fn setup_mock_llm_meeting_scheduler(engine: &mut Engine) -> Vec<Arc<MockProvider>> {
+pub fn setup_mock_llm_meeting_scheduler(engine: &mut Engine) -> Vec<Arc<MockChatBackend>> {
     let mut providers = Vec::new();
 
     // Availability Retrieval Suggestor: Fast extraction
-    let (agent, provider) = create_mock_llm_agent(
+    let (agent, backend) = create_mock_llm_agent(
         "AvailabilityRetrievalAgent",
         "You extract participant availability from calendars.",
         "Extract availability: {context}",
@@ -28,10 +28,10 @@ pub fn setup_mock_llm_meeting_scheduler(engine: &mut Engine) -> Vec<Arc<MockProv
         )],
     );
     engine.register_suggestor(agent);
-    providers.push(provider);
+    providers.push(backend);
 
     // Time Zone Normalization Suggestor: Fast processing
-    let (agent, provider) = create_mock_llm_agent(
+    let (agent, backend) = create_mock_llm_agent(
         "TimeZoneNormalizationAgent",
         "You normalize time zones to UTC.",
         "Normalize time zones: {context}",
@@ -44,10 +44,10 @@ pub fn setup_mock_llm_meeting_scheduler(engine: &mut Engine) -> Vec<Arc<MockProv
         )],
     );
     engine.register_suggestor(agent);
-    providers.push(provider);
+    providers.push(backend);
 
     // Slot Optimization Suggestor: Analysis for optimization
-    let (agent, provider) = create_mock_llm_agent(
+    let (agent, backend) = create_mock_llm_agent(
         "SlotOptimizationAgent",
         "You optimize meeting time slots based on availability.",
         "Optimize slots: {context}",
@@ -60,7 +60,7 @@ pub fn setup_mock_llm_meeting_scheduler(engine: &mut Engine) -> Vec<Arc<MockProv
         )],
     );
     engine.register_suggestor(agent);
-    providers.push(provider);
+    providers.push(backend);
 
     providers
 }

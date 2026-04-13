@@ -40,6 +40,7 @@
 //! uniform error classification. This enables generic retry/circuit breaker logic.
 
 use super::error::{CapabilityError, ErrorCategory};
+use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
@@ -58,70 +59,80 @@ pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 /// Contains the conversation messages and generation parameters.
 #[derive(Debug, Clone)]
 pub struct ChatRequest {
-    /// The conversation messages (system, user, assistant).
     pub messages: Vec<ChatMessage>,
-    /// Maximum tokens to generate.
+    pub system: Option<String>,
+    pub tools: Vec<ToolDefinition>,
+    pub response_format: ResponseFormat,
     pub max_tokens: Option<u32>,
-    /// Sampling temperature (0.0 = deterministic, 1.0 = creative).
     pub temperature: Option<f32>,
-    /// Model identifier (e.g., "gpt-4", "claude-3-opus").
+    pub stop_sequences: Vec<String>,
     pub model: Option<String>,
 }
 
-/// A single message in a chat conversation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
-    /// Role of the message sender.
     pub role: ChatRole,
-    /// Content of the message.
     pub content: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tool_calls: Vec<ToolCall>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
 }
 
-/// Role of a chat message sender.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ChatRole {
-    /// System instructions.
     System,
-    /// User input.
     User,
-    /// Assistant (model) response.
     Assistant,
+    Tool,
 }
 
-/// Response from chat completion.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolDefinition {
+    pub name: String,
+    pub description: String,
+    pub parameters: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolCall {
+    pub id: String,
+    pub name: String,
+    pub arguments: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResponseFormat {
+    #[default]
+    Text,
+    Json,
+}
+
 #[derive(Debug, Clone)]
 pub struct ChatResponse {
-    /// Generated message content.
     pub content: String,
-    /// Token usage statistics.
+    pub tool_calls: Vec<ToolCall>,
     pub usage: Option<TokenUsage>,
-    /// Model that generated the response.
     pub model: Option<String>,
-    /// Reason the generation stopped.
     pub finish_reason: Option<FinishReason>,
 }
 
-/// Token usage statistics.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct TokenUsage {
-    /// Tokens in the prompt.
     pub prompt_tokens: u32,
-    /// Tokens in the completion.
     pub completion_tokens: u32,
-    /// Total tokens used.
     pub total_tokens: u32,
 }
 
-/// Reason generation stopped.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum FinishReason {
-    /// Natural completion.
     Stop,
-    /// Hit max_tokens limit.
     Length,
-    /// Content filter triggered.
     ContentFilter,
-    /// Tool/function call requested.
+    StopSequence,
     ToolCalls,
 }
 

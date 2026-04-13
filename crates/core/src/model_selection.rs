@@ -27,7 +27,7 @@
 //! This separation ensures core remains provider-agnostic while allowing
 //! injection of provider-specific selection logic.
 
-use crate::llm::LlmError;
+use crate::traits::LlmError;
 use serde::{Deserialize, Serialize};
 
 // =============================================================================
@@ -35,7 +35,7 @@ use serde::{Deserialize, Serialize};
 // =============================================================================
 
 /// Data jurisdiction requirements - where can data legally reside?
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum Jurisdiction {
     #[default]
     Unrestricted,
@@ -74,7 +74,9 @@ fn is_trusted_jurisdiction(region: &str) -> bool {
 // =============================================================================
 
 /// Latency class requirements.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Serialize, Deserialize,
+)]
 pub enum LatencyClass {
     Realtime,
     #[default]
@@ -105,7 +107,9 @@ impl LatencyClass {
 // =============================================================================
 
 /// Cost tier preference.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Serialize, Deserialize,
+)]
 pub enum CostTier {
     Minimal,
     #[default]
@@ -118,7 +122,7 @@ pub enum CostTier {
 // =============================================================================
 
 /// Task complexity hint.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum TaskComplexity {
     Extraction,
     #[default]
@@ -149,7 +153,7 @@ impl TaskComplexity {
 // =============================================================================
 
 /// Required model capabilities.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct RequiredCapabilities {
     pub tool_use: bool,
@@ -304,7 +308,7 @@ pub enum ComplianceLevel {
 // =============================================================================
 
 /// Selection criteria using orthogonal dimensions.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct SelectionCriteria {
     pub jurisdiction: Jurisdiction,
     pub latency: LatencyClass,
@@ -405,13 +409,18 @@ impl SelectionCriteria {
     }
 
     #[must_use]
-    pub fn to_legacy_requirements(&self) -> AgentRequirements {
+    pub fn to_agent_requirements(&self) -> AgentRequirements {
         let user_region = self.user_region.as_deref().unwrap_or("US");
         AgentRequirements {
             max_cost_class: CostClass::from_tier(self.cost),
             max_latency_ms: self.latency.max_latency_ms(),
             requires_reasoning: self.complexity.requires_reasoning(),
             requires_web_search: self.capabilities.web_search,
+            requires_tool_use: self.capabilities.tool_use,
+            requires_vision: self.capabilities.vision,
+            min_context_tokens: self.capabilities.min_context_tokens,
+            requires_structured_output: self.capabilities.structured_output,
+            requires_code: self.capabilities.code,
             min_quality: self.complexity.min_quality_hint(),
             data_sovereignty: DataSovereignty::from_jurisdiction(self.jurisdiction, user_region),
             compliance: self.compliance.unwrap_or(ComplianceLevel::None),
@@ -431,6 +440,11 @@ pub struct AgentRequirements {
     pub max_latency_ms: u32,
     pub requires_reasoning: bool,
     pub requires_web_search: bool,
+    pub requires_tool_use: bool,
+    pub requires_vision: bool,
+    pub min_context_tokens: Option<usize>,
+    pub requires_structured_output: bool,
+    pub requires_code: bool,
     pub min_quality: f64,
     pub data_sovereignty: DataSovereignty,
     pub compliance: ComplianceLevel,
@@ -445,6 +459,11 @@ impl AgentRequirements {
             max_latency_ms: 2000,
             requires_reasoning: false,
             requires_web_search: false,
+            requires_tool_use: false,
+            requires_vision: false,
+            min_context_tokens: None,
+            requires_structured_output: false,
+            requires_code: false,
             min_quality: 0.6,
             data_sovereignty: DataSovereignty::Any,
             compliance: ComplianceLevel::None,
@@ -459,6 +478,11 @@ impl AgentRequirements {
             max_latency_ms: 30000,
             requires_reasoning: true,
             requires_web_search: true,
+            requires_tool_use: false,
+            requires_vision: false,
+            min_context_tokens: None,
+            requires_structured_output: false,
+            requires_code: false,
             min_quality: 0.9,
             data_sovereignty: DataSovereignty::Any,
             compliance: ComplianceLevel::None,
@@ -473,6 +497,11 @@ impl AgentRequirements {
             max_latency_ms: 5000,
             requires_reasoning: false,
             requires_web_search: false,
+            requires_tool_use: false,
+            requires_vision: false,
+            min_context_tokens: None,
+            requires_structured_output: false,
+            requires_code: false,
             min_quality: 0.7,
             data_sovereignty: DataSovereignty::Any,
             compliance: ComplianceLevel::None,
@@ -487,6 +516,11 @@ impl AgentRequirements {
             max_latency_ms,
             requires_reasoning,
             requires_web_search: false,
+            requires_tool_use: false,
+            requires_vision: false,
+            min_context_tokens: None,
+            requires_structured_output: false,
+            requires_code: false,
             min_quality: 0.7,
             data_sovereignty: DataSovereignty::Any,
             compliance: ComplianceLevel::None,
@@ -501,6 +535,11 @@ impl AgentRequirements {
             max_latency_ms: 10000,
             requires_reasoning: true,
             requires_web_search: false,
+            requires_tool_use: false,
+            requires_vision: false,
+            min_context_tokens: None,
+            requires_structured_output: false,
+            requires_code: false,
             min_quality: 0.9,
             data_sovereignty: DataSovereignty::Any,
             compliance: ComplianceLevel::None,
@@ -516,6 +555,36 @@ impl AgentRequirements {
     #[must_use]
     pub fn with_web_search(mut self, requires: bool) -> Self {
         self.requires_web_search = requires;
+        self
+    }
+
+    #[must_use]
+    pub fn with_tool_use(mut self, requires: bool) -> Self {
+        self.requires_tool_use = requires;
+        self
+    }
+
+    #[must_use]
+    pub fn with_vision(mut self, requires: bool) -> Self {
+        self.requires_vision = requires;
+        self
+    }
+
+    #[must_use]
+    pub fn with_min_context(mut self, tokens: usize) -> Self {
+        self.min_context_tokens = Some(tokens);
+        self
+    }
+
+    #[must_use]
+    pub fn with_structured_output(mut self, requires: bool) -> Self {
+        self.requires_structured_output = requires;
+        self
+    }
+
+    #[must_use]
+    pub fn with_code(mut self, requires: bool) -> Self {
+        self.requires_code = requires;
         self
     }
 
@@ -545,7 +614,7 @@ impl AgentRequirements {
 
     #[must_use]
     pub fn from_criteria(criteria: &SelectionCriteria) -> Self {
-        criteria.to_legacy_requirements()
+        criteria.to_agent_requirements()
     }
 }
 
@@ -619,15 +688,28 @@ mod tests {
     }
 
     #[test]
-    fn test_selection_criteria_to_legacy() {
+    fn test_selection_criteria_to_agent_requirements() {
         let criteria = SelectionCriteria::default()
             .with_latency(LatencyClass::Background)
             .with_cost(CostTier::Premium)
-            .with_complexity(TaskComplexity::Reasoning);
-        let legacy = criteria.to_legacy_requirements();
-        assert_eq!(legacy.max_latency_ms, 30000);
-        assert!(legacy.requires_reasoning);
-        assert!(legacy.min_quality >= 0.8);
+            .with_complexity(TaskComplexity::Reasoning)
+            .with_capabilities(
+                RequiredCapabilities::none()
+                    .with_tool_use()
+                    .with_vision()
+                    .with_min_context(128_000)
+                    .with_structured_output()
+                    .with_code(),
+            );
+        let requirements = criteria.to_agent_requirements();
+        assert_eq!(requirements.max_latency_ms, 30000);
+        assert!(requirements.requires_reasoning);
+        assert!(requirements.min_quality >= 0.8);
+        assert!(requirements.requires_tool_use);
+        assert!(requirements.requires_vision);
+        assert_eq!(requirements.min_context_tokens, Some(128_000));
+        assert!(requirements.requires_structured_output);
+        assert!(requirements.requires_code);
     }
 
     #[test]

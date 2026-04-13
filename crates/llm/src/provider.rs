@@ -1,12 +1,10 @@
 // Copyright 2024-2026 Reflective Labs
 //
-// LLM Provider Abstraction - Migrated from converge-core for purity.
+// Synchronous chat adapter utilities for legacy-free suggestor integration.
 //
-// This module provides extensions to the core LlmProvider trait,
-// including agent wrappers, routers, and response parsers.
-//
-// The core trait (LlmProvider) remains in converge-core and is re-exported
-// from this crate for convenience.
+// This module provides sync wrappers and helpers around the canonical
+// converge_core chat request/response types. The canonical async boundary is
+// `converge_core::traits::ChatBackend`.
 
 use std::fmt;
 use std::sync::Arc;
@@ -14,30 +12,23 @@ use std::sync::Arc;
 // Import types from converge-core using public re-exports
 use converge_core::{AgentEffect, ContextKey, ProposedFact, Suggestor};
 
-// Re-export core LLM types - these are the canonical types
-// NOTE: LlmProvider is deprecated in converge-core. We define ChatProvider below as the replacement.
-pub use converge_core::llm::{
-    FinishReason, LlmError, LlmErrorKind, LlmRequest, LlmResponse, TokenUsage,
+// Re-export core LLM types from traits module - these are the canonical types
+pub use converge_core::traits::{
+    ChatMessage, ChatRequest, ChatResponse, ChatRole, FinishReason, LlmError, ResponseFormat,
+    TokenUsage, ToolCall, ToolDefinition,
 };
 
 // ============================================================================
-// ChatProvider Trait (replacement for deprecated LlmProvider)
+// SyncChatProvider Trait
 // ============================================================================
 
 /// Synchronous chat completion provider.
 ///
-/// This trait replaces the deprecated `LlmProvider` from converge-core.
-/// It provides a simple sync interface for LLM completions.
+/// Provides a simple sync interface over the canonical chat request/response
+/// types for call sites that cannot adopt `ChatBackend` directly.
 ///
 /// For async usage, implement `converge_core::traits::ChatBackend` instead.
-///
-/// # Blanket Implementation
-///
-/// Any type implementing the deprecated `converge_core::llm::LlmProvider`
-/// automatically gets a `ChatProvider` implementation via a blanket impl.
-/// This allows existing providers (like `AnthropicProvider`, `OpenAiProvider`)
-/// to work with the new trait without changes.
-pub trait ChatProvider: Send + Sync {
+pub trait SyncChatProvider: Send + Sync {
     /// Provider name for identification.
     fn name(&self) -> &str;
 
@@ -45,34 +36,7 @@ pub trait ChatProvider: Send + Sync {
     fn model(&self) -> &str;
 
     /// Complete a chat request.
-    fn complete(&self, request: &LlmRequest) -> Result<LlmResponse, LlmError>;
-}
-
-// ============================================================================
-// Blanket Implementation: LlmProvider -> ChatProvider
-// ============================================================================
-
-/// Blanket implementation that bridges deprecated LlmProvider to ChatProvider.
-///
-/// This allows existing provider implementations (AnthropicProvider, OpenAiProvider)
-/// that implement the deprecated `converge_core::llm::LlmProvider` to automatically
-/// work with the new `ChatProvider` trait.
-#[allow(deprecated)]
-impl<T> ChatProvider for T
-where
-    T: converge_core::llm::LlmProvider + Send + Sync,
-{
-    fn name(&self) -> &str {
-        converge_core::llm::LlmProvider::name(self)
-    }
-
-    fn model(&self) -> &str {
-        converge_core::llm::LlmProvider::model(self)
-    }
-
-    fn complete(&self, request: &LlmRequest) -> Result<LlmResponse, LlmError> {
-        converge_core::llm::LlmProvider::complete(self, request)
-    }
+    fn complete(&self, request: &ChatRequest) -> Result<ChatResponse, LlmError>;
 }
 
 // Import prompt types from our local prompt_dsl module
@@ -103,7 +67,9 @@ impl ProviderError {
     #[must_use]
     pub fn auth(message: impl Into<String>) -> Self {
         Self {
-            inner: LlmError::auth(message),
+            inner: LlmError::AuthDenied {
+                message: message.into(),
+            },
         }
     }
 
@@ -111,7 +77,10 @@ impl ProviderError {
     #[must_use]
     pub fn rate_limit(message: impl Into<String>) -> Self {
         Self {
-            inner: LlmError::rate_limit(message),
+            inner: LlmError::RateLimited {
+                retry_after: std::time::Duration::from_secs(60),
+                message: Some(message.into()),
+            },
         }
     }
 
@@ -119,15 +88,9 @@ impl ProviderError {
     #[must_use]
     pub fn network(message: impl Into<String>) -> Self {
         Self {
-            inner: LlmError::network(message),
-        }
-    }
-
-    /// Creates a parse error.
-    #[must_use]
-    pub fn parse(message: impl Into<String>) -> Self {
-        Self {
-            inner: LlmError::parse(message),
+            inner: LlmError::NetworkError {
+                message: message.into(),
+            },
         }
     }
 
@@ -135,20 +98,18 @@ impl ProviderError {
     #[must_use]
     pub fn provider(message: impl Into<String>) -> Self {
         Self {
-            inner: LlmError::provider(message),
+            inner: LlmError::ProviderError {
+                message: message.into(),
+                code: None,
+            },
         }
     }
 
     /// Returns whether this error is retryable.
     #[must_use]
     pub fn is_retryable(&self) -> bool {
-        self.inner.retryable
-    }
-
-    /// Returns the error kind.
-    #[must_use]
-    pub fn kind(&self) -> LlmErrorKind {
-        self.inner.kind
+        use converge_core::traits::CapabilityError;
+        self.inner.is_retryable()
     }
 }
 
@@ -166,11 +127,8 @@ impl From<LlmError> for ProviderError {
     }
 }
 
-// Re-export ProviderErrorKind as alias for LlmErrorKind
-pub use converge_core::llm::LlmErrorKind as ProviderErrorKind;
-
-// Re-export FinishReason with provider alias
-pub use converge_core::llm::FinishReason as ProviderFinishReason;
+/// Alias for `FinishReason` from core traits.
+pub use converge_core::traits::FinishReason as ProviderFinishReason;
 
 // =============================================================================
 // MOCK PROVIDER (extended version for testing)
@@ -250,7 +208,7 @@ impl MockProvider {
     }
 }
 
-impl ChatProvider for MockProvider {
+impl SyncChatProvider for MockProvider {
     fn name(&self) -> &str {
         "mock"
     }
@@ -259,14 +217,17 @@ impl ChatProvider for MockProvider {
         &self.model
     }
 
-    fn complete(&self, _request: &LlmRequest) -> Result<LlmResponse, LlmError> {
+    fn complete(&self, _request: &ChatRequest) -> Result<ChatResponse, LlmError> {
         self.call_count
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         let mut responses = self.responses.lock().expect("MockProvider mutex poisoned");
 
         if responses.is_empty() {
-            return Err(LlmError::provider("MockProvider: no more responses"));
+            return Err(LlmError::ProviderError {
+                message: "MockProvider: no more responses".into(),
+                code: None,
+            });
         }
 
         let response = responses.remove(0);
@@ -275,15 +236,16 @@ impl ChatProvider for MockProvider {
             return Err(error);
         }
 
-        Ok(LlmResponse {
+        Ok(ChatResponse {
             content: response.content,
-            model: self.model.clone(),
-            usage: TokenUsage {
+            tool_calls: Vec::new(),
+            model: Some(self.model.clone()),
+            usage: Some(TokenUsage {
                 prompt_tokens: 10,
                 completion_tokens: 20,
                 total_tokens: 30,
-            },
-            finish_reason: FinishReason::Stop,
+            }),
+            finish_reason: Some(FinishReason::Stop),
         })
     }
 }
@@ -331,7 +293,7 @@ impl Default for LlmAgentConfig {
 /// Parser for LLM responses into proposals.
 pub trait ResponseParser: Send + Sync {
     /// Parses an LLM response into proposals.
-    fn parse(&self, response: &LlmResponse, target_key: ContextKey) -> Vec<ProposedFact>;
+    fn parse(&self, response: &ChatResponse, target_key: ContextKey) -> Vec<ProposedFact>;
 }
 
 /// Simple parser that creates one proposal from the entire response.
@@ -352,7 +314,7 @@ impl Default for SimpleParser {
 }
 
 impl ResponseParser for SimpleParser {
-    fn parse(&self, response: &LlmResponse, target_key: ContextKey) -> Vec<ProposedFact> {
+    fn parse(&self, response: &ChatResponse, target_key: ContextKey) -> Vec<ProposedFact> {
         let content = response.content.trim();
         if content.is_empty() {
             return Vec::new();
@@ -365,7 +327,7 @@ impl ResponseParser for SimpleParser {
             id,
             content: content.to_string(),
             confidence: self.confidence,
-            provenance: response.model.clone(),
+            provenance: response.model.clone().unwrap_or_default(),
         }]
     }
 }
@@ -393,7 +355,8 @@ impl MultiLineParser {
 }
 
 impl ResponseParser for MultiLineParser {
-    fn parse(&self, response: &LlmResponse, target_key: ContextKey) -> Vec<ProposedFact> {
+    fn parse(&self, response: &ChatResponse, target_key: ContextKey) -> Vec<ProposedFact> {
+        let model = response.model.clone().unwrap_or_default();
         response
             .content
             .split(&self.delimiter)
@@ -405,7 +368,7 @@ impl ResponseParser for MultiLineParser {
                 id: format!("{}-{}", self.id_prefix, i),
                 content: content.to_string(),
                 confidence: self.confidence,
-                provenance: response.model.clone(),
+                provenance: model.clone(),
             })
             .collect()
     }
@@ -414,7 +377,7 @@ impl ResponseParser for MultiLineParser {
 /// An agent powered by an LLM provider.
 pub struct ProviderAgent {
     name: String,
-    provider: Arc<dyn ChatProvider>,
+    provider: Arc<dyn SyncChatProvider>,
     config: LlmAgentConfig,
     parser: Arc<dyn ResponseParser>,
     full_dependencies: Vec<ContextKey>,
@@ -424,7 +387,7 @@ impl ProviderAgent {
     /// Creates a new LLM agent.
     pub fn new(
         name: impl Into<String>,
-        provider: Arc<dyn ChatProvider>,
+        provider: Arc<dyn SyncChatProvider>,
         config: LlmAgentConfig,
     ) -> Self {
         let name_str = name.into();
@@ -527,10 +490,26 @@ impl Suggestor for ProviderAgent {
     fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let prompt = self.build_prompt(ctx);
 
-        let request = LlmRequest::new(prompt)
-            .with_system(self.config.system_prompt.clone())
-            .with_max_tokens(self.config.max_tokens)
-            .with_temperature(self.config.temperature);
+        let request = ChatRequest {
+            messages: vec![ChatMessage {
+                role: ChatRole::User,
+                content: prompt,
+                tool_calls: Vec::new(),
+                tool_call_id: None,
+            }],
+            system: if self.config.system_prompt.is_empty() {
+                None
+            } else {
+                Some(self.config.system_prompt.clone())
+            },
+            tools: Vec::new(),
+            response_format: ResponseFormat::Text,
+            max_tokens: Some(self.config.max_tokens),
+            #[allow(clippy::cast_possible_truncation)]
+            temperature: Some(self.config.temperature as f32),
+            stop_sequences: Vec::new(),
+            model: None,
+        };
 
         match self.provider.complete(&request) {
             Ok(response) => {
@@ -600,8 +579,8 @@ impl fmt::Display for LlmRole {
 
 /// Routes LLM requests to appropriate providers based on role.
 pub struct LlmRouter {
-    providers: std::collections::HashMap<LlmRole, Arc<dyn ChatProvider>>,
-    default: Option<Arc<dyn ChatProvider>>,
+    providers: std::collections::HashMap<LlmRole, Arc<dyn SyncChatProvider>>,
+    default: Option<Arc<dyn SyncChatProvider>>,
 }
 
 impl Default for LlmRouter {
@@ -622,21 +601,21 @@ impl LlmRouter {
 
     /// Registers a provider for a specific role.
     #[must_use]
-    pub fn with_provider(mut self, role: LlmRole, provider: Arc<dyn ChatProvider>) -> Self {
+    pub fn with_provider(mut self, role: LlmRole, provider: Arc<dyn SyncChatProvider>) -> Self {
         self.providers.insert(role, provider);
         self
     }
 
     /// Sets the default provider for unmapped roles.
     #[must_use]
-    pub fn with_default(mut self, provider: Arc<dyn ChatProvider>) -> Self {
+    pub fn with_default(mut self, provider: Arc<dyn SyncChatProvider>) -> Self {
         self.default = Some(provider);
         self
     }
 
     /// Gets the provider for a role, falling back to default.
     #[must_use]
-    pub fn get(&self, role: LlmRole) -> Option<Arc<dyn ChatProvider>> {
+    pub fn get(&self, role: LlmRole) -> Option<Arc<dyn SyncChatProvider>> {
         self.providers
             .get(&role)
             .cloned()
@@ -656,9 +635,10 @@ impl LlmRouter {
     }
 
     /// Completes a request using the provider for the given role.
-    pub fn complete(&self, role: LlmRole, request: &LlmRequest) -> Result<LlmResponse, LlmError> {
-        let provider = self.get(role).ok_or_else(|| {
-            LlmError::provider(format!("No provider configured for role: {role}"))
+    pub fn complete(&self, role: LlmRole, request: &ChatRequest) -> Result<ChatResponse, LlmError> {
+        let provider = self.get(role).ok_or_else(|| LlmError::ProviderError {
+            message: format!("No provider configured for role: {role}"),
+            code: None,
         })?;
         provider.complete(request)
     }
@@ -757,7 +737,25 @@ mod tests {
             MockResponse::success("Second response", 0.9),
         ]);
 
-        let request = LlmRequest::new("test");
+        fn test_request(content: &str) -> ChatRequest {
+            ChatRequest {
+                messages: vec![ChatMessage {
+                    role: ChatRole::User,
+                    content: content.to_string(),
+                    tool_calls: Vec::new(),
+                    tool_call_id: None,
+                }],
+                system: None,
+                tools: Vec::new(),
+                response_format: ResponseFormat::Text,
+                max_tokens: None,
+                temperature: None,
+                stop_sequences: Vec::new(),
+                model: None,
+            }
+        }
+
+        let request = test_request("test");
 
         let r1 = provider.complete(&request).unwrap();
         assert_eq!(r1.content, "First response");
@@ -770,17 +768,31 @@ mod tests {
 
     #[test]
     fn mock_provider_can_return_errors() {
-        let provider = MockProvider::new(vec![MockResponse::failure(LlmError::rate_limit(
-            "Too many requests",
-        ))]);
+        let provider = MockProvider::new(vec![MockResponse::failure(LlmError::RateLimited {
+            retry_after: std::time::Duration::from_secs(60),
+            message: Some("Too many requests".into()),
+        })]);
 
-        let request = LlmRequest::new("test");
+        let request = ChatRequest {
+            messages: vec![ChatMessage {
+                role: ChatRole::User,
+                content: "test".to_string(),
+                tool_calls: Vec::new(),
+                tool_call_id: None,
+            }],
+            system: None,
+            tools: Vec::new(),
+            response_format: ResponseFormat::Text,
+            max_tokens: None,
+            temperature: None,
+            stop_sequences: Vec::new(),
+            model: None,
+        };
         let result = provider.complete(&request);
 
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind, LlmErrorKind::RateLimit);
-        assert!(err.retryable);
+        assert!(matches!(err, LlmError::RateLimited { .. }));
     }
 
     #[test]
@@ -798,7 +810,21 @@ mod tests {
             .with_provider(LlmRole::FastAnalysis, gemini)
             .with_provider(LlmRole::Synthesis, claude);
 
-        let request = LlmRequest::new("test");
+        let request = ChatRequest {
+            messages: vec![ChatMessage {
+                role: ChatRole::User,
+                content: "test".to_string(),
+                tool_calls: Vec::new(),
+                tool_call_id: None,
+            }],
+            system: None,
+            tools: Vec::new(),
+            response_format: ResponseFormat::Text,
+            max_tokens: None,
+            temperature: None,
+            stop_sequences: Vec::new(),
+            model: None,
+        };
 
         let fast_response = router.complete(LlmRole::FastAnalysis, &request).unwrap();
         assert_eq!(fast_response.content, "Gemini response");

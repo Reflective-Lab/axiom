@@ -437,7 +437,7 @@ impl VectorRecall for LanceStore {
 
         if table_names.contains(&self.table_name) {
             self.runtime
-                .block_on(self.db.drop_table(&self.table_name))
+                .block_on(self.db.drop_table(&self.table_name, &[]))
                 .map_err(|e| CapabilityError::store(format!("Failed to drop table: {e}")))?;
         }
 

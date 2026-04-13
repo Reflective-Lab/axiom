@@ -2,24 +2,102 @@
 // SPDX-License-Identifier: MIT
 // See LICENSE file in the project root for full license information.
 
-//! Utilities for creating LLM-enabled agents with model selection.
+//! Utilities for creating LLM-enabled suggestors backed by a chat backend.
 //!
-//! This module provides helpers for setting up LLM agents that follow
-//! the Converge pattern for model selection based on agent requirements.
+//! This module provides helpers for setting up suggestors that delegate
+//! to a `ChatBackend` for LLM completions.
 
-use crate::mock::{MockProvider, MockResponse};
+use crate::mock::{MockChatBackend, MockResponse};
 use converge_core::{
-    ContextKey,
-    llm::{LlmAgent, LlmAgentConfig},
+    AgentEffect, ContextKey, ContextView, ProposedFact,
     model_selection::{AgentRequirements, CostClass},
     prompt::PromptFormat,
+    traits::{ChatMessage, ChatRequest, ChatRole, DynChatBackend, ResponseFormat},
 };
 use std::sync::Arc;
 
-/// Creates an LLM agent with a mock provider (for testing).
+/// A `Suggestor` that delegates to a `DynChatBackend` for LLM completions.
 ///
-/// This bypasses model selection and uses a mock provider directly.
-/// Returns both the agent and the mock provider so you can configure responses.
+/// Bridges async `ChatBackend::chat()` into the sync `Suggestor::execute()`
+/// contract using `futures::executor::block_on`.
+pub struct ChatAgentSuggestor {
+    name: String,
+    system_prompt: String,
+    prompt_template: String,
+    #[allow(dead_code)]
+    prompt_format: PromptFormat,
+    target_key: ContextKey,
+    deps: Vec<ContextKey>,
+    default_confidence: f64,
+    max_tokens: u32,
+    temperature: f32,
+    backend: Arc<dyn DynChatBackend>,
+}
+
+impl converge_core::Suggestor for ChatAgentSuggestor {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn dependencies(&self) -> &[ContextKey] {
+        &self.deps
+    }
+
+    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+        let result_id = format!("{}-result", self.name);
+        !ctx.get(self.target_key).iter().any(|f| f.id == result_id)
+    }
+
+    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+        let context_str = ctx
+            .get(self.target_key)
+            .iter()
+            .map(|f| f.content.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let user_content = self.prompt_template.replace("{context}", &context_str);
+
+        let request = ChatRequest {
+            messages: vec![ChatMessage {
+                role: ChatRole::User,
+                content: user_content,
+                tool_calls: Vec::new(),
+                tool_call_id: None,
+            }],
+            system: Some(self.system_prompt.clone()),
+            model: None,
+            temperature: Some(self.temperature),
+            max_tokens: Some(self.max_tokens),
+            stop_sequences: Vec::new(),
+            tools: Vec::new(),
+            response_format: ResponseFormat::Text,
+        };
+
+        let result = futures::executor::block_on(self.backend.chat(request));
+
+        match result {
+            Ok(response) => {
+                let proposal = ProposedFact::new(
+                    self.target_key,
+                    format!("{}-result", self.name),
+                    response.content,
+                    &self.name,
+                )
+                .with_confidence(self.default_confidence);
+                AgentEffect::with_proposal(proposal)
+            }
+            Err(e) => {
+                tracing::warn!(agent = %self.name, error = %e, "ChatAgentSuggestor failed");
+                AgentEffect::default()
+            }
+        }
+    }
+}
+
+/// Creates a `ChatAgentSuggestor` backed by a `MockChatBackend` (for testing).
+///
+/// Returns both the suggestor and the mock backend so callers can inspect call counts.
 #[must_use]
 pub fn create_mock_llm_agent(
     name: impl Into<String>,
@@ -29,26 +107,23 @@ pub fn create_mock_llm_agent(
     dependencies: Vec<ContextKey>,
     _requirements: AgentRequirements,
     mock_responses: Vec<MockResponse>,
-) -> (LlmAgent, Arc<MockProvider>) {
-    // Create mock provider with responses
-    let mock_provider = Arc::new(MockProvider::new(mock_responses));
+) -> (ChatAgentSuggestor, Arc<MockChatBackend>) {
+    let mock_backend = Arc::new(MockChatBackend::new(mock_responses));
 
-    // Create agent config
-    let config = LlmAgentConfig {
+    let suggestor = ChatAgentSuggestor {
+        name: name.into(),
         system_prompt: system_prompt.into(),
         prompt_template: prompt_template.into(),
         prompt_format: PromptFormat::Edn,
         target_key,
-        dependencies,
+        deps: dependencies,
         default_confidence: 0.7,
         max_tokens: 1024,
-        temperature: 0.7,
-        requirements: None,
+        temperature: 0.7_f32,
+        backend: mock_backend.clone(),
     };
 
-    let name_str = name.into();
-    let agent = LlmAgent::new(name_str, mock_provider.clone(), config);
-    (agent, mock_provider)
+    (suggestor, mock_backend)
 }
 
 /// Common requirement presets for different agent types.

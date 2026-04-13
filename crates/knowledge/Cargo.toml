@@ -51,9 +51,6 @@ rand.workspace = true
 # HTTP client for OpenAI embeddings
 reqwest.workspace = true
 
-# PDF text extraction
-pdf-extract.workspace = true
-
 # Pattern matching for routing
 regex.workspace = true
 

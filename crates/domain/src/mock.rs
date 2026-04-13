@@ -1,16 +1,17 @@
 // Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 //
-// Mock LLM provider for domain testing.
-// Extracted from converge-core (removed in 1.0.2) for use in converge-domain tests.
+// Mock chat backend for domain testing.
+// Uses the canonical ChatBackend trait from converge-core.
 
-use converge_core::llm::{
-    FinishReason, LlmError, LlmProvider, LlmRequest, LlmResponse, TokenUsage,
+use converge_core::traits::{
+    ChatBackend, ChatRequest, ChatResponse, FinishReason, LlmError, TokenUsage,
 };
+use std::future::Ready;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-/// Pre-configured response for `MockProvider`.
+/// Pre-configured response for `MockChatBackend`.
 #[derive(Debug, Clone)]
 pub struct MockResponse {
     /// The content to return.
@@ -47,17 +48,17 @@ impl MockResponse {
     }
 }
 
-/// Mock LLM provider for testing.
+/// Mock chat backend for testing.
 ///
 /// Returns pre-configured responses in order. Useful for deterministic tests.
-pub struct MockProvider {
+pub struct MockChatBackend {
     model: String,
     responses: Mutex<Vec<MockResponse>>,
     call_count: AtomicUsize,
 }
 
-impl MockProvider {
-    /// Creates a new mock provider with pre-configured responses.
+impl MockChatBackend {
+    /// Creates a new mock backend with pre-configured responses.
     #[must_use]
     pub fn new(responses: Vec<MockResponse>) -> Self {
         Self {
@@ -77,32 +78,25 @@ impl MockProvider {
         Self::new(responses)
     }
 
-    /// Returns the number of times `complete` was called.
+    /// Returns the number of times `chat` was called.
     #[must_use]
     pub fn call_count(&self) -> usize {
         self.call_count.load(Ordering::SeqCst)
     }
-}
 
-impl LlmProvider for MockProvider {
-    fn name(&self) -> &'static str {
-        "mock"
-    }
-
-    fn model(&self) -> &str {
-        &self.model
-    }
-
-    fn complete(&self, _request: &LlmRequest) -> Result<LlmResponse, LlmError> {
+    fn next_response(&self) -> Result<ChatResponse, LlmError> {
         self.call_count.fetch_add(1, Ordering::SeqCst);
 
-        let mut responses = self
-            .responses
-            .lock()
-            .map_err(|_| LlmError::provider("MockProvider: mutex poisoned"))?;
+        let mut responses = self.responses.lock().map_err(|_| LlmError::ProviderError {
+            message: "MockChatBackend: mutex poisoned".into(),
+            code: None,
+        })?;
 
         if responses.is_empty() {
-            return Err(LlmError::provider("MockProvider: no more responses"));
+            return Err(LlmError::ProviderError {
+                message: "MockChatBackend: no more responses".into(),
+                code: None,
+            });
         }
 
         let response = responses.remove(0);
@@ -111,15 +105,24 @@ impl LlmProvider for MockProvider {
             return Err(error);
         }
 
-        Ok(LlmResponse {
+        Ok(ChatResponse {
             content: response.content,
-            model: self.model.clone(),
-            usage: TokenUsage {
+            tool_calls: Vec::new(),
+            model: Some(self.model.clone()),
+            usage: Some(TokenUsage {
                 prompt_tokens: 10,
                 completion_tokens: 20,
                 total_tokens: 30,
-            },
-            finish_reason: FinishReason::Stop,
+            }),
+            finish_reason: Some(FinishReason::Stop),
         })
+    }
+}
+
+impl ChatBackend for MockChatBackend {
+    type ChatFut<'a> = Ready<Result<ChatResponse, LlmError>>;
+
+    fn chat<'a>(&'a self, _req: ChatRequest) -> Self::ChatFut<'a> {
+        std::future::ready(self.next_response())
     }
 }

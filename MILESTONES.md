@@ -5,7 +5,7 @@
 ## Current: v3.3 — Contract Enforcement
 **Deadline:** 2026-05-10 | **Epic:** E1 (Converge is a publishable platform)
 
-- [ ] Add `#[warn(missing_docs)]` to all publishable crates (~830 warnings to resolve)
+- [wontfix] ~~Add `#[warn(missing_docs)]` to all publishable crates~~ — docs belong in kb/, not in code
 - [ ] Migrate async traits: ChatBackend/EmbedBackend adoption across providers
 - [x] Canonize ExperienceStore as the live trait (removed stale #[deprecated], added test)
 - [x] Write ADR-005: Type ownership boundaries (which crate owns which types)
@@ -14,7 +14,7 @@
 ## Completed: v3.2 — Type Duplication Cleanup
 Completed: 2026-04-12
 
-- [x] Unify LlmProvider trait: provider re-exports from core (REF-36)
+- [x] Unify canonical chat/provider types across crates (REF-36)
 - [x] Delete deprecated LlmBackend trait from core/backend.rs
 - [x] Delete dead converge_pack::Invariant fork
 - [x] Delete dead ExperienceAppender/ExperienceReplayer from core/traits/store.rs

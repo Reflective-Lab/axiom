@@ -32,8 +32,8 @@ Converge follows hexagonal architecture (ports and adapters). The core engine ha
         │   RootIntent ─── Budget ─── Criteria                 │
         │                                                      │
         │            ── PORTS (traits) ──                       │
-        │   Backend · LlmProvider · ExperienceAppender         │
-        │   BackendSelector · VectorRecall · Embedding         │
+        │   Backend · ChatBackend · EmbedBackend               │
+        │   BackendSelector · WebSearchBackend                 │
         │   Invariant · Suggestor · ExperienceReplayer         │
         │   StreamingCallback                                  │
         │                                                      │

@@ -8,7 +8,7 @@ Ollama provides local LLM and embedding inference without cloud dependencies.
 
 ## Role in Converge
 
-`OllamaProvider` implements both `Backend` + `LlmProvider` [[Architecture/Ports|ports]] with `DataSovereignty::Local`. No data leaves the machine.
+Ollama is currently a stack option, not a live `converge-provider` `ChatBackend` adapter. The active local inference path is `converge-llm`/Burn. If Ollama is reintroduced as an adapter, it should implement `ChatBackend` and `EmbedBackend` rather than the removed prompt-only contract.
 
 ## Configuration
 

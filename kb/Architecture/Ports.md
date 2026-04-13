@@ -49,8 +49,10 @@ Selection is by capability, not by name ([[Concepts/Backends and Capabilities]])
 
 | Port | Purpose | Key Methods |
 |---|---|---|
-| `LlmProvider` | LLM inference | `complete(request)`, `health_check()`, `provenance()` |
-| `Embedding` | Vector embeddings | Generate embeddings from text/images |
+| `ChatBackend` | Multi-turn LLM chat | `chat(ChatRequest)` |
+| `DynChatBackend` | Runtime-polymorphic chat | `chat(ChatRequest)` |
+| `EmbedBackend` | Vector embeddings | `embed(EmbedRequest)` |
+| `WebSearchBackend` | Web search retrieval | `search_web(WebSearchRequest)` |
 | `VectorRecall` | Similarity search | Vector-indexed retrieval |
 | `Reranking` | Result re-ranking | Cross-encoder relevance scoring |
 

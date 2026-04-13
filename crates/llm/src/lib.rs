@@ -332,21 +332,20 @@ pub use recall::SemanticEmbedder;
 // Trace - RecallMetadata is now exported from kernel module
 
 // ============================================================================
-// Public API: Provider Abstraction (migrated from converge-core)
+// Public API: Sync chat adapter utilities
 // ============================================================================
 
-// Re-export core LLM types from provider module (which re-exports from converge-core)
+// Re-export core LLM types from provider module (which re-exports from converge_core::traits)
 // Using Core* prefix to avoid conflicts with kernel-level types (LlmError, FinishReason)
 pub use provider::{
-    // ChatProvider trait (replacement for deprecated LlmProvider)
-    ChatProvider,
+    // Core types (re-exported from converge_core::traits)
+    ChatMessage as CoreChatMessage,
+    ChatRequest as CoreChatRequest,
+    ChatResponse as CoreChatResponse,
+    ChatRole as CoreChatRole,
     FinishReason as CoreFinishReason,
     LlmAgentConfig,
     LlmError as CoreLlmError,
-    LlmErrorKind as CoreLlmErrorKind,
-    // Core types (re-exported from converge_core::llm)
-    LlmRequest as CoreLlmRequest,
-    LlmResponse as CoreLlmResponse,
     LlmRole,
     // Router types
     LlmRouter,
@@ -359,11 +358,11 @@ pub use provider::{
     ProviderAgent,
     // Extended error type
     ProviderError,
-    ProviderErrorKind,
-    // Provider-specific aliases (same as Core* for convenience)
+    // Provider-specific aliases
     ProviderFinishReason,
     ResponseParser,
     SimpleParser,
+    SyncChatProvider,
     TokenUsage as CoreTokenUsage,
 };
 

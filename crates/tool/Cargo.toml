@@ -22,11 +22,13 @@ path = "src/bin/cz/main.rs"
 [dependencies]
 converge-core.workspace = true
 converge-provider.workspace = true
+futures.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 tokio.workspace = true
+dotenv.workspace = true
 
 # Gherkin parsing
 gherkin.workspace = true
@@ -50,7 +52,6 @@ chrono.workspace = true
 serde_yaml.workspace = true
 
 [dev-dependencies]
-dotenv.workspace = true
 proptest.workspace = true
 syn = { version = "2", features = ["full", "parsing"] }
 

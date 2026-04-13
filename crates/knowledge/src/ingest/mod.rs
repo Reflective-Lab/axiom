@@ -7,7 +7,7 @@
 //!
 //! - **Markdown** (`markdown.rs`): Parse markdown files with YAML front-matter,
 //!   chunk by headings, and preserve code blocks with language tags.
-//! - **PDF** (`pdf.rs`): Extract text from PDF documents.
+//! - PDF extraction has moved to `organism-intelligence`.
 //!
 //! # Knowledge Classification
 //!
@@ -52,14 +52,12 @@
 
 mod markdown;
 mod multimodal;
-mod pdf;
 mod rich_media;
 pub mod routing;
 mod source;
 
 pub use markdown::{ChunkType, IngesterConfig, MarkdownChunk, MarkdownDocument, MarkdownIngester};
 pub use multimodal::{EmbeddingDescriptor, EmbeddingLocation, Modality, TemporalSpan};
-pub use pdf::{PdfChunk, PdfDocument, PdfIngester};
 pub use rich_media::{
     MediaIngestRequest, MediaKind, TranscriptChunkPolicy, TranscriptDocument, TranscriptSegment,
     TranscriptionBackend, TranscriptionEngine, TranscriptionRequest,

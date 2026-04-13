@@ -1,8 +1,6 @@
 // Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 // See LICENSE file in the project root for full license information.
-#![allow(deprecated)] // converge_core::llm::LlmProvider is deprecated upstream
-
 //! Development tools for Converge.
 //!
 //! This crate provides tooling for developing Converge applications:
@@ -23,11 +21,11 @@
 //!
 //! ```ignore
 //! use converge_tool::gherkin::{GherkinValidator, ValidationConfig};
-//! use converge_core::llm::MockProvider;
+//! use converge_tool::mock_llm::StaticChatBackend;
 //! use std::sync::Arc;
 //!
-//! let provider = Arc::new(MockProvider::constant("Valid spec", 0.9));
-//! let validator = GherkinValidator::new(provider, ValidationConfig::default());
+//! let backend = Arc::new(StaticChatBackend::constant("Valid spec"));
+//! let validator = GherkinValidator::new(backend, ValidationConfig::default());
 //!
 //! let result = validator.validate_file("specs/money.truths")?;
 //! println!("Valid: {}", result.is_valid);
@@ -39,7 +37,6 @@ pub mod gherkin;
 pub mod jtbd;
 pub mod mock_llm;
 pub mod predicate;
-pub mod provider_bridge;
 pub mod truths;
 
 pub use gherkin::{
@@ -47,8 +44,7 @@ pub use gherkin::{
     SpecGenerator, SpecValidation, ValidationConfig, ValidationIssue, extract_all_metas,
     extract_scenario_meta,
 };
-pub use mock_llm::StaticLlmProvider;
-pub use provider_bridge::ProviderBridge;
+pub use mock_llm::StaticChatBackend;
 pub use truths::{
     AuthorityBlock, ConstraintBlock, EvidenceBlock, ExceptionBlock, IntentBlock, TruthDocument,
     TruthGovernance, parse_truth_document,

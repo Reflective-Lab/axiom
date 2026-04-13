@@ -8,7 +8,8 @@
 //! lives in organism-application.
 
 use converge_core::Engine;
-use converge_provider::ProviderRegistry;
+use converge_core::model_selection::SelectionCriteria;
+use converge_provider::{ChatBackendSelectionConfig, ProviderRegistry};
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
@@ -79,23 +80,38 @@ impl PackRegistry {
 pub struct LlmConfig {
     /// Use mock LLM instead of real providers.
     pub use_mock: bool,
-    /// Preferred model for Anthropic.
-    pub anthropic_model: String,
-    /// Preferred model for OpenAI.
-    pub openai_model: String,
+    /// Selection criteria used to choose a backend from available providers.
+    #[serde(default = "default_llm_selection_criteria")]
+    pub criteria: SelectionCriteria,
+    /// Optional operator override for a specific provider family.
+    ///
+    /// This is intended for debugging and validation. Regular callers should
+    /// prefer criteria-based selection.
+    #[serde(default)]
+    pub provider_override: Option<String>,
 }
 
 impl Default for LlmConfig {
     fn default() -> Self {
         Self {
             use_mock: false,
-            anthropic_model: "claude-sonnet-4-20250514".to_string(),
-            openai_model: "gpt-4o".to_string(),
+            criteria: default_llm_selection_criteria(),
+            provider_override: None,
         }
     }
 }
 
 impl LlmConfig {
+    /// Convert runtime LLM configuration into backend-selection input.
+    #[must_use]
+    pub fn selection_config(&self) -> ChatBackendSelectionConfig {
+        let mut config = ChatBackendSelectionConfig::default().with_criteria(self.criteria.clone());
+        if let Some(provider) = &self.provider_override {
+            config = config.with_provider_override(provider.clone());
+        }
+        config
+    }
+
     /// Creates a ProviderRegistry based on this configuration.
     ///
     /// If `use_mock` is true, returns None (callers should use mock agents instead).
@@ -119,11 +135,17 @@ impl LlmConfig {
         }
 
         info!(
+            criteria = ?self.criteria,
+            provider_override = self.provider_override.as_deref(),
             providers = ?available,
             "LLM provider registry initialized"
         );
         Some(registry)
     }
+}
+
+fn default_llm_selection_criteria() -> SelectionCriteria {
+    SelectionCriteria::analysis()
 }
 
 /// Register agents and invariants for a specific domain pack.
@@ -148,6 +170,7 @@ pub fn register_pack_agents(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use converge_core::model_selection::{CostTier, TaskComplexity};
 
     #[test]
     fn test_pack_registry_empty_by_default() {
@@ -177,7 +200,9 @@ mod tests {
     fn test_llm_config_default() {
         let config = LlmConfig::default();
         assert!(!config.use_mock);
-        assert!(config.anthropic_model.contains("claude"));
+        assert_eq!(config.criteria.cost, CostTier::Premium);
+        assert_eq!(config.criteria.complexity, TaskComplexity::Reasoning);
+        assert!(config.provider_override.is_none());
     }
 
     #[test]
@@ -186,6 +211,19 @@ mod tests {
         config.use_mock = true;
         let registry = config.create_registry();
         assert!(registry.is_none());
+    }
+
+    #[test]
+    fn test_llm_config_selection_config_preserves_fields() {
+        let config = LlmConfig {
+            use_mock: false,
+            criteria: SelectionCriteria::interactive(),
+            provider_override: Some("gemini".to_string()),
+        };
+
+        let selection = config.selection_config();
+        assert_eq!(selection.criteria, SelectionCriteria::interactive());
+        assert_eq!(selection.provider_override.as_deref(), Some("gemini"));
     }
 
     #[test]

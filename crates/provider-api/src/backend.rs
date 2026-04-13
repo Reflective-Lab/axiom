@@ -78,7 +78,7 @@ impl std::fmt::Display for BackendKind {
 /// It captures *who* a backend is and *what it can do*, not *how to call it*.
 ///
 /// Specific invocation traits extend this in their own crates:
-/// - `LlmProvider` in converge-provider (cloud LLMs)
+/// - `ChatBackend` / `EmbedBackend` in converge-core (canonical LLM interfaces)
 /// - `PolicyEngine` in converge-policy (Cedar/OPA)
 /// - `Solver` in converge-optimization (CP-SAT/Polar)
 /// - `Pipeline` in converge-analytics (Burn/LanceDB)

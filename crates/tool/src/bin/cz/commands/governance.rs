@@ -18,17 +18,16 @@ use crate::cli::{AckArgs, AssignArgs, DigestArgs, EscalateArgs, OutputFormat, Va
 use crate::commands::{CmdError, CmdResult, find_workspace_root};
 use chrono::Utc;
 use colored::Colorize;
-use converge_core::llm::LlmProvider;
-use converge_provider::AnthropicProvider;
+use converge_core::model_selection::SelectionCriteria;
+use converge_core::traits::DynChatBackend;
+use converge_provider::{ChatBackendSelectionConfig, select_chat_backend};
 use converge_tool::{
-    GherkinValidator, IssueCategory, ProviderBridge, Severity, StaticLlmProvider, ValidationConfig,
-    ValidationIssue,
+    GherkinValidator, IssueCategory, Severity, StaticChatBackend, ValidationConfig, ValidationIssue,
 };
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tokio::task;
 
 // =============================================================================
 // Data Structures
@@ -253,7 +252,7 @@ pub async fn validate(args: ValidateArgs) -> CmdResult {
 
 fn create_validator_config(
     args: &ValidateArgs,
-) -> Result<(Arc<dyn LlmProvider>, ValidationConfig), CmdError> {
+) -> Result<(Arc<dyn DynChatBackend>, ValidationConfig), CmdError> {
     // Determine what checks to run
     let wants_llm_checks =
         !args.conventions_only && (!args.skip_business_sense || !args.skip_compilability);
@@ -267,14 +266,18 @@ fn create_validator_config(
 
     // If LLM checks are requested, check for API key
     if wants_llm_checks {
-        if std::env::var("ANTHROPIC_API_KEY").is_err() {
+        let has_any_llm_key = std::env::var_os("ANTHROPIC_API_KEY").is_some()
+            || std::env::var_os("OPENAI_API_KEY").is_some()
+            || std::env::var_os("GEMINI_API_KEY").is_some();
+
+        if !has_any_llm_key {
             // No API key - fall back to conventions-only with a warning
             println!(
-                "  {} ANTHROPIC_API_KEY not set, running conventions-only mode",
+                "  {} No LLM API key configured, running conventions-only mode",
                 "⚠".yellow()
             );
             println!(
-                "  {} Set ANTHROPIC_API_KEY for business sense and compilability checks",
+                "  {} Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY for business sense and compilability checks",
                 "→".dimmed()
             );
             println!();
@@ -285,21 +288,24 @@ fn create_validator_config(
                 check_conventions: true,
                 min_confidence: 0.7,
             };
-            let provider: Arc<dyn LlmProvider> = Arc::new(StaticLlmProvider::constant("VALID"));
-            return Ok((provider, config));
+            let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::constant("VALID"));
+            return Ok((backend, config));
         }
 
-        let model = std::env::var("CONVERGE_ANTHROPIC_MODEL")
-            .unwrap_or_else(|_| "claude-sonnet-4-6".to_string());
-        let anthropic = task::block_in_place(|| AnthropicProvider::from_env(model))
-            .map_err(|e| CmdError::new(format!("Failed to initialize Anthropic provider: {e}")))?;
-        let provider: Arc<dyn LlmProvider> = Arc::new(ProviderBridge::new(anthropic));
-        return Ok((provider, config));
+        let mut selection_config = ChatBackendSelectionConfig::from_env()
+            .map_err(|e| CmdError::new(format!("Invalid LLM selection config: {e}")))?;
+        if std::env::var_os("CONVERGE_LLM_PROFILE").is_none() {
+            selection_config.criteria = SelectionCriteria::analysis();
+        }
+
+        let selected = select_chat_backend(&selection_config)
+            .map_err(|e| CmdError::new(format!("Failed to select LLM backend: {e}")))?;
+        return Ok((selected.backend, config));
     }
 
     // Conventions-only mode
-    let provider: Arc<dyn LlmProvider> = Arc::new(StaticLlmProvider::constant("VALID"));
-    Ok((provider, config))
+    let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::constant("VALID"));
+    Ok((backend, config))
 }
 
 fn print_issue(issue: &ValidationIssue) {
@@ -669,4 +675,28 @@ fn get_current_user() -> String {
     std::env::var("USER")
         .or_else(|_| std::env::var("USERNAME"))
         .unwrap_or_else(|_| "unknown".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use converge_provider::ChatBackendSelectionConfig;
+
+    #[test]
+    fn selection_config_defaults_to_interactive_profile() {
+        let config = ChatBackendSelectionConfig::default();
+        assert_eq!(
+            config.criteria,
+            converge_core::model_selection::SelectionCriteria::interactive()
+        );
+    }
+
+    #[test]
+    fn analysis_profile_is_available_for_governance() {
+        let config = ChatBackendSelectionConfig::default()
+            .with_criteria(converge_core::model_selection::SelectionCriteria::analysis());
+        assert_eq!(
+            config.criteria,
+            converge_core::model_selection::SelectionCriteria::analysis()
+        );
+    }
 }

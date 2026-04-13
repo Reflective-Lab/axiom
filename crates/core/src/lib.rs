@@ -203,7 +203,6 @@ pub mod governed_artifact;
 pub mod integrity;
 pub mod invariant;
 pub mod kernel_boundary;
-pub mod llm;
 pub mod model_selection;
 pub mod prompt;
 pub mod recall;

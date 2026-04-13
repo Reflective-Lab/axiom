@@ -36,6 +36,11 @@ use std::fmt::Write;
 
 use serde::{Deserialize, Serialize};
 
+use crate::search::{
+    WebSearchBackend, WebSearchError, WebSearchImage, WebSearchRequest, WebSearchResponse,
+    WebSearchResult,
+};
+
 /// Brave Search capabilities.
 ///
 /// These map to the various Brave Search API endpoints and features.
@@ -150,6 +155,18 @@ pub enum BraveSearchError {
     /// General API error.
     #[error("API error: {0}")]
     Api(String),
+}
+
+impl From<BraveSearchError> for WebSearchError {
+    fn from(value: BraveSearchError) -> Self {
+        match value {
+            BraveSearchError::Network(message) => Self::Network(message),
+            BraveSearchError::Auth(message) => Self::Auth(message),
+            BraveSearchError::RateLimit(message) => Self::RateLimit(message),
+            BraveSearchError::Parse(message) => Self::Parse(message),
+            BraveSearchError::Api(message) => Self::Api(message),
+        }
+    }
 }
 
 /// A single search result from Brave.
@@ -288,6 +305,27 @@ impl std::fmt::Debug for BraveSearchProvider {
 }
 
 impl BraveSearchProvider {
+    fn classify_http_error(status: u16, body: &str) -> BraveSearchError {
+        let normalized = body.to_ascii_lowercase();
+
+        if status == 429 || normalized.contains("rate limit") || normalized.contains("quota") {
+            return BraveSearchError::RateLimit(body.trim().to_string());
+        }
+
+        if matches!(status, 401 | 403)
+            || ((status == 400 || status == 422)
+                && (normalized.contains("api key")
+                    || normalized.contains("subscription")
+                    || normalized.contains("unauthorized")
+                    || normalized.contains("authentication")
+                    || normalized.contains("token")))
+        {
+            return BraveSearchError::Auth(body.trim().to_string());
+        }
+
+        BraveSearchError::Api(format!("HTTP {status}: {}", body.trim()))
+    }
+
     /// Creates a new Brave Search provider with the given API key.
     #[must_use]
     pub fn new(api_key: impl Into<String>) -> Self {
@@ -403,17 +441,7 @@ impl BraveSearchProvider {
 
         if !status.is_success() {
             let error_text = response.text().unwrap_or_default();
-            return match status.as_u16() {
-                401 | 403 => Err(BraveSearchError::Auth(format!(
-                    "Authentication failed: {error_text}"
-                ))),
-                429 => Err(BraveSearchError::RateLimit(
-                    "Rate limit exceeded".to_string(),
-                )),
-                _ => Err(BraveSearchError::Api(format!(
-                    "API error ({status}): {error_text}"
-                ))),
-            };
+            return Err(Self::classify_http_error(status.as_u16(), &error_text));
         }
 
         // Parse the response
@@ -499,6 +527,77 @@ impl BraveSearchProvider {
         }
         output
     }
+
+    fn from_web_request(request: &WebSearchRequest) -> BraveSearchRequest {
+        let mut brave = BraveSearchRequest::new(request.query.clone());
+
+        if let Some(max_results) = request.max_results {
+            brave = brave.with_count(max_results);
+        }
+        if let Some(country) = &request.country {
+            brave = brave.with_country(country.clone());
+        }
+        if let Some(language) = &request.language {
+            brave = brave.with_language(language.clone());
+        }
+        if let Some(time_range) = &request.time_range {
+            let freshness = match time_range.as_str() {
+                "day" | "d" => Some("pd"),
+                "week" | "w" => Some("pw"),
+                "month" | "m" => Some("pm"),
+                _ => None,
+            };
+            if let Some(freshness) = freshness {
+                brave = brave.with_freshness(freshness);
+            }
+        }
+
+        let _ = request.include_answer;
+        let _ = request.include_raw_content;
+        let _ = request.include_images;
+        let _ = request.include_favicon;
+        let _ = request.include_domains.len();
+        let _ = request.exclude_domains.len();
+        let _ = request.topic;
+        let _ = request.search_depth;
+
+        brave
+    }
+
+    fn into_web_response(response: BraveSearchResponse) -> WebSearchResponse {
+        WebSearchResponse {
+            provider: "brave".to_string(),
+            query: response.query,
+            answer: None,
+            results: response
+                .results
+                .into_iter()
+                .map(|result| WebSearchResult {
+                    title: result.title,
+                    url: result.url,
+                    content: result.description,
+                    score: None,
+                    published_at: result.age,
+                    favicon: None,
+                    raw_content: None,
+                })
+                .collect(),
+            images: Vec::<WebSearchImage>::new(),
+            response_time: response.search_time,
+        }
+    }
+}
+
+impl WebSearchBackend for BraveSearchProvider {
+    fn provider_name(&self) -> &'static str {
+        "brave"
+    }
+
+    fn search_web(&self, request: &WebSearchRequest) -> Result<WebSearchResponse, WebSearchError> {
+        let request = Self::from_web_request(request);
+        let response = self.search(&request)?;
+        Ok(Self::into_web_response(response))
+    }
 }
 
 // Internal API response structures
@@ -527,6 +626,7 @@ struct BraveApiResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     #[test]
     fn test_search_request_builder() {
@@ -545,6 +645,14 @@ mod tests {
     fn test_count_clamped_to_max() {
         let request = BraveSearchRequest::new("test").with_count(100);
         assert_eq!(request.count, Some(20)); // Max is 20
+    }
+
+    proptest! {
+        #[test]
+        fn count_is_always_clamped(count in any::<u32>()) {
+            let request = BraveSearchRequest::new("test").with_count(count);
+            prop_assert!(request.count.unwrap() <= 20);
+        }
     }
 
     #[test]
@@ -567,5 +675,11 @@ mod tests {
         assert!(markdown.contains("rust programming"));
         assert!(markdown.contains("The Rust Programming Language"));
         assert!(markdown.contains("https://rust-lang.org"));
+    }
+
+    #[test]
+    fn auth_like_422_responses_are_classified_as_auth_errors() {
+        let error = BraveSearchProvider::classify_http_error(422, "Invalid subscription token");
+        assert!(matches!(error, BraveSearchError::Auth(_)));
     }
 }

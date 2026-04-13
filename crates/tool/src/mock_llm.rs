@@ -4,23 +4,20 @@
 //! Minimal local LLM mocks used by converge-tool tests and CLI fallback paths.
 
 use std::collections::VecDeque;
+use std::future::Ready;
 use std::sync::Mutex;
 
-use converge_core::llm::{
-    FinishReason, LlmError, LlmProvider, LlmRequest, LlmResponse, TokenUsage,
-};
+use converge_core::traits::{ChatBackend, ChatRequest, ChatResponse, LlmError};
 
 #[derive(Debug)]
-pub struct StaticLlmProvider {
-    model: String,
+pub struct StaticChatBackend {
     responses: Mutex<VecDeque<String>>,
 }
 
-impl StaticLlmProvider {
+impl StaticChatBackend {
     #[must_use]
     pub fn constant(content: impl Into<String>) -> Self {
         Self {
-            model: "static-mock".to_string(),
             responses: Mutex::new(VecDeque::from([content.into()])),
         }
     }
@@ -32,38 +29,35 @@ impl StaticLlmProvider {
         S: Into<String>,
     {
         Self {
-            model: "static-mock".to_string(),
             responses: Mutex::new(responses.into_iter().map(Into::into).collect()),
         }
     }
 }
 
-impl LlmProvider for StaticLlmProvider {
-    fn name(&self) -> &'static str {
-        "static-mock"
-    }
+impl ChatBackend for StaticChatBackend {
+    type ChatFut<'a> = Ready<Result<ChatResponse, LlmError>>;
 
-    fn model(&self) -> &str {
-        &self.model
-    }
+    fn chat<'a>(&'a self, _req: ChatRequest) -> Self::ChatFut<'a> {
+        let result = (|| {
+            let mut responses = self.responses.lock().map_err(|_| LlmError::ProviderError {
+                message: "static mock backend mutex poisoned".into(),
+                code: None,
+            })?;
 
-    fn complete(&self, _request: &LlmRequest) -> Result<LlmResponse, LlmError> {
-        let mut responses = self
-            .responses
-            .lock()
-            .map_err(|_| LlmError::provider("static mock provider mutex poisoned"))?;
+            let content = if responses.len() > 1 {
+                responses.pop_front().unwrap_or_default()
+            } else {
+                responses.front().cloned().unwrap_or_default()
+            };
 
-        let content = if responses.len() > 1 {
-            responses.pop_front().unwrap_or_default()
-        } else {
-            responses.front().cloned().unwrap_or_default()
-        };
-
-        Ok(LlmResponse {
-            content,
-            model: self.model.clone(),
-            usage: TokenUsage::default(),
-            finish_reason: FinishReason::Stop,
-        })
+            Ok(ChatResponse {
+                content,
+                tool_calls: Vec::new(),
+                usage: None,
+                model: None,
+                finish_reason: None,
+            })
+        })();
+        std::future::ready(result)
     }
 }

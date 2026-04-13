@@ -9,32 +9,29 @@ use axum::{
     extract::{Json, Path, State},
     routing::{get, post},
 };
-use converge_core::llm::{
-    FinishReason, LlmError, LlmProvider, LlmRequest, LlmResponse, TokenUsage,
-};
+use converge_core::traits::{ChatBackend, ChatRequest, ChatResponse, LlmError};
 use converge_core::{Context, ContextKey, Engine};
 use converge_tool::gherkin::{GherkinValidator, IssueCategory, Severity, ValidationConfig};
 
-/// Stub LLM provider that returns empty responses.
+/// Stub chat backend that returns empty responses.
 /// Real LLM validation should be configured via organism-application.
-struct StubLlmProvider;
+struct StubChatBackend;
 
-impl LlmProvider for StubLlmProvider {
-    fn complete(&self, _request: &LlmRequest) -> Result<LlmResponse, LlmError> {
-        Ok(LlmResponse {
-            content: String::new(),
-            model: "stub".to_string(),
-            finish_reason: FinishReason::Stop,
-            usage: TokenUsage::default(),
+impl ChatBackend for StubChatBackend {
+    type ChatFut<'a> = std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<ChatResponse, LlmError>> + Send + 'a>,
+    >;
+
+    fn chat<'a>(&'a self, _req: ChatRequest) -> Self::ChatFut<'a> {
+        Box::pin(async {
+            Ok(ChatResponse {
+                content: String::new(),
+                tool_calls: Vec::new(),
+                model: Some("stub".to_string()),
+                usage: None,
+                finish_reason: None,
+            })
         })
-    }
-
-    fn name(&self) -> &'static str {
-        "stub"
-    }
-
-    fn model(&self) -> &str {
-        "stub"
     }
 }
 use serde::{Deserialize, Serialize};
@@ -471,7 +468,7 @@ pub async fn validate_rules(
 
         // Create a stub LLM provider for GherkinValidator.
         // Real LLM validation requires domain-specific setup in organism-application.
-        let provider: Arc<dyn converge_core::llm::LlmProvider> = Arc::new(StubLlmProvider);
+        let provider: Arc<dyn converge_core::traits::DynChatBackend> = Arc::new(StubChatBackend);
 
         let validator = GherkinValidator::new(provider, config);
         validator.validate(&content, &file_name)

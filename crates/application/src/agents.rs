@@ -8,7 +8,7 @@
 
 use converge_core::traits::{
     ChatBackend, ChatMessage, ChatRequest, ChatResponse, ChatRole, DynChatBackend, FinishReason,
-    LlmError, TokenUsage,
+    LlmError, ResponseFormat, TokenUsage,
 };
 use converge_core::{AgentEffect, ContextKey, ProposedFact, Suggestor};
 use std::fmt::Write;
@@ -169,14 +169,22 @@ impl Suggestor for StrategicInsightAgent {
                 ChatMessage {
                     role: ChatRole::System,
                     content: self.system_prompt.clone(),
+                    tool_calls: Vec::new(),
+                    tool_call_id: None,
                 },
                 ChatMessage {
                     role: ChatRole::User,
                     content: prompt,
+                    tool_calls: Vec::new(),
+                    tool_call_id: None,
                 },
             ],
+            system: None,
+            tools: Vec::new(),
+            response_format: ResponseFormat::default(),
             max_tokens: Some(1024),
             temperature: Some(0.7),
+            stop_sequences: Vec::new(),
             model: None,
         };
 
@@ -234,6 +242,7 @@ impl ChatBackend for MockInsightProvider {
     fn chat<'a>(&'a self, _req: ChatRequest) -> Self::ChatFut<'a> {
         std::future::ready(Ok(ChatResponse {
             content: self.response.clone(),
+            tool_calls: Vec::new(),
             model: Some("mock-insight-v1".into()),
             usage: Some(TokenUsage {
                 prompt_tokens: 100,
@@ -406,14 +415,22 @@ impl Suggestor for RiskAssessmentAgent {
                 ChatMessage {
                     role: ChatRole::System,
                     content: self.system_prompt.clone(),
+                    tool_calls: Vec::new(),
+                    tool_call_id: None,
                 },
                 ChatMessage {
                     role: ChatRole::User,
                     content: prompt,
+                    tool_calls: Vec::new(),
+                    tool_call_id: None,
                 },
             ],
+            system: None,
+            tools: Vec::new(),
+            response_format: ResponseFormat::default(),
             max_tokens: Some(1024),
             temperature: Some(0.7),
+            stop_sequences: Vec::new(),
             model: None,
         };
 
@@ -471,6 +488,7 @@ impl ChatBackend for MockRiskProvider {
     fn chat<'a>(&'a self, _req: ChatRequest) -> Self::ChatFut<'a> {
         std::future::ready(Ok(ChatResponse {
             content: self.response.clone(),
+            tool_calls: Vec::new(),
             model: Some("mock-risk-v1".into()),
             usage: Some(TokenUsage {
                 prompt_tokens: 120,

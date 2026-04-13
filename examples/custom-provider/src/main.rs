@@ -1,21 +1,16 @@
 // Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 
-//! Custom Provider — implement an LLM provider adapter.
-//!
-//! Shows: LlmProvider trait, request/response types, provider registration.
-//! Partners use this pattern to integrate their own model backends.
-
-use converge_provider::provider_api::{
-    FinishReason, LlmError, LlmProvider, LlmRequest, LlmResponse, TokenUsage,
+use converge_core::traits::{
+    ChatBackend, ChatMessage, ChatRequest, ChatResponse, ChatRole, FinishReason, LlmError,
+    ResponseFormat, TokenUsage,
 };
 
-/// A mock provider that echoes prompts — replace with your real API client.
-struct EchoProvider {
+struct EchoBackend {
     model_name: String,
 }
 
-impl EchoProvider {
+impl EchoBackend {
     fn new(model: &str) -> Self {
         Self {
             model_name: model.to_string(),
@@ -23,49 +18,66 @@ impl EchoProvider {
     }
 }
 
-impl LlmProvider for EchoProvider {
-    fn name(&self) -> &'static str {
-        "echo-provider"
-    }
+impl ChatBackend for EchoBackend {
+    type ChatFut<'a>
+        = std::future::Ready<Result<ChatResponse, LlmError>>
+    where
+        Self: 'a;
 
-    fn model(&self) -> &str {
-        &self.model_name
-    }
+    fn chat(&self, request: ChatRequest) -> Self::ChatFut<'_> {
+        let user_content: String = request
+            .messages
+            .iter()
+            .filter(|m| m.role == ChatRole::User)
+            .map(|m| m.content.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        let len = user_content.len() as u32;
 
-    fn complete(&self, request: &LlmRequest) -> Result<LlmResponse, LlmError> {
-        Ok(LlmResponse {
-            content: format!("Echo: {}", request.prompt),
-            model: self.model_name.clone(),
-            usage: TokenUsage {
-                prompt_tokens: request.prompt.len() as u32,
-                completion_tokens: request.prompt.len() as u32,
-                total_tokens: (request.prompt.len() * 2) as u32,
-            },
-            finish_reason: FinishReason::Stop,
-        })
+        std::future::ready(Ok(ChatResponse {
+            content: format!("Echo: {user_content}"),
+            tool_calls: Vec::new(),
+            model: Some(self.model_name.clone()),
+            usage: Some(TokenUsage {
+                prompt_tokens: len,
+                completion_tokens: len,
+                total_tokens: len * 2,
+            }),
+            finish_reason: Some(FinishReason::Stop),
+        }))
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("=== Custom Provider Example ===\n");
 
-    let provider = EchoProvider::new("echo-v1");
+    let backend = EchoBackend::new("echo-v1");
 
-    println!(
-        "Provider: {} (model: {})",
-        provider.name(),
-        provider.model()
-    );
+    let request = ChatRequest {
+        messages: vec![ChatMessage {
+            role: ChatRole::User,
+            content: "What is the convergence model?".to_string(),
+            tool_call_id: None,
+        }],
+        system: None,
+        tools: Vec::new(),
+        response_format: ResponseFormat::default(),
+        max_tokens: None,
+        temperature: None,
+        stop_sequences: Vec::new(),
+        model: None,
+    };
 
-    let request = LlmRequest::new("What is the convergence model?");
-
-    match provider.complete(&request) {
+    match backend.chat(request).await {
         Ok(response) => {
             println!("Response: {}", response.content);
-            println!(
-                "Tokens:   {} in / {} out",
-                response.usage.prompt_tokens, response.usage.completion_tokens
-            );
+            if let Some(usage) = &response.usage {
+                println!(
+                    "Tokens:   {} in / {} out",
+                    usage.prompt_tokens, usage.completion_tokens
+                );
+            }
         }
         Err(e) => println!("Error: {e}"),
     }

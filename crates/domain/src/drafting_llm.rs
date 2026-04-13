@@ -3,6 +3,6 @@
 
 //! LLM-enabled drafting flow.
 //!
-//! Placeholder — the `LlmProvider` trait is now unified across core and provider.
+//! Placeholder — the `ChatBackend` trait is now unified across core and provider.
 //! The drafting agents (Perplexity for research, Anthropic for composition) can
 //! be wired here when needed.

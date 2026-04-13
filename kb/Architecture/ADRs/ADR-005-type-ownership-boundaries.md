@@ -8,7 +8,7 @@ source: mixed
 
 ## Context
 
-The workspace accumulated type duplication from an incomplete v0.2 migration — two `LlmProvider` traits, two `Invariant` traits, four `FinishReason` enums, two `TraceLink` enums, copy-pasted prompt types. The v3.2 cleanup removed ~1,200 lines of duplicated code.
+The workspace accumulated type duplication from an incomplete v0.2 migration — duplicate prompt-only provider traits, duplicate `Invariant` traits, four `FinishReason` enums, two `TraceLink` enums, and copy-pasted prompt types. v3.2 removed most duplication; v3.3 finished the move to canonical `ChatBackend` / `EmbedBackend` request types.
 
 This ADR prevents recurrence by declaring which crate owns which types.
 
@@ -24,14 +24,14 @@ If a type appears in two crates, one must re-export from the other. No copy-past
 |---|---|---|
 | `converge-pack` | `Suggestor`, `Context`, `ContextKey`, `AgentEffect`, `Fact`, `ProposedFact`, `ValidationError` | — |
 | `converge-provider-api` | `Backend`, `BackendKind`, `Capability`, `BackendError`, `BackendSelector`, `BackendRequirements` | — |
-| `converge-core` | `Engine`, `ConvergeResult`, `Budget`, `ExperienceStore`, `ExperienceEvent`, `CriterionEvaluator`, `CriterionResult`, `Invariant`, `InvariantClass`, `InvariantResult`, `LlmProvider`, `LlmRequest`, `LlmResponse`, `LlmError`, `AgentRequirements`, `ReplayTrace`, `BackendRequest`, `BackendResponse`, `IntentId`, `RootIntent`, `AgentPrompt`, `PromptFormat` | `converge-pack::*` |
+| `converge-core` | `Engine`, `ConvergeResult`, `Budget`, `ExperienceStore`, `ExperienceEvent`, `CriterionEvaluator`, `CriterionResult`, `Invariant`, `InvariantClass`, `InvariantResult`, `ChatBackend`, `DynChatBackend`, `EmbedBackend`, `DynEmbedBackend`, `ChatRequest`, `ChatResponse`, `ChatMessage`, `ChatRole`, `ToolDefinition`, `ToolCall`, `ResponseFormat`, `LlmError`, `TokenUsage`, `AgentRequirements`, `ReplayTrace`, `BackendRequest`, `BackendResponse`, `IntentId`, `RootIntent`, `AgentPrompt`, `PromptFormat` | `converge-pack::*` |
 | `converge-model` | — (curated re-exports only) | `converge-core`, `converge-pack` |
 | `converge-kernel` | — (curated re-exports only) | `converge-core`, `converge-pack` |
 | `converge-protocol` | Generated `converge.v1` types | — |
 | `converge-client` | `ConvergeClient`, `ClientError`, `StoreObserver` | `converge-protocol` |
-| `converge-provider` | Provider impls (Anthropic, OpenAI, etc.), `ModelSelector`, `ProviderRegistry` | `converge-core::llm::*`, `converge-provider-api::*` |
+| `converge-provider` | Provider impls (Anthropic, OpenAI, Gemini, Mistral, Brave, Tavily), `ModelSelector`, `ProviderRegistry` | `converge-core::traits::*`, `converge-provider-api::*` |
 | `converge-experience` | `InMemoryExperienceStore`, `StoreObserver`, store impls | `converge-core::ExperienceStore` |
-| `converge-llm` | `LlmBackend` (local inference), `LlmError` (kernel), `FinishReason` (inference), `KernelProposal` | `converge-core::kernel_boundary::*`, `converge-core::prompt::*` |
+| `converge-llm` | `LlmBackend` (local inference), `SyncChatProvider` (sync adapter utility), `LlmError` (kernel), `FinishReason` (inference), `KernelProposal` | `converge-core::kernel_boundary::*`, `converge-core::prompt::*` |
 
 ### Rule 3: Name collisions require disambiguation
 
@@ -58,7 +58,7 @@ Any PR adding a `pub struct`, `pub enum`, or `pub trait` to a publishable crate 
 ## Enforcement
 
 1. **Code review**: PRs adding `pub trait` or `pub struct` to publishable crates must declare ownership
-2. **Compile-fail tests**: `converge-core` tests assert that `converge_provider::LlmProvider` is the same type as `converge_core::llm::LlmProvider` (re-export coherence)
+2. **Compile/API tests**: public crates use `converge_core::traits::*` as the canonical chat surface; no local copies of chat request/response types
 3. **`just lint` must pass**: no `#[allow(deprecated)]` without a tracking comment
 
 ## Consequences
@@ -66,4 +66,4 @@ Any PR adding a `pub struct`, `pub enum`, or `pub trait` to a publishable crate 
 - No more "local copies for purity" — if you need a type, depend on it
 - Slightly more explicit dependency edges, but the dep graph is already well-structured
 - New contributors have a clear reference for where types live
-- Future async trait migration (ChatBackend) must follow the same ownership rules
+- Future transport adapters or sync wrappers must follow the same ownership rules
