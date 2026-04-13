@@ -1,4 +1,4 @@
-# Contributing to Converge.zone
+# Contributing to Converge
 
 Thank you for your interest in contributing to Converge! We welcome contributions from the community.
 
@@ -19,11 +19,11 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 ```bash
 # Fork the repository
 # Clone your fork
-git clone https://github.com/your-username/converge.zone.git
-cd converge.zone
+git clone https://github.com/your-username/converge.git
+cd converge
 
 # Set up upstream remote
-git remote add upstream https://github.com/Reflective-Labs/converge.zone.git
+git remote add upstream https://github.com/Reflective-Lab/converge.git
 
 # Install Rust 1.94+
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh

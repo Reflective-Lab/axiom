@@ -11,8 +11,8 @@
 ## Quick Start
 
 ```bash
-git clone https://github.com/Reflective-Labs/converge.zone.git
-cd converge.zone
+git clone https://github.com/Reflective-Lab/converge.git
+cd converge
 
 just build-quick   # fast iteration build
 just test          # run tests

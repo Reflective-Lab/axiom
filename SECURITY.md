@@ -16,7 +16,7 @@ We provide security updates for the following versions:
 
 **Please do not report security vulnerabilities through public GitHub issues.**
 
-Report vulnerabilities through [GitHub Security Advisories](https://github.com/Reflective-Labs/converge.zone/security/advisories/new)
+Report vulnerabilities through [GitHub Security Advisories](https://github.com/Reflective-Lab/converge/security/advisories/new)
 or by emailing **Kenneth Pernyer** at [kenneth@reflective.se](mailto:kenneth@reflective.se).
 
 You should receive a response within 48 hours. If for some reason you do not, please follow up via email to ensure we received your original message.

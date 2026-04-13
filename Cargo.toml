@@ -62,7 +62,7 @@ version = "3.0.2"
 edition = "2024"
 rust-version = "1.94.0"
 license = "MIT"
-repository = "https://github.com/Reflective-Labs/converge.zone"
+repository = "https://github.com/Reflective-Lab/converge"
 publish = false
 
 [workspace.dependencies]
