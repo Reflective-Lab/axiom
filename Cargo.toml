@@ -95,7 +95,7 @@ converge-storage = { path = "crates/storage", version = "3.0.2", default-feature
 anyhow = "1"
 arrow-array = "57"
 arrow-schema = "57"
-async-nats = "0.40"
+async-nats = "0.47"
 async-stream = "0.3"
 async-trait = "0.1"
 axum = { version = "0.8", features = ["macros"] }
@@ -163,7 +163,7 @@ serde_yaml = "0.9"
 sha2 = "0.10"
 smallvec = "1.13"
 strum = { version = "0.26", features = ["derive"] }
-surrealdb = "1"
+surrealdb = "3"
 tempfile = "3"
 thiserror = "2"
 tiktoken-rs = "0.5"
@@ -185,7 +185,7 @@ utoipa = "5"
 utoipa-swagger-ui = { version = "9", features = ["axum"] }
 uuid = { version = "1.11", features = ["v4", "serde"] }
 varisat = "0.2"
-wasmtime = "30"
+wasmtime = "43"
 wiremock = "0.6"
 zeroize = "1"
 
