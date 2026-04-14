@@ -483,8 +483,8 @@ mod tests {
     // Engine convergence with WASM invariants
     // =========================================================================
 
-    #[test]
-    fn engine_runs_with_wasm_invariant_ok() {
+    #[tokio::test]
+    async fn engine_runs_with_wasm_invariant_ok() {
         let wasm_engine = make_engine();
         let mut store = make_store(&wasm_engine);
         let mut engine = Engine::new();
@@ -501,15 +501,15 @@ mod tests {
 
         // Run engine with context — ok invariant should pass
         let ctx = Context::new();
-        let result = engine.run(ctx);
+        let result = engine.run(ctx).await;
 
         // Engine needs at least one agent to do anything meaningful,
         // but with no agents it should converge immediately with no cycles.
         assert!(result.is_ok());
     }
 
-    #[test]
-    fn engine_detects_wasm_invariant_violation() {
+    #[tokio::test]
+    async fn engine_detects_wasm_invariant_violation() {
         let wasm_engine = make_engine();
         let mut store = make_store(&wasm_engine);
         let mut engine = Engine::new();
@@ -526,7 +526,7 @@ mod tests {
 
         // The violated invariant should cause a convergence failure
         let ctx = Context::new();
-        let result = engine.run(ctx);
+        let result = engine.run(ctx).await;
 
         // The acceptance invariant checks at convergence claim.
         // With no agents, the engine tries to converge immediately,

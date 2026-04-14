@@ -224,7 +224,7 @@ impl JobExecutor {
         JobExecutorBuilder::new()
     }
 
-    /// Run the job synchronously (blocking).
+    /// Run the job.
     pub fn run(self) -> Result<ExecutionResult, RuntimeError> {
         let _span = info_span!("job_execution", pack = %self.pack_id);
         let _guard = _span.enter();
@@ -253,7 +253,13 @@ impl JobExecutor {
 
         // Create context and run
         let context = Context::new();
-        let result = engine.run(context).map_err(RuntimeError::Converge)?;
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|e| RuntimeError::Config(format!("Failed to build runtime: {e}")))?;
+        let result = runtime
+            .block_on(engine.run(context))
+            .map_err(RuntimeError::Converge)?;
 
         let duration_ms = start.elapsed().as_millis() as u64;
         let event_count = experience_store
@@ -316,7 +322,11 @@ impl JobExecutor {
 
             // Create context and run
             let context = Context::new();
-            let result = engine.run(context);
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map_err(|e| RuntimeError::Config(format!("Failed to build runtime: {e}")))?;
+            let result = runtime.block_on(engine.run(context));
 
             let duration_ms = start.elapsed().as_millis() as u64;
 
@@ -398,7 +408,11 @@ mod tests {
     fn test_execution_result_from_converge_result() {
         let mut context = Context::new();
         let _ = context.add_input(ContextKey::Seeds, "test", "content");
-        let context = Engine::new().run(context).unwrap().context;
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let context = runtime
+            .block_on(Engine::new().run(context))
+            .unwrap()
+            .context;
 
         let converge_result = ConvergeResult {
             converged: true,

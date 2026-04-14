@@ -88,6 +88,7 @@ fn load_expense_policy_engine() -> Arc<dyn FlowGateAuthorizer> {
     Arc::new(PolicyEngine::from_policy_str(&policy).expect("expense approval policy should parse"))
 }
 
+#[async_trait::async_trait]
 impl Suggestor for ExpenseParsingAgent {
     fn name(&self) -> &str {
         "ExpenseParsingAgent"
@@ -101,7 +102,7 @@ impl Suggestor for ExpenseParsingAgent {
         ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Strategies)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
         let seed = seeds.first();
 
@@ -127,6 +128,7 @@ struct PolicyValidationAgent {
     policy: Arc<dyn FlowGateAuthorizer>,
 }
 
+#[async_trait::async_trait]
 impl Suggestor for PolicyValidationAgent {
     fn name(&self) -> &str {
         "PolicyValidationAgent"
@@ -144,7 +146,7 @@ impl Suggestor for PolicyValidationAgent {
                 .any(|fact| fact.id == "expense-validate-policy")
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
         let strategy = strategies.first();
 
@@ -190,6 +192,7 @@ struct ApprovalRoutingAgent {
 
 const ROUTING_DEPS: [ContextKey; 2] = [ContextKey::Strategies, ContextKey::Evaluations];
 
+#[async_trait::async_trait]
 impl Suggestor for ApprovalRoutingAgent {
     fn name(&self) -> &str {
         "ApprovalRoutingAgent"
@@ -211,7 +214,7 @@ impl Suggestor for ApprovalRoutingAgent {
                 .any(|fact| fact.id == "expense-approval-routing")
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let evaluations = ctx.get(ContextKey::Evaluations);
         let strategies = ctx.get(ContextKey::Strategies);
 
@@ -271,6 +274,7 @@ const COMMIT_DEPS: [ContextKey; 3] = [
     ContextKey::Proposals,
 ];
 
+#[async_trait::async_trait]
 impl Suggestor for CommitDecisionAgent {
     fn name(&self) -> &str {
         "CommitDecisionAgent"
@@ -292,7 +296,7 @@ impl Suggestor for CommitDecisionAgent {
                 .any(|fact| fact.id == "expense-commit-policy")
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let Some(strategy) = ctx.get(ContextKey::Strategies).first() else {
             return AgentEffect::default();
         };
@@ -344,6 +348,7 @@ impl Suggestor for CommitDecisionAgent {
 
 struct ApprovalSimulationAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ApprovalSimulationAgent {
     fn name(&self) -> &str {
         "ApprovalSimulationAgent"
@@ -360,7 +365,7 @@ impl Suggestor for ApprovalSimulationAgent {
             && !has_human_approval(ctx)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         if let Some(c) = ctx
             .get(ContextKey::Constraints)
             .iter()
@@ -395,7 +400,8 @@ impl Suggestor for ApprovalSimulationAgent {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("=== Expense Approval Workflow Example ===\n");
 
     let mut engine = Engine::new();
@@ -439,7 +445,7 @@ fn main() {
     );
     println!("Running approval workflow...\n");
 
-    match engine.run_with_hitl(ctx) {
+    match engine.run_with_hitl(ctx).await {
         RunResult::HitlPause(pause) => {
             println!("⏸️  HITL Gate: Cedar required human approval");
             println!("    Proposal: {}", pause.request.summary);
@@ -454,7 +460,7 @@ fn main() {
 
             println!("▶️  Manager approved. Resuming workflow...\n");
 
-            match engine.resume(*pause, decision) {
+            match engine.resume(*pause, decision).await {
                 RunResult::Complete(Ok(result)) => {
                     println!("✅ Expense flow completed.\n");
                     for fact in result.context.get(ContextKey::Evaluations) {

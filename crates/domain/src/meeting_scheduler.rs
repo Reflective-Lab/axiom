@@ -26,7 +26,7 @@
 //!    │
 //!    ▼
 //! ConflictDetectionAgent → Evaluations (valid slots ranked)
-//! ```
+//! ```ignore
 //!
 //! # Example
 //!
@@ -52,7 +52,7 @@
 //! engine.register_suggestor(SlotOptimizationAgent);
 //! engine.register_suggestor(ConflictDetectionAgent);
 //!
-//! let result = engine.run(Context::new()).expect("should converge");
+//! let result = engine.run(Context::new()).await.expect("should converge");
 //!
 //! assert!(result.converged);
 //! assert!(result.context.has(ContextKey::Strategies));
@@ -71,6 +71,7 @@ use converge_core::{AgentEffect, ContextKey, Fact, Suggestor};
 /// In a real system, this would query calendar APIs.
 pub struct AvailabilityRetrievalAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for AvailabilityRetrievalAgent {
     fn name(&self) -> &str {
         "AvailabilityRetrievalAgent"
@@ -85,7 +86,7 @@ impl Suggestor for AvailabilityRetrievalAgent {
         ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Signals)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
 
         // Extract participants from seeds
@@ -144,6 +145,7 @@ impl Suggestor for AvailabilityRetrievalAgent {
 /// Converts all availability to a common timezone and aligns windows.
 pub struct TimeZoneNormalizationAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for TimeZoneNormalizationAgent {
     fn name(&self) -> &str {
         "TimeZoneNormalizationAgent"
@@ -168,7 +170,7 @@ impl Suggestor for TimeZoneNormalizationAgent {
         has_availability && !has_normalized
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
 
         let mut facts = Vec::new();
@@ -200,6 +202,7 @@ impl Suggestor for TimeZoneNormalizationAgent {
 /// Validates that candidate slots respect working hour policies.
 pub struct WorkingHoursConstraintAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for WorkingHoursConstraintAgent {
     fn name(&self) -> &str {
         "WorkingHoursConstraintAgent"
@@ -223,7 +226,7 @@ impl Suggestor for WorkingHoursConstraintAgent {
         has_normalized && !has_constraints
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let seeds = ctx.get(ContextKey::Seeds);
 
@@ -269,6 +272,7 @@ impl Suggestor for WorkingHoursConstraintAgent {
 /// Produces ranked candidate slots based on availability and constraints.
 pub struct SlotOptimizationAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for SlotOptimizationAgent {
     fn name(&self) -> &str {
         "SlotOptimizationAgent"
@@ -283,7 +287,7 @@ impl Suggestor for SlotOptimizationAgent {
         ctx.has(ContextKey::Constraints) && !ctx.has(ContextKey::Strategies)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let constraints = ctx.get(ContextKey::Constraints);
         let _signals = ctx.get(ContextKey::Signals);
 
@@ -333,6 +337,7 @@ impl Suggestor for SlotOptimizationAgent {
 /// Evaluates candidate slots against constraints and ranks them.
 pub struct ConflictDetectionAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ConflictDetectionAgent {
     fn name(&self) -> &str {
         "ConflictDetectionAgent"
@@ -347,7 +352,7 @@ impl Suggestor for ConflictDetectionAgent {
         ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
         let constraints = ctx.get(ContextKey::Constraints);
 
@@ -571,13 +576,13 @@ mod tests {
     use converge_core::Engine;
     use converge_core::suggestors::SeedSuggestor;
 
-    #[test]
-    fn availability_agent_retrieves_availability() {
+    #[tokio::test]
+    async fn availability_agent_retrieves_availability() {
         let mut engine = Engine::new();
         engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob, Carol"));
         engine.register_suggestor(AvailabilityRetrievalAgent);
 
-        let result = engine.run(Context::new()).expect("should converge");
+        let result = engine.run(Context::new()).await.expect("should converge");
 
         assert!(result.converged);
         assert!(result.context.has(ContextKey::Signals));
@@ -586,22 +591,22 @@ mod tests {
         assert!(signals.iter().any(|s| s.id.contains("availability")));
     }
 
-    #[test]
-    fn timezone_agent_normalizes_availability() {
+    #[tokio::test]
+    async fn timezone_agent_normalizes_availability() {
         let mut engine = Engine::new();
         engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob, Carol"));
         engine.register_suggestor(AvailabilityRetrievalAgent);
         engine.register_suggestor(TimeZoneNormalizationAgent);
 
-        let result = engine.run(Context::new()).expect("should converge");
+        let result = engine.run(Context::new()).await.expect("should converge");
 
         assert!(result.converged);
         let signals = result.context.get(ContextKey::Signals);
         assert!(signals.iter().any(|s| s.id.starts_with("normalized:")));
     }
 
-    #[test]
-    fn working_hours_agent_enforces_constraints() {
+    #[tokio::test]
+    async fn working_hours_agent_enforces_constraints() {
         let mut engine = Engine::new();
         engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob, Carol"));
         engine.register_suggestor(SeedSuggestor::new("duration", "60"));
@@ -609,14 +614,14 @@ mod tests {
         engine.register_suggestor(TimeZoneNormalizationAgent);
         engine.register_suggestor(WorkingHoursConstraintAgent);
 
-        let result = engine.run(Context::new()).expect("should converge");
+        let result = engine.run(Context::new()).await.expect("should converge");
 
         assert!(result.converged);
         assert!(result.context.has(ContextKey::Constraints));
     }
 
-    #[test]
-    fn slot_optimization_agent_generates_candidates() {
+    #[tokio::test]
+    async fn slot_optimization_agent_generates_candidates() {
         let mut engine = Engine::new();
         engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob, Carol"));
         engine.register_suggestor(SeedSuggestor::new("duration", "60"));
@@ -625,7 +630,7 @@ mod tests {
         engine.register_suggestor(WorkingHoursConstraintAgent);
         engine.register_suggestor(SlotOptimizationAgent);
 
-        let result = engine.run(Context::new()).expect("should converge");
+        let result = engine.run(Context::new()).await.expect("should converge");
 
         assert!(result.converged);
         assert!(result.context.has(ContextKey::Strategies));
@@ -634,8 +639,8 @@ mod tests {
         assert!(!slots.is_empty());
     }
 
-    #[test]
-    fn conflict_detection_agent_ranks_slots() {
+    #[tokio::test]
+    async fn conflict_detection_agent_ranks_slots() {
         let mut engine = Engine::new();
         engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob, Carol"));
         engine.register_suggestor(SeedSuggestor::new("duration", "60"));
@@ -645,7 +650,7 @@ mod tests {
         engine.register_suggestor(SlotOptimizationAgent);
         engine.register_suggestor(ConflictDetectionAgent);
 
-        let result = engine.run(Context::new()).expect("should converge");
+        let result = engine.run(Context::new()).await.expect("should converge");
 
         assert!(result.converged);
         assert!(result.context.has(ContextKey::Evaluations));
@@ -655,9 +660,9 @@ mod tests {
         assert!(evals.iter().any(|e| e.content.contains("RECOMMENDED")));
     }
 
-    #[test]
-    fn full_pipeline_converges_deterministically() {
-        let run = || {
+    #[tokio::test]
+    async fn full_pipeline_converges_deterministically() {
+        let run = || async {
             let mut engine = Engine::new();
             engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob, Carol"));
             engine.register_suggestor(SeedSuggestor::new("duration", "60"));
@@ -666,11 +671,11 @@ mod tests {
             engine.register_suggestor(WorkingHoursConstraintAgent);
             engine.register_suggestor(SlotOptimizationAgent);
             engine.register_suggestor(ConflictDetectionAgent);
-            engine.run(Context::new()).expect("should converge")
+            engine.run(Context::new()).await.expect("should converge")
         };
 
-        let r1 = run();
-        let r2 = run();
+        let r1 = run().await;
+        let r2 = run().await;
 
         // Same number of cycles
         assert_eq!(r1.cycles, r2.cycles);

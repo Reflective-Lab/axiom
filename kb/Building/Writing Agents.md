@@ -6,11 +6,16 @@ source: mixed
 
 Every suggestor implements the `Suggestor` trait from `converge-pack`. Embedded applications register suggestors through `converge-kernel`. Read [[Concepts/Agents]] for the contract. This page is the practical guide.
 
+Suggestors are async. `accepts()` stays pure and synchronous; `execute()` is async and read-only. The host application owns the runtime.
+
 ## Minimal Suggestor
 
 ```rust
+use async_trait::async_trait;
+
 struct MySuggestor;
 
+#[async_trait]
 impl Suggestor for MySuggestor {
     fn name(&self) -> &str { "my-suggestor" }
 
@@ -22,7 +27,7 @@ impl Suggestor for MySuggestor {
         true
     }
 
-    fn execute(&self, _ctx: &dyn Context) -> AgentEffect {
+    async fn execute(&self, _ctx: &dyn Context) -> AgentEffect {
         AgentEffect::with_proposal(ProposedFact {
             key: ContextKey::Seeds,
             id: "my:fact".into(),
@@ -39,7 +44,7 @@ impl Suggestor for MySuggestor {
 Check for your own facts before re-proposing. Without this, the suggestor proposes the same fact every cycle and convergence never happens.
 
 ```rust
-fn execute(&self, ctx: &dyn Context) -> AgentEffect {
+async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
     let fact_id = "compliance:screen:acme";
     if ctx.get(ContextKey::Seeds).iter().any(|f| f.id == fact_id) {
         return AgentEffect::empty();
@@ -65,12 +70,14 @@ struct SynthesisSuggestor {
     backend: Arc<dyn DynChatBackend>,
 }
 
+#[async_trait::async_trait]
 impl Suggestor for SynthesisSuggestor {
-    fn execute(&self, ctx: &dyn Context) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let request = ChatRequest {
             messages: vec![ChatMessage {
                 role: ChatRole::User,
                 content: format!("Synthesize a recommendation from: {:?}", ctx.get(ContextKey::Evaluations)),
+                tool_calls: Vec::new(),
                 tool_call_id: None,
             }],
             system: Some("Be concise and propose only supported claims.".into()),
@@ -82,17 +89,22 @@ impl Suggestor for SynthesisSuggestor {
             model: None,
         };
 
-        let response = run_chat_sync(&self.backend, request);
-        // Parse response into ProposedFact
+        match self.backend.chat(request).await {
+            Ok(response) => {
+                // Parse response.content into ProposedFact
+                AgentEffect::empty()
+            }
+            Err(_error) => AgentEffect::empty(),
+        }
     }
 }
 ```
 
-The `Suggestor` trait is synchronous, but the canonical LLM boundary is async. Bridge that once at the application edge with a helper such as `run_chat_sync(...)` rather than inventing a second provider contract.
+Handle backend errors explicitly in `execute()`. Do not invent a second sync provider contract just to avoid awaiting the canonical chat backend.
 
 ## Suggestor Packs
 
-Register multiple suggestors in the same pack for parallel execution within a cycle:
+Register related suggestors in the same pack so truths can activate or deactivate them together:
 
 ```rust
 engine.register_suggestor_in_pack("screening-pack", ComplianceSuggestor { .. });
@@ -100,12 +112,12 @@ engine.register_suggestor_in_pack("screening-pack", DataResidencySuggestor { .. 
 engine.register_suggestor_in_pack("screening-pack", CertificationSuggestor { .. });
 ```
 
-All three run in parallel, propose into the same context, and effects merge deterministically.
+Pack membership controls activation and grouping. Execution and merge ordering are still owned by the engine.
 
 ## Rules to Internalize
 
 1. `accepts()` is pure — no I/O, no state, no randomness
-2. `execute()` reads context, returns proposals — never mutates
+2. `execute()` is async, reads context, returns proposals — never mutates
 3. Suggestors never call each other — context is the only channel
 4. Check before proposing — idempotency prevents infinite loops
 5. `confidence` and `provenance` are always set — the governance gate uses them

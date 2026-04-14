@@ -8,12 +8,12 @@ use converge_core::{AgentEffect, Context, ContextKey, Engine, ProposedFact, Sugg
 
 // ── End-to-end: suggestor → proposal → engine promotion → fact ──
 
-#[test]
-fn single_suggestor_proposal_promoted_to_fact() {
+#[tokio::test]
+async fn single_suggestor_proposal_promoted_to_fact() {
     let mut engine = Engine::new();
     engine.register_suggestor(SeedSuggestor::new("seed-1", "initial observation"));
 
-    let result = engine.run(Context::new()).expect("should converge");
+    let result = engine.run(Context::new()).await.expect("should converge");
 
     assert!(result.converged);
     let facts = result.context.get(ContextKey::Seeds);
@@ -22,13 +22,13 @@ fn single_suggestor_proposal_promoted_to_fact() {
     assert_eq!(facts[0].content, "initial observation");
 }
 
-#[test]
-fn multi_suggestor_cascade_converges() {
+#[tokio::test]
+async fn multi_suggestor_cascade_converges() {
     let mut engine = Engine::new();
     engine.register_suggestor(SeedSuggestor::new("s1", "seed value"));
     engine.register_suggestor(ReactOnceSuggestor::new("h1", "derived hypothesis"));
 
-    let result = engine.run(Context::new()).expect("should converge");
+    let result = engine.run(Context::new()).await.expect("should converge");
 
     assert!(result.converged);
     assert!(result.context.has(ContextKey::Seeds));
@@ -37,10 +37,11 @@ fn multi_suggestor_cascade_converges() {
     assert_eq!(result.context.get(ContextKey::Hypotheses).len(), 1);
 }
 
-#[test]
-fn three_stage_pipeline_converges() {
+#[tokio::test]
+async fn three_stage_pipeline_converges() {
     struct StrategyFromHypothesis;
 
+    #[async_trait::async_trait]
     impl Suggestor for StrategyFromHypothesis {
         fn name(&self) -> &str {
             "StrategyFromHypothesis"
@@ -51,7 +52,7 @@ fn three_stage_pipeline_converges() {
         fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
             ctx.has(ContextKey::Hypotheses) && !ctx.has(ContextKey::Strategies)
         }
-        fn execute(&self, _ctx: &dyn converge_core::ContextView) -> AgentEffect {
+        async fn execute(&self, _ctx: &dyn converge_core::ContextView) -> AgentEffect {
             AgentEffect::with_proposal(ProposedFact::new(
                 ContextKey::Strategies,
                 "strategy-1",
@@ -66,7 +67,7 @@ fn three_stage_pipeline_converges() {
     engine.register_suggestor(ReactOnceSuggestor::new("h1", "hypothesis"));
     engine.register_suggestor(StrategyFromHypothesis);
 
-    let result = engine.run(Context::new()).expect("should converge");
+    let result = engine.run(Context::new()).await.expect("should converge");
 
     assert!(result.converged);
     assert!(result.context.has(ContextKey::Seeds));
@@ -76,8 +77,8 @@ fn three_stage_pipeline_converges() {
 
 // ── Seed input path: context.add_input() → engine promotes ──
 
-#[test]
-fn seed_input_promoted_through_gate() {
+#[tokio::test]
+async fn seed_input_promoted_through_gate() {
     let mut engine = Engine::new();
     // No suggestors — just seed input
     let mut ctx = Context::new();
@@ -89,7 +90,7 @@ fn seed_input_promoted_through_gate() {
     )
     .expect("add_input should succeed");
 
-    let result = engine.run(ctx).expect("should converge");
+    let result = engine.run(ctx).await.expect("should converge");
 
     assert!(result.converged);
     let facts = result.context.get(ContextKey::Seeds);
@@ -99,13 +100,13 @@ fn seed_input_promoted_through_gate() {
 
 // ── Idempotency: same suggestor does not re-propose ──
 
-#[test]
-fn suggestor_does_not_re_propose_existing_fact() {
+#[tokio::test]
+async fn suggestor_does_not_re_propose_existing_fact() {
     let mut engine = Engine::new();
     engine.register_suggestor(SeedSuggestor::new("s1", "value"));
     engine.register_suggestor(SeedSuggestor::new("s1", "value")); // duplicate
 
-    let result = engine.run(Context::new()).expect("should converge");
+    let result = engine.run(Context::new()).await.expect("should converge");
 
     assert!(result.converged);
     // Should have exactly 1 fact, not 2

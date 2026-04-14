@@ -15,7 +15,7 @@ Context from [[Concepts/Root Intent|RootIntent]]. Seeds populated, budgets set, 
 For each suggestor: check `dependencies()` against changed keys, then call `accepts()`. Pure, deterministic.
 
 ### 3. Execution
-In `converge-core`, eligible suggestors execute sequentially. Higher-level runtimes may provide parallel execution through a separate executor surface. Suggestors read context immutably. No mutation, no coordination between suggestors.
+In `converge-core`, eligible suggestors are currently awaited sequentially. The contract is async, but executor ownership remains outside the kernel. Suggestors read context immutably. No mutation, no coordination between suggestors.
 
 ### 4. Effect Buffering
 Each suggestor returns an `AgentEffect`. The engine collects all effects without applying them.
@@ -51,10 +51,11 @@ Stop if:
 
 ## Execution Model
 
-- Core executes suggestors sequentially
+- Core currently awaits suggestors sequentially
+- The authoring contract is async, but runtimes own scheduling and executor choice
 - Runtimes may execute suggestors in parallel through an external executor surface
 - Merge happens serially (one suggestor's effect at a time)
 
-Sequential core execution, serial commitment. This keeps `converge-core` deterministic and lets runtime crates own execution strategy.
+Sequential core execution, serial commitment. This keeps `converge-core` deterministic while still allowing async capability calls and leaving execution strategy to runtime crates.
 
 See also: [[Philosophy/Convergence Explained]], [[Concepts/Agents]], [[Concepts/Invariants]]

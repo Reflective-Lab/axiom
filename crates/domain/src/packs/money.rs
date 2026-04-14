@@ -100,6 +100,7 @@ fn period_close_final_output_exists(ctx: &dyn converge_core::ContextView, period
 #[derive(Debug, Clone, Default)]
 pub struct InvoiceCreatorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for InvoiceCreatorAgent {
     fn name(&self) -> &str {
         "invoice_creator"
@@ -123,7 +124,7 @@ impl Suggestor for InvoiceCreatorAgent {
         has_triggers && !has_invoices
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let triggers = ctx.get(ContextKey::Seeds);
         let mut facts = Vec::new();
 
@@ -176,6 +177,7 @@ impl std::fmt::Debug for InvoiceIssuerAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for InvoiceIssuerAgent {
     fn name(&self) -> &str {
         "invoice_issuer"
@@ -193,7 +195,7 @@ impl Suggestor for InvoiceIssuerAgent {
         })
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -322,6 +324,7 @@ impl Suggestor for InvoiceIssuerAgent {
 #[derive(Debug, Clone, Default)]
 pub struct PaymentAllocatorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for PaymentAllocatorAgent {
     fn name(&self) -> &str {
         "payment_allocator"
@@ -338,7 +341,7 @@ impl Suggestor for PaymentAllocatorAgent {
         })
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let payments: Vec<_> = proposals
             .iter()
@@ -385,6 +388,7 @@ impl Suggestor for PaymentAllocatorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct ReconciliationMatcherAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ReconciliationMatcherAgent {
     fn name(&self) -> &str {
         "reconciliation_matcher"
@@ -407,7 +411,7 @@ impl Suggestor for ReconciliationMatcherAgent {
         has_bank_txns && !has_ledger
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let proposals = ctx.get(ContextKey::Proposals);
 
@@ -453,6 +457,7 @@ impl Suggestor for ReconciliationMatcherAgent {
 #[derive(Debug, Clone, Default)]
 pub struct OverdueDetectorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for OverdueDetectorAgent {
     fn name(&self) -> &str {
         "overdue_detector"
@@ -472,7 +477,7 @@ impl Suggestor for OverdueDetectorAgent {
         })
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -527,6 +532,7 @@ impl std::fmt::Debug for PeriodCloserAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for PeriodCloserAgent {
     fn name(&self) -> &str {
         "period_closer"
@@ -545,7 +551,7 @@ impl Suggestor for PeriodCloserAgent {
         })
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -731,8 +737,8 @@ mod tests {
     use super::*;
     use converge_core::{Context, Engine};
 
-    #[test]
-    fn invoice_creator_produces_draft() {
+    #[tokio::test]
+    async fn invoice_creator_produces_draft() {
         let mut engine = Engine::new();
         engine.register_suggestor(InvoiceCreatorAgent);
 
@@ -743,7 +749,7 @@ mod tests {
             "deal.closed_won for customer ABC",
         );
 
-        let result = engine.run(ctx).expect("should converge");
+        let result = engine.run(ctx).await.expect("should converge");
         assert!(result.converged);
         assert!(
             result
@@ -754,8 +760,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn invoice_issuer_requests_finance_approval_before_issue() {
+    #[tokio::test]
+    async fn invoice_issuer_requests_finance_approval_before_issue() {
         let mut engine = Engine::new();
         engine.register_suggestor(InvoiceIssuerAgent::default());
 
@@ -766,7 +772,7 @@ mod tests {
             r#"{"type":"invoice","state":"ready_to_issue","customer_id":"cust_123","line_items":[{"sku":"svc","amount":12500}],"amount":12500,"currency":"USD"}"#,
         );
 
-        let result = engine.run(ctx).expect("should converge");
+        let result = engine.run(ctx).await.expect("should converge");
         assert!(result.converged);
         assert!(
             result
@@ -782,8 +788,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn invoice_issuer_promotes_when_finance_approval_exists() {
+    #[tokio::test]
+    async fn invoice_issuer_promotes_when_finance_approval_exists() {
         let mut engine = Engine::new();
         engine.register_suggestor(InvoiceIssuerAgent::default());
 
@@ -799,7 +805,7 @@ mod tests {
             r#"{"target_id":"invoice:draft:deal_123","required_role":"finance_manager"}"#,
         );
 
-        let result = engine.run(ctx).expect("should converge");
+        let result = engine.run(ctx).await.expect("should converge");
         assert!(result.converged);
         assert!(
             result
@@ -813,8 +819,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn period_closer_promotes_when_finance_approval_exists() {
+    #[tokio::test]
+    async fn period_closer_promotes_when_finance_approval_exists() {
         let mut engine = Engine::new();
         engine.register_suggestor(PeriodCloserAgent::default());
 
@@ -830,7 +836,7 @@ mod tests {
             r#"{"target_id":"period:2026-03","required_role":"finance_manager"}"#,
         );
 
-        let result = engine.run(ctx).expect("should converge");
+        let result = engine.run(ctx).await.expect("should converge");
         assert!(result.converged);
         assert!(
             result

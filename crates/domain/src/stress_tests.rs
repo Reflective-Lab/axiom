@@ -28,11 +28,11 @@ mod tests {
     use super::*;
 
     /// Test: Kernel use cases converge deterministically
-    #[test]
-    fn kernel_use_cases_converge_deterministically() {
+    #[tokio::test]
+    async fn kernel_use_cases_converge_deterministically() {
         // Test meeting scheduler
         {
-            let run = || {
+            let run = || async {
                 let mut engine = Engine::new();
                 engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob"));
                 engine.register_suggestor(AvailabilityRetrievalAgent);
@@ -40,10 +40,10 @@ mod tests {
                 engine.register_suggestor(WorkingHoursConstraintAgent);
                 engine.register_suggestor(SlotOptimizationAgent);
                 engine.register_suggestor(ConflictDetectionAgent);
-                engine.run(Context::new()).expect("should converge")
+                engine.run(Context::new()).await.expect("should converge")
             };
-            let r1 = run();
-            let r2 = run();
+            let r1 = run().await;
+            let r2 = run().await;
             assert_eq!(r1.cycles, r2.cycles, "meeting_scheduler: cycles must match");
             assert_eq!(
                 r1.context.get(converge_core::ContextKey::Evaluations),
@@ -54,20 +54,20 @@ mod tests {
     }
 
     /// Test: Multiple kernel use cases can run in sequence without interference
-    #[test]
-    fn multiple_kernel_use_cases_no_interference() {
+    #[tokio::test]
+    async fn multiple_kernel_use_cases_no_interference() {
         // Run meeting scheduler twice with different inputs
         let mut engine1 = Engine::new();
         engine1.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob"));
         engine1.register_suggestor(AvailabilityRetrievalAgent);
         engine1.register_suggestor(SlotOptimizationAgent);
-        let r1 = engine1.run(Context::new()).expect("should converge");
+        let r1 = engine1.run(Context::new()).await.expect("should converge");
 
         let mut engine2 = Engine::new();
         engine2.register_suggestor(SeedSuggestor::new("participants", "Charlie"));
         engine2.register_suggestor(AvailabilityRetrievalAgent);
         engine2.register_suggestor(SlotOptimizationAgent);
-        let r2 = engine2.run(Context::new()).expect("should converge");
+        let r2 = engine2.run(Context::new()).await.expect("should converge");
 
         // Both should converge independently
         assert!(r1.converged);

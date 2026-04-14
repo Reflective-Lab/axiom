@@ -41,6 +41,7 @@ mod tests {
         fact_id: String,
     }
 
+    #[async_trait::async_trait]
     impl Suggestor for TestSuggestor {
         fn name(&self) -> &str {
             "TestSuggestor"
@@ -56,7 +57,7 @@ mod tests {
                 .any(|f| f.id == self.fact_id)
         }
 
-        fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
+        async fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
             AgentEffect::with_proposal(crate::ProposedFact::new(
                 ContextKey::Seeds,
                 self.fact_id.clone(),
@@ -90,13 +91,13 @@ mod tests {
         assert!(!suggestor.accepts(&ctx));
     }
 
-    #[test]
-    fn suggestor_produces_effect() {
+    #[tokio::test]
+    async fn suggestor_produces_effect() {
         let suggestor = TestSuggestor {
             fact_id: "test-1".into(),
         };
         let ctx = crate::context::Context::new();
-        let effect = suggestor.execute(&ctx);
+        let effect = suggestor.execute(&ctx).await;
         assert_eq!(effect.proposals.len(), 1);
         assert_eq!(effect.proposals[0].id, "test-1");
     }

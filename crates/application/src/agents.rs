@@ -147,6 +147,7 @@ Keep each insight concise (1-2 sentences).".to_string(),
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for StrategicInsightAgent {
     fn name(&self) -> &'static str {
         "StrategicInsightAgent"
@@ -161,7 +162,7 @@ impl Suggestor for StrategicInsightAgent {
         ctx.has(ContextKey::Evaluations) && !ctx.has(ContextKey::Hypotheses)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let prompt = self.build_prompt(ctx);
 
         let request = ChatRequest {
@@ -188,10 +189,7 @@ impl Suggestor for StrategicInsightAgent {
             model: None,
         };
 
-        // Call LLM using block_in_place + block_on for async ChatBackend
-        let result = tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(self.provider.chat(request))
-        });
+        let result = self.provider.chat(request).await;
 
         match result {
             Ok(response) => {
@@ -391,6 +389,7 @@ Keep each risk assessment concise (2-3 sentences)."
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for RiskAssessmentAgent {
     fn name(&self) -> &'static str {
         "RiskAssessmentAgent"
@@ -407,7 +406,7 @@ impl Suggestor for RiskAssessmentAgent {
             && !ctx.has(ContextKey::Constraints)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let prompt = self.build_prompt(ctx);
 
         let request = ChatRequest {
@@ -434,10 +433,7 @@ impl Suggestor for RiskAssessmentAgent {
             model: None,
         };
 
-        // Call LLM using block_in_place + block_on for async ChatBackend
-        let result = tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(self.provider.chat(request))
-        });
+        let result = self.provider.chat(request).await;
 
         match result {
             Ok(response) => {

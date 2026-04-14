@@ -106,6 +106,7 @@ fn load_vendor_policy_engine() -> Arc<dyn FlowGateAuthorizer> {
 
 struct VendorDataAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for VendorDataAgent {
     fn name(&self) -> &str {
         "VendorDataAgent"
@@ -119,7 +120,7 @@ impl Suggestor for VendorDataAgent {
         ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Signals)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
         let seed = seeds.first();
 
@@ -155,6 +156,7 @@ impl Suggestor for VendorDataAgent {
 
 struct PriceEvaluatorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for PriceEvaluatorAgent {
     fn name(&self) -> &str {
         "PriceEvaluatorAgent"
@@ -168,7 +170,7 @@ impl Suggestor for PriceEvaluatorAgent {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
 
         let mut evaluations = Vec::new();
@@ -214,6 +216,7 @@ impl Suggestor for PriceEvaluatorAgent {
 
 struct ComplianceEvaluatorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ComplianceEvaluatorAgent {
     fn name(&self) -> &str {
         "ComplianceEvaluatorAgent"
@@ -227,7 +230,7 @@ impl Suggestor for ComplianceEvaluatorAgent {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
 
         let mut evaluations = Vec::new();
@@ -265,6 +268,7 @@ impl Suggestor for ComplianceEvaluatorAgent {
 
 struct RiskEvaluatorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for RiskEvaluatorAgent {
     fn name(&self) -> &str {
         "RiskEvaluatorAgent"
@@ -278,7 +282,7 @@ impl Suggestor for RiskEvaluatorAgent {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
 
         let mut evaluations = Vec::new();
@@ -324,6 +328,7 @@ impl Suggestor for RiskEvaluatorAgent {
 
 struct TimelineEvaluatorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for TimelineEvaluatorAgent {
     fn name(&self) -> &str {
         "TimelineEvaluatorAgent"
@@ -337,7 +342,7 @@ impl Suggestor for TimelineEvaluatorAgent {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
 
         let mut evaluations = Vec::new();
@@ -383,6 +388,7 @@ impl Suggestor for TimelineEvaluatorAgent {
 
 struct ConsensusAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ConsensusAgent {
     fn name(&self) -> &str {
         "ConsensusAgent"
@@ -396,7 +402,7 @@ impl Suggestor for ConsensusAgent {
         ctx.has(ContextKey::Evaluations) && !ctx.has(ContextKey::Strategies)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let evaluations = ctx.get(ContextKey::Evaluations);
 
         let mut vendor_scores: std::collections::HashMap<String, (f64, u32)> =
@@ -465,6 +471,7 @@ struct ProcurementRoutingAgent {
 
 const PROCUREMENT_ROUTING_DEPS: [ContextKey; 2] = [ContextKey::Signals, ContextKey::Strategies];
 
+#[async_trait::async_trait]
 impl Suggestor for ProcurementRoutingAgent {
     fn name(&self) -> &str {
         "ProcurementRoutingAgent"
@@ -486,7 +493,7 @@ impl Suggestor for ProcurementRoutingAgent {
                 .any(|fact| fact.id == "vendor-procurement-routing")
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let Some(vendor) = top_vendor(ctx) else {
             return AgentEffect::default();
         };
@@ -524,6 +531,7 @@ impl Suggestor for ProcurementRoutingAgent {
 
 struct ProcurementApprovalSimulationAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ProcurementApprovalSimulationAgent {
     fn name(&self) -> &str {
         "ProcurementApprovalSimulationAgent"
@@ -540,7 +548,7 @@ impl Suggestor for ProcurementApprovalSimulationAgent {
             && !has_procurement_approval(ctx)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let Some(constraint) = ctx
             .get(ContextKey::Constraints)
             .iter()
@@ -579,6 +587,7 @@ const VENDOR_COMMIT_DEPS: [ContextKey; 3] = [
     ContextKey::Proposals,
 ];
 
+#[async_trait::async_trait]
 impl Suggestor for VendorCommitDecisionAgent {
     fn name(&self) -> &str {
         "VendorCommitDecisionAgent"
@@ -600,7 +609,7 @@ impl Suggestor for VendorCommitDecisionAgent {
                 .any(|fact| fact.id == "vendor-commit-policy")
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let Some(vendor) = top_vendor(ctx) else {
             return AgentEffect::default();
         };
@@ -649,7 +658,8 @@ impl Suggestor for VendorCommitDecisionAgent {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("=== Vendor Selection Example ===\n");
 
     let mut engine = Engine::new();
@@ -711,7 +721,7 @@ fn main() {
 
     println!("Evaluating 3 vendors with swarm of 5 agents...\n");
 
-    match engine.run_with_hitl(ctx) {
+    match engine.run_with_hitl(ctx).await {
         RunResult::HitlPause(pause) => {
             println!("⏸️  HITL Gate: Cedar required procurement approval");
             println!("    Approval request: {}", pause.request.summary);
@@ -727,7 +737,7 @@ fn main() {
 
             println!("▶️  Approved by procurement. Finalizing...\n");
 
-            match engine.resume(*pause, decision) {
+            match engine.resume(*pause, decision).await {
                 RunResult::Complete(Ok(result)) => {
                     println!("✅ Vendor Selected!\n");
                     for fact in result.context.get(ContextKey::Strategies) {

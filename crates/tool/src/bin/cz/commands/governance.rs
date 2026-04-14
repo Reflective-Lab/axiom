@@ -139,7 +139,7 @@ pub async fn validate(args: ValidateArgs) -> CmdResult {
         let relative = file.strip_prefix(&root).unwrap_or(file);
         let file_str = relative.display().to_string();
 
-        match validator.validate_file(file) {
+        match validator.validate_file(file).await {
             Ok(result) => {
                 let errors = result
                     .issues

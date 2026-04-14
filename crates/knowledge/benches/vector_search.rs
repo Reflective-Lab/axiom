@@ -6,6 +6,7 @@ fn embedding_benchmark(c: &mut Criterion) {
     use converge_knowledge::EmbeddingEngine;
 
     let engine = EmbeddingEngine::new(384);
+    let runtime = tokio::runtime::Runtime::new().expect("tokio runtime");
     let texts = vec![
         "Rust programming language",
         "Vector databases enable semantic search",
@@ -17,7 +18,7 @@ fn embedding_benchmark(c: &mut Criterion) {
 
     for text in texts {
         group.bench_with_input(BenchmarkId::new("embed", text.len()), &text, |b, text| {
-            b.iter(|| engine.embed(text).unwrap())
+            b.iter(|| runtime.block_on(engine.embed(text)).unwrap())
         });
     }
 
@@ -28,8 +29,9 @@ fn similarity_benchmark(c: &mut Criterion) {
     use converge_knowledge::EmbeddingEngine;
 
     let engine = EmbeddingEngine::new(384);
-    let emb1 = engine.embed("rust programming").unwrap();
-    let emb2 = engine.embed("rust development").unwrap();
+    let runtime = tokio::runtime::Runtime::new().expect("tokio runtime");
+    let emb1 = runtime.block_on(engine.embed("rust programming")).unwrap();
+    let emb2 = runtime.block_on(engine.embed("rust development")).unwrap();
 
     c.bench_function("similarity", |b| b.iter(|| engine.similarity(&emb1, &emb2)));
 }

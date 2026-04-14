@@ -68,6 +68,7 @@ fn contract_execution_final_output_exists(
 #[derive(Debug, Clone, Default)]
 pub struct SessionValidatorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for SessionValidatorAgent {
     fn name(&self) -> &str {
         "session_validator"
@@ -83,7 +84,7 @@ impl Suggestor for SessionValidatorAgent {
             .any(|s| s.content.contains("session.token"))
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let triggers = ctx.get(ContextKey::Seeds);
         let mut facts = Vec::new();
 
@@ -117,6 +118,7 @@ impl Suggestor for SessionValidatorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct RbacEnforcerAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for RbacEnforcerAgent {
     fn name(&self) -> &str {
         "rbac_enforcer"
@@ -138,7 +140,7 @@ impl Suggestor for RbacEnforcerAgent {
         has_valid_session && !has_decisions
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let mut facts = Vec::new();
 
@@ -172,6 +174,7 @@ impl Suggestor for RbacEnforcerAgent {
 #[derive(Debug, Clone, Default)]
 pub struct AuditWriterAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for AuditWriterAgent {
     fn name(&self) -> &str {
         "audit_writer"
@@ -187,7 +190,7 @@ impl Suggestor for AuditWriterAgent {
             .any(|p| p.id.starts_with(ACCESS_DECISION_PREFIX))
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -220,6 +223,7 @@ impl Suggestor for AuditWriterAgent {
 #[derive(Debug, Clone, Default)]
 pub struct ProvenanceTrackerAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ProvenanceTrackerAgent {
     fn name(&self) -> &str {
         "provenance_tracker"
@@ -241,7 +245,7 @@ impl Suggestor for ProvenanceTrackerAgent {
         has_audit && !has_provenance
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -274,6 +278,7 @@ impl Suggestor for ProvenanceTrackerAgent {
 #[derive(Debug, Clone, Default)]
 pub struct ComplianceScannerAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ComplianceScannerAgent {
     fn name(&self) -> &str {
         "compliance_scanner"
@@ -295,7 +300,7 @@ impl Suggestor for ComplianceScannerAgent {
         has_audit && !has_compliance
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let audit_count = proposals
             .iter()
@@ -325,6 +330,7 @@ impl Suggestor for ComplianceScannerAgent {
 #[derive(Debug, Clone, Default)]
 pub struct ViolationRemediatorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ViolationRemediatorAgent {
     fn name(&self) -> &str {
         "violation_remediator"
@@ -340,7 +346,7 @@ impl Suggestor for ViolationRemediatorAgent {
             .any(|v| v.id.starts_with(VIOLATION_PREFIX) && v.content.contains("\"state\":\"open\""))
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let mut facts = Vec::new();
 
@@ -394,6 +400,7 @@ impl std::fmt::Debug for ContractExecutionAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for ContractExecutionAgent {
     fn name(&self) -> &str {
         "contract_execution"
@@ -411,7 +418,7 @@ impl Suggestor for ContractExecutionAgent {
         })
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -540,6 +547,7 @@ impl Suggestor for ContractExecutionAgent {
 #[derive(Debug, Clone, Default)]
 pub struct PiiRedactorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for PiiRedactorAgent {
     fn name(&self) -> &str {
         "pii_redactor"
@@ -555,7 +563,7 @@ impl Suggestor for PiiRedactorAgent {
             .any(|s| s.content.contains("redaction.required"))
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let triggers = ctx.get(ContextKey::Seeds);
         let mut facts = Vec::new();
 
@@ -787,8 +795,9 @@ mod tests {
         for (key, id, content) in entries {
             let _ = ctx.add_input(*key, *id, *content);
         }
-        Engine::new()
-            .run(ctx)
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(Engine::new().run(ctx))
             .expect("should promote test inputs")
             .context
     }
@@ -912,8 +921,8 @@ mod tests {
         assert!(matches!(result, InvariantResult::Ok));
     }
 
-    #[test]
-    fn contract_execution_requests_legal_approval_before_execute() {
+    #[tokio::test]
+    async fn contract_execution_requests_legal_approval_before_execute() {
         let mut engine = Engine::new();
         engine.register_suggestor(ContractExecutionAgent::default());
 
@@ -924,7 +933,7 @@ mod tests {
             r#"{"type":"contract","state":"ready_to_execute","legal_review_complete":true,"counterparty_signed":true}"#,
         );
 
-        let result = engine.run(ctx).expect("should converge");
+        let result = engine.run(ctx).await.expect("should converge");
         assert!(result.converged);
         assert!(
             result
@@ -938,8 +947,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn contract_execution_emits_executed_fact_and_audit_after_approval() {
+    #[tokio::test]
+    async fn contract_execution_emits_executed_fact_and_audit_after_approval() {
         let mut engine = Engine::new();
         engine.register_suggestor(ContractExecutionAgent::default());
 
@@ -955,7 +964,7 @@ mod tests {
             r#"{"target_id":"contract:msa:deal-123","required_role":"legal_counsel"}"#,
         );
 
-        let result = engine.run(ctx).expect("should converge");
+        let result = engine.run(ctx).await.expect("should converge");
         assert!(result.converged);
         assert!(
             result

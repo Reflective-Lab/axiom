@@ -45,6 +45,7 @@ impl EvalExecutionAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for EvalExecutionAgent {
     fn name(&self) -> &str {
         &self.name
@@ -85,7 +86,7 @@ impl Suggestor for EvalExecutionAgent {
         !has_existing
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         // Get dirty keys from context (simplified: use all keys with data)
         let dirty_keys: Vec<ContextKey> = [
             ContextKey::Strategies,
@@ -131,7 +132,11 @@ mod tests {
         for (key, id, content) in entries {
             ctx.add_input(*key, *id, *content).unwrap();
         }
-        Engine::new().run(ctx).unwrap().context
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(Engine::new().run(ctx))
+            .unwrap()
+            .context
     }
 
     #[test]
@@ -144,7 +149,9 @@ mod tests {
         // Suggestor should accept (has inputs, no existing evals)
         assert!(agent.accepts(&ctx));
 
-        let effect = agent.execute(&ctx);
+        let effect = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(agent.execute(&ctx));
         assert!(!effect.proposals.is_empty());
 
         // Check that eval result was stored
@@ -165,14 +172,20 @@ mod tests {
 
         // First execution
         assert!(agent.accepts(&ctx));
-        let effect1 = agent.execute(&ctx);
+        let effect1 = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(agent.execute(&ctx));
 
         // Add eval results to context (simulating merge)
         let mut ctx = ctx;
         for proposal in effect1.proposals {
             ctx.add_proposal(proposal).unwrap();
         }
-        let ctx = Engine::new().run(ctx).unwrap().context;
+        let ctx = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(Engine::new().run(ctx))
+            .unwrap()
+            .context;
 
         // Second execution should not be accepted (idempotency)
         assert!(!agent.accepts(&ctx));

@@ -70,7 +70,9 @@ These are not suggestions.
 
 ## Architecture
 
-The kernel is pure. No I/O, no async, no non-determinism in `converge-core`.
+The kernel is pure. No I/O, no persistence, no hidden background work, and no non-determinism in `converge-core`.
+
+Async trait boundaries are allowed when they stay runtime-agnostic. Executor ownership, task spawning, and network/runtime coupling stay outside `converge-core`.
 
 The hexagonal boundary is enforced by crate dependencies:
 - `converge-pack` and `converge-provider-api` are leaves (zero internal deps)

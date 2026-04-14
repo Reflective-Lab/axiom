@@ -92,6 +92,7 @@ fn build_answer(question: &str, sources: &[AskSource]) -> serde_json::Value {
 #[derive(Debug, Clone, Default)]
 pub struct AskConvergeAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for AskConvergeAgent {
     fn name(&self) -> &str {
         "ask_converge"
@@ -110,7 +111,7 @@ impl Suggestor for AskConvergeAgent {
         has_question && !has_answer
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let question = match parse_question(ctx) {
             Some(question) => question,
             None => return AgentEffect::empty(),
@@ -223,7 +224,11 @@ mod tests {
         for (key, id, content) in entries {
             ctx.add_input(*key, *id, *content).unwrap();
         }
-        Engine::new().run(ctx).unwrap().context
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(Engine::new().run(ctx))
+            .unwrap()
+            .context
     }
 
     #[test]
@@ -239,7 +244,9 @@ mod tests {
         ]);
 
         let agent = AskConvergeAgent::default();
-        let effect = agent.execute(&ctx);
+        let effect = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(agent.execute(&ctx));
         assert!(!effect.is_empty());
         assert_eq!(effect.proposals.len(), 1);
     }

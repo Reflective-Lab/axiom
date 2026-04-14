@@ -8,6 +8,8 @@ source: mixed
 **Scope:** Full codebase audit against the Nine Axioms
 **Status:** Baseline. Re-run after kernel correction to verify fixes.
 
+> Historical note: this audit captured the pre-async kernel contract. Current live docs define `converge-core` as runtime-agnostic rather than strictly synchronous.
+
 ## The True Story
 
 Converge is an Agent OS where multi-agent systems produce governed, auditable, convergent outcomes. Its central insight is that agents are pure functions over a shared context: they propose evidence, and the engine decides what gets promoted to fact. No agent can unilaterally change shared state, no agent calls another agent, and all communication happens through typed context keys. The engine runs agents in cycles until a fixed point is reached or a budget is exhausted, and it tells you honestly which happened and why.

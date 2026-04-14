@@ -13,6 +13,7 @@ const DRAFT_OUTPUT_PREFIX: &str = "drafting_output:";
 /// Drafting research agent (deterministic fallback).
 pub struct DraftingResearchAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for DraftingResearchAgent {
     fn name(&self) -> &str {
         "DraftingResearchAgent"
@@ -30,7 +31,7 @@ impl Suggestor for DraftingResearchAgent {
                 .any(|fact| fact.id.starts_with(DRAFT_RESEARCH_PREFIX))
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let summary = ctx
             .get(ContextKey::Seeds)
             .iter()
@@ -50,6 +51,7 @@ impl Suggestor for DraftingResearchAgent {
 /// Drafting composer agent (deterministic fallback).
 pub struct DraftingComposerAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for DraftingComposerAgent {
     fn name(&self) -> &str {
         "DraftingComposerAgent"
@@ -69,7 +71,7 @@ impl Suggestor for DraftingComposerAgent {
                 .any(|fact| fact.id.starts_with(DRAFT_OUTPUT_PREFIX))
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let notes = ctx
             .get(ContextKey::Signals)
             .iter()

@@ -116,6 +116,7 @@ impl ValidationAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for ValidationAgent {
     fn name(&self) -> &str {
         "ValidationAgent"
@@ -129,7 +130,7 @@ impl Suggestor for ValidationAgent {
         ContextKey::iter().any(|key| !ctx.get_proposals(key).is_empty())
     }
 
-    fn execute(&self, ctx: &dyn crate::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn crate::ContextView) -> AgentEffect {
         let mut diagnostics = Vec::new();
 
         for key in ContextKey::iter() {

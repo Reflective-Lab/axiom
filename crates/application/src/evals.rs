@@ -133,7 +133,7 @@ pub fn load_fixtures_from_dir(dir: &Path) -> Result<Vec<EvalFixture>> {
 }
 
 /// Run a single eval fixture
-pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
+pub async fn run_eval(fixture: &EvalFixture) -> EvalResult {
     let run_id = Uuid::new_v4();
     let start = Instant::now();
 
@@ -160,7 +160,7 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
     // by organism-application or via a plugin mechanism
     let mut engine = Engine::new();
 
-    let result = match engine.run(context) {
+    let result = match engine.run(context).await {
         Ok(r) => r,
         Err(e) => {
             return EvalResult::error(
@@ -321,8 +321,12 @@ pub fn run_eval(fixture: &EvalFixture) -> EvalResult {
 }
 
 /// Run multiple eval fixtures
-pub fn run_evals(fixtures: &[EvalFixture]) -> Vec<EvalResult> {
-    fixtures.iter().map(run_eval).collect()
+pub async fn run_evals(fixtures: &[EvalFixture]) -> Vec<EvalResult> {
+    let mut results = Vec::with_capacity(fixtures.len());
+    for fixture in fixtures {
+        results.push(run_eval(fixture).await);
+    }
+    results
 }
 
 /// Print eval results in a formatted way

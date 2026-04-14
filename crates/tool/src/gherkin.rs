@@ -391,7 +391,7 @@ impl GherkinValidator {
     /// Returns error if the specification cannot be parsed or validated.
     /// LLM API errors are wrapped as `ValidationError::LlmError` with "`NOT_RELATED_ERROR`:" prefix
     /// to distinguish them from Gherkin validation issues.
-    pub fn validate(
+    pub async fn validate(
         &self,
         content: &str,
         file_name: &str,
@@ -408,7 +408,7 @@ impl GherkinValidator {
 
         // Validate each scenario
         for scenario in &feature.scenarios {
-            let scenario_issues = self.validate_scenario(&feature, scenario)?;
+            let scenario_issues = self.validate_scenario(&feature, scenario).await?;
             issues.extend(scenario_issues);
         }
 
@@ -442,17 +442,21 @@ impl GherkinValidator {
     /// # Errors
     ///
     /// Returns error if the file cannot be read or validated.
-    pub fn validate_file(&self, path: impl AsRef<Path>) -> Result<SpecValidation, ValidationError> {
+    pub async fn validate_file(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> Result<SpecValidation, ValidationError> {
         let path = path.as_ref();
-        let content =
-            std::fs::read_to_string(path).map_err(|e| ValidationError::IoError(format!("{e}")))?;
+        let content = tokio::fs::read_to_string(path)
+            .await
+            .map_err(|e| ValidationError::IoError(format!("{e}")))?;
 
         let file_name = path
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("unknown");
 
-        self.validate(&content, file_name)
+        self.validate(&content, file_name).await
     }
 
     /// Validates a single scenario.
@@ -461,7 +465,7 @@ impl GherkinValidator {
     ///
     /// Returns `ValidationError` if LLM API calls fail (wrapped as `NOT_RELATED_ERROR`).
     /// Gherkin validation issues are returned as `ValidationIssue` items, not errors.
-    fn validate_scenario(
+    async fn validate_scenario(
         &self,
         feature: &gherkin::Feature,
         scenario: &gherkin::Scenario,
@@ -470,7 +474,7 @@ impl GherkinValidator {
 
         // Check business sense if enabled
         if self.config.check_business_sense {
-            match self.check_business_sense(feature, scenario) {
+            match self.check_business_sense(feature, scenario).await {
                 Ok(Some(issue)) => issues.push(issue),
                 Ok(None) => {} // No issue found
                 Err(e) => {
@@ -482,7 +486,7 @@ impl GherkinValidator {
 
         // Check compilability if enabled
         if self.config.check_compilability {
-            match self.check_compilability(feature, scenario) {
+            match self.check_compilability(feature, scenario).await {
                 Ok(Some(issue)) => issues.push(issue),
                 Ok(None) => {} // No issue found
                 Err(e) => {
@@ -569,7 +573,7 @@ impl GherkinValidator {
     }
 
     /// Uses LLM to check if a scenario makes business sense.
-    fn check_business_sense(
+    async fn check_business_sense(
         &self,
         feature: &gherkin::Feature,
         scenario: &gherkin::Scenario,
@@ -599,7 +603,7 @@ Respond with ONLY one of:
 
         let system_prompt = "You are a strict business requirements validator. Be concise.";
 
-        let response = chat_sync(&self.backend, system_prompt, &prompt, Some(200), Some(0.3))?;
+        let response = chat(&self.backend, system_prompt, &prompt, Some(200), Some(0.3)).await?;
 
         let content = response.content.trim();
 
@@ -627,7 +631,7 @@ Respond with ONLY one of:
     }
 
     /// Uses LLM to check if a scenario can be compiled to a Rust invariant.
-    fn check_compilability(
+    async fn check_compilability(
         &self,
         feature: &gherkin::Feature,
         scenario: &gherkin::Scenario,
@@ -665,7 +669,7 @@ Respond with ONLY one of:
         let system_prompt =
             "You are a Rust expert. Be precise about what can be checked at runtime.";
 
-        let response = chat_sync(&self.backend, system_prompt, &prompt, Some(200), Some(0.3))?;
+        let response = chat(&self.backend, system_prompt, &prompt, Some(200), Some(0.3)).await?;
 
         let content = response.content.trim();
 
@@ -787,7 +791,7 @@ impl SpecGenerator {
     /// # Errors
     ///
     /// Returns error if the LLM API call fails.
-    pub fn generate_from_text(&self, text: &str) -> Result<String, ValidationError> {
+    pub async fn generate_from_text(&self, text: &str) -> Result<String, ValidationError> {
         let prompt = format!(
             r"You are a requirements engineer for a multi-agent AI system called Converge.
 Convert the following free text into a valid Gherkin/Truth specification.
@@ -819,14 +823,14 @@ Truth: <name>
         let system_prompt =
             "You are an expert Gherkin spec writer. Respond with ONLY the specification.";
 
-        let response = chat_sync(&self.backend, system_prompt, &prompt, Some(1000), Some(0.3))?;
+        let response = chat(&self.backend, system_prompt, &prompt, Some(1000), Some(0.3)).await?;
 
         Ok(response.content.trim().to_string())
     }
 }
 
-/// Synchronously execute a chat request against a `DynChatBackend`.
-fn chat_sync(
+/// Execute a chat request against a `DynChatBackend`.
+async fn chat(
     backend: &Arc<dyn DynChatBackend>,
     system: &str,
     user_prompt: &str,
@@ -849,7 +853,7 @@ fn chat_sync(
         model: None,
     };
 
-    futures::executor::block_on(backend.chat(request)).map_err(|e| {
+    backend.chat(request).await.map_err(|e| {
         ValidationError::LlmError(format!("NOT_RELATED_ERROR: LLM API call failed: {e}"))
     })
 }
@@ -934,8 +938,8 @@ mod tests {
         assert!(config.check_conventions);
     }
 
-    #[test]
-    fn validates_truth_syntax() {
+    #[tokio::test]
+    async fn validates_truth_syntax() {
         let content = r"
 Truth: Get paid for delivered work
   Scenario: Invoice and collect
@@ -946,14 +950,14 @@ Truth: Get paid for delivered work
 
         let validator = GherkinValidator::new(mock_valid_backend(), ValidationConfig::default());
 
-        let result = validator.validate(content, "money.truth").unwrap();
+        let result = validator.validate(content, "money.truth").await.unwrap();
 
         assert_eq!(result.scenario_count, 1);
         // Should parse successfully with Truth: syntax and .truth extension
     }
 
-    #[test]
-    fn validates_truth_with_governance_blocks() {
+    #[tokio::test]
+    async fn validates_truth_with_governance_blocks() {
         let content = r#"
 Truth: Governed release
   Intent:
@@ -973,7 +977,7 @@ Truth: Governed release
 "#;
 
         let validator = GherkinValidator::new(mock_valid_backend(), ValidationConfig::default());
-        let result = validator.validate(content, "release.truths").unwrap();
+        let result = validator.validate(content, "release.truths").await.unwrap();
 
         assert_eq!(result.scenario_count, 1);
         assert_eq!(
@@ -983,8 +987,8 @@ Truth: Governed release
         assert!(result.governance.intent.is_some());
     }
 
-    #[test]
-    fn validates_simple_feature() {
+    #[tokio::test]
+    async fn validates_simple_feature() {
         let content = r"
 Feature: Growth Strategy Validation
   Scenario: Multiple strategies required
@@ -994,14 +998,14 @@ Feature: Growth Strategy Validation
 
         let validator = GherkinValidator::new(mock_valid_backend(), ValidationConfig::default());
 
-        let result = validator.validate(content, "test.feature").unwrap();
+        let result = validator.validate(content, "test.feature").await.unwrap();
 
         assert_eq!(result.scenario_count, 1);
         // May have convention warnings but should be parseable
     }
 
-    #[test]
-    fn detects_missing_then() {
+    #[tokio::test]
+    async fn detects_missing_then() {
         let content = r"
 Feature: Bad Spec
   Scenario: No assertions
@@ -1019,7 +1023,7 @@ Feature: Bad Spec
             },
         );
 
-        let result = validator.validate(content, "bad.feature").unwrap();
+        let result = validator.validate(content, "bad.feature").await.unwrap();
 
         assert!(result.has_errors());
         assert!(
@@ -1030,8 +1034,8 @@ Feature: Bad Spec
         );
     }
 
-    #[test]
-    fn detects_uncertain_language() {
+    #[tokio::test]
+    async fn detects_uncertain_language() {
         let content = r"
 Feature: Uncertain Spec
   Scenario: Maybe works
@@ -1049,14 +1053,17 @@ Feature: Uncertain Spec
             },
         );
 
-        let result = validator.validate(content, "uncertain.feature").unwrap();
+        let result = validator
+            .validate(content, "uncertain.feature")
+            .await
+            .unwrap();
 
         assert!(result.has_warnings());
         assert!(result.issues.iter().any(|i| i.message.contains("might")));
     }
 
-    #[test]
-    fn handles_llm_invalid_response() {
+    #[tokio::test]
+    async fn handles_llm_invalid_response() {
         let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::queued([
             "INVALID: The scenario describes an untestable state",
             "COMPILABLE: Acceptance",
@@ -1071,7 +1078,7 @@ Feature: Test
 
         let validator = GherkinValidator::new(backend, ValidationConfig::default());
 
-        let result = validator.validate(content, "test.feature").unwrap();
+        let result = validator.validate(content, "test.feature").await.unwrap();
 
         assert!(
             result.issues.iter().any(
@@ -1080,13 +1087,16 @@ Feature: Test
         );
     }
 
-    #[test]
-    fn generates_spec_from_text() {
+    #[tokio::test]
+    async fn generates_spec_from_text() {
         let mock_spec = "Truth: Test\n  Scenario: Test\n    Given X\n    Then Y";
         let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::queued([mock_spec]));
 
         let generator = SpecGenerator::new(backend);
-        let result = generator.generate_from_text("Make a test spec").unwrap();
+        let result = generator
+            .generate_from_text("Make a test spec")
+            .await
+            .unwrap();
 
         assert_eq!(result, mock_spec);
     }
@@ -1271,8 +1281,8 @@ Truth: Growth Strategy Pack
         assert!(metas[3].is_test);
     }
 
-    #[test]
-    fn validator_populates_scenario_metas() {
+    #[tokio::test]
+    async fn validator_populates_scenario_metas() {
         let content = r#"
 Truth: Test
   @invariant @structural @id:test_inv
@@ -1283,7 +1293,7 @@ Truth: Test
 "#;
 
         let validator = GherkinValidator::new(mock_valid_backend(), ValidationConfig::default());
-        let result = validator.validate(content, "test.truth").unwrap();
+        let result = validator.validate(content, "test.truth").await.unwrap();
 
         assert_eq!(result.scenario_metas.len(), 1);
         assert_eq!(result.scenario_metas[0].kind, Some(ScenarioKind::Invariant));

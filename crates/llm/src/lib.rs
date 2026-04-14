@@ -362,7 +362,6 @@ pub use provider::{
     ProviderFinishReason,
     ResponseParser,
     SimpleParser,
-    SyncChatProvider,
     TokenUsage as CoreTokenUsage,
 };
 

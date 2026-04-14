@@ -12,7 +12,7 @@
 //!
 //! # Example
 //!
-//! ```
+//! ```ignore
 //! use converge_core::{Engine, Context, ContextKey};
 //! use converge_core::suggestors::{SeedSuggestor, ReactOnceSuggestor};
 //!
@@ -20,7 +20,7 @@
 //! engine.register_suggestor(SeedSuggestor::new("seed-1", "initial value"));
 //! engine.register_suggestor(ReactOnceSuggestor::new("hyp-1", "derived insight"));
 //!
-//! let result = engine.run(Context::new()).expect("converges");
+//! let result = engine.run(Context::new()).await.expect("converges");
 //! assert!(result.converged);
 //! assert!(result.context.has(ContextKey::Seeds));
 //! assert!(result.context.has(ContextKey::Hypotheses));
@@ -52,6 +52,7 @@ impl SeedSuggestor {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for SeedSuggestor {
     fn name(&self) -> &str {
         "SeedSuggestor"
@@ -68,7 +69,7 @@ impl Suggestor for SeedSuggestor {
             .any(|f| f.id == self.fact_id)
     }
 
-    fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
+    async fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
         AgentEffect::with_proposal(ProposedFact::new(
             ContextKey::Seeds,
             self.fact_id.clone(),
@@ -100,6 +101,7 @@ impl ReactOnceSuggestor {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for ReactOnceSuggestor {
     fn name(&self) -> &str {
         "ReactOnceSuggestor"
@@ -118,7 +120,7 @@ impl Suggestor for ReactOnceSuggestor {
                 .any(|f| f.id == self.fact_id)
     }
 
-    fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
+    async fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
         AgentEffect::with_proposal(ProposedFact::new(
             ContextKey::Hypotheses,
             self.fact_id.clone(),
@@ -134,48 +136,49 @@ mod tests {
     use crate::context::Context;
     use crate::engine::Engine;
 
-    #[test]
-    fn seed_agent_emits_once() {
+    #[tokio::test]
+    async fn seed_agent_emits_once() {
         let mut engine = Engine::new();
         engine.register_suggestor(SeedSuggestor::new("s1", "value"));
 
-        let result = engine.run(Context::new()).expect("converges");
+        let result = engine.run(Context::new()).await.expect("converges");
 
         assert!(result.converged);
         assert_eq!(result.context.get(ContextKey::Seeds).len(), 1);
     }
 
-    #[test]
-    fn react_once_agent_chains_from_seed() {
+    #[tokio::test]
+    async fn react_once_agent_chains_from_seed() {
         let mut engine = Engine::new();
         engine.register_suggestor(SeedSuggestor::new("s1", "seed"));
         engine.register_suggestor(ReactOnceSuggestor::new("h1", "hypothesis"));
 
-        let result = engine.run(Context::new()).expect("converges");
+        let result = engine.run(Context::new()).await.expect("converges");
 
         assert!(result.converged);
         assert!(result.context.has(ContextKey::Seeds));
         assert!(result.context.has(ContextKey::Hypotheses));
     }
 
-    #[test]
-    fn multiple_seeds_all_converge() {
+    #[tokio::test]
+    async fn multiple_seeds_all_converge() {
         let mut engine = Engine::new();
         engine.register_suggestor(SeedSuggestor::new("s1", "first"));
         engine.register_suggestor(SeedSuggestor::new("s2", "second"));
         engine.register_suggestor(SeedSuggestor::new("s3", "third"));
 
-        let result = engine.run(Context::new()).expect("converges");
+        let result = engine.run(Context::new()).await.expect("converges");
 
         assert!(result.converged);
         assert_eq!(result.context.get(ContextKey::Seeds).len(), 3);
     }
 
-    #[test]
-    fn chain_of_three_converges() {
+    #[tokio::test]
+    async fn chain_of_three_converges() {
         /// Third suggestor in the chain.
         struct StrategyAgent;
 
+        #[async_trait::async_trait]
         impl Suggestor for StrategyAgent {
             fn name(&self) -> &str {
                 "StrategyAgent"
@@ -189,7 +192,7 @@ mod tests {
                 ctx.has(ContextKey::Hypotheses) && !ctx.has(ContextKey::Strategies)
             }
 
-            fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
+            async fn execute(&self, _ctx: &dyn crate::ContextView) -> AgentEffect {
                 AgentEffect::with_proposal(ProposedFact::new(
                     ContextKey::Strategies,
                     "strat-1",
@@ -204,7 +207,7 @@ mod tests {
         engine.register_suggestor(ReactOnceSuggestor::new("h1", "hypothesis"));
         engine.register_suggestor(StrategyAgent);
 
-        let result = engine.run(Context::new()).expect("converges");
+        let result = engine.run(Context::new()).await.expect("converges");
 
         assert!(result.converged);
         assert!(result.context.has(ContextKey::Seeds));

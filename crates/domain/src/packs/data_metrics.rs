@@ -43,6 +43,7 @@ pub const ANOMALY_PREFIX: &str = "anomaly:";
 #[derive(Debug, Clone, Default)]
 pub struct MetricRegistrarAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for MetricRegistrarAgent {
     fn name(&self) -> &str {
         "metric_registrar"
@@ -58,7 +59,7 @@ impl Suggestor for MetricRegistrarAgent {
             .any(|s| s.content.contains("metric.define") || s.content.contains("metric.update"))
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let triggers = ctx.get(ContextKey::Seeds);
         let mut facts = Vec::new();
 
@@ -91,6 +92,7 @@ impl Suggestor for MetricRegistrarAgent {
 #[derive(Debug, Clone, Default)]
 pub struct SourceConnectorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for SourceConnectorAgent {
     fn name(&self) -> &str {
         "source_connector"
@@ -106,7 +108,7 @@ impl Suggestor for SourceConnectorAgent {
             .any(|s| s.content.contains("source.register") || s.content.contains("source.connect"))
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let triggers = ctx.get(ContextKey::Seeds);
         let mut facts = Vec::new();
 
@@ -139,6 +141,7 @@ impl Suggestor for SourceConnectorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct PipelineCoordinatorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for PipelineCoordinatorAgent {
     fn name(&self) -> &str {
         "pipeline_coordinator"
@@ -154,7 +157,7 @@ impl Suggestor for PipelineCoordinatorAgent {
             .any(|s| s.id.starts_with(SOURCE_PREFIX) && s.content.contains("\"state\":\"healthy\""))
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let mut facts = Vec::new();
 
@@ -187,6 +190,7 @@ impl Suggestor for PipelineCoordinatorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct DataValidatorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for DataValidatorAgent {
     fn name(&self) -> &str {
         "data_validator"
@@ -202,7 +206,7 @@ impl Suggestor for DataValidatorAgent {
         })
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -236,6 +240,7 @@ impl Suggestor for DataValidatorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct AnomalyDetectorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for AnomalyDetectorAgent {
     fn name(&self) -> &str {
         "anomaly_detector"
@@ -251,7 +256,7 @@ impl Suggestor for AnomalyDetectorAgent {
         })
     }
 
-    fn execute(&self, _ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, _ctx: &dyn converge_core::ContextView) -> AgentEffect {
         // In real implementation, would analyze data for anomalies
         // For now, creates a placeholder showing no anomalies detected
         AgentEffect::with_proposal(crate::proposal(
@@ -274,6 +279,7 @@ impl Suggestor for AnomalyDetectorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct DashboardBuilderAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for DashboardBuilderAgent {
     fn name(&self) -> &str {
         "dashboard_builder"
@@ -289,7 +295,7 @@ impl Suggestor for DashboardBuilderAgent {
         })
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let triggers = ctx.get(ContextKey::Seeds);
         let mut facts = Vec::new();
 
@@ -322,6 +328,7 @@ impl Suggestor for DashboardBuilderAgent {
 #[derive(Debug, Clone, Default)]
 pub struct ReportGeneratorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ReportGeneratorAgent {
     fn name(&self) -> &str {
         "report_generator"
@@ -337,7 +344,7 @@ impl Suggestor for ReportGeneratorAgent {
             .any(|s| s.content.contains("report.generate") || s.content.contains("report.schedule"))
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let triggers = ctx.get(ContextKey::Seeds);
         let mut facts = Vec::new();
 
@@ -370,6 +377,7 @@ impl Suggestor for ReportGeneratorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct AlertEvaluatorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for AlertEvaluatorAgent {
     fn name(&self) -> &str {
         "alert_evaluator"
@@ -386,7 +394,7 @@ impl Suggestor for AlertEvaluatorAgent {
         })
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let evaluations = ctx.get(ContextKey::Evaluations);
         let mut facts = Vec::new();
 
@@ -417,6 +425,7 @@ impl Suggestor for AlertEvaluatorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct FreshnessMonitorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for FreshnessMonitorAgent {
     fn name(&self) -> &str {
         "freshness_monitor"
@@ -432,7 +441,7 @@ impl Suggestor for FreshnessMonitorAgent {
             .any(|s| s.id.starts_with(SOURCE_PREFIX))
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let mut facts = Vec::new();
 
@@ -463,6 +472,7 @@ impl Suggestor for FreshnessMonitorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct MetricCalculatorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for MetricCalculatorAgent {
     fn name(&self) -> &str {
         "metric_calculator"
@@ -484,7 +494,7 @@ impl Suggestor for MetricCalculatorAgent {
         has_metrics && has_validation
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 

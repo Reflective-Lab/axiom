@@ -26,7 +26,7 @@
 //!    │
 //!    ▼
 //! FeasibilityAgent → Evaluations (valid assignments ranked)
-//! ```
+//! ```ignore
 //!
 //! # Example
 //!
@@ -51,7 +51,7 @@
 //! engine.register_suggestor(SolverAgent);
 //! engine.register_suggestor(FeasibilityAgent);
 //!
-//! let result = engine.run(Context::new()).expect("should converge");
+//! let result = engine.run(Context::new()).await.expect("should converge");
 //!
 //! assert!(result.converged);
 //! assert!(result.context.has(ContextKey::Strategies));
@@ -69,6 +69,7 @@ use converge_core::{AgentEffect, ContextKey, Fact, Suggestor};
 /// Extracts tasks from seeds and creates structured task facts.
 pub struct TaskRetrievalAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for TaskRetrievalAgent {
     fn name(&self) -> &str {
         "TaskRetrievalAgent"
@@ -92,7 +93,7 @@ impl Suggestor for TaskRetrievalAgent {
         has_tasks_seed && !has_task_signals
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
 
         let mut facts = Vec::new();
@@ -144,6 +145,7 @@ impl Suggestor for TaskRetrievalAgent {
 /// Extracts resources from seeds and creates structured resource facts.
 pub struct ResourceRetrievalAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ResourceRetrievalAgent {
     fn name(&self) -> &str {
         "ResourceRetrievalAgent"
@@ -166,7 +168,7 @@ impl Suggestor for ResourceRetrievalAgent {
         has_resources_seed && !has_resource_signals
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
 
         let mut facts = Vec::new();
@@ -219,6 +221,7 @@ impl Suggestor for ResourceRetrievalAgent {
 /// Creates constraint facts based on tasks and resources.
 pub struct ConstraintValidationAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ConstraintValidationAgent {
     fn name(&self) -> &str {
         "ConstraintValidationAgent"
@@ -243,7 +246,7 @@ impl Suggestor for ConstraintValidationAgent {
         has_tasks && has_resources && !has_constraints
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
 
         let mut facts = Vec::new();
@@ -292,6 +295,7 @@ impl Suggestor for ConstraintValidationAgent {
 /// In a real system, this would integrate with a proper solver library.
 pub struct SolverAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for SolverAgent {
     fn name(&self) -> &str {
         "SolverAgent"
@@ -306,7 +310,7 @@ impl Suggestor for SolverAgent {
         ctx.has(ContextKey::Constraints) && !ctx.has(ContextKey::Strategies)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let _constraints = ctx.get(ContextKey::Constraints);
 
@@ -398,6 +402,7 @@ impl Suggestor for SolverAgent {
 /// Evaluates assignments against constraints and ranks them.
 pub struct FeasibilityAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for FeasibilityAgent {
     fn name(&self) -> &str {
         "FeasibilityAgent"
@@ -412,7 +417,7 @@ impl Suggestor for FeasibilityAgent {
         ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
         let _constraints = ctx.get(ContextKey::Constraints);
         let signals = ctx.get(ContextKey::Signals);
@@ -669,8 +674,8 @@ mod tests {
     use converge_core::Engine;
     use converge_core::suggestors::SeedSuggestor;
 
-    #[test]
-    fn task_retrieval_agent_extracts_tasks() {
+    #[tokio::test]
+    async fn task_retrieval_agent_extracts_tasks() {
         let mut engine = Engine::new();
         engine.register_suggestor(SeedSuggestor::new(
             "tasks",
@@ -678,7 +683,7 @@ mod tests {
         ));
         engine.register_suggestor(TaskRetrievalAgent);
 
-        let result = engine.run(Context::new()).expect("should converge");
+        let result = engine.run(Context::new()).await.expect("should converge");
 
         assert!(result.converged);
         assert!(result.context.has(ContextKey::Signals));
@@ -687,21 +692,21 @@ mod tests {
         assert!(signals.iter().any(|s| s.id.starts_with("task:")));
     }
 
-    #[test]
-    fn resource_retrieval_agent_extracts_resources() {
+    #[tokio::test]
+    async fn resource_retrieval_agent_extracts_resources() {
         let mut engine = Engine::new();
         engine.register_suggestor(SeedSuggestor::new("resources", "Vehicle 1, Vehicle 2"));
         engine.register_suggestor(ResourceRetrievalAgent);
 
-        let result = engine.run(Context::new()).expect("should converge");
+        let result = engine.run(Context::new()).await.expect("should converge");
 
         assert!(result.converged);
         let signals = result.context.get(ContextKey::Signals);
         assert!(signals.iter().any(|s| s.id.starts_with("resource:")));
     }
 
-    #[test]
-    fn constraint_validation_agent_creates_constraints() {
+    #[tokio::test]
+    async fn constraint_validation_agent_creates_constraints() {
         let mut engine = Engine::new();
         engine.register_suggestor(SeedSuggestor::new("tasks", "Delivery A, Delivery B"));
         engine.register_suggestor(SeedSuggestor::new("resources", "Vehicle 1"));
@@ -709,14 +714,14 @@ mod tests {
         engine.register_suggestor(ResourceRetrievalAgent);
         engine.register_suggestor(ConstraintValidationAgent);
 
-        let result = engine.run(Context::new()).expect("should converge");
+        let result = engine.run(Context::new()).await.expect("should converge");
 
         assert!(result.converged);
         assert!(result.context.has(ContextKey::Constraints));
     }
 
-    #[test]
-    fn solver_agent_generates_assignments() {
+    #[tokio::test]
+    async fn solver_agent_generates_assignments() {
         let mut engine = Engine::new();
         engine.register_suggestor(SeedSuggestor::new("tasks", "Delivery A, Delivery B"));
         engine.register_suggestor(SeedSuggestor::new("resources", "Vehicle 1, Vehicle 2"));
@@ -725,7 +730,7 @@ mod tests {
         engine.register_suggestor(ConstraintValidationAgent);
         engine.register_suggestor(SolverAgent);
 
-        let result = engine.run(Context::new()).expect("should converge");
+        let result = engine.run(Context::new()).await.expect("should converge");
 
         assert!(result.converged);
         assert!(result.context.has(ContextKey::Strategies));
@@ -734,8 +739,8 @@ mod tests {
         assert!(!assignments.is_empty());
     }
 
-    #[test]
-    fn feasibility_agent_evaluates_assignments() {
+    #[tokio::test]
+    async fn feasibility_agent_evaluates_assignments() {
         let mut engine = Engine::new();
         engine.register_suggestor(SeedSuggestor::new("tasks", "Delivery A, Delivery B"));
         engine.register_suggestor(SeedSuggestor::new("resources", "Vehicle 1, Vehicle 2"));
@@ -745,7 +750,7 @@ mod tests {
         engine.register_suggestor(SolverAgent);
         engine.register_suggestor(FeasibilityAgent);
 
-        let result = engine.run(Context::new()).expect("should converge");
+        let result = engine.run(Context::new()).await.expect("should converge");
 
         assert!(result.converged);
         assert!(result.context.has(ContextKey::Evaluations));
@@ -754,9 +759,9 @@ mod tests {
         assert!(!evals.is_empty());
     }
 
-    #[test]
-    fn full_pipeline_converges_deterministically() {
-        let run = || {
+    #[tokio::test]
+    async fn full_pipeline_converges_deterministically() {
+        let run = || async {
             let mut engine = Engine::new();
             engine.register_suggestor(SeedSuggestor::new(
                 "tasks",
@@ -768,11 +773,11 @@ mod tests {
             engine.register_suggestor(ConstraintValidationAgent);
             engine.register_suggestor(SolverAgent);
             engine.register_suggestor(FeasibilityAgent);
-            engine.run(Context::new()).expect("should converge")
+            engine.run(Context::new()).await.expect("should converge")
         };
 
-        let r1 = run();
-        let r2 = run();
+        let r1 = run().await;
+        let r2 = run().await;
 
         // Same number of cycles
         assert_eq!(r1.cycles, r2.cycles);

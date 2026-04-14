@@ -712,7 +712,11 @@ mod tests {
         for (key, id, content) in entries {
             ctx.add_input(*key, *id, *content).unwrap();
         }
-        Engine::new().run(ctx).unwrap().context
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(Engine::new().run(ctx))
+            .unwrap()
+            .context
     }
 
     #[test]

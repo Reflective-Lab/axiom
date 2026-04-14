@@ -6,3 +6,5 @@ publish = false
 
 [dependencies]
 converge-core = { path = "../../crates/core" }
+async-trait.workspace = true
+tokio.workspace = true

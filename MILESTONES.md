@@ -6,7 +6,7 @@
 **Deadline:** 2026-05-10 | **Epic:** E1 (Converge is a publishable platform)
 
 - [wontfix] ~~Add `#[warn(missing_docs)]` to all publishable crates~~ — docs belong in kb/, not in code
-- [ ] Migrate async traits: ChatBackend/EmbedBackend adoption across providers
+- [x] Migrate async traits: ChatBackend/EmbedBackend adoption across providers
 - [x] Canonize ExperienceStore as the live trait (removed stale #[deprecated], added test)
 - [x] Write ADR-005: Type ownership boundaries (which crate owns which types)
 - [x] Export CriterionResult/CriterionOutcome/Criterion from converge-kernel

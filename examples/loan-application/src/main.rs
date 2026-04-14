@@ -13,6 +13,7 @@ use converge_core::{
 
 struct ApplicationIngestionAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ApplicationIngestionAgent {
     fn name(&self) -> &str {
         "ApplicationIngestionAgent"
@@ -26,7 +27,7 @@ impl Suggestor for ApplicationIngestionAgent {
         ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Signals)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
         let seed = seeds.first();
 
@@ -50,6 +51,7 @@ impl Suggestor for ApplicationIngestionAgent {
 
 struct DocumentVerificationAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for DocumentVerificationAgent {
     fn name(&self) -> &str {
         "DocumentVerificationAgent"
@@ -63,7 +65,7 @@ impl Suggestor for DocumentVerificationAgent {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let signal = signals.first();
 
@@ -96,6 +98,7 @@ impl Suggestor for DocumentVerificationAgent {
 
 struct CreditCheckAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for CreditCheckAgent {
     fn name(&self) -> &str {
         "CreditCheckAgent"
@@ -109,7 +112,7 @@ impl Suggestor for CreditCheckAgent {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let signal = signals.first();
 
@@ -176,6 +179,7 @@ impl Suggestor for CreditCheckAgent {
 
 struct ComplianceAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ComplianceAgent {
     fn name(&self) -> &str {
         "ComplianceAgent"
@@ -189,7 +193,7 @@ impl Suggestor for ComplianceAgent {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let signal = signals.first();
 
@@ -243,6 +247,7 @@ impl Suggestor for ComplianceAgent {
 
 struct RiskAssessmentAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for RiskAssessmentAgent {
     fn name(&self) -> &str {
         "RiskAssessmentAgent"
@@ -256,7 +261,7 @@ impl Suggestor for RiskAssessmentAgent {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let signal = signals.first();
 
@@ -312,6 +317,7 @@ impl Suggestor for RiskAssessmentAgent {
 
 struct LoanDecisionAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for LoanDecisionAgent {
     fn name(&self) -> &str {
         "LoanDecisionAgent"
@@ -325,7 +331,7 @@ impl Suggestor for LoanDecisionAgent {
         ctx.has(ContextKey::Evaluations) && !ctx.has(ContextKey::Proposals)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let evaluations = ctx.get(ContextKey::Evaluations);
 
         let mut total_score = 0.0;
@@ -371,7 +377,8 @@ impl Suggestor for LoanDecisionAgent {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("=== Loan Application Example ===\n");
 
     let mut engine = Engine::new();
@@ -413,7 +420,7 @@ fn main() {
         application["requested_amount"], application["credit_score"]
     );
 
-    match engine.run_with_hitl(ctx) {
+    match engine.run_with_hitl(ctx).await {
         RunResult::HitlPause(pause) => {
             println!("⏸️  HITL Gate: Review Required");
             println!("    Decision needed for borderline application");
@@ -437,7 +444,7 @@ fn main() {
 
             println!("▶️  Approved by loan officer. Finalizing...\n");
 
-            match engine.resume(*pause, decision) {
+            match engine.resume(*pause, decision).await {
                 RunResult::Complete(Ok(result)) => {
                     for fact in result.context.get(ContextKey::Proposals) {
                         if let Ok(p) = serde_json::from_str::<serde_json::Value>(&fact.content) {

@@ -78,6 +78,7 @@ fn classify_risk(field_id: &str) -> bool {
 /// Extracts a schema from the seed request (PDF-first entry).
 pub struct FormSchemaAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for FormSchemaAgent {
     fn name(&self) -> &str {
         "FormSchemaAgent"
@@ -91,7 +92,7 @@ impl Suggestor for FormSchemaAgent {
         ctx.has(ContextKey::Seeds) && !has_fact(ctx, ContextKey::Signals, SCHEMA_FACT_ID)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let request = match parse_form_request(ctx) {
             Some(request) => request,
             None => return AgentEffect::empty(),
@@ -114,6 +115,7 @@ impl Suggestor for FormSchemaAgent {
 /// Maps schema fields to candidate sources (deterministic placeholder).
 pub struct FieldMappingAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for FieldMappingAgent {
     fn name(&self) -> &str {
         "FieldMappingAgent"
@@ -127,7 +129,7 @@ impl Suggestor for FieldMappingAgent {
         ctx.has(ContextKey::Signals) && !has_fact(ctx, ContextKey::Hypotheses, MAPPINGS_FACT_ID)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let schema = ctx
             .get(ContextKey::Signals)
             .iter()
@@ -160,6 +162,7 @@ impl Suggestor for FieldMappingAgent {
 /// Normalizes candidate values (placeholder deterministic normalization).
 pub struct NormalizationAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for NormalizationAgent {
     fn name(&self) -> &str {
         "NormalizationAgent"
@@ -174,7 +177,7 @@ impl Suggestor for NormalizationAgent {
             && !has_fact(ctx, ContextKey::Hypotheses, NORMALIZED_FACT_ID)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let mappings = ctx
             .get(ContextKey::Hypotheses)
             .iter()
@@ -205,6 +208,7 @@ impl Suggestor for NormalizationAgent {
 /// Detects missing required fields (based on empty normalized values).
 pub struct CompletenessAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for CompletenessAgent {
     fn name(&self) -> &str {
         "CompletenessAgent"
@@ -219,7 +223,7 @@ impl Suggestor for CompletenessAgent {
             && !has_fact(ctx, ContextKey::Constraints, COMPLETENESS_FACT_ID)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let normalized = ctx
             .get(ContextKey::Hypotheses)
             .iter()
@@ -248,6 +252,7 @@ impl Suggestor for CompletenessAgent {
 /// Classifies high-risk fields that require approval.
 pub struct RiskClassifierAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for RiskClassifierAgent {
     fn name(&self) -> &str {
         "RiskClassifierAgent"
@@ -261,7 +266,7 @@ impl Suggestor for RiskClassifierAgent {
         ctx.has(ContextKey::Signals) && !has_fact(ctx, ContextKey::Constraints, RISK_FACT_ID)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let schema = ctx
             .get(ContextKey::Signals)
             .iter()
@@ -291,6 +296,7 @@ impl Suggestor for RiskClassifierAgent {
 /// Produces a consolidated fill plan.
 pub struct FillPlanAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for FillPlanAgent {
     fn name(&self) -> &str {
         "FillPlanAgent"
@@ -306,7 +312,7 @@ impl Suggestor for FillPlanAgent {
             && !has_fact(ctx, ContextKey::Strategies, FILL_PLAN_FACT_ID)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let schema = ctx
             .get(ContextKey::Signals)
             .iter()
@@ -358,6 +364,7 @@ impl Suggestor for FillPlanAgent {
 /// Emits proposed field values (for approval and promotion).
 pub struct ProposalEmitterAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ProposalEmitterAgent {
     fn name(&self) -> &str {
         "ProposalEmitterAgent"
@@ -371,7 +378,7 @@ impl Suggestor for ProposalEmitterAgent {
         ctx.has(ContextKey::Hypotheses) && ctx.has(ContextKey::Signals)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let normalized = ctx
             .get(ContextKey::Hypotheses)
             .iter()

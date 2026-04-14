@@ -38,7 +38,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use strum::IntoEnumIterator;
 use tokio::task;
-use tracing::{info, info_span, warn};
+use tracing::{info, info_span};
 use utoipa::ToSchema;
 
 use crate::error::{RuntimeError, RuntimeErrorResponse};
@@ -327,8 +327,11 @@ pub async fn handle_job(
     // Drop the span guard before await (it's not Send)
     drop(_guard);
 
-    // Spawn blocking task to run engine (CPU-bound work)
     let result = task::spawn_blocking(move || {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|e| RuntimeError::Config(format!("Failed to build runtime: {e}")))?;
         let mut engine = Engine::new();
 
         // TODO: Register agents based on request or configuration
@@ -340,12 +343,12 @@ pub async fn handle_job(
         let _context_data = context_data;
         let context = Context::new();
 
-        // Run engine until convergence
-        engine.run(context)
+        runtime
+            .block_on(engine.run(context))
+            .map_err(RuntimeError::Converge)
     })
     .await
-    .map_err(|e| RuntimeError::Config(format!("Task join error: {e}")))?
-    .map_err(RuntimeError::Converge)?;
+    .map_err(|e| RuntimeError::Config(format!("Task join error: {e}")))??;
 
     let duration = start.elapsed();
 
@@ -457,25 +460,21 @@ pub async fn validate_rules(
     // Drop the span guard before await
     drop(_guard);
 
-    let result = task::spawn_blocking(move || {
-        // Create validation config
-        let config = ValidationConfig {
-            check_business_sense: use_llm,
-            check_compilability: use_llm,
-            check_conventions: true,
-            min_confidence: 0.7,
-        };
+    let config = ValidationConfig {
+        check_business_sense: use_llm,
+        check_compilability: use_llm,
+        check_conventions: true,
+        min_confidence: 0.7,
+    };
 
-        // Create a stub LLM provider for GherkinValidator.
-        // Real LLM validation requires domain-specific setup in organism-application.
-        let provider: Arc<dyn converge_core::traits::DynChatBackend> = Arc::new(StubChatBackend);
+    // Real LLM validation requires domain-specific setup in organism-application.
+    let provider: Arc<dyn converge_core::traits::DynChatBackend> = Arc::new(StubChatBackend);
+    let validator = GherkinValidator::new(provider, config);
 
-        let validator = GherkinValidator::new(provider, config);
-        validator.validate(&content, &file_name)
-    })
-    .await
-    .map_err(|e| RuntimeError::Config(format!("Task join error: {e}")))?
-    .map_err(|e| RuntimeError::Config(format!("Validation error: {e}")))?;
+    let result = validator
+        .validate(&content, &file_name)
+        .await
+        .map_err(|e| RuntimeError::Config(format!("Validation error: {e}")))?;
 
     let issues: Vec<ValidationIssueResponse> = result
         .issues
@@ -771,6 +770,11 @@ pub async fn run_job(
         let result = task::spawn_blocking(move || {
             use converge_core::Budget;
 
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map_err(|e| RuntimeError::Config(format!("Failed to build runtime: {e}")))?;
+
             let budget = Budget {
                 max_cycles,
                 ..Budget::default()
@@ -784,8 +788,9 @@ pub async fn run_job(
             let _seeds = seeds;
             let context = Context::new();
 
-            // Run engine
-            engine.run(context)
+            runtime
+                .block_on(engine.run(context))
+                .map_err(RuntimeError::Converge)
         })
         .await
         .map_err(|e| RuntimeError::Config(format!("Task join error: {e}")))?;
@@ -829,7 +834,7 @@ pub async fn run_job(
                     .await
                     .map_err(|e| RuntimeError::Config(format!("Failed to update job: {e}")))?;
 
-                warn!(job_id = %job_id, error = %error_msg, "Job failed");
+                tracing::warn!(job_id = %job_id, error = %error_msg, "Job failed");
 
                 Ok(Json(RunJobResponse {
                     id: job_id,
@@ -1220,40 +1225,34 @@ pub async fn execute_template_job(
     // Drop the span guard before await
     drop(_guard);
 
-    // Execute job in blocking task using JobExecutor
-    let result = task::spawn_blocking(move || {
-        // Apply budget overrides
-        let budget = Budget {
-            max_cycles: overrides
-                .budget
-                .as_ref()
-                .map(|b| b.max_cycles)
-                .unwrap_or(template.budget.max_cycles),
-            max_facts: overrides
-                .budget
-                .as_ref()
-                .map(|b| b.max_facts)
-                .unwrap_or(template.budget.max_facts),
-        };
+    let budget = Budget {
+        max_cycles: overrides
+            .budget
+            .as_ref()
+            .map(|b| b.max_cycles)
+            .unwrap_or(template.budget.max_cycles),
+        max_facts: overrides
+            .budget
+            .as_ref()
+            .map(|b| b.max_facts)
+            .unwrap_or(template.budget.max_facts),
+    };
 
-        // Build and execute job using the new JobExecutor
-        let mut builder = JobExecutor::builder()
-            .with_pack(&pack_id)
-            .with_pack_config(template)
-            .with_seeds(overrides.seeds.clone())
-            .with_budget(budget);
+    let mut builder = JobExecutor::builder()
+        .with_pack(&pack_id)
+        .with_pack_config(template)
+        .with_seeds(overrides.seeds.clone())
+        .with_budget(budget);
 
-        // Use real LLM if requested, otherwise use mock
-        if overrides.use_llm {
-            builder = builder.with_real_llm();
-        } else {
-            builder = builder.with_mock_llm();
-        }
+    if overrides.use_llm {
+        builder = builder.with_real_llm();
+    } else {
+        builder = builder.with_mock_llm();
+    }
 
-        builder.execute()
-    })
-    .await
-    .map_err(|e| RuntimeError::Config(format!("Task join error: {e}")))??;
+    let result = task::spawn_blocking(move || builder.execute())
+        .await
+        .map_err(|e| RuntimeError::Config(format!("Task join error: {e}")))??;
 
     let context_summary = ContextSummary {
         fact_counts: result.fact_counts,
@@ -1289,7 +1288,7 @@ pub async fn execute_template_job(
                     )
                     .await
                 {
-                    warn!(
+                    tracing::warn!(
                         user_id = %user_id,
                         error = %e,
                         "Failed to deduct credits post-execution"

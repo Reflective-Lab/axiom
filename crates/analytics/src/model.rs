@@ -66,6 +66,7 @@ impl InferenceAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for InferenceAgent {
     fn name(&self) -> &str {
         "InferenceAgent (Burn)"
@@ -80,7 +81,7 @@ impl Suggestor for InferenceAgent {
         ctx.has(ContextKey::Proposals) && !ctx.has(ContextKey::Hypotheses)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         // 1. Find the feature proposal
         // In reality, filtered by provenance "polars-engine"
         let _proposals = ctx.get(ContextKey::Proposals); // wait, ctx.get returns Fact, but proposals are ProposedFacts?

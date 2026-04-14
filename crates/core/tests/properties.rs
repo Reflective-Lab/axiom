@@ -6,6 +6,10 @@ use converge_core::suggestors::SeedSuggestor;
 use converge_core::{AgentEffect, Budget, Context, ContextKey, Engine, ProposedFact, Suggestor};
 use proptest::prelude::*;
 
+fn rt() -> tokio::runtime::Runtime {
+    tokio::runtime::Runtime::new().unwrap()
+}
+
 // ── Determinism: same input → same output ──
 
 proptest! {
@@ -20,7 +24,7 @@ proptest! {
             engine.register_suggestor(
                 converge_core::suggestors::ReactOnceSuggestor::new("h1", content_h.to_string()),
             );
-            engine.run(Context::new()).expect("should converge")
+            rt().block_on(engine.run(Context::new())).expect("should converge")
         };
 
         let r1 = run(&seed_content, &hyp_content);
@@ -49,11 +53,12 @@ proptest! {
     ) {
         struct CountingSuggestor(usize);
 
+        #[async_trait::async_trait]
         impl Suggestor for CountingSuggestor {
             fn name(&self) -> &str { "counting" }
             fn dependencies(&self) -> &[ContextKey] { &[] }
             fn accepts(&self, _ctx: &dyn converge_core::ContextView) -> bool { true }
-            fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+            async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
                 let n = ctx.get(ContextKey::Seeds).len();
                 AgentEffect::with_proposal(ProposedFact::new(
                     ContextKey::Seeds,
@@ -72,7 +77,7 @@ proptest! {
             engine.register_suggestor(CountingSuggestor(i));
         }
 
-        let result = engine.run(Context::new());
+        let result = rt().block_on(engine.run(Context::new()));
 
         match result {
             Ok(run) => prop_assert!(run.cycles <= max_cycles),
@@ -84,12 +89,13 @@ proptest! {
 
 // ── Append-only: fact count never decreases ──
 
-#[test]
-fn fact_count_monotonically_increases() {
+#[tokio::test]
+async fn fact_count_monotonically_increases() {
     struct TrackedSuggestor {
         id: usize,
     }
 
+    #[async_trait::async_trait]
     impl Suggestor for TrackedSuggestor {
         fn name(&self) -> &str {
             "tracked"
@@ -100,7 +106,7 @@ fn fact_count_monotonically_increases() {
         fn accepts(&self, ctx: &dyn converge_core::ContextView) -> bool {
             ctx.get(ContextKey::Seeds).len() < 5
         }
-        fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+        async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
             let n = ctx.get(ContextKey::Seeds).len();
             AgentEffect::with_proposal(ProposedFact::new(
                 ContextKey::Seeds,
@@ -118,7 +124,7 @@ fn fact_count_monotonically_increases() {
     engine.register_suggestor(TrackedSuggestor { id: 0 });
     engine.register_suggestor(TrackedSuggestor { id: 1 });
 
-    let result = engine.run(Context::new()).expect("should terminate");
+    let result = engine.run(Context::new()).await.expect("should terminate");
 
     // Facts were added, never removed
     let final_count = result.context.get(ContextKey::Seeds).len();
@@ -127,18 +133,18 @@ fn fact_count_monotonically_increases() {
 
 // ── Fixed point stability: re-running after convergence adds nothing ──
 
-#[test]
-fn converged_result_is_stable() {
+#[tokio::test]
+async fn converged_result_is_stable() {
     let mut engine = Engine::new();
     engine.register_suggestor(SeedSuggestor::new("s1", "stable seed"));
 
-    let r1 = engine.run(Context::new()).expect("first run");
+    let r1 = engine.run(Context::new()).await.expect("first run");
     assert!(r1.converged);
 
     // Run again with the converged context
     let mut engine2 = Engine::new();
     engine2.register_suggestor(SeedSuggestor::new("s1", "stable seed"));
-    let r2 = engine2.run(r1.context).expect("second run");
+    let r2 = engine2.run(r1.context).await.expect("second run");
 
     assert!(r2.converged);
     assert_eq!(r2.cycles, 1, "no new work should be needed");

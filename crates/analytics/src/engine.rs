@@ -89,6 +89,7 @@ impl FeatureAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for FeatureAgent {
     fn name(&self) -> &str {
         "FeatureAgent (Polars)"
@@ -104,7 +105,7 @@ impl Suggestor for FeatureAgent {
         ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Proposals)
     }
 
-    fn execute(&self, _ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, _ctx: &dyn converge_core::ContextView) -> AgentEffect {
         // 1. Compute features using Polars
         let features = match self.compute_features() {
             Ok(f) => f,

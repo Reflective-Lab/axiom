@@ -326,7 +326,7 @@ async fn main() -> Result<()> {
             }
 
             let result = if quiet {
-                match engine.run(context) {
+                match engine.run(context).await {
                     Ok(r) => r,
                     Err(e) => {
                         let exit_code = if e.to_string().contains("invariant") {
@@ -338,7 +338,7 @@ async fn main() -> Result<()> {
                     }
                 }
             } else {
-                engine.run(context)?
+                engine.run(context).await?
             };
 
             // Report experience events captured during the run
@@ -458,7 +458,7 @@ async fn main() -> Result<()> {
 
                 info!(count = fixtures.len(), "Running eval fixtures");
 
-                let results = evals::run_evals(&fixtures);
+                let results = evals::run_evals(&fixtures).await;
                 evals::print_results(&results);
 
                 let all_passed = results.iter().all(|r| r.passed);

@@ -13,6 +13,7 @@ polars.workspace = true
 burn.workspace = true
 ndarray.workspace = true
 anyhow.workspace = true
+async-trait.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 proptest.workspace = true

@@ -189,6 +189,7 @@ impl DataValidationAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for DataValidationAgent {
     fn name(&self) -> &str {
         "DataValidationAgent"
@@ -206,7 +207,7 @@ impl Suggestor for DataValidationAgent {
             }
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
@@ -287,6 +288,7 @@ impl FeatureEngineeringAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for FeatureEngineeringAgent {
     fn name(&self) -> &str {
         "FeatureEngineeringAgent"
@@ -304,7 +306,7 @@ impl Suggestor for FeatureEngineeringAgent {
             }
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
@@ -384,6 +386,7 @@ impl HyperparameterSearchAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for HyperparameterSearchAgent {
     fn name(&self) -> &str {
         "HyperparameterSearchAgent"
@@ -401,7 +404,7 @@ impl Suggestor for HyperparameterSearchAgent {
             }
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
@@ -467,6 +470,7 @@ impl Suggestor for HyperparameterSearchAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for DatasetAgent {
     fn name(&self) -> &str {
         "DatasetAgent (HuggingFace)"
@@ -489,7 +493,7 @@ impl Suggestor for DatasetAgent {
         !ctx.has(ContextKey::Signals)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         if let Err(err) = create_dir_all(&self.data_dir) {
             return AgentEffect::with_proposal(proposal(
                 self.name(),
@@ -610,6 +614,7 @@ impl ModelTrainingAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for ModelTrainingAgent {
     fn name(&self) -> &str {
         "ModelTrainingAgent (Baseline)"
@@ -630,7 +635,7 @@ impl Suggestor for ModelTrainingAgent {
         !has_model_for_iteration(ctx, split.iteration)
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
@@ -755,6 +760,7 @@ impl ModelRegistryAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for ModelRegistryAgent {
     fn name(&self) -> &str {
         "ModelRegistryAgent"
@@ -773,7 +779,7 @@ impl Suggestor for ModelRegistryAgent {
             }
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let meta = match read_latest_model_meta_from_ctx(ctx) {
             Ok(meta) => meta,
             Err(err) => {
@@ -820,6 +826,7 @@ impl MonitoringAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for MonitoringAgent {
     fn name(&self) -> &str {
         "MonitoringAgent"
@@ -837,7 +844,7 @@ impl Suggestor for MonitoringAgent {
             }
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let report = match latest_evaluation_report(ctx, 0) {
             Some(report) => report,
             None => return AgentEffect::empty(),
@@ -877,6 +884,7 @@ impl DeploymentAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for DeploymentAgent {
     fn name(&self) -> &str {
         "DeploymentAgent"
@@ -895,7 +903,7 @@ impl Suggestor for DeploymentAgent {
             }
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let report = match latest_evaluation_report(ctx, 0) {
             Some(report) => report,
             None => return AgentEffect::empty(),
@@ -929,6 +937,7 @@ impl Suggestor for DeploymentAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for ModelEvaluationAgent {
     fn name(&self) -> &str {
         "ModelEvaluationAgent (MAE)"
@@ -947,7 +956,7 @@ impl Suggestor for ModelEvaluationAgent {
             }
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {
@@ -1063,6 +1072,7 @@ impl SampleInferenceAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for SampleInferenceAgent {
     fn name(&self) -> &str {
         "SampleInferenceAgent (Baseline)"
@@ -1081,7 +1091,7 @@ impl Suggestor for SampleInferenceAgent {
             }
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let split = match read_latest_split_from_ctx(ctx) {
             Ok(split) => split,
             Err(err) => {

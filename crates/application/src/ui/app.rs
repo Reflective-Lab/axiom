@@ -493,7 +493,7 @@ impl App {
         }
     }
 
-    pub fn submit_job(&mut self) {
+    pub async fn submit_job(&mut self) {
         if self.submit_form.pack.is_empty() {
             self.submit_form.error = Some("Pack name is required".to_string());
             return;
@@ -534,7 +534,7 @@ impl App {
         engine.register_suggestor(StrategicInsightAgent::new(llm_provider.clone()));
         engine.register_suggestor(RiskAssessmentAgent::new(llm_provider));
 
-        match engine.run(context) {
+        match engine.run(context).await {
             Ok(result) => {
                 let total_facts: usize = ContextKey::iter()
                     .map(|key| result.context.get(key).len())
@@ -689,7 +689,7 @@ pub async fn run_app(
                             }
                             View::Submit => {
                                 if app.submit_form.selected_field == 2 {
-                                    app.submit_job();
+                                    app.submit_job().await;
                                 } else {
                                     app.submit_form.selected_field += 1;
                                 }

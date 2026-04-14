@@ -14,6 +14,7 @@ struct BadProposalAgent {
     confidence: f64,
 }
 
+#[async_trait::async_trait]
 impl Suggestor for BadProposalAgent {
     fn name(&self) -> &str {
         self.name
@@ -24,7 +25,7 @@ impl Suggestor for BadProposalAgent {
     fn accepts(&self, _ctx: &dyn converge_core::ContextView) -> bool {
         true
     }
-    fn execute(&self, _ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, _ctx: &dyn converge_core::ContextView) -> AgentEffect {
         AgentEffect::with_proposal(ProposedFact {
             key: self.key,
             id: self.id.to_string(),
@@ -35,8 +36,8 @@ impl Suggestor for BadProposalAgent {
     }
 }
 
-#[test]
-fn nan_confidence_rejected() {
+#[tokio::test]
+async fn nan_confidence_rejected() {
     let mut engine = Engine::new();
     engine.register_suggestor(BadProposalAgent {
         name: "nan-agent",
@@ -48,14 +49,15 @@ fn nan_confidence_rejected() {
 
     let result = engine
         .run(Context::new())
+        .await
         .expect("should converge (proposal rejected, no facts)");
 
     assert!(result.converged);
     assert!(!result.context.has(ContextKey::Seeds));
 }
 
-#[test]
-fn infinite_confidence_rejected() {
+#[tokio::test]
+async fn infinite_confidence_rejected() {
     let mut engine = Engine::new();
     engine.register_suggestor(BadProposalAgent {
         name: "inf-agent",
@@ -67,14 +69,15 @@ fn infinite_confidence_rejected() {
 
     let result = engine
         .run(Context::new())
+        .await
         .expect("should converge (proposal rejected)");
 
     assert!(result.converged);
     assert!(!result.context.has(ContextKey::Seeds));
 }
 
-#[test]
-fn negative_confidence_rejected() {
+#[tokio::test]
+async fn negative_confidence_rejected() {
     let mut engine = Engine::new();
     engine.register_suggestor(BadProposalAgent {
         name: "neg-agent",
@@ -86,14 +89,15 @@ fn negative_confidence_rejected() {
 
     let result = engine
         .run(Context::new())
+        .await
         .expect("should converge (proposal rejected)");
 
     assert!(result.converged);
     assert!(!result.context.has(ContextKey::Seeds));
 }
 
-#[test]
-fn empty_content_rejected() {
+#[tokio::test]
+async fn empty_content_rejected() {
     let mut engine = Engine::new();
     engine.register_suggestor(BadProposalAgent {
         name: "empty-agent",
@@ -105,14 +109,15 @@ fn empty_content_rejected() {
 
     let result = engine
         .run(Context::new())
+        .await
         .expect("should converge (proposal rejected)");
 
     assert!(result.converged);
     assert!(!result.context.has(ContextKey::Seeds));
 }
 
-#[test]
-fn whitespace_only_content_rejected() {
+#[tokio::test]
+async fn whitespace_only_content_rejected() {
     let mut engine = Engine::new();
     engine.register_suggestor(BadProposalAgent {
         name: "ws-agent",
@@ -124,6 +129,7 @@ fn whitespace_only_content_rejected() {
 
     let result = engine
         .run(Context::new())
+        .await
         .expect("should converge (proposal rejected)");
 
     assert!(result.converged);
@@ -132,19 +138,20 @@ fn whitespace_only_content_rejected() {
 
 // ── Edge cases: zero suggestors, budget limits ──
 
-#[test]
-fn zero_suggestors_converges_immediately() {
+#[tokio::test]
+async fn zero_suggestors_converges_immediately() {
     let mut engine = Engine::new();
-    let result = engine.run(Context::new()).expect("should converge");
+    let result = engine.run(Context::new()).await.expect("should converge");
 
     assert!(result.converged);
     assert_eq!(result.cycles, 1);
 }
 
-#[test]
-fn budget_exhaustion_terminates() {
+#[tokio::test]
+async fn budget_exhaustion_terminates() {
     struct InfiniteProposer;
 
+    #[async_trait::async_trait]
     impl Suggestor for InfiniteProposer {
         fn name(&self) -> &str {
             "infinite-proposer"
@@ -155,7 +162,7 @@ fn budget_exhaustion_terminates() {
         fn accepts(&self, _ctx: &dyn converge_core::ContextView) -> bool {
             true
         }
-        fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+        async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
             let count = ctx.get(ContextKey::Seeds).len();
             AgentEffect::with_proposal(ProposedFact::new(
                 ContextKey::Seeds,
@@ -172,7 +179,7 @@ fn budget_exhaustion_terminates() {
     });
     engine.register_suggestor(InfiniteProposer);
 
-    let result = engine.run(Context::new());
+    let result = engine.run(Context::new()).await;
     assert!(result.is_err());
     assert!(matches!(
         result.unwrap_err(),
@@ -180,10 +187,11 @@ fn budget_exhaustion_terminates() {
     ));
 }
 
-#[test]
-fn max_facts_budget_terminates() {
+#[tokio::test]
+async fn max_facts_budget_terminates() {
     struct FloodAgent;
 
+    #[async_trait::async_trait]
     impl Suggestor for FloodAgent {
         fn name(&self) -> &str {
             "flood-agent"
@@ -194,7 +202,7 @@ fn max_facts_budget_terminates() {
         fn accepts(&self, _ctx: &dyn converge_core::ContextView) -> bool {
             true
         }
-        fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+        async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
             let n = ctx.get(ContextKey::Seeds).len();
             let proposals: Vec<ProposedFact> = (0..10)
                 .map(|i| {
@@ -216,7 +224,7 @@ fn max_facts_budget_terminates() {
     });
     engine.register_suggestor(FloodAgent);
 
-    let result = engine.run(Context::new());
+    let result = engine.run(Context::new()).await;
     assert!(result.is_err());
     assert!(matches!(
         result.unwrap_err(),

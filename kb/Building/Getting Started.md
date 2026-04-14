@@ -8,7 +8,7 @@ source: mixed
 
 ```toml
 [dependencies]
-converge-kernel = "3.0.1"
+converge-kernel = "3"
 ```
 
 That's enough to embed the Converge engine in-process.
@@ -16,10 +16,12 @@ That's enough to embed the Converge engine in-process.
 Need more?
 
 ```toml
-converge-pack = "3.0.1"       # Author suggestors and invariants
-converge-model = "3.0.1"      # Curated semantic types
-converge-domain = "3.0.1"     # Pre-built domain packs
-converge-client = "3.0.1"     # Remote Rust client
+converge-pack = "3"          # Author suggestors and invariants
+converge-model = "3"         # Curated semantic types
+converge-domain = "3"        # Pre-built domain packs
+converge-client = "3"        # Remote Rust client
+async-trait = "0.1"          # Implement async Suggestor
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }  # or use your runtime
 ```
 
 See [[Building/Crate Catalog]] for the full list.
@@ -27,36 +29,43 @@ See [[Building/Crate Catalog]] for the full list.
 ## First Run
 
 ```rust
+use async_trait::async_trait;
 use converge_kernel::{
     AgentEffect, Context, ContextKey, ContextView, Engine, ProposedFact, Suggestor,
 };
 
-struct SeedSuggestor;
+#[tokio::main]
+async fn main() {
+    struct SeedSuggestor;
 
-impl Suggestor for SeedSuggestor {
-    fn name(&self) -> &str { "seed" }
-    fn dependencies(&self) -> &[ContextKey] { &[] }
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
-        !ctx.has(ContextKey::Seeds)
+    #[async_trait]
+    impl Suggestor for SeedSuggestor {
+        fn name(&self) -> &str { "seed" }
+        fn dependencies(&self) -> &[ContextKey] { &[] }
+        fn accepts(&self, ctx: &dyn ContextView) -> bool {
+            !ctx.has(ContextKey::Seeds)
+        }
+        async fn execute(&self, _ctx: &dyn ContextView) -> AgentEffect {
+            AgentEffect::with_proposal(ProposedFact {
+                key: ContextKey::Seeds,
+                id: "observation-1".into(),
+                content: "Monthly active users grew 15%".into(),
+                confidence: 0.95,
+                provenance: "suggestor:seed".into(),
+            })
+        }
     }
-    fn execute(&self, _ctx: &dyn ContextView) -> AgentEffect {
-        AgentEffect::with_proposal(ProposedFact {
-            key: ContextKey::Seeds,
-            id: "observation-1".into(),
-            content: "Monthly active users grew 15%".into(),
-            confidence: 0.95,
-            provenance: "suggestor:seed".into(),
-        })
-    }
+
+    let mut engine = Engine::new();
+    engine.register_suggestor(SeedSuggestor);
+    let result = engine.run(Context::new()).await.expect("converges");
+
+    assert!(result.converged);
+    assert!(result.context.has(ContextKey::Seeds));
 }
-
-let mut engine = Engine::new();
-engine.register_suggestor(SeedSuggestor);
-let result = engine.run(Context::new())?;
-
-assert!(result.converged);
-assert!(result.context.has(ContextKey::Seeds));
 ```
+
+Tokio is only the host runtime in this example. `converge-core` stays runtime-agnostic.
 
 ## Build Commands
 

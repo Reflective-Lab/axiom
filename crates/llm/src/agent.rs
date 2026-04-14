@@ -98,6 +98,7 @@ impl LlmAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for LlmAgent {
     fn name(&self) -> &str {
         &self.name
@@ -133,7 +134,7 @@ impl Suggestor for LlmAgent {
         has_seeds && !has_pending && !has_validated
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let prompt = self.build_prompt(ctx);
 
         tracing::info!(
@@ -265,7 +266,8 @@ mod tests {
         for (key, id, content) in entries {
             ctx.add_input(*key, *id, *content).unwrap();
         }
-        Engine::new().run(ctx).unwrap().context
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        runtime.block_on(Engine::new().run(ctx)).unwrap().context
     }
 
     #[test]

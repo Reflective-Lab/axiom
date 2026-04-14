@@ -121,38 +121,14 @@ impl EmbeddingEngine {
         self.provider.dimensions()
     }
 
-    /// Generate an embedding for the given text (sync wrapper).
-    pub fn embed(&self, text: &str) -> Result<Vec<f32>> {
-        // For sync compatibility, use tokio's block_on if available
-        // Otherwise fall back to hash embedding
-        if let Some(hash_provider) = self.as_hash_provider() {
-            hash_provider.embed_sync(text)
-        } else {
-            // Create a new runtime for async providers
-
-            tokio::runtime::Handle::try_current()
-                .map(|h| h.block_on(self.provider.embed(text)))
-                .unwrap_or_else(|_| {
-                    // Fallback to hash if no runtime
-                    let hash = HashEmbedding::new(self.dimensions());
-                    hash.embed_sync(text)
-                })
-        }
-    }
-
-    /// Generate an embedding asynchronously.
-    pub async fn embed_async(&self, text: &str) -> Result<Vec<f32>> {
+    /// Generate an embedding for the given text.
+    pub async fn embed(&self, text: &str) -> Result<Vec<f32>> {
         self.provider.embed(text).await
     }
 
     /// Generate embeddings for multiple texts.
     pub async fn embed_batch(&self, texts: &[&str]) -> Result<Vec<Vec<f32>>> {
         self.provider.embed_batch(texts).await
-    }
-
-    /// Try to get underlying hash provider (for sync operations).
-    fn as_hash_provider(&self) -> Option<&HashEmbedding> {
-        self.provider.as_any().downcast_ref::<HashEmbedding>()
     }
 
     /// Compute similarity between two embeddings.
@@ -184,8 +160,7 @@ impl HashEmbedding {
         Self { dimensions }
     }
 
-    /// Synchronous embedding for hash-based provider.
-    pub fn embed_sync(&self, text: &str) -> Result<Vec<f32>> {
+    fn embed_sync(&self, text: &str) -> Result<Vec<f32>> {
         if text.is_empty() {
             return Err(Error::embedding("Cannot embed empty text"));
         }
@@ -276,28 +251,28 @@ impl EmbeddingProvider for HashEmbedding {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_embedding_dimensions() {
+    #[tokio::test]
+    async fn test_embedding_dimensions() {
         let engine = EmbeddingEngine::new(128);
-        let embedding = engine.embed("test text").unwrap();
+        let embedding = engine.embed("test text").await.unwrap();
         assert_eq!(embedding.len(), 128);
     }
 
-    #[test]
-    fn test_embedding_consistency() {
+    #[tokio::test]
+    async fn test_embedding_consistency() {
         let engine = EmbeddingEngine::new(64);
-        let emb1 = engine.embed("hello world").unwrap();
-        let emb2 = engine.embed("hello world").unwrap();
+        let emb1 = engine.embed("hello world").await.unwrap();
+        let emb2 = engine.embed("hello world").await.unwrap();
         assert_eq!(emb1, emb2);
     }
 
-    #[test]
-    fn test_embedding_similarity() {
+    #[tokio::test]
+    async fn test_embedding_similarity() {
         let engine = EmbeddingEngine::new(128);
 
-        let emb1 = engine.embed("rust programming language").unwrap();
-        let emb2 = engine.embed("rust programming").unwrap();
-        let emb3 = engine.embed("cooking recipes").unwrap();
+        let emb1 = engine.embed("rust programming language").await.unwrap();
+        let emb2 = engine.embed("rust programming").await.unwrap();
+        let emb3 = engine.embed("cooking recipes").await.unwrap();
 
         let sim_similar = engine.similarity(&emb1, &emb2);
         let sim_different = engine.similarity(&emb1, &emb3);
@@ -305,18 +280,18 @@ mod tests {
         assert!(sim_similar > sim_different);
     }
 
-    #[test]
-    fn test_normalized_embeddings() {
+    #[tokio::test]
+    async fn test_normalized_embeddings() {
         let engine = EmbeddingEngine::new(256);
-        let embedding = engine.embed("some text here").unwrap();
+        let embedding = engine.embed("some text here").await.unwrap();
 
         let norm: f32 = embedding.iter().map(|x| x * x).sum::<f32>().sqrt();
         assert!((norm - 1.0).abs() < 1e-5);
     }
 
-    #[test]
-    fn test_empty_text_error() {
+    #[tokio::test]
+    async fn test_empty_text_error() {
         let engine = EmbeddingEngine::new(64);
-        assert!(engine.embed("").is_err());
+        assert!(engine.embed("").await.is_err());
     }
 }

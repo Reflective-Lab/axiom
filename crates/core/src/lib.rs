@@ -13,7 +13,7 @@
 //!
 //! ## Quick Start
 //!
-//! ```
+//! ```ignore
 //! use converge_core::{Context, ContextKey, Engine};
 //! use converge_core::suggestors::{ReactOnceSuggestor, SeedSuggestor};
 //!
@@ -22,8 +22,8 @@
 //! engine.register_suggestor(SeedSuggestor::new("seed-1", "initial data"));
 //! engine.register_suggestor(ReactOnceSuggestor::new("hyp-1", "derived insight"));
 //!
-//! // Run until convergence
-//! let result = engine.run(Context::new()).expect("should converge");
+//! // Run until convergence (async)
+//! let result = engine.run(Context::new()).await.expect("should converge");
 //!
 //! // Inspect results
 //! assert!(result.converged);

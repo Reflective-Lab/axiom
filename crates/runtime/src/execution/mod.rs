@@ -32,7 +32,7 @@
 //!     .with_budget(budget)
 //!     .with_streaming(callback)
 //!     .execute()
-//!     .await?;
+//!     ?;
 //! ```
 
 mod executor;

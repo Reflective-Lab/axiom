@@ -14,9 +14,11 @@ These are the public contract. Every port is a trait. Every trait is `Send + Syn
 
 | Port | Purpose | Key Methods |
 |---|---|---|
-| `Suggestor` | Capability contract | `name()`, `dependencies()`, `accepts()`, `execute()` |
+| `Suggestor` | Capability contract | `name()`, `dependencies()`, `accepts()`, `execute().await` |
 | `Context` | Read-only shared state | `has()`, `get()`, `get_proposals()`, `count()` |
 | `Invariant` | Executable guarantees | `name()`, `class()`, `check()` |
+
+`accepts()` is synchronous and pure. `execute()` is async but runtime-agnostic.
 
 ## Provider Routing Ports (`converge-provider-api`)
 

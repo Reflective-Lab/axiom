@@ -27,7 +27,7 @@
 //! let backend = Arc::new(StaticChatBackend::constant("Valid spec"));
 //! let validator = GherkinValidator::new(backend, ValidationConfig::default());
 //!
-//! let result = validator.validate_file("specs/money.truths")?;
+//! let result = validator.validate_file("specs/money.truths").await?;
 //! println!("Valid: {}", result.is_valid);
 //! ```
 

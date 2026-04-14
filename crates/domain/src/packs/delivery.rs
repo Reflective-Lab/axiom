@@ -35,6 +35,7 @@ pub const POSTMORTEM_PREFIX: &str = "postmortem:";
 #[derive(Debug, Clone, Default)]
 pub struct PromiseCreatorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for PromiseCreatorAgent {
     fn name(&self) -> &str {
         "promise_creator"
@@ -54,7 +55,7 @@ impl Suggestor for PromiseCreatorAgent {
                 .any(|p| p.id.starts_with(PROMISE_PREFIX))
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let triggers = ctx.get(ContextKey::Seeds);
         let mut facts = Vec::new();
 
@@ -84,6 +85,7 @@ impl Suggestor for PromiseCreatorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct ScopeExtractorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ScopeExtractorAgent {
     fn name(&self) -> &str {
         "scope_extractor"
@@ -99,7 +101,7 @@ impl Suggestor for ScopeExtractorAgent {
             .any(|p| p.id.starts_with(PROMISE_PREFIX) && p.content.contains("\"state\":\"draft\""))
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -131,6 +133,7 @@ impl Suggestor for ScopeExtractorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct WorkBreakdownAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for WorkBreakdownAgent {
     fn name(&self) -> &str {
         "work_breakdown"
@@ -152,7 +155,7 @@ impl Suggestor for WorkBreakdownAgent {
         has_scope && !has_tasks
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -182,6 +185,7 @@ impl Suggestor for WorkBreakdownAgent {
 #[derive(Debug, Clone, Default)]
 pub struct BlockerDetectorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for BlockerDetectorAgent {
     fn name(&self) -> &str {
         "blocker_detector"
@@ -197,7 +201,7 @@ impl Suggestor for BlockerDetectorAgent {
             .any(|t| t.id.starts_with(TASK_PREFIX) && t.content.contains("\"blocked\":true"))
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -227,6 +231,7 @@ impl Suggestor for BlockerDetectorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct BlockerRouterAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for BlockerRouterAgent {
     fn name(&self) -> &str {
         "blocker_router"
@@ -242,7 +247,7 @@ impl Suggestor for BlockerRouterAgent {
             .any(|b| b.id.starts_with(BLOCKER_PREFIX) && b.content.contains("\"state\":\"raised\""))
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -274,6 +279,7 @@ impl Suggestor for BlockerRouterAgent {
 #[derive(Debug, Clone, Default)]
 pub struct RiskAssessorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for RiskAssessorAgent {
     fn name(&self) -> &str {
         "risk_assessor"
@@ -295,7 +301,7 @@ impl Suggestor for RiskAssessorAgent {
         has_promises && !has_risks
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let blocker_count = proposals
             .iter()
@@ -338,6 +344,7 @@ impl Suggestor for RiskAssessorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct StatusAggregatorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for StatusAggregatorAgent {
     fn name(&self) -> &str {
         "status_aggregator"
@@ -359,7 +366,7 @@ impl Suggestor for StatusAggregatorAgent {
         has_promises && has_tasks
     }
 
-    fn execute(&self, _ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, _ctx: &dyn converge_core::ContextView) -> AgentEffect {
         // Aggregates status - simplified implementation
         AgentEffect::empty()
     }
@@ -369,6 +376,7 @@ impl Suggestor for StatusAggregatorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct AcceptanceRequestorAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for AcceptanceRequestorAgent {
     fn name(&self) -> &str {
         "acceptance_requestor"
@@ -384,7 +392,7 @@ impl Suggestor for AcceptanceRequestorAgent {
             .any(|p| p.id.starts_with(PROMISE_PREFIX) && p.content.contains("\"state\":\"review\""))
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -415,6 +423,7 @@ impl Suggestor for AcceptanceRequestorAgent {
 #[derive(Debug, Clone, Default)]
 pub struct PostmortemSchedulerAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for PostmortemSchedulerAgent {
     fn name(&self) -> &str {
         "postmortem_scheduler"
@@ -430,7 +439,7 @@ impl Suggestor for PostmortemSchedulerAgent {
         })
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let mut facts = Vec::new();
 
@@ -613,8 +622,9 @@ mod tests {
         for (key, id, content) in entries {
             let _ = ctx.add_input(*key, *id, *content);
         }
-        Engine::new()
-            .run(ctx)
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(Engine::new().run(ctx))
             .expect("should promote test inputs")
             .context
     }

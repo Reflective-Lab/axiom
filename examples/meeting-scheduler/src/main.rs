@@ -74,7 +74,8 @@ fn print_experience_summary(store: &Arc<InMemoryExperienceStore>) {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("=== Meeting Scheduler Example ===\n");
 
     let mut engine = Engine::new();
@@ -106,7 +107,7 @@ fn main() {
 
     println!("Scheduling request seeded.\n");
 
-    match engine.run(ctx) {
+    match engine.run(ctx).await {
         Ok(result) => {
             println!("Converged: {}", result.converged);
             println!("Cycles:    {}", result.cycles);

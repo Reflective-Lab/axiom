@@ -1,43 +1,20 @@
 // Copyright 2024-2026 Reflective Labs
 //
-// Synchronous chat adapter utilities for legacy-free suggestor integration.
-//
-// This module provides sync wrappers and helpers around the canonical
-// converge_core chat request/response types. The canonical async boundary is
-// `converge_core::traits::ChatBackend`.
+// Chat-backed suggestor utilities built on the canonical async boundary.
 
 use std::fmt;
 use std::sync::Arc;
 
 // Import types from converge-core using public re-exports
+use converge_core::traits::{ChatBackend, DynChatBackend};
 use converge_core::{AgentEffect, ContextKey, ProposedFact, Suggestor};
+use std::future::Ready;
 
 // Re-export core LLM types from traits module - these are the canonical types
 pub use converge_core::traits::{
     ChatMessage, ChatRequest, ChatResponse, ChatRole, FinishReason, LlmError, ResponseFormat,
     TokenUsage, ToolCall, ToolDefinition,
 };
-
-// ============================================================================
-// SyncChatProvider Trait
-// ============================================================================
-
-/// Synchronous chat completion provider.
-///
-/// Provides a simple sync interface over the canonical chat request/response
-/// types for call sites that cannot adopt `ChatBackend` directly.
-///
-/// For async usage, implement `converge_core::traits::ChatBackend` instead.
-pub trait SyncChatProvider: Send + Sync {
-    /// Provider name for identification.
-    fn name(&self) -> &str;
-
-    /// Model identifier.
-    fn model(&self) -> &str;
-
-    /// Complete a chat request.
-    fn complete(&self, request: &ChatRequest) -> Result<ChatResponse, LlmError>;
-}
 
 // Import prompt types from our local prompt_dsl module
 use crate::prompt_dsl::{
@@ -206,18 +183,8 @@ impl MockProvider {
     pub fn call_count(&self) -> usize {
         self.call_count.load(std::sync::atomic::Ordering::SeqCst)
     }
-}
 
-impl SyncChatProvider for MockProvider {
-    fn name(&self) -> &str {
-        "mock"
-    }
-
-    fn model(&self) -> &str {
-        &self.model
-    }
-
-    fn complete(&self, _request: &ChatRequest) -> Result<ChatResponse, LlmError> {
+    fn next_response(&self) -> Result<ChatResponse, LlmError> {
         self.call_count
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
@@ -247,6 +214,14 @@ impl SyncChatProvider for MockProvider {
             }),
             finish_reason: Some(FinishReason::Stop),
         })
+    }
+}
+
+impl ChatBackend for MockProvider {
+    type ChatFut<'a> = Ready<Result<ChatResponse, LlmError>>;
+
+    fn chat<'a>(&'a self, _request: ChatRequest) -> Self::ChatFut<'a> {
+        std::future::ready(self.next_response())
     }
 }
 
@@ -377,7 +352,7 @@ impl ResponseParser for MultiLineParser {
 /// An agent powered by an LLM provider.
 pub struct ProviderAgent {
     name: String,
-    provider: Arc<dyn SyncChatProvider>,
+    provider: Arc<dyn DynChatBackend>,
     config: LlmAgentConfig,
     parser: Arc<dyn ResponseParser>,
     full_dependencies: Vec<ContextKey>,
@@ -387,7 +362,7 @@ impl ProviderAgent {
     /// Creates a new LLM agent.
     pub fn new(
         name: impl Into<String>,
-        provider: Arc<dyn SyncChatProvider>,
+        provider: Arc<dyn DynChatBackend>,
         config: LlmAgentConfig,
     ) -> Self {
         let name_str = name.into();
@@ -463,6 +438,7 @@ impl ProviderAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for ProviderAgent {
     fn name(&self) -> &str {
         &self.name
@@ -487,7 +463,7 @@ impl Suggestor for ProviderAgent {
         !already_contributed
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let prompt = self.build_prompt(ctx);
 
         let request = ChatRequest {
@@ -511,7 +487,7 @@ impl Suggestor for ProviderAgent {
             model: None,
         };
 
-        match self.provider.complete(&request) {
+        match self.provider.chat(request).await {
             Ok(response) => {
                 let proposals = self.parser.parse(&response, self.config.target_key);
                 AgentEffect::with_proposals(proposals)
@@ -579,8 +555,8 @@ impl fmt::Display for LlmRole {
 
 /// Routes LLM requests to appropriate providers based on role.
 pub struct LlmRouter {
-    providers: std::collections::HashMap<LlmRole, Arc<dyn SyncChatProvider>>,
-    default: Option<Arc<dyn SyncChatProvider>>,
+    providers: std::collections::HashMap<LlmRole, Arc<dyn DynChatBackend>>,
+    default: Option<Arc<dyn DynChatBackend>>,
 }
 
 impl Default for LlmRouter {
@@ -601,21 +577,21 @@ impl LlmRouter {
 
     /// Registers a provider for a specific role.
     #[must_use]
-    pub fn with_provider(mut self, role: LlmRole, provider: Arc<dyn SyncChatProvider>) -> Self {
+    pub fn with_provider(mut self, role: LlmRole, provider: Arc<dyn DynChatBackend>) -> Self {
         self.providers.insert(role, provider);
         self
     }
 
     /// Sets the default provider for unmapped roles.
     #[must_use]
-    pub fn with_default(mut self, provider: Arc<dyn SyncChatProvider>) -> Self {
+    pub fn with_default(mut self, provider: Arc<dyn DynChatBackend>) -> Self {
         self.default = Some(provider);
         self
     }
 
     /// Gets the provider for a role, falling back to default.
     #[must_use]
-    pub fn get(&self, role: LlmRole) -> Option<Arc<dyn SyncChatProvider>> {
+    pub fn get(&self, role: LlmRole) -> Option<Arc<dyn DynChatBackend>> {
         self.providers
             .get(&role)
             .cloned()
@@ -635,12 +611,16 @@ impl LlmRouter {
     }
 
     /// Completes a request using the provider for the given role.
-    pub fn complete(&self, role: LlmRole, request: &ChatRequest) -> Result<ChatResponse, LlmError> {
+    pub async fn complete(
+        &self,
+        role: LlmRole,
+        request: &ChatRequest,
+    ) -> Result<ChatResponse, LlmError> {
         let provider = self.get(role).ok_or_else(|| LlmError::ProviderError {
             message: format!("No provider configured for role: {role}"),
             code: None,
         })?;
-        provider.complete(request)
+        provider.chat(request.clone()).await
     }
 }
 
@@ -730,8 +710,8 @@ impl ModelConfig {
 mod tests {
     use super::*;
 
-    #[test]
-    fn mock_provider_returns_responses_in_order() {
+    #[tokio::test]
+    async fn mock_provider_returns_responses_in_order() {
         let provider = MockProvider::new(vec![
             MockResponse::success("First response", 0.8),
             MockResponse::success("Second response", 0.9),
@@ -757,17 +737,17 @@ mod tests {
 
         let request = test_request("test");
 
-        let r1 = provider.complete(&request).unwrap();
+        let r1 = ChatBackend::chat(&provider, request.clone()).await.unwrap();
         assert_eq!(r1.content, "First response");
 
-        let r2 = provider.complete(&request).unwrap();
+        let r2 = ChatBackend::chat(&provider, request).await.unwrap();
         assert_eq!(r2.content, "Second response");
 
         assert_eq!(provider.call_count(), 2);
     }
 
-    #[test]
-    fn mock_provider_can_return_errors() {
+    #[tokio::test]
+    async fn mock_provider_can_return_errors() {
         let provider = MockProvider::new(vec![MockResponse::failure(LlmError::RateLimited {
             retry_after: std::time::Duration::from_secs(60),
             message: Some("Too many requests".into()),
@@ -788,15 +768,15 @@ mod tests {
             stop_sequences: Vec::new(),
             model: None,
         };
-        let result = provider.complete(&request);
+        let result = ChatBackend::chat(&provider, request).await;
 
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(matches!(err, LlmError::RateLimited { .. }));
     }
 
-    #[test]
-    fn router_routes_by_role() {
+    #[tokio::test]
+    async fn router_routes_by_role() {
         let gemini = Arc::new(MockProvider::new(vec![MockResponse::success(
             "Gemini response",
             0.85,
@@ -826,10 +806,13 @@ mod tests {
             model: None,
         };
 
-        let fast_response = router.complete(LlmRole::FastAnalysis, &request).unwrap();
+        let fast_response = router
+            .complete(LlmRole::FastAnalysis, &request)
+            .await
+            .unwrap();
         assert_eq!(fast_response.content, "Gemini response");
 
-        let synth_response = router.complete(LlmRole::Synthesis, &request).unwrap();
+        let synth_response = router.complete(LlmRole::Synthesis, &request).await.unwrap();
         assert_eq!(synth_response.content, "Claude response");
     }
 

@@ -31,7 +31,7 @@ If a type appears in two crates, one must re-export from the other. No copy-past
 | `converge-client` | `ConvergeClient`, `ClientError`, `StoreObserver` | `converge-protocol` |
 | `converge-provider` | Provider impls (Anthropic, OpenAI, Gemini, Mistral, Brave, Tavily), `ModelSelector`, `ProviderRegistry` | `converge-core::traits::*`, `converge-provider-api::*` |
 | `converge-experience` | `InMemoryExperienceStore`, `StoreObserver`, store impls | `converge-core::ExperienceStore` |
-| `converge-llm` | `LlmBackend` (local inference), `SyncChatProvider` (sync adapter utility), `LlmError` (kernel), `FinishReason` (inference), `KernelProposal` | `converge-core::kernel_boundary::*`, `converge-core::prompt::*` |
+| `converge-llm` | `LlmBackend` (local inference), `LlmRouter`, `ProviderAgent`, `LlmAgentConfig`, `LlmError` (kernel), `FinishReason` (inference), `KernelProposal` | `converge-core::kernel_boundary::*`, `converge-core::prompt::*` |
 
 ### Rule 3: Name collisions require disambiguation
 

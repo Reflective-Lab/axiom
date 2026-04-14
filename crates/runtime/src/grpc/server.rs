@@ -331,7 +331,6 @@ impl ConvergeService for ConvergeServiceImpl {
             })
             .collect();
 
-        // Execute job in blocking task
         let result = tokio::task::spawn_blocking(move || {
             JobExecutor::builder()
                 .with_pack(&pack_id)

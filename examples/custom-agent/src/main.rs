@@ -20,6 +20,7 @@ impl SummaryAgent {
     }
 }
 
+#[async_trait::async_trait]
 impl Suggestor for SummaryAgent {
     fn name(&self) -> &str {
         &self.agent_name
@@ -33,7 +34,7 @@ impl Suggestor for SummaryAgent {
         !ctx.get(ContextKey::Seeds).is_empty() && ctx.get(ContextKey::Hypotheses).is_empty()
     }
 
-    fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn converge_core::ContextView) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
         let summary = seeds
             .iter()
@@ -51,7 +52,8 @@ impl Suggestor for SummaryAgent {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("=== Custom Suggestor Example ===\n");
 
     let mut engine = Engine::new();
@@ -67,7 +69,7 @@ fn main() {
 
     engine.register_suggestor(SummaryAgent::new("summarizer"));
 
-    let result = engine.run(Context::new()).expect("should converge");
+    let result = engine.run(Context::new()).await.expect("should converge");
 
     println!("Converged in {} cycles\n", result.cycles);
 

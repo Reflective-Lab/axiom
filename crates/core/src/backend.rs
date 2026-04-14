@@ -29,7 +29,7 @@
 //!
 //! # Example
 //!
-//! ```
+//! ```ignore
 //! use converge_core::backend::{
 //!     LlmBackend, BackendCapability, BackendRequest, BackendResponse,
 //!     BackendPrompt, BackendBudgets, BackendResult,

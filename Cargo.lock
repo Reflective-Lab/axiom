@@ -2484,9 +2484,10 @@ checksum = "136d3e02915a2cea4d74caa8681e2d44b1c3254bdbf17d11d41d587ff858832c"
 
 [[package]]
 name = "converge-analytics"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "bincode 1.3.3",
  "burn",
  "converge-core",
@@ -2507,9 +2508,10 @@ dependencies = [
 
 [[package]]
 name = "converge-application"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "chrono",
  "clap",
  "config",
@@ -2538,7 +2540,7 @@ dependencies = [
 
 [[package]]
 name = "converge-client"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "converge-protocol",
  "thiserror 2.0.18",
@@ -2547,8 +2549,9 @@ dependencies = [
 
 [[package]]
 name = "converge-core"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
+ "async-trait",
  "converge-pack",
  "criterion",
  "hex",
@@ -2560,6 +2563,7 @@ dependencies = [
  "static_assertions",
  "strum 0.26.3",
  "thiserror 2.0.18",
+ "tokio",
  "tracing",
  "tracing-test",
  "trybuild",
@@ -2568,8 +2572,9 @@ dependencies = [
 
 [[package]]
 name = "converge-domain"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
+ "async-trait",
  "converge-core",
  "converge-policy",
  "converge-provider",
@@ -2578,13 +2583,14 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "tokio",
  "tracing",
  "tracing-test",
 ]
 
 [[package]]
 name = "converge-experience"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "arrow-array",
  "arrow-schema",
@@ -2601,7 +2607,7 @@ dependencies = [
 
 [[package]]
 name = "converge-kernel"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "converge-core",
  "converge-pack",
@@ -2609,7 +2615,7 @@ dependencies = [
 
 [[package]]
 name = "converge-knowledge"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2643,9 +2649,10 @@ dependencies = [
 
 [[package]]
 name = "converge-llm"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "blake3",
  "burn",
  "burn-store",
@@ -2685,7 +2692,7 @@ dependencies = [
 
 [[package]]
 name = "converge-mcp"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "async-trait",
  "axum 0.8.8",
@@ -2700,7 +2707,7 @@ dependencies = [
 
 [[package]]
 name = "converge-model"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "converge-core",
  "converge-pack",
@@ -2708,7 +2715,7 @@ dependencies = [
 
 [[package]]
 name = "converge-optimization"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "approx",
  "bitvec",
@@ -2731,7 +2738,7 @@ dependencies = [
 
 [[package]]
 name = "converge-pack"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "async-trait",
  "serde",
@@ -2743,7 +2750,7 @@ dependencies = [
 
 [[package]]
 name = "converge-policy"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "axum 0.8.8",
  "base64 0.22.1",
@@ -2763,7 +2770,7 @@ dependencies = [
 
 [[package]]
 name = "converge-protocol"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "prost 0.13.5",
  "prost-types 0.13.5",
@@ -2773,7 +2780,7 @@ dependencies = [
 
 [[package]]
 name = "converge-provider"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "arrow-array",
  "arrow-schema",
@@ -2805,7 +2812,7 @@ dependencies = [
 
 [[package]]
 name = "converge-provider-api"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "serde",
  "thiserror 2.0.18",
@@ -2813,7 +2820,7 @@ dependencies = [
 
 [[package]]
 name = "converge-remote"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -2843,7 +2850,7 @@ dependencies = [
 
 [[package]]
 name = "converge-runtime"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -2906,7 +2913,7 @@ dependencies = [
 
 [[package]]
 name = "converge-storage"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "futures",
  "object_store 0.13.2",
@@ -2920,7 +2927,7 @@ dependencies = [
 
 [[package]]
 name = "converge-tool"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "chrono",
  "clap",
@@ -2944,7 +2951,7 @@ dependencies = [
 
 [[package]]
 name = "converge-traits"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "converge-pack",
  "converge-provider-api",
@@ -5265,7 +5272,9 @@ dependencies = [
 name = "example-custom-agent"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
  "converge-core",
+ "tokio",
 ]
 
 [[package]]
@@ -5280,12 +5289,14 @@ dependencies = [
 name = "example-expense-approval"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
  "converge-core",
  "converge-domain",
  "converge-policy",
  "converge-traits",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -5303,17 +5314,20 @@ version = "0.0.0"
 dependencies = [
  "converge-core",
  "converge-traits",
+ "tokio",
 ]
 
 [[package]]
 name = "example-loan-application"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
  "converge-core",
  "converge-domain",
  "converge-traits",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -5334,18 +5348,21 @@ dependencies = [
  "converge-domain",
  "converge-experience",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
 name = "example-vendor-selection"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
  "converge-core",
  "converge-domain",
  "converge-policy",
  "converge-traits",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -9718,7 +9735,7 @@ dependencies = [
 
 [[package]]
 name = "ortools-sys"
-version = "3.0.4"
+version = "3.1.0"
 dependencies = [
  "cc",
  "pkg-config",

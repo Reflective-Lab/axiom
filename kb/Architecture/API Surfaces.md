@@ -51,6 +51,7 @@ Status:
 
 Important note:
 - `Suggestor` is the canonical authoring trait, and it cannot emit authoritative facts.
+- `Suggestor::accepts()` is pure and synchronous; `Suggestor::execute()` is async and runtime-agnostic.
 - `Fact` is read-only outside kernel-authority code paths.
 - `AgentEffect` is proposal-only.
 

@@ -8,7 +8,8 @@
 use converge_core::suggestors::{ReactOnceSuggestor, SeedSuggestor};
 use converge_core::{Context, ContextKey, Engine};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("=== Hello Convergence ===\n");
 
     // 1. Create an engine
@@ -27,7 +28,7 @@ fn main() {
     ));
 
     // 3. Run until convergence (fixed point)
-    let result = engine.run(Context::new()).expect("should converge");
+    let result = engine.run(Context::new()).await.expect("should converge");
 
     // 4. Inspect the outcome
     println!("Converged: {}", result.converged);

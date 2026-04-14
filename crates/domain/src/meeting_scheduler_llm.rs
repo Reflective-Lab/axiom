@@ -71,14 +71,14 @@ mod tests {
     use converge_core::Context;
     use converge_core::suggestors::SeedSuggestor;
 
-    #[test]
-    fn mock_llm_meeting_scheduler_converges() {
+    #[tokio::test]
+    async fn mock_llm_meeting_scheduler_converges() {
         let mut engine = Engine::new();
         engine.register_suggestor(SeedSuggestor::new("participants", "Alice, Bob"));
 
         let _providers = setup_mock_llm_meeting_scheduler(&mut engine);
 
-        let result = engine.run(Context::new()).expect("should converge");
+        let result = engine.run(Context::new()).await.expect("should converge");
 
         assert!(result.converged);
         // LLM agents emit proposals that get promoted to facts on their target keys

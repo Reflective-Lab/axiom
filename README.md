@@ -29,7 +29,7 @@ just lint           # format + clippy
 
 ```bash
 just example hello-convergence   # engine loop, agents, facts
-just example custom-agent        # implement the Agent trait
+just example custom-agent        # implement the Suggestor trait
 just example meeting-scheduler   # domain pack with constraints
 just example custom-provider     # implement an LLM provider
 ```

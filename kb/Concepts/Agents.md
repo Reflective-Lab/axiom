@@ -9,11 +9,12 @@ A suggestor is a unit of capability that reads the shared context and proposes n
 ## The Trait
 
 ```rust
+#[async_trait::async_trait]
 pub trait Suggestor: Send + Sync {
     fn name(&self) -> &str;
     fn dependencies(&self) -> &[ContextKey];
     fn accepts(&self, ctx: &dyn Context) -> bool;
-    fn execute(&self, ctx: &dyn Context) -> AgentEffect;
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect;
 }
 ```
 
@@ -22,14 +23,16 @@ pub trait Suggestor: Send + Sync {
 | `name()` | Unique identifier. Used for provenance, logging, and deterministic scheduling. |
 | `dependencies()` | Which [[Concepts/Context and Facts#Context Keys|ContextKey]] partitions this suggestor watches. Engine only wakes the suggestor when these change. |
 | `accepts()` | Pure predicate. No I/O, no side effects. "Should I run this cycle?" |
-| `execute()` | Read context, produce [[Concepts/Proposals and Promotion|proposals]]. Never mutate context. |
+| `execute()` | Async, read-only execution. Read context, await injected capabilities if needed, and produce [[Concepts/Proposals and Promotion|proposals]]. Never mutate context. |
 
 ## Rules
 
 - `accepts()` must be **pure** — same context, same answer, every time
-- `execute()` is **read-only** — suggestors return `AgentEffect`, never mutate state
+- `execute()` is **async and read-only** — suggestors return `AgentEffect`, never mutate state
 - Suggestors **never call each other** — all coordination through the shared context
 - **Idempotency is context-based** — check for your own facts before re-proposing
+
+The host application owns the async runtime. Suggestors stay runtime-agnostic and the engine is called with `engine.run(...).await`.
 
 ## Suggestor Taxonomy
 

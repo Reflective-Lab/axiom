@@ -178,7 +178,7 @@ impl KnowledgeBase {
 
         // Generate embedding from content
         let text = entry.embedding_text();
-        let embedding = self.embeddings.embed(&text)?;
+        let embedding = self.embeddings.embed(&text).await?;
 
         // Store in memory
         self.entries.insert(id, entry.clone());
@@ -199,14 +199,12 @@ impl KnowledgeBase {
         let mut ids = Vec::with_capacity(entries.len());
 
         for chunk in entries.chunks(self.config.batch_size) {
-            let batch: Vec<_> = chunk
-                .iter()
-                .map(|entry| {
-                    let text = entry.embedding_text();
-                    let embedding = self.embeddings.embed(&text)?;
-                    Ok((entry.clone(), embedding))
-                })
-                .collect::<Result<Vec<_>>>()?;
+            let mut batch = Vec::with_capacity(chunk.len());
+            for entry in chunk {
+                let text = entry.embedding_text();
+                let embedding = self.embeddings.embed(&text).await?;
+                batch.push((entry.clone(), embedding));
+            }
 
             for (entry, embedding) in &batch {
                 self.entries.insert(entry.id, entry.clone());
@@ -239,7 +237,7 @@ impl KnowledgeBase {
 
         // Regenerate embedding
         let text = entry.embedding_text();
-        let embedding = self.embeddings.embed(&text)?;
+        let embedding = self.embeddings.embed(&text).await?;
 
         // Update in memory
         self.entries.insert(id, entry.clone());
@@ -272,7 +270,7 @@ impl KnowledgeBase {
     #[instrument(skip(self), fields(k = options.limit))]
     pub async fn search(&self, query: &str, options: SearchOptions) -> Result<Vec<SearchResult>> {
         // Generate query embedding
-        let query_embedding = self.embeddings.embed(query)?;
+        let query_embedding = self.embeddings.embed(query).await?;
 
         // Find similar vectors using brute force for now
         // (ruvector HNSW would be used in production)

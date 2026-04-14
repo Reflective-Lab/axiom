@@ -7,6 +7,8 @@ source: mixed
 Converge is a **pure Rust Suggestor OS** for building correctness-first,
 context-driven, multi-suggestor systems that provably converge.
 
+The core contract is async-capable but runtime-agnostic: async trait boundaries are allowed, while runtimes, task spawning, and I/O stay at the edges.
+
 ## Canonical Contracts
 
 The canonical external API boundaries are defined in:
@@ -221,13 +223,13 @@ The current external network contract is:
 let mut engine = Engine::new();
 engine.register_suggestor(suggestor);                      // global suggestor
 engine.register_suggestor_in_pack("pack-id", suggestor);   // pack-scoped suggestor
-engine.run(context);                             // basic convergence
+engine.run(context).await;                      // basic convergence
 engine.run_with_types_intent_and_hooks(          // application-level truth execution
     context, &intent, TypesRunHooks {
         criterion_evaluator: Some(evaluator),
         event_observer: Some(observer),
     },
-);
+).await;
 ```
 
 ### Context
@@ -243,11 +245,12 @@ context.add_input_with_provenance(ContextKey::Seeds, "seed-2", "source data", "o
 
 ### Suggestor trait
 ```rust
+#[async_trait::async_trait]
 trait Suggestor {
     fn name(&self) -> &str;
     fn dependencies(&self) -> &[ContextKey];
     fn accepts(&self, ctx: &dyn Context) -> bool;
-    fn execute(&self, ctx: &dyn Context) -> AgentEffect;
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect;
 }
 ```
 

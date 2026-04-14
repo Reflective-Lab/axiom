@@ -18,8 +18,8 @@ use std::sync::Arc;
 
 /// A `Suggestor` that delegates to a `DynChatBackend` for LLM completions.
 ///
-/// Bridges async `ChatBackend::chat()` into the sync `Suggestor::execute()`
-/// contract using `futures::executor::block_on`.
+/// Uses the canonical async `ChatBackend::chat()` boundary directly from the
+/// async `Suggestor::execute()` contract.
 pub struct ChatAgentSuggestor {
     name: String,
     system_prompt: String,
@@ -34,6 +34,7 @@ pub struct ChatAgentSuggestor {
     backend: Arc<dyn DynChatBackend>,
 }
 
+#[async_trait::async_trait]
 impl converge_core::Suggestor for ChatAgentSuggestor {
     fn name(&self) -> &str {
         &self.name
@@ -48,7 +49,7 @@ impl converge_core::Suggestor for ChatAgentSuggestor {
         !ctx.get(self.target_key).iter().any(|f| f.id == result_id)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let context_str = ctx
             .get(self.target_key)
             .iter()
@@ -74,7 +75,7 @@ impl converge_core::Suggestor for ChatAgentSuggestor {
             response_format: ResponseFormat::Text,
         };
 
-        let result = futures::executor::block_on(self.backend.chat(request));
+        let result = self.backend.chat(request).await;
 
         match result {
             Ok(response) => {

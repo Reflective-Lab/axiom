@@ -12,6 +12,7 @@ keywords = ["agent", "runtime", "convergence", "context-driven"]
 categories = ["algorithms", "concurrency"]
 
 [dependencies]
+async-trait.workspace = true
 converge-pack = { workspace = true, features = ["kernel-authority"] }
 thiserror.workspace = true
 tracing.workspace = true
@@ -22,6 +23,7 @@ hex.workspace = true
 typed-builder.workspace = true
 
 [dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing-test = "0.2"
 proptest.workspace = true
 insta = { version = "1.42", features = ["json"] }

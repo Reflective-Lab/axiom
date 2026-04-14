@@ -15,6 +15,7 @@ categories = ["algorithms", "simulation"]
 converge-core.workspace = true
 converge-policy.workspace = true
 converge-provider.workspace = true
+async-trait.workspace = true
 futures.workspace = true
 tracing.workspace = true
 serde.workspace = true
@@ -24,6 +25,7 @@ serde_json.workspace = true
 tracing-test = "0.2"
 dotenv.workspace = true
 proptest.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [lints]
 workspace = true

@@ -20,6 +20,7 @@ converge-core.workspace = true
 converge-experience.workspace = true
 converge-provider.workspace = true
 converge-tool.workspace = true
+async-trait.workspace = true
 
 # Optional subsystems
 converge-knowledge = { workspace = true, optional = true }

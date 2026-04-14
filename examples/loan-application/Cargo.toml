@@ -8,5 +8,7 @@ publish = false
 converge-core = { path = "../../crates/core" }
 converge-traits = { path = "../../crates/traits" }
 converge-domain = { path = "../../crates/domain" }
+async-trait.workspace = true
+tokio.workspace = true
 serde = { workspace = true }
 serde_json = { workspace = true }

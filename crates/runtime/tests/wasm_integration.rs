@@ -269,8 +269,8 @@ impl converge_core::Invariant for NativeAlwaysOk {
     }
 }
 
-#[test]
-fn wasm_and_native_invariants_coexist() {
+#[tokio::test]
+async fn wasm_and_native_invariants_coexist() {
     let wasm_engine = make_engine();
     let mut store = make_store(&wasm_engine);
     let mut engine = Engine::new();
@@ -291,12 +291,12 @@ fn wasm_and_native_invariants_coexist() {
 
     // Both invariants should be registered
     let ctx = Context::new();
-    let result = engine.run(ctx);
+    let result = engine.run(ctx).await;
     assert!(result.is_ok());
 }
 
-#[test]
-fn acceptance_violation_rejects_convergence() {
+#[tokio::test]
+async fn acceptance_violation_rejects_convergence() {
     let wasm_engine = make_engine();
     let mut store = make_store(&wasm_engine);
     let mut engine = Engine::new();
@@ -314,7 +314,7 @@ fn acceptance_violation_rejects_convergence() {
     .unwrap();
 
     let ctx = Context::new();
-    let result = engine.run(ctx);
+    let result = engine.run(ctx).await;
 
     // The acceptance invariant always fails → engine returns InvariantViolation
     assert!(result.is_err(), "expected acceptance violation");
