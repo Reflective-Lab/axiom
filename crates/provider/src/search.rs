@@ -217,3 +217,98 @@ pub trait WebSearchBackend: Send + Sync {
     /// Execute a search request.
     fn search_web(&self, request: &WebSearchRequest) -> Result<WebSearchResponse, WebSearchError>;
 }
+
+// ---------------------------------------------------------------------------
+// Web fetch (URL → content)
+// ---------------------------------------------------------------------------
+
+/// Request to fetch a single URL.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WebFetchRequest {
+    /// URL to fetch.
+    pub url: String,
+    /// Optional HTTP headers to include.
+    #[serde(default)]
+    pub headers: Vec<(String, String)>,
+    /// Maximum response body size in bytes (default: 1 MiB).
+    #[serde(default = "default_max_bytes")]
+    pub max_bytes: usize,
+    /// Request timeout in milliseconds (default: 30 000).
+    #[serde(default = "default_timeout_ms")]
+    pub timeout_ms: u64,
+}
+
+fn default_max_bytes() -> usize {
+    1_048_576
+}
+fn default_timeout_ms() -> u64 {
+    30_000
+}
+
+impl WebFetchRequest {
+    #[must_use]
+    pub fn new(url: impl Into<String>) -> Self {
+        Self {
+            url: url.into(),
+            headers: Vec::new(),
+            max_bytes: default_max_bytes(),
+            timeout_ms: default_timeout_ms(),
+        }
+    }
+
+    #[must_use]
+    pub fn with_header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.headers.push((name.into(), value.into()));
+        self
+    }
+
+    #[must_use]
+    pub fn with_max_bytes(mut self, max_bytes: usize) -> Self {
+        self.max_bytes = max_bytes;
+        self
+    }
+
+    #[must_use]
+    pub fn with_timeout_ms(mut self, timeout_ms: u64) -> Self {
+        self.timeout_ms = timeout_ms;
+        self
+    }
+}
+
+/// Response from a URL fetch.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WebFetchResponse {
+    /// The fetched URL (after redirects).
+    pub url: String,
+    /// HTTP status code.
+    pub status: u16,
+    /// Content-Type header value.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_type: Option<String>,
+    /// Response body as text.
+    pub body: String,
+    /// Whether the body was truncated to `max_bytes`.
+    pub truncated: bool,
+}
+
+/// Error type for web fetch operations.
+#[derive(Debug, thiserror::Error)]
+pub enum WebFetchError {
+    #[error("network error: {0}")]
+    Network(String),
+    #[error("timeout after {0}ms")]
+    Timeout(u64),
+    #[error("response too large (>{0} bytes)")]
+    TooLarge(usize),
+    #[error("invalid url: {0}")]
+    InvalidUrl(String),
+    #[error("http {0}: {1}")]
+    Http(u16, String),
+}
+
+/// Executable contract for fetching a URL and returning its content.
+pub trait WebFetchBackend: Send + Sync {
+    fn provider_name(&self) -> &'static str;
+
+    fn fetch(&self, request: &WebFetchRequest) -> Result<WebFetchResponse, WebFetchError>;
+}

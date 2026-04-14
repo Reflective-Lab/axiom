@@ -72,6 +72,8 @@ mod model_selection;
 // Search providers
 #[cfg(feature = "brave")]
 pub mod brave;
+#[cfg(feature = "_http")]
+pub mod fetch;
 pub mod search;
 #[cfg(feature = "tavily")]
 pub mod tavily;
@@ -124,9 +126,12 @@ pub use brave::{
     BraveCapability, BraveSearchError, BraveSearchProvider, BraveSearchRequest,
     BraveSearchResponse, BraveSearchResult,
 };
+#[cfg(feature = "_http")]
+pub use fetch::HttpFetchProvider;
 pub use search::{
-    SearchDepth, SearchTopic, WebSearchBackend, WebSearchError, WebSearchImage, WebSearchRequest,
-    WebSearchResponse, WebSearchResult,
+    SearchDepth, SearchTopic, WebFetchBackend, WebFetchError, WebFetchRequest, WebFetchResponse,
+    WebSearchBackend, WebSearchError, WebSearchImage, WebSearchRequest, WebSearchResponse,
+    WebSearchResult,
 };
 #[cfg(feature = "tavily")]
 pub use tavily::TavilySearchProvider;

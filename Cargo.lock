@@ -2733,6 +2733,7 @@ dependencies = [
 name = "converge-pack"
 version = "3.0.4"
 dependencies = [
+ "async-trait",
  "serde",
  "serde_json",
  "strum 0.26.3",

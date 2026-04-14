@@ -37,11 +37,18 @@ use crate::effect::AgentEffect;
 /// to collect effects. Effects are merged by the engine in deterministic
 /// order (sorted by suggestor name).
 ///
+/// # Async
+///
+/// `execute()` is async, allowing suggestors to call LLM providers, search
+/// backends, and other I/O without blocking. The engine awaits each
+/// suggestor and controls concurrency — suggestors don't need to manage
+/// their own parallelism.
+///
 /// # Thread Safety
 ///
-/// Suggestors must be `Send + Sync` because the engine executes eligible
-/// suggestors in parallel (via Rayon). Suggestor state, if any, must be
-/// internally synchronized.
+/// Suggestors must be `Send + Sync` because the engine may execute eligible
+/// suggestors concurrently in the future.
+#[async_trait::async_trait]
 pub trait Suggestor: Send + Sync {
     /// Human-readable name, used for ordering, logging, and provenance.
     ///
@@ -76,5 +83,5 @@ pub trait Suggestor: Send + Sync {
     ///   eligible suggestors have executed.
     /// - For LLM suggestors: emit `ProposedFact` to `ContextKey::Proposals`,
     ///   not directly to the target key.
-    fn execute(&self, ctx: &dyn Context) -> AgentEffect;
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect;
 }

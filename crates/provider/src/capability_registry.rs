@@ -28,7 +28,9 @@
 
 #[cfg(feature = "brave")]
 use crate::brave::BraveSearchProvider;
-use crate::search::WebSearchBackend;
+#[cfg(feature = "_http")]
+use crate::fetch::HttpFetchProvider;
+use crate::search::{WebFetchBackend, WebSearchBackend};
 #[cfg(feature = "tavily")]
 use crate::tavily::TavilySearchProvider;
 use converge_core::capability::{
@@ -296,6 +298,8 @@ pub struct CapabilityRegistry {
     /// Tavily search provider instance (if available).
     #[cfg(feature = "tavily")]
     tavily_provider: Option<Arc<TavilySearchProvider>>,
+    /// Web fetch backend (URL → content).
+    fetch_backend: Option<Arc<dyn WebFetchBackend>>,
 }
 
 impl Default for CapabilityRegistry {
@@ -318,6 +322,7 @@ impl CapabilityRegistry {
             brave_provider: None,
             #[cfg(feature = "tavily")]
             tavily_provider: None,
+            fetch_backend: None,
         }
     }
 
@@ -344,6 +349,12 @@ impl CapabilityRegistry {
         // Try to add Brave Search if available
         registry.try_add_brave_from_env();
         registry.try_add_tavily_from_env();
+
+        // HTTP fetch is always available (no API key required)
+        #[cfg(feature = "_http")]
+        {
+            registry.fetch_backend = Some(Arc::new(HttpFetchProvider::new()));
+        }
 
         registry
     }
@@ -456,6 +467,23 @@ impl CapabilityRegistry {
     #[must_use]
     pub fn tavily(&self) -> Option<&TavilySearchProvider> {
         self.tavily_provider.as_deref()
+    }
+
+    /// Gets the web fetch backend if available.
+    #[must_use]
+    pub fn fetch_backend(&self) -> Option<Arc<dyn WebFetchBackend>> {
+        self.fetch_backend.clone()
+    }
+
+    /// Sets a custom web fetch backend.
+    pub fn set_fetch_backend(&mut self, backend: Arc<dyn WebFetchBackend>) {
+        self.fetch_backend = Some(backend);
+    }
+
+    /// Checks if web fetch capability is available.
+    #[must_use]
+    pub fn has_web_fetch(&self) -> bool {
+        self.fetch_backend.is_some()
     }
 
     /// Checks if web search capability is available.
