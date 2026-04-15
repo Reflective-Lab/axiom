@@ -25,7 +25,7 @@ Svelte does not run agents, evaluate criteria, or make decisions. That's the Rus
 ## Local Input Model
 
 Desktop apps accept local input formats:
-- Gherkin `.feature` files — parsed by `converge-tool`
+- Gherkin `.feature` files — parsed by `converge-axiom`
 - Truth-spec `.truths.json` files — structured job definitions
 
 Both are normalized in the Rust layer before execution.

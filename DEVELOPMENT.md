@@ -166,7 +166,7 @@ Publishable crates in dependency order (see [ADR-001](kb/Architecture/ADRs/ADR-0
 13. `converge-optimization`
 14. `converge-domain`
 15. `converge-storage`
-16. `converge-tool`
+16. `converge-axiom`
 
 ```bash
 # Validate readiness

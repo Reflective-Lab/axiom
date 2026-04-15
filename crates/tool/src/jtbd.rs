@@ -122,7 +122,7 @@ pub enum JTBDError {
 /// # Example
 ///
 /// ```rust,no_run
-/// use converge_tool::jtbd::extract_jtbd;
+/// use converge_axiom::jtbd::extract_jtbd;
 ///
 /// let content = r#"
 /// Truth: Example

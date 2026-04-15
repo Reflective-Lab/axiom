@@ -128,7 +128,7 @@ fn is_valid_key(key: &str) -> bool {
 /// # Examples
 ///
 /// ```
-/// use converge_tool::predicate::{parse_steps, Predicate};
+/// use converge_axiom::predicate::{parse_steps, Predicate};
 ///
 /// let steps = vec![
 ///     ("Then", r#"the Context key "Strategies" contains at least 2 facts"#, vec![]),

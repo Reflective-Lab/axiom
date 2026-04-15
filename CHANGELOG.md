@@ -71,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.1.2] - 2026-04-08
 
 ### Added
-- `converge-tool` publishing enabled for crates.io
+- `converge-axiom` publishing enabled for crates.io
 
 ## [2.1.1] - 2026-04-07
 

@@ -2516,6 +2516,7 @@ dependencies = [
  "clap",
  "config",
  "converge-analytics",
+ "converge-axiom",
  "converge-core",
  "converge-experience",
  "converge-knowledge",
@@ -2523,7 +2524,6 @@ dependencies = [
  "converge-mcp",
  "converge-optimization",
  "converge-provider",
- "converge-tool",
  "crossterm 0.28.1",
  "dotenv",
  "hostname",
@@ -2536,6 +2536,30 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "converge-axiom"
+version = "3.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "colored 2.2.0",
+ "converge-core",
+ "converge-provider",
+ "dotenv",
+ "futures",
+ "gherkin",
+ "proptest",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha2",
+ "syn 2.0.117",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -2863,11 +2887,11 @@ dependencies = [
  "chrono",
  "clap",
  "config",
+ "converge-axiom",
  "converge-core",
  "converge-experience",
  "converge-protocol",
  "converge-provider",
- "converge-tool",
  "dotenv",
  "ed25519-dalek",
  "firestore",
@@ -2924,30 +2948,6 @@ dependencies = [
  "toml 0.8.23",
  "tracing",
  "url",
-]
-
-[[package]]
-name = "converge-tool"
-version = "3.1.0"
-dependencies = [
- "chrono",
- "clap",
- "colored 2.2.0",
- "converge-core",
- "converge-provider",
- "dotenv",
- "futures",
- "gherkin",
- "proptest",
- "regex",
- "serde",
- "serde_json",
- "serde_yaml",
- "sha2",
- "syn 2.0.117",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
 ]
 
 [[package]]

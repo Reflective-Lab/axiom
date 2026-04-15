@@ -20,8 +20,8 @@
 //! # Example
 //!
 //! ```ignore
-//! use converge_tool::gherkin::{GherkinValidator, ValidationConfig};
-//! use converge_tool::mock_llm::StaticChatBackend;
+//! use converge_axiom::gherkin::{GherkinValidator, ValidationConfig};
+//! use converge_axiom::mock_llm::StaticChatBackend;
 //! use std::sync::Arc;
 //!
 //! let backend = Arc::new(StaticChatBackend::constant("Valid spec"));
@@ -34,10 +34,14 @@
 pub mod codegen;
 pub mod compile;
 pub mod gherkin;
+pub mod guidance;
 pub mod jtbd;
 pub mod mock_llm;
+pub mod policy_lens;
 pub mod predicate;
+pub mod simulation;
 pub mod truths;
+pub mod validation_view;
 
 pub use gherkin::{
     GherkinValidator, InvariantClassTag, IssueCategory, ScenarioKind, ScenarioMeta, Severity,
@@ -45,6 +49,8 @@ pub use gherkin::{
     extract_scenario_meta,
 };
 pub use mock_llm::StaticChatBackend;
+pub use policy_lens::{PolicyCoverageReport, PolicyRequirements, PolicyRule, check_coverage};
+pub use simulation::{SimulationConfig, SimulationReport, Verdict, simulate, simulate_spec};
 pub use truths::{
     AuthorityBlock, ConstraintBlock, EvidenceBlock, ExceptionBlock, IntentBlock, TruthDocument,
     TruthGovernance, parse_truth_document,

@@ -122,7 +122,7 @@ converge-observability   (no internal deps)
 converge-analytics       → core, domain, provider
 converge-llm             → core, domain, provider
 converge-policy          → core
-converge-tool            → core, provider
+converge-axiom            → core, provider
 converge-remote          → client, protocol
 converge-runtime         → core, provider, protocol, tool
 converge-application     → core, provider, domain, tool, mcp, knowledge, …

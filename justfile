@@ -69,7 +69,7 @@ doc-open:
 # ── Publish ────────────────────────────────────────────────────────────
 
 # Publishable crates in dependency order
-_publishable := "converge-pack converge-provider-api converge-core converge-mcp converge-model converge-kernel converge-protocol converge-client converge-storage converge-provider converge-experience converge-knowledge ortools-sys converge-optimization converge-domain converge-tool"
+_publishable := "converge-pack converge-provider-api converge-core converge-mcp converge-model converge-kernel converge-protocol converge-client converge-storage converge-provider converge-experience converge-knowledge ortools-sys converge-optimization converge-domain converge-axiom"
 
 # Dry-run publish to crates.io (validates readiness)
 publish-dry-run:
@@ -295,7 +295,7 @@ deps:
     @echo "  converge-analytics       → core, domain, provider"
     @echo "  converge-llm             → core, domain, provider (optional)"
     @echo "  converge-policy          → core"
-    @echo "  converge-tool            → core, provider"
+    @echo "  converge-axiom            → core, provider"
     @echo "  converge-remote          → client, protocol"
     @echo "  converge-runtime         → core, provider, protocol, tool"
     @echo "  converge-application     → core, provider, domain, tool, mcp, knowledge"

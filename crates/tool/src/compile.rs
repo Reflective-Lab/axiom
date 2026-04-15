@@ -144,7 +144,7 @@ impl From<std::io::Error> for CompileError {
 /// # Examples
 ///
 /// ```ignore
-/// use converge_tool::compile::{WasmCompiler, CompileConfig};
+/// use converge_axiom::compile::{WasmCompiler, CompileConfig};
 ///
 /// let source = "/* generated Rust source */";
 /// let wasm_bytes = WasmCompiler::compile(source, &CompileConfig::default())?;

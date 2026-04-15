@@ -1,7 +1,7 @@
 // Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 
-//! Minimal local LLM mocks used by converge-tool tests and CLI fallback paths.
+//! Minimal local LLM mocks used by converge-axiom tests and CLI fallback paths.
 
 use std::collections::VecDeque;
 use std::future::Ready;

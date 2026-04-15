@@ -86,7 +86,7 @@ converge-llm = { path = "crates/llm", version = "3.1.0" }
 converge-policy = { path = "crates/policy", version = "3.1.0" }
 converge-runtime = { path = "crates/runtime", version = "3.1.0" }
 converge-remote = { path = "crates/remote", version = "3.1.0" }
-converge-tool = { path = "crates/tool", version = "3.1.0" }
+converge-axiom = { path = "crates/tool", version = "3.1.0" }
 converge-mcp = { path = "crates/mcp", version = "3.1.0", default-features = false }
 converge-application = { path = "crates/application", version = "3.1.0" }
 converge-storage = { path = "crates/storage", version = "3.1.0", default-features = false }

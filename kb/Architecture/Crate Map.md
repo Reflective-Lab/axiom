@@ -43,7 +43,7 @@ converge-optimization    → ortools-sys          Constraint solvers
 converge-analytics       → core, domain         ML/analytics agents
 converge-llm             → core, domain         Local LLM inference (Burn)
 converge-policy          → core                 Cedar policy engine and default FlowGateAuthorizer
-converge-tool            → core, provider       Gherkin validation, spec tools
+converge-axiom            → core, provider       Gherkin validation, spec tools
 converge-auth            (no internal deps)     Authentication, authorization, cryptography
 converge-consensus       (no internal deps)     Raft consensus adapter
 converge-ledger          (no internal deps)     Append-only context ledger
@@ -74,7 +74,7 @@ converge-application     → core, provider,      CLI/TUI distribution
 13. ortools-sys
 14. converge-optimization
 15. converge-domain
-16. converge-tool
+16. converge-axiom
 
 Internal crates (`publish = false`): traits, analytics, auth, consensus, ledger, llm, nats, observability, policy, runtime, remote, application.
 

@@ -44,7 +44,7 @@ These are implementation crates. Not stable external contracts.
 | `converge-domain` | Pre-built [[Concepts/Domain Packs\|agent packs]]: trust, money, delivery, knowledge, data_metrics |
 | `converge-provider` | LLM provider adapters (Anthropic, OpenAI, Gemini, Ollama, and more) |
 | `converge-mcp` | [[Integrations/MCP Tools\|Model Context Protocol]] server/client |
-| `converge-tool` | Gherkin spec validation, truth-spec parsing |
+| `converge-axiom` | Gherkin spec validation, truth-spec parsing |
 | `converge-knowledge` | Knowledge management, signal capture |
 | `converge-experience` | Experience tracking across runs |
 | `converge-optimization` | Multi-criteria optimization via OR-Tools |

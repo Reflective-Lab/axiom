@@ -54,7 +54,7 @@ use crate::truths::{TruthGovernance, parse_truth_document};
 /// # Examples
 ///
 /// ```
-/// use converge_tool::gherkin::preprocess_truths;
+/// use converge_axiom::gherkin::preprocess_truths;
 ///
 /// let input = "Truth: Get paid for delivered work\n  Scenario: Invoice";
 /// let output = preprocess_truths(input);
@@ -203,7 +203,7 @@ pub enum InvariantClassTag {
 ///
 /// ```
 /// # fn main() {
-/// use converge_tool::gherkin::{extract_scenario_meta, ScenarioKind, InvariantClassTag};
+/// use converge_axiom::gherkin::{extract_scenario_meta, ScenarioKind, InvariantClassTag};
 ///
 /// // Simulate what gherkin crate produces for:
 /// //   @invariant @structural @id:brand_safety
@@ -267,7 +267,7 @@ pub fn extract_scenario_meta(name: &str, tags: &[String]) -> ScenarioMeta {
 /// # Examples
 ///
 /// ```
-/// use converge_tool::gherkin::{extract_all_metas, ScenarioKind};
+/// use converge_axiom::gherkin::{extract_all_metas, ScenarioKind};
 ///
 /// let content = r#"
 /// Truth: Growth Strategy Pack

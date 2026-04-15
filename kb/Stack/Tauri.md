@@ -33,7 +33,7 @@ The Svelte frontend calls local Rust commands through Tauri — not HTTP/REST/gR
 [dependencies]
 converge-kernel = "3.0.1"
 converge-provider = { version = "3.0.1", features = ["kong"] }
-converge-tool = "3.0.1"
+converge-axiom = "3.0.1"
 ```
 
 ## Commands

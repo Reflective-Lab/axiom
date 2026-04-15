@@ -11,7 +11,7 @@ use axum::{
 };
 use converge_core::traits::{ChatBackend, ChatRequest, ChatResponse, LlmError};
 use converge_core::{Context, ContextKey, Engine};
-use converge_tool::gherkin::{GherkinValidator, IssueCategory, Severity, ValidationConfig};
+use converge_axiom::gherkin::{GherkinValidator, IssueCategory, Severity, ValidationConfig};
 
 /// Stub chat backend that returns empty responses.
 /// Real LLM validation should be configured via organism-application.
@@ -37,7 +37,6 @@ impl ChatBackend for StubChatBackend {
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use strum::IntoEnumIterator;
-use tokio::task;
 use tracing::{info, info_span};
 use utoipa::ToSchema;
 
@@ -327,28 +326,18 @@ pub async fn handle_job(
     // Drop the span guard before await (it's not Send)
     drop(_guard);
 
-    let result = task::spawn_blocking(move || {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .map_err(|e| RuntimeError::Config(format!("Failed to build runtime: {e}")))?;
-        let mut engine = Engine::new();
+    let mut engine = Engine::new();
 
-        // TODO: Register agents based on request or configuration
-        // For now, create a minimal engine
+    // TODO: Register agents based on request or configuration
+    // For now, create a minimal engine
 
-        // Create context from request or use empty
-        // TODO: Properly deserialize RootIntent and create Context
-        // For now, use empty context
-        let _context_data = context_data;
-        let context = Context::new();
+    // Create context from request or use empty
+    // TODO: Properly deserialize RootIntent and create Context
+    // For now, use empty context
+    let _context_data = context_data;
+    let context = Context::new();
 
-        runtime
-            .block_on(engine.run(context))
-            .map_err(RuntimeError::Converge)
-    })
-    .await
-    .map_err(|e| RuntimeError::Config(format!("Task join error: {e}")))??;
+    let result = engine.run(context).await.map_err(RuntimeError::Converge)?;
 
     let duration = start.elapsed();
 
@@ -767,33 +756,22 @@ pub async fn run_job(
         let seeds = job.seeds.clone();
         let max_cycles = job.max_cycles;
 
-        let result = task::spawn_blocking(move || {
-            use converge_core::Budget;
+        use converge_core::Budget;
 
-            let runtime = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .map_err(|e| RuntimeError::Config(format!("Failed to build runtime: {e}")))?;
+        let budget = Budget {
+            max_cycles,
+            ..Budget::default()
+        };
+        let mut engine = Engine::with_budget(budget);
 
-            let budget = Budget {
-                max_cycles,
-                ..Budget::default()
-            };
-            let mut engine = Engine::with_budget(budget);
+        // TODO: Register agents based on job configuration
+        // For now, create a minimal engine
 
-            // TODO: Register agents based on job configuration
-            // For now, create a minimal engine
+        // Create context from seeds
+        let _seeds = seeds;
+        let context = Context::new();
 
-            // Create context from seeds
-            let _seeds = seeds;
-            let context = Context::new();
-
-            runtime
-                .block_on(engine.run(context))
-                .map_err(RuntimeError::Converge)
-        })
-        .await
-        .map_err(|e| RuntimeError::Config(format!("Task join error: {e}")))?;
+        let result = engine.run(context).await.map_err(RuntimeError::Converge);
 
         // Update job based on result
         match result {
@@ -1250,9 +1228,7 @@ pub async fn execute_template_job(
         builder = builder.with_mock_llm();
     }
 
-    let result = task::spawn_blocking(move || builder.execute())
-        .await
-        .map_err(|e| RuntimeError::Config(format!("Task join error: {e}")))??;
+    let result = builder.execute().await?;
 
     let context_summary = ContextSummary {
         fact_counts: result.fact_counts,

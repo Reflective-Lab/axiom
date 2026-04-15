@@ -198,7 +198,7 @@ contracts:
 - `converge-mcp`
 - `converge-knowledge`
 - `converge-experience`
-- `converge-tool`
+- `converge-axiom`
 - `converge-remote`
 - `converge-auth`
 - `converge-consensus`

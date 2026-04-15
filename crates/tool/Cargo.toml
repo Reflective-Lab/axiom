@@ -1,18 +1,18 @@
 [package]
-name = "converge-tool"
+name = "converge-axiom"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 license.workspace = true
 publish = true
-description = "Development tools for Converge including Gherkin spec validation"
-documentation = "https://docs.rs/converge-tool"
-keywords = ["gherkin", "testing", "converge", "development"]
+description = "Axiom — the Converge truth layer: validation, simulation, guidance, and policy lens"
+documentation = "https://docs.rs/converge-axiom"
+keywords = ["gherkin", "testing", "converge", "governance", "axiom"]
 categories = ["development-tools", "development-tools::testing"]
 
 [lib]
-name = "converge_tool"
+name = "converge_axiom"
 path = "src/lib.rs"
 
 [[bin]]
