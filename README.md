@@ -4,6 +4,20 @@
 
 Axiom validates business specifications written in Gherkin-style `.truths` files using LLMs, generates Rust invariant code, and provides policy analysis tooling.
 
+```
+┌─────────────────────────────────────────────┐
+│  Helm          Decision frameworks          │
+├─────────────────────────────────────────────┤
+│  Axiom         Truth validation & codegen   │  ← you are here
+├─────────────────────────────────────────────┤
+│  Organism      Reasoning, planning, debate  │
+├─────────────────────────────────────────────┤
+│  Converge      Engine, governance, commit   │
+├─────────────────────────────────────────────┤
+│  Providers     LLMs, tools, storage         │
+└─────────────────────────────────────────────┘
+```
+
 ## What it does
 
 | Module | Purpose |
