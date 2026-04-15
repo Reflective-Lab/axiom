@@ -1,9 +1,0 @@
-error: cannot construct `Fact` with struct literal syntax due to private fields
- --> tests/compile_fail/fact_struct_literal.rs:7:17
-  |
-7 |     let _fact = Fact {
-  |                 ^^^^
-8 |         key: ContextKey::Seeds,
-  |         ---------------------- private field
-  |
-  = note: ...and other private fields `promotion_record` and `created_at` that were not provided

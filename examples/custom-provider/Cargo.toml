@@ -1,9 +1,0 @@
-[package]
-name = "example-custom-provider"
-version = "0.0.0"
-edition = "2024"
-publish = false
-
-[dependencies]
-converge-core = { path = "../../crates/core" }
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
