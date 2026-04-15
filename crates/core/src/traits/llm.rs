@@ -190,9 +190,7 @@ impl ResponseFormat {
             Self::Markdown => Some(
                 "You MUST respond with valid Markdown only. Use headings, lists, and tables to structure the data. Do NOT wrap output in code fences or return serialized JSON/YAML. Present data as readable Markdown.",
             ),
-            Self::Json => Some(
-                "You MUST respond with valid JSON only. No other text.",
-            ),
+            Self::Json => Some("You MUST respond with valid JSON only. No other text."),
             Self::Yaml => Some(
                 "You MUST respond with valid YAML only. No anchors, no aliases, no custom tags. No other text or code fences.",
             ),
@@ -301,6 +299,13 @@ pub enum LlmError {
         /// Reason for filtering.
         reason: String,
     },
+    /// Provider returned content that does not match the requested response format.
+    ResponseFormatMismatch {
+        /// Requested response format that the provider failed to honor.
+        expected: ResponseFormat,
+        /// Description of the mismatch.
+        message: String,
+    },
     /// Provider returned an error.
     ProviderError {
         /// Error message from provider.
@@ -345,6 +350,13 @@ impl std::fmt::Display for LlmError {
                 )
             }
             Self::ContentFiltered { reason } => write!(f, "content filtered: {}", reason),
+            Self::ResponseFormatMismatch { expected, message } => {
+                write!(
+                    f,
+                    "response format mismatch for {:?}: {}",
+                    expected, message
+                )
+            }
             Self::ProviderError { message, code } => {
                 write!(f, "provider error: {}", message)?;
                 if let Some(c) = code {
@@ -369,6 +381,7 @@ impl CapabilityError for LlmError {
             Self::ModelNotFound { .. } => ErrorCategory::NotFound,
             Self::ContextLengthExceeded { .. } => ErrorCategory::InvalidInput,
             Self::ContentFiltered { .. } => ErrorCategory::InvalidInput,
+            Self::ResponseFormatMismatch { .. } => ErrorCategory::Internal,
             Self::ProviderError { .. } => ErrorCategory::Internal,
             Self::NetworkError { .. } => ErrorCategory::Unavailable,
         }

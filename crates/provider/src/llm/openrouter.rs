@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use super::error_classification::{
     classify_http_error, map_backend_error, network_error, parse_error,
 };
+use super::format_contract::finalize_chat_response;
 use crate::secret::{EnvSecretProvider, SecretProvider, SecretString};
 use converge_core::backend::{BackendError, BackendResult};
 use converge_core::traits::{
@@ -288,17 +289,20 @@ impl OpenRouterBackend {
             _ => None,
         });
 
-        Ok(ChatResponse {
-            content,
-            tool_calls,
-            usage: response.usage.map(|u| ChatTokenUsage {
-                prompt_tokens: u.prompt_tokens,
-                completion_tokens: u.completion_tokens,
-                total_tokens: u.total_tokens,
-            }),
-            model: Some(response.model),
-            finish_reason,
-        })
+        finalize_chat_response(
+            req.response_format,
+            ChatResponse {
+                content,
+                tool_calls,
+                usage: response.usage.map(|u| ChatTokenUsage {
+                    prompt_tokens: u.prompt_tokens,
+                    completion_tokens: u.completion_tokens,
+                    total_tokens: u.total_tokens,
+                }),
+                model: Some(response.model),
+                finish_reason,
+            },
+        )
     }
 
     async fn execute_with_retries(

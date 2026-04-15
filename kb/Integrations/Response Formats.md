@@ -11,14 +11,14 @@ Converge supports five output formats via `ResponseFormat`. The default for stru
 | Format   | Best for                                        | Token cost | Compliance | Parse |
 |----------|-------------------------------------------------|------------|------------|-------|
 | Yaml     | **Default for structured data.** Machine + human| Low (-10%) | 100%       | Yes   |
-| Json     | API boundaries, storage, strict schemas         | Medium     | 100%       | Yes   |
+| Json     | API boundaries, storage, schema-ready payloads  | Medium     | 100%       | Yes   |
 | Toml     | Flat config, simple records, settings           | Lowest     | 99%        | Yes   |
 | Markdown | Human-facing reports, decision briefs           | Low        | 99%        | Opt.  |
 | Text     | Free-form prose, no structure needed            | Lowest     | 100%       | No    |
 
 ## Choosing a format
 
-**Start with YAML** for anything a machine will parse. It's cheaper than JSON, just as reliable, and a human can read and edit it. Fall back to JSON only when you need strict schema enforcement or the consumer requires it.
+**Start with YAML** for anything a machine will parse. It's cheaper than JSON, just as reliable, and a human can read and edit it. Fall back to JSON when the consumer requires it, when you want the strongest provider-native support, or when the next step needs schema validation outside the provider.
 
 **Use JSON** at API boundaries, when storing to disk/DB, or when a downstream system mandates it. JSON is the universal interchange format and has native API enforcement on OpenAI and Gemini.
 
@@ -27,6 +27,17 @@ Converge supports five output formats via `ResponseFormat`. The default for stru
 **Use Markdown** when a human reads the output (decision briefs, operator UIs, reports). Not a data interchange format. Some models return JSON in code fences when they interpret "structured" as "serialized" — the system instruction now explicitly asks for headings and tables.
 
 **Use Text** when you genuinely want free-form output.
+
+## Format vs schema
+
+Converge now enforces **format**, not **schema**, at the provider boundary.
+
+- `Json`, `Yaml`, and `Toml` responses are validated before the backend returns them.
+- Trivial outer code fences are stripped for those machine formats.
+- A chatty prose wrapper now fails with `LlmError::ResponseFormatMismatch`.
+- Exact object shape is still the caller's responsibility.
+
+If you need `"facts": [...]` specifically, or a fixed typed object shape, treat `ResponseFormat` as the transport contract and run a second schema validation step after parsing.
 
 ## Tested results (2026-04-14)
 

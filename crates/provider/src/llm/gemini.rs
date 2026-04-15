@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use super::error_classification::{classify_http_error, network_error, parse_error};
+use super::format_contract::finalize_chat_response;
 use crate::secret::{EnvSecretProvider, SecretProvider, SecretString};
 use converge_core::backend::{BackendError, BackendResult};
 use converge_core::traits::{
@@ -249,13 +250,16 @@ impl GeminiBackend {
             total_tokens: u.total_token_count,
         });
 
-        Ok(ChatResponse {
-            content,
-            tool_calls,
-            usage,
-            model: Some(model),
-            finish_reason,
-        })
+        finalize_chat_response(
+            req.response_format,
+            ChatResponse {
+                content,
+                tool_calls,
+                usage,
+                model: Some(model),
+                finish_reason,
+            },
+        )
     }
 
     #[allow(dead_code)]

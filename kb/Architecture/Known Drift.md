@@ -31,6 +31,12 @@ Live docs now match the implementation: core merges in registration order by `Su
 
 ## Open
 
+### Medium: Structured Output Is Format-Enforced, Not Schema-Enforced
+
+The provider boundary now validates `Json`, `Yaml`, and `Toml` responses and rejects prose wrappers with `LlmError::ResponseFormatMismatch`. But it still does not enforce an exact output schema such as required keys, field types, enum values, or nested object shape.
+
+**Resolution:** Add a schema-aware structured output surface above `ResponseFormat` rather than overloading the format enum with shape semantics.
+
 ### Medium: SystemTime in Core (Axiom 6)
 
 Core still sources wall-clock time internally through both `SystemTime::now()` and `Timestamp::now()`. This breaks replay determinism.

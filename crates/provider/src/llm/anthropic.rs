@@ -11,6 +11,7 @@ use sha2::{Digest, Sha256};
 use super::error_classification::{
     classify_http_error, map_backend_error, network_error, parse_error,
 };
+use super::format_contract::finalize_chat_response;
 use crate::secret::{EnvSecretProvider, SecretProvider, SecretString};
 use converge_core::backend::{BackendError, BackendResult};
 use converge_core::traits::{
@@ -257,17 +258,21 @@ impl AnthropicBackend {
             _ => None,
         };
 
-        Ok(ChatResponse {
-            content: text_parts.join(""),
-            tool_calls,
-            usage: Some(ChatTokenUsage {
-                prompt_tokens: response.usage.input_tokens as u32,
-                completion_tokens: response.usage.output_tokens as u32,
-                total_tokens: (response.usage.input_tokens + response.usage.output_tokens) as u32,
-            }),
-            model: Some(response.model),
-            finish_reason,
-        })
+        finalize_chat_response(
+            req.response_format,
+            ChatResponse {
+                content: text_parts.join(""),
+                tool_calls,
+                usage: Some(ChatTokenUsage {
+                    prompt_tokens: response.usage.input_tokens as u32,
+                    completion_tokens: response.usage.output_tokens as u32,
+                    total_tokens: (response.usage.input_tokens + response.usage.output_tokens)
+                        as u32,
+                }),
+                model: Some(response.model),
+                finish_reason,
+            },
+        )
     }
 
     #[allow(dead_code)]

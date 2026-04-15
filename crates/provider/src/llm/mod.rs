@@ -29,6 +29,7 @@
 #[cfg(feature = "anthropic")]
 mod anthropic;
 mod error_classification;
+mod format_contract;
 #[cfg(feature = "mistral")]
 mod mistral;
 #[cfg(feature = "openai")]

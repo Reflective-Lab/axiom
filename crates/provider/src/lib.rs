@@ -46,14 +46,19 @@
 //! ## Structured Output
 //!
 //! All live chat backends accept [`ResponseFormat::Json`](converge_core::traits::ResponseFormat::Json),
-//! but providers do not enforce it identically:
+//! but providers do not enforce it identically at request time:
 //! - OpenAI and Mistral use native `response_format` API fields
 //! - Gemini uses native `response_mime_type`
 //! - Anthropic uses the documented system-instruction JSON pattern
 //!
+//! All live chat backends then apply a shared response contract before returning content:
+//! - `Json`, `Yaml`, and `Toml` outputs are validated centrally
+//! - trivial outer code fences are stripped for those machine formats
+//! - a provider that returns prose for a structured request fails with
+//!   [`LlmError::ResponseFormatMismatch`](converge_core::traits::LlmError::ResponseFormatMismatch)
+//!
 //! Anthropic's instruction-based JSON handling is provider-native and correct for Claude.
-//! The difference is enforcement strength, not correctness: Anthropic does not currently
-//! expose a dedicated API-level JSON flag.
+//! The difference is enforcement strength at request time, not post-response correctness.
 
 // Secret management (SecretProvider trait, EnvSecretProvider default)
 pub mod secret;
