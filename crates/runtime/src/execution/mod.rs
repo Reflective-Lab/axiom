@@ -25,14 +25,21 @@
 //! # Usage
 //!
 //! ```ignore
-//! let executor = JobExecutor::new();
-//! let result = executor
+//! let result = JobExecutor::builder()
 //!     .with_pack("growth-strategy")
 //!     .with_seeds(seeds)
 //!     .with_budget(budget)
-//!     .with_streaming(callback)
 //!     .execute()
-//!     ?;
+//!     .await?;
+//! ```
+//!
+//! ```ignore
+//! let (handle, events) = JobExecutor::builder()
+//!     .with_pack("growth-strategy")
+//!     .with_seeds(seeds)
+//!     .with_budget(budget)
+//!     .with_streaming(256)
+//!     .execute_with_streaming()?;
 //! ```
 
 mod executor;

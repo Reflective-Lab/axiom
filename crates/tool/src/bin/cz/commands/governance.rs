@@ -18,12 +18,12 @@ use crate::cli::{AckArgs, AssignArgs, DigestArgs, EscalateArgs, OutputFormat, Va
 use crate::commands::{CmdError, CmdResult, find_workspace_root};
 use chrono::Utc;
 use colored::Colorize;
-use converge_core::model_selection::SelectionCriteria;
-use converge_core::traits::DynChatBackend;
-use converge_provider::{ChatBackendSelectionConfig, select_chat_backend};
 use converge_axiom::{
     GherkinValidator, IssueCategory, Severity, StaticChatBackend, ValidationConfig, ValidationIssue,
 };
+use converge_core::model_selection::SelectionCriteria;
+use converge_core::traits::DynChatBackend;
+use converge_provider::{ChatBackendSelectionConfig, select_chat_backend};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};

@@ -5,35 +5,15 @@
 //!
 //! Shows: domain agents, invariants, constraint satisfaction via convergence.
 
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use converge_core::{
-    Context, ContextKey, Engine, EventQuery, ExperienceEvent, ExperienceEventKind, ExperienceStore,
-};
+use converge_core::{Context, ContextKey, Engine, EventQuery, ExperienceEvent, ExperienceStore};
 use converge_domain::{
     AvailabilityRetrievalAgent, ConflictDetectionAgent, RequireParticipantAvailability,
     RequirePositiveDuration, RequireValidSlot, SlotOptimizationAgent, TimeZoneNormalizationAgent,
     WorkingHoursConstraintAgent,
 };
-use converge_experience::{InMemoryExperienceStore, StoreObserver};
-
-fn event_kind_label(kind: ExperienceEventKind) -> &'static str {
-    match kind {
-        ExperienceEventKind::ProposalCreated => "proposal_created",
-        ExperienceEventKind::ProposalValidated => "proposal_validated",
-        ExperienceEventKind::FactPromoted => "fact_promoted",
-        ExperienceEventKind::RecallExecuted => "recall_executed",
-        ExperienceEventKind::ReplayTraceRecorded => "trace_link_recorded",
-        ExperienceEventKind::ReplayabilityDowngraded => "replayability_downgraded",
-        ExperienceEventKind::ArtifactStateTransitioned => "artifact_state_transitioned",
-        ExperienceEventKind::ArtifactRollbackRecorded => "artifact_rollback_recorded",
-        ExperienceEventKind::BackendInvoked => "backend_invoked",
-        ExperienceEventKind::OutcomeRecorded => "outcome_recorded",
-        ExperienceEventKind::BudgetExceeded => "budget_exceeded",
-        ExperienceEventKind::PolicySnapshotCaptured => "policy_snapshot_captured",
-    }
-}
+use converge_experience::{InMemoryExperienceStore, StoreObserver, summarize_events};
 
 fn print_experience_summary(store: &Arc<InMemoryExperienceStore>) {
     let Ok(events) = store.query_events(&EventQuery::default()) else {
@@ -46,13 +26,10 @@ fn print_experience_summary(store: &Arc<InMemoryExperienceStore>) {
         return;
     }
 
-    let mut counts = BTreeMap::new();
+    let summary = summarize_events(&events);
     let mut promoted_facts = Vec::new();
 
     for envelope in events {
-        let label = event_kind_label(envelope.event.kind());
-        *counts.entry(label).or_insert(0usize) += 1;
-
         if let ExperienceEvent::FactPromoted {
             fact_id, reason, ..
         } = envelope.event
@@ -62,7 +39,7 @@ fn print_experience_summary(store: &Arc<InMemoryExperienceStore>) {
     }
 
     println!("\nExperience capture:");
-    for (label, count) in counts {
+    for (label, count) in summary.by_kind {
         println!("  {label}: {count}");
     }
 

@@ -8,13 +8,13 @@ source: mixed
 **Scope:** Full codebase audit against the Nine Axioms
 **Status:** Baseline. Re-run after kernel correction to verify fixes.
 
-> Historical note: this audit captured the pre-async kernel contract. Current live docs define `converge-core` as runtime-agnostic rather than strictly synchronous.
+> Historical note: this audit captured the pre-async kernel contract. Where this page says "no async," read it as "no runtime ownership." Current live docs allow runtime-agnostic async surfaces in `converge-core`.
 
 ## The True Story
 
 Converge is an Agent OS where multi-agent systems produce governed, auditable, convergent outcomes. Its central insight is that agents are pure functions over a shared context: they propose evidence, and the engine decides what gets promoted to fact. No agent can unilaterally change shared state, no agent calls another agent, and all communication happens through typed context keys. The engine runs agents in cycles until a fixed point is reached or a budget is exhausted, and it tells you honestly which happened and why.
 
-The architecture is hexagonal: converge-traits and converge-core form the pure kernel (no I/O, no async, no non-determinism), and all external systems plug in through trait implementations in adapter crates. Facts are append-only and immutable. Proposals carry confidence and provenance. A promotion gate validates proposals before they become facts, enforcing authority, schema, and confidence requirements. Human-in-the-loop approval is a first-class concept, not a workaround.
+The architecture is hexagonal: converge-traits and converge-core form the pure kernel (no I/O, no runtime ownership, no non-determinism), and all external systems plug in through trait implementations in adapter crates. Facts are append-only and immutable. Proposals carry confidence and provenance. A promotion gate validates proposals before they become facts, enforcing authority, schema, and confidence requirements. Human-in-the-loop approval is a first-class concept, not a workaround.
 
 The nine axioms are non-negotiable: explicit authority, convergence over control flow, append-only truth, agents suggest / engine decides, safety by construction, transparent determinism, human authority first-class, no hidden work, and scale by intent replication. Every design decision must serve at least one axiom and violate none.
 

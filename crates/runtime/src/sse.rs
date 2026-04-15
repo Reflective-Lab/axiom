@@ -599,11 +599,11 @@ fn build_streaming_job_stream(
     // Create channel for events
     let (tx, mut rx) = tokio::sync::mpsc::channel::<StreamingEvent>(256);
 
-    // Spawn execution in background thread
-    std::thread::spawn({
+    // Spawn execution in background task
+    tokio::spawn({
         let pack_id = pack_id.clone();
         let seeds = seeds.clone();
-        move || {
+        async move {
             let mut builder = JobExecutor::builder()
                 .with_pack(&pack_id)
                 .with_seeds(seeds)
@@ -621,16 +621,15 @@ fn build_streaming_job_stream(
                 .execute_with_streaming()
                 .expect("Failed to start streaming job");
 
-            // Forward events from the execution to our channel
-            // This runs in a blocking thread, so we use a simple loop
-            while let Some(event) = event_rx.blocking_recv() {
-                if tx.blocking_send(event).is_err() {
+            // Forward events from the execution to our channel.
+            while let Some(event) = event_rx.recv().await {
+                if tx.send(event).await.is_err() {
                     break; // Client disconnected
                 }
             }
 
             // Wait for execution to complete
-            let _ = handle.join();
+            let _ = handle.await;
         }
     });
 

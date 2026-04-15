@@ -12,7 +12,7 @@ Knowledge base for the Converge platform — a correctness-first, context-driven
 
 ## Ecosystem
 
-- [[Ecosystem]] — the three-layer stack: Converge, Organism, Products
+- [[Ecosystem]] — the five-layer stack: Helm, Axiom, Organism, Converge, Providers
 
 ## Philosophy
 

@@ -786,19 +786,13 @@ impl Default for ModelSelector {
                 .with_code(true)
                 .with_context_tokens(200_000),
                 #[cfg(feature = "openrouter")]
-                ModelMetadata::new(
-                    "openrouter",
-                    "openai/gpt-4o",
-                    CostClass::Low,
-                    2500,
-                    0.92,
-                )
-                .with_reasoning(true)
-                .with_tool_use(true)
-                .with_vision(true)
-                .with_structured_output(true)
-                .with_code(true)
-                .with_context_tokens(128_000),
+                ModelMetadata::new("openrouter", "openai/gpt-4o", CostClass::Low, 2500, 0.92)
+                    .with_reasoning(true)
+                    .with_tool_use(true)
+                    .with_vision(true)
+                    .with_structured_output(true)
+                    .with_code(true)
+                    .with_context_tokens(128_000),
                 #[cfg(feature = "openrouter")]
                 ModelMetadata::new(
                     "openrouter",

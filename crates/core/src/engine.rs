@@ -16,7 +16,7 @@ use converge_pack::{
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use strum::IntoEnumIterator;
-use tracing::{debug, info, info_span, warn};
+use tracing::{Instrument, debug, info, info_span, warn};
 
 use crate::agent::{Suggestor, SuggestorId};
 use crate::context::{Context, ContextKey, Fact, ProposedFact, ValidationError};
@@ -580,55 +580,102 @@ impl Engine {
         mut context: Context,
         event_observer: Option<&Arc<dyn ExperienceEventObserver>>,
     ) -> Result<ConvergeResult, ConvergeError> {
-        let _span = info_span!("engine_run").entered();
-        let mut cycles: u32 = 0;
+        async {
+            let mut cycles: u32 = 0;
 
-        if context.has_pending_proposals() {
-            context.clear_dirty();
-            self.promote_pending_context_proposals(&mut context, 0, event_observer)?;
-        }
-
-        // First cycle: we treat all existing keys in the context as "dirty"
-        // to ensure that dependency-indexed suggestors are triggered by initial data.
-        let mut dirty_keys: Vec<ContextKey> = if context.dirty_keys().is_empty() {
-            context.all_keys()
-        } else {
-            context.dirty_keys().to_vec()
-        };
-
-        loop {
-            cycles += 1;
-            let _cycle_span = info_span!("convergence_cycle", cycle = cycles).entered();
-            info!(cycle = cycles, "Starting convergence cycle");
-
-            // Emit cycle start callback
-            if let Some(ref cb) = self.streaming_callback {
-                cb.on_cycle_start(cycles);
+            if context.has_pending_proposals() {
+                context.clear_dirty();
+                self.promote_pending_context_proposals(&mut context, 0, event_observer)?;
             }
 
-            // Budget check: cycles
-            if cycles > self.budget.max_cycles {
-                return Err(ConvergeError::BudgetExhausted {
-                    kind: format!("max_cycles ({})", self.budget.max_cycles),
-                });
-            }
-
-            // Find eligible suggestors
-            let eligible = {
-                let _span = info_span!("eligible_agents").entered();
-                let e = self.find_eligible(&context, &dirty_keys);
-                info!(count = e.len(), "Found eligible suggestors");
-                e
+            // First cycle: we treat all existing keys in the context as "dirty"
+            // to ensure that dependency-indexed suggestors are triggered by initial data.
+            let mut dirty_keys: Vec<ContextKey> = if context.dirty_keys().is_empty() {
+                context.all_keys()
+            } else {
+                context.dirty_keys().to_vec()
             };
 
-            if eligible.is_empty() {
-                info!("No more eligible suggestors. Convergence reached.");
-                // Emit cycle end callback (0 facts added)
+            loop {
+                cycles += 1;
+                info!(cycle = cycles, "Starting convergence cycle");
+
+                // Emit cycle start callback
                 if let Some(ref cb) = self.streaming_callback {
-                    cb.on_cycle_end(cycles, 0);
+                    cb.on_cycle_start(cycles);
                 }
-                // No suggestors want to run — check acceptance invariants before declaring convergence
-                if let Err(e) = self.invariants.check_acceptance(&context) {
+
+                // Budget check: cycles
+                if cycles > self.budget.max_cycles {
+                    return Err(ConvergeError::BudgetExhausted {
+                        kind: format!("max_cycles ({})", self.budget.max_cycles),
+                    });
+                }
+
+                // Find eligible suggestors
+                let eligible = info_span!("eligible_agents", cycle = cycles).in_scope(|| {
+                    let e = self.find_eligible(&context, &dirty_keys);
+                    info!(count = e.len(), "Found eligible suggestors");
+                    e
+                });
+
+                if eligible.is_empty() {
+                    info!("No more eligible suggestors. Convergence reached.");
+                    // Emit cycle end callback (0 facts added)
+                    if let Some(ref cb) = self.streaming_callback {
+                        cb.on_cycle_end(cycles, 0);
+                    }
+                    // No suggestors want to run — check acceptance invariants before declaring convergence
+                    if let Err(e) = self.invariants.check_acceptance(&context) {
+                        self.emit_diagnostic(&mut context, &e);
+                        return Err(ConvergeError::InvariantViolation {
+                            name: e.invariant_name,
+                            class: e.class,
+                            reason: e.violation.reason,
+                            context: Box::new(context),
+                        });
+                    }
+
+                    return Ok(ConvergeResult {
+                        context,
+                        cycles,
+                        converged: true,
+                        stop_reason: StopReason::converged(),
+                        criteria_outcomes: Vec::new(),
+                    });
+                }
+
+                // Execute eligible suggestors and collect effects
+                let effects = self
+                    .execute_agents(&context, &eligible)
+                    .instrument(info_span!(
+                        "execute_agents",
+                        cycle = cycles,
+                        count = eligible.len()
+                    ))
+                    .await;
+                info!(count = effects.len(), "Executed suggestors");
+
+                // Merge effects serially (deterministic order by SuggestorId)
+                let (new_dirty_keys, facts_added) =
+                    info_span!("merge_effects", cycle = cycles, count = effects.len()).in_scope(
+                        || {
+                            let (d, count) =
+                                self.merge_effects(&mut context, effects, cycles, event_observer)?;
+                            info!(count = d.len(), "Merged effects");
+                            Ok::<_, ConvergeError>((d, count))
+                        },
+                    )?;
+                dirty_keys = new_dirty_keys;
+
+                // Emit cycle end callback
+                if let Some(ref cb) = self.streaming_callback {
+                    cb.on_cycle_end(cycles, facts_added);
+                }
+
+                // STRUCTURAL INVARIANTS: checked after every merge
+                // Violation = immediate failure, no recovery
+                if let Err(e) = self.invariants.check_structural(&context) {
                     self.emit_diagnostic(&mut context, &e);
                     return Err(ConvergeError::InvariantViolation {
                         name: e.invariant_name,
@@ -638,54 +685,31 @@ impl Engine {
                     });
                 }
 
-                return Ok(ConvergeResult {
-                    context,
-                    cycles,
-                    converged: true,
-                    stop_reason: StopReason::converged(),
-                    criteria_outcomes: Vec::new(),
-                });
-            }
+                // Convergence check: no keys changed
+                if dirty_keys.is_empty() {
+                    // Check acceptance invariants before declaring convergence
+                    if let Err(e) = self.invariants.check_acceptance(&context) {
+                        self.emit_diagnostic(&mut context, &e);
+                        return Err(ConvergeError::InvariantViolation {
+                            name: e.invariant_name,
+                            class: e.class,
+                            reason: e.violation.reason,
+                            context: Box::new(context),
+                        });
+                    }
 
-            // Execute eligible suggestors and collect effects
-            let effects = {
-                let _span = info_span!("execute_agents", count = eligible.len()).entered();
-                let eff = self.execute_agents(&context, &eligible).await;
-                info!(count = eff.len(), "Executed suggestors");
-                eff
-            };
+                    return Ok(ConvergeResult {
+                        context,
+                        cycles,
+                        converged: true,
+                        stop_reason: StopReason::converged(),
+                        criteria_outcomes: Vec::new(),
+                    });
+                }
 
-            // Merge effects serially (deterministic order by SuggestorId)
-            let (new_dirty_keys, facts_added) = {
-                let _span = info_span!("merge_effects", count = effects.len()).entered();
-                let (d, count) =
-                    self.merge_effects(&mut context, effects, cycles, event_observer)?;
-                info!(count = d.len(), "Merged effects");
-                (d, count)
-            };
-            dirty_keys = new_dirty_keys;
-
-            // Emit cycle end callback
-            if let Some(ref cb) = self.streaming_callback {
-                cb.on_cycle_end(cycles, facts_added);
-            }
-
-            // STRUCTURAL INVARIANTS: checked after every merge
-            // Violation = immediate failure, no recovery
-            if let Err(e) = self.invariants.check_structural(&context) {
-                self.emit_diagnostic(&mut context, &e);
-                return Err(ConvergeError::InvariantViolation {
-                    name: e.invariant_name,
-                    class: e.class,
-                    reason: e.violation.reason,
-                    context: Box::new(context),
-                });
-            }
-
-            // Convergence check: no keys changed
-            if dirty_keys.is_empty() {
-                // Check acceptance invariants before declaring convergence
-                if let Err(e) = self.invariants.check_acceptance(&context) {
+                // SEMANTIC INVARIANTS: checked at end of each cycle
+                // Violation = blocks convergence (could allow recovery in future)
+                if let Err(e) = self.invariants.check_semantic(&context) {
                     self.emit_diagnostic(&mut context, &e);
                     return Err(ConvergeError::InvariantViolation {
                         name: e.invariant_name,
@@ -695,35 +719,17 @@ impl Engine {
                     });
                 }
 
-                return Ok(ConvergeResult {
-                    context,
-                    cycles,
-                    converged: true,
-                    stop_reason: StopReason::converged(),
-                    criteria_outcomes: Vec::new(),
-                });
-            }
-
-            // SEMANTIC INVARIANTS: checked at end of each cycle
-            // Violation = blocks convergence (could allow recovery in future)
-            if let Err(e) = self.invariants.check_semantic(&context) {
-                self.emit_diagnostic(&mut context, &e);
-                return Err(ConvergeError::InvariantViolation {
-                    name: e.invariant_name,
-                    class: e.class,
-                    reason: e.violation.reason,
-                    context: Box::new(context),
-                });
-            }
-
-            // Budget check: facts
-            let fact_count = self.count_facts(&context);
-            if fact_count > self.budget.max_facts {
-                return Err(ConvergeError::BudgetExhausted {
-                    kind: format!("max_facts ({} > {})", fact_count, self.budget.max_facts),
-                });
+                // Budget check: facts
+                let fact_count = self.count_facts(&context);
+                if fact_count > self.budget.max_facts {
+                    return Err(ConvergeError::BudgetExhausted {
+                        kind: format!("max_facts ({} > {})", fact_count, self.budget.max_facts),
+                    });
+                }
             }
         }
+        .instrument(info_span!("engine_run"))
+        .await
     }
 
     /// Finds suggestors eligible to run based on dirty keys and `accepts()`.
@@ -1075,96 +1081,90 @@ impl Engine {
 
     /// Inner convergence loop that returns `RunResult` (supports HITL pause).
     async fn run_inner(&mut self, mut context: Context) -> RunResult {
-        let _span = info_span!("engine_run_hitl").entered();
-        let mut cycles: u32 = 0;
-        if context.has_pending_proposals() {
-            context.clear_dirty();
-            if let Err(e) = self.promote_pending_context_proposals(&mut context, 0, None) {
-                return RunResult::Complete(Err(e));
-            }
-        }
-        let mut dirty_keys: Vec<ContextKey> = if context.dirty_keys().is_empty() {
-            context.all_keys()
-        } else {
-            context.dirty_keys().to_vec()
-        };
-
-        loop {
-            cycles += 1;
-            let _cycle_span = info_span!("convergence_cycle", cycle = cycles).entered();
-            info!(cycle = cycles, "Starting convergence cycle");
-
-            if let Some(ref cb) = self.streaming_callback {
-                cb.on_cycle_start(cycles);
-            }
-
-            // Budget check: cycles
-            if cycles > self.budget.max_cycles {
-                return RunResult::Complete(Err(ConvergeError::BudgetExhausted {
-                    kind: format!("max_cycles ({})", self.budget.max_cycles),
-                }));
-            }
-
-            // Find eligible agents
-            let eligible = self.find_eligible(&context, &dirty_keys);
-            info!(count = eligible.len(), "Found eligible agents");
-
-            if eligible.is_empty() {
-                info!("No more eligible agents. Convergence reached.");
-                if let Some(ref cb) = self.streaming_callback {
-                    cb.on_cycle_end(cycles, 0);
-                }
-                if let Err(e) = self.invariants.check_acceptance(&context) {
-                    self.emit_diagnostic(&mut context, &e);
-                    return RunResult::Complete(Err(ConvergeError::InvariantViolation {
-                        name: e.invariant_name,
-                        class: e.class,
-                        reason: e.violation.reason,
-                        context: Box::new(context),
-                    }));
-                }
-                return RunResult::Complete(Ok(ConvergeResult {
-                    context,
-                    cycles,
-                    converged: true,
-                    stop_reason: StopReason::converged(),
-                    criteria_outcomes: Vec::new(),
-                }));
-            }
-
-            // Execute agents
-            let effects = self.execute_agents(&context, &eligible).await;
-
-            // Merge effects with HITL support
-            match self.merge_effects_hitl(&mut context, effects, cycles) {
-                MergeResult::Complete(Ok((new_dirty, facts_added))) => {
-                    if let Some(ref cb) = self.streaming_callback {
-                        cb.on_cycle_end(cycles, facts_added);
-                    }
-                    dirty_keys = new_dirty;
-                }
-                MergeResult::Complete(Err(e)) => {
+        async {
+            let mut cycles: u32 = 0;
+            if context.has_pending_proposals() {
+                context.clear_dirty();
+                if let Err(e) = self.promote_pending_context_proposals(&mut context, 0, None) {
                     return RunResult::Complete(Err(e));
                 }
-                MergeResult::HitlPause(pause) => {
-                    return RunResult::HitlPause(pause);
+            }
+            let mut dirty_keys: Vec<ContextKey> = if context.dirty_keys().is_empty() {
+                context.all_keys()
+            } else {
+                context.dirty_keys().to_vec()
+            };
+
+            loop {
+                cycles += 1;
+                info!(cycle = cycles, "Starting convergence cycle");
+
+                if let Some(ref cb) = self.streaming_callback {
+                    cb.on_cycle_start(cycles);
                 }
-            }
 
-            // Structural invariants
-            if let Err(e) = self.invariants.check_structural(&context) {
-                self.emit_diagnostic(&mut context, &e);
-                return RunResult::Complete(Err(ConvergeError::InvariantViolation {
-                    name: e.invariant_name,
-                    class: e.class,
-                    reason: e.violation.reason,
-                    context: Box::new(context),
-                }));
-            }
+                // Budget check: cycles
+                if cycles > self.budget.max_cycles {
+                    return RunResult::Complete(Err(ConvergeError::BudgetExhausted {
+                        kind: format!("max_cycles ({})", self.budget.max_cycles),
+                    }));
+                }
 
-            // Convergence check
-            if dirty_keys.is_empty() {
-                if let Err(e) = self.invariants.check_acceptance(&context) {
+                // Find eligible agents
+                let eligible = self.find_eligible(&context, &dirty_keys);
+                info!(count = eligible.len(), "Found eligible agents");
+
+                if eligible.is_empty() {
+                    info!("No more eligible agents. Convergence reached.");
+                    if let Some(ref cb) = self.streaming_callback {
+                        cb.on_cycle_end(cycles, 0);
+                    }
+                    if let Err(e) = self.invariants.check_acceptance(&context) {
+                        self.emit_diagnostic(&mut context, &e);
+                        return RunResult::Complete(Err(ConvergeError::InvariantViolation {
+                            name: e.invariant_name,
+                            class: e.class,
+                            reason: e.violation.reason,
+                            context: Box::new(context),
+                        }));
+                    }
+                    return RunResult::Complete(Ok(ConvergeResult {
+                        context,
+                        cycles,
+                        converged: true,
+                        stop_reason: StopReason::converged(),
+                        criteria_outcomes: Vec::new(),
+                    }));
+                }
+
+                // Execute agents
+                let effects = self
+                    .execute_agents(&context, &eligible)
+                    .instrument(info_span!(
+                        "execute_agents",
+                        cycle = cycles,
+                        count = eligible.len()
+                    ))
+                    .await;
+
+                // Merge effects with HITL support
+                match self.merge_effects_hitl(&mut context, effects, cycles) {
+                    MergeResult::Complete(Ok((new_dirty, facts_added))) => {
+                        if let Some(ref cb) = self.streaming_callback {
+                            cb.on_cycle_end(cycles, facts_added);
+                        }
+                        dirty_keys = new_dirty;
+                    }
+                    MergeResult::Complete(Err(e)) => {
+                        return RunResult::Complete(Err(e));
+                    }
+                    MergeResult::HitlPause(pause) => {
+                        return RunResult::HitlPause(pause);
+                    }
+                }
+
+                // Structural invariants
+                if let Err(e) = self.invariants.check_structural(&context) {
                     self.emit_diagnostic(&mut context, &e);
                     return RunResult::Complete(Err(ConvergeError::InvariantViolation {
                         name: e.invariant_name,
@@ -1173,34 +1173,49 @@ impl Engine {
                         context: Box::new(context),
                     }));
                 }
-                return RunResult::Complete(Ok(ConvergeResult {
-                    context,
-                    cycles,
-                    converged: true,
-                    stop_reason: StopReason::converged(),
-                    criteria_outcomes: Vec::new(),
-                }));
-            }
 
-            // Semantic invariants
-            if let Err(e) = self.invariants.check_semantic(&context) {
-                self.emit_diagnostic(&mut context, &e);
-                return RunResult::Complete(Err(ConvergeError::InvariantViolation {
-                    name: e.invariant_name,
-                    class: e.class,
-                    reason: e.violation.reason,
-                    context: Box::new(context),
-                }));
-            }
+                // Convergence check
+                if dirty_keys.is_empty() {
+                    if let Err(e) = self.invariants.check_acceptance(&context) {
+                        self.emit_diagnostic(&mut context, &e);
+                        return RunResult::Complete(Err(ConvergeError::InvariantViolation {
+                            name: e.invariant_name,
+                            class: e.class,
+                            reason: e.violation.reason,
+                            context: Box::new(context),
+                        }));
+                    }
+                    return RunResult::Complete(Ok(ConvergeResult {
+                        context,
+                        cycles,
+                        converged: true,
+                        stop_reason: StopReason::converged(),
+                        criteria_outcomes: Vec::new(),
+                    }));
+                }
 
-            // Budget check: facts
-            let fact_count = self.count_facts(&context);
-            if fact_count > self.budget.max_facts {
-                return RunResult::Complete(Err(ConvergeError::BudgetExhausted {
-                    kind: format!("max_facts ({} > {})", fact_count, self.budget.max_facts),
-                }));
+                // Semantic invariants
+                if let Err(e) = self.invariants.check_semantic(&context) {
+                    self.emit_diagnostic(&mut context, &e);
+                    return RunResult::Complete(Err(ConvergeError::InvariantViolation {
+                        name: e.invariant_name,
+                        class: e.class,
+                        reason: e.violation.reason,
+                        context: Box::new(context),
+                    }));
+                }
+
+                // Budget check: facts
+                let fact_count = self.count_facts(&context);
+                if fact_count > self.budget.max_facts {
+                    return RunResult::Complete(Err(ConvergeError::BudgetExhausted {
+                        kind: format!("max_facts ({} > {})", fact_count, self.budget.max_facts),
+                    }));
+                }
             }
         }
+        .instrument(info_span!("engine_run_hitl"))
+        .await
     }
 
     /// Continue convergence from a specific cycle after HITL resume.

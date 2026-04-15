@@ -331,17 +331,14 @@ impl ConvergeService for ConvergeServiceImpl {
             })
             .collect();
 
-        let result = tokio::task::spawn_blocking(move || {
-            JobExecutor::builder()
-                .with_pack(&pack_id)
-                .with_seeds(seeds)
-                .with_budget(budget)
-                .with_mock_llm()
-                .execute()
-        })
-        .await
-        .map_err(|e| Status::internal(format!("Task join error: {e}")))?
-        .map_err(|e| Status::internal(format!("Execution error: {e}")))?;
+        let result = JobExecutor::builder()
+            .with_pack(&pack_id)
+            .with_seeds(seeds)
+            .with_budget(budget)
+            .with_mock_llm()
+            .execute()
+            .await
+            .map_err(|e| Status::internal(format!("Execution error: {e}")))?;
 
         tracing::info!(
             job_id = %job_id,

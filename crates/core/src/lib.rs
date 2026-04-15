@@ -144,8 +144,10 @@
 //! # Purity Declaration
 //!
 //! `converge-core` is the constitutional foundation for Converge. It must remain
-//! **pure**: no I/O, no runtime behavior, no implementation logic. Only types,
-//! traits, and promotion gates.
+//! **pure** in the architectural sense: no I/O, no persistence, no hidden
+//! background work, and no runtime ownership. Core coordination logic such as
+//! the engine and promotion gates belongs here; adapters and transport/runtime
+//! wiring do not.
 //!
 //! ## Allowed Dependencies
 //!
@@ -157,7 +159,7 @@
 //! | `serde_json` | JSON encoding | Value-only, no I/O |
 //! | `typed-builder` | Builder derives | Pure derives |
 //! | `hex` | Hex encoding | Pure transforms |
-//! | Small pure libs | Hashing, encoding | No I/O, no async |
+//! | Small pure libs | Hashing, encoding | No I/O, no runtime ownership |
 //!
 //! ## Forbidden Dependencies
 //!
@@ -181,8 +183,8 @@
 //!
 //! ## The Purity Rule
 //!
-//! > If a module implies execution, I/O, network, model inference, or persistence,
-//! > it does not belong in `converge-core`.
+//! > If a module implies executor ownership, I/O, network, model inference, or
+//! > persistence, it does not belong in `converge-core`.
 //!
 //! Capability crates (e.g., `converge-runtime`, `converge-llm`, `converge-provider`)
 //! implement the traits defined here using the forbidden dependencies.

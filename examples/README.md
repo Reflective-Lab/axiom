@@ -18,6 +18,10 @@ Most examples map directly from the directory name to the package name:
 Inference examples are the exception: they may need model files, feature flags,
 or extra setup. See the notes below before running them.
 
+The canonical convergence examples use Tokio and call `engine.run(...).await`.
+The local inference examples stay synchronous because the embedded inference
+engines they demonstrate are synchronous APIs.
+
 ## Example Catalog
 
 | Example | What it shows | Run |

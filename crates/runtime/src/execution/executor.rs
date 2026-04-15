@@ -12,7 +12,7 @@ use converge_experience::{InMemoryExperienceStore, StoreObserver};
 use serde::Serialize;
 use std::sync::Arc;
 use strum::IntoEnumIterator;
-use tracing::{info, info_span};
+use tracing::{Instrument, info, info_span};
 
 use crate::error::RuntimeError;
 use crate::templates::{PackConfig, SeedFact};
@@ -168,8 +168,6 @@ impl JobExecutorBuilder {
     }
 
     /// Build the executor.
-    ///
-    /// Returns the executor and optionally an event receiver if streaming is enabled.
     pub fn build(self) -> Result<JobExecutor, RuntimeError> {
         let pack_id = self
             .pack_id
@@ -187,17 +185,17 @@ impl JobExecutorBuilder {
     }
 
     /// Build and execute immediately.
-    pub fn execute(self) -> Result<ExecutionResult, RuntimeError> {
+    pub async fn execute(self) -> Result<ExecutionResult, RuntimeError> {
         let executor = self.build()?;
-        executor.run()
+        executor.run().await
     }
 
-    /// Build and execute with streaming, returning the receiver.
+    /// Build and execute with streaming, returning the task handle and event receiver.
     pub fn execute_with_streaming(
         self,
     ) -> Result<
         (
-            std::thread::JoinHandle<Result<ExecutionResult, RuntimeError>>,
+            tokio::task::JoinHandle<Result<ExecutionResult, RuntimeError>>,
             EventReceiver,
         ),
         RuntimeError,
@@ -225,89 +223,22 @@ impl JobExecutor {
     }
 
     /// Run the job.
-    pub fn run(self) -> Result<ExecutionResult, RuntimeError> {
-        let _span = info_span!("job_execution", pack = %self.pack_id);
-        let _guard = _span.enter();
-
-        let start = std::time::Instant::now();
-
-        info!(
-            pack = %self.pack_id,
-            seeds = self.seeds.len(),
-            max_cycles = self.budget.max_cycles,
-            "Starting job execution"
-        );
-
-        // Create engine with budget and event observer
-        let mut engine = Engine::with_budget(self.budget);
-        let experience_store = Arc::new(InMemoryExperienceStore::new());
-        engine.set_event_observer(Arc::new(StoreObserver::new(experience_store.clone())));
-
-        // Register seed agents
-        for seed in &self.seeds {
-            engine.register_suggestor(SeedSuggestor::new(&seed.id, &seed.content));
-        }
-
-        // Register pack agents
-        register_pack_agents(&mut engine, &self.pack_id, &self.llm_config)?;
-
-        // Create context and run
-        let context = Context::new();
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .map_err(|e| RuntimeError::Config(format!("Failed to build runtime: {e}")))?;
-        let result = runtime
-            .block_on(engine.run(context))
-            .map_err(RuntimeError::Converge)?;
-
-        let duration_ms = start.elapsed().as_millis() as u64;
-        let event_count = experience_store
-            .query_events(&converge_core::EventQuery::default())
-            .map(|e| e.len())
-            .unwrap_or(0);
-
-        info!(
-            converged = result.converged,
-            cycles = result.cycles,
-            duration_ms = duration_ms,
-            experience_events = event_count,
-            "Job execution completed"
-        );
-
-        Ok(ExecutionResult::from((result, duration_ms)))
-    }
-
-    /// Run the job with streaming enabled.
-    ///
-    /// Returns a handle to the execution thread and an event receiver.
-    pub fn run_with_streaming(
-        self,
-    ) -> Result<
-        (
-            std::thread::JoinHandle<Result<ExecutionResult, RuntimeError>>,
-            EventReceiver,
-        ),
-        RuntimeError,
-    > {
-        let buffer_size = self.streaming_buffer.unwrap_or(256);
-        let (callback, receiver) = RuntimeStreamingCallback::channel(buffer_size);
-
-        let handle = std::thread::spawn(move || {
-            let _span = info_span!("job_execution_streaming", pack = %self.pack_id);
-            let _guard = _span.enter();
-
+    pub async fn run(self) -> Result<ExecutionResult, RuntimeError> {
+        let span = info_span!("job_execution", pack = %self.pack_id);
+        async move {
             let start = std::time::Instant::now();
 
             info!(
                 pack = %self.pack_id,
                 seeds = self.seeds.len(),
                 max_cycles = self.budget.max_cycles,
-                "Starting streaming job execution"
+                "Starting job execution"
             );
 
-            // Create engine with budget
+            // Create engine with budget and event observer
             let mut engine = Engine::with_budget(self.budget);
+            let experience_store = Arc::new(InMemoryExperienceStore::new());
+            engine.set_event_observer(Arc::new(StoreObserver::new(experience_store.clone())));
 
             // Register seed agents
             for seed in &self.seeds {
@@ -317,40 +248,100 @@ impl JobExecutor {
             // Register pack agents
             register_pack_agents(&mut engine, &self.pack_id, &self.llm_config)?;
 
-            // Set streaming callback
-            engine.set_streaming(callback.clone());
-
             // Create context and run
             let context = Context::new();
-            let runtime = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .map_err(|e| RuntimeError::Config(format!("Failed to build runtime: {e}")))?;
-            let result = runtime.block_on(engine.run(context));
+            let result = engine.run(context).await.map_err(RuntimeError::Converge)?;
 
             let duration_ms = start.elapsed().as_millis() as u64;
+            let event_count = experience_store
+                .query_events(&converge_core::EventQuery::default())
+                .map(|e| e.len())
+                .unwrap_or(0);
 
-            match result {
-                Ok(result) => {
-                    // Emit final status
-                    let total_facts = callback.fact_count();
-                    callback.emit_converged(result.cycles, total_facts);
+            info!(
+                converged = result.converged,
+                cycles = result.cycles,
+                duration_ms = duration_ms,
+                experience_events = event_count,
+                "Job execution completed"
+            );
 
-                    info!(
-                        converged = result.converged,
-                        cycles = result.cycles,
-                        duration_ms = duration_ms,
-                        "Streaming job execution completed"
-                    );
+            Ok(ExecutionResult::from((result, duration_ms)))
+        }
+        .instrument(span)
+        .await
+    }
 
-                    Ok(ExecutionResult::from((result, duration_ms)))
+    /// Run the job with streaming enabled.
+    ///
+    /// Returns a handle to the background task and an event receiver.
+    pub fn run_with_streaming(
+        self,
+    ) -> Result<
+        (
+            tokio::task::JoinHandle<Result<ExecutionResult, RuntimeError>>,
+            EventReceiver,
+        ),
+        RuntimeError,
+    > {
+        let buffer_size = self.streaming_buffer.unwrap_or(256);
+        let (callback, receiver) = RuntimeStreamingCallback::channel(buffer_size);
+
+        let span = info_span!("job_execution_streaming", pack = %self.pack_id);
+        let handle = tokio::spawn(
+            async move {
+                let start = std::time::Instant::now();
+
+                info!(
+                    pack = %self.pack_id,
+                    seeds = self.seeds.len(),
+                    max_cycles = self.budget.max_cycles,
+                    "Starting streaming job execution"
+                );
+
+                // Create engine with budget
+                let mut engine = Engine::with_budget(self.budget);
+
+                // Register seed agents
+                for seed in &self.seeds {
+                    engine.register_suggestor(SeedSuggestor::new(&seed.id, &seed.content));
                 }
-                Err(e) => {
-                    callback.emit_halted(0, e.to_string());
-                    Err(RuntimeError::Converge(e))
+
+                // Register pack agents
+                register_pack_agents(&mut engine, &self.pack_id, &self.llm_config)?;
+
+                // Set streaming callback
+                engine.set_streaming(callback.clone());
+
+                // Create context and run
+                let context = Context::new();
+                let result = engine.run(context).await;
+
+                let duration_ms = start.elapsed().as_millis() as u64;
+
+                match result {
+                    Ok(result) => {
+                        // Emit final status
+                        let total_facts = callback.fact_count();
+                        callback.emit_converged(result.cycles, total_facts);
+
+                        info!(
+                            converged = result.converged,
+                            cycles = result.cycles,
+                            duration_ms = duration_ms,
+                            "Streaming job execution completed"
+                        );
+
+                        Ok(ExecutionResult::from((result, duration_ms)))
+                    }
+                    Err(e) => {
+                        callback.emit_halted(0, e.to_string());
+                        Err(RuntimeError::Converge(e))
+                    }
                 }
             }
-        });
+            .instrument(span),
+        );
 
         Ok((handle, receiver))
     }

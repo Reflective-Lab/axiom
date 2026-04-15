@@ -4,51 +4,73 @@ source: mixed
 ---
 # Ecosystem — The Helicopter View
 
-Converge is the foundation of a three-layer stack built by Reflective Labs. Understanding where Converge sits — and what it does NOT do — is essential for keeping the architecture clean.
+Converge is the governance layer in a five-layer stack built by Reflective Labs. Understanding where Converge sits — and what it does NOT do — is essential for keeping the architecture clean.
 
-## The Three Layers
+## The Five Layers
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    LAYER 3: PRODUCTS                         │
-│                                                              │
-│   Wolfgang          SaaS Killer           [Future Apps]      │
-│   (wolfgang.bot)    (crm.prio.ai)                            │
-│                                                              │
-│   AI workspace      JTBD-driven CRM      Your product       │
-│   Expert debate     Revenue substrate     on Converge        │
-│   Knowledge RAG     20 capability modules                    │
-│                     9 executable truths                      │
-├──────────────────────────┬──────────────────────────────────┤
-│                          │ runs on                           │
-│               LAYER 2: ORGANISM                              │
-│               (organism.zone)                                │
-│                                                              │
-│   Organizational Intelligence Runtime                        │
-│                                                              │
-│   Intent interpretation    Adversarial governance            │
-│   Multi-model planning     Simulation swarm                  │
-│   Huddle + debate loops    Organizational learning           │
-│                                                              │
-│   Translates human goals → governed, debated, simulated      │
-│   plans → submits to Converge commit boundary                │
-├──────────────────────────┬──────────────────────────────────┤
-│                          │ commits through                   │
-│               LAYER 1: CONVERGE                              │
-│               (converge.zone)                                │
-│                                                              │
-│   [[Philosophy/Nine Axioms|9 Axioms]]                        │
-│   Agents · Context · Facts · Promotion Gate                  │
-│   Invariants · Budgets · HITL · Convergence                  │
-│                                                              │
-│   Owns: authority, truth, governance, convergence            │
-│   Does NOT own: reasoning, planning, UX, business logic      │
-└──────────────────────────────────────────────────────────────┘
+│ Helm (control surface)                                      │
+│ Desktop and web UX — what operators see                     │
+├─────────────────────────────────────────────────────────────┤
+│ Axiom (truth layer)                                         │
+│ Truth definitions, projections, validation, domain state    │
+├─────────────────────────────────────────────────────────────┤
+│ Organism (intelligence)                                     │
+│ Intent → Huddle → Debate → Suggestors                       │
+│ The "how" — reasoning, research, gap-chasing                │
+├─────────────────────────────────────────────────────────────┤
+│ Converge (governance)                                       │
+│ Engine, promotion gates, Cedar policy, budget, audit        │
+│ The "whether" — authority, trust, stop rules                │
+├─────────────────────────────────────────────────────────────┤
+│ Providers (capability)                                      │
+│ OpenRouter, Anthropic, OpenAI, Gemini, Brave, Tavily        │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## What Each Layer Owns
 
-### Converge (Layer 1) — The Commit Boundary
+### Helm — The Control Surface
+
+**Owns:**
+- Operator-facing desktop or web experiences
+- Commands, forms, timelines, and action surfaces
+- Local bridges into the app layer
+
+**Does NOT own:**
+- Truth definitions or projections
+- Reasoning strategy
+- Promotion decisions
+
+### Axiom — The Truth Layer
+
+**Owns:**
+- Application truth definitions
+- Domain projections and view models
+- Validation, scenario setup, and product-specific state
+- The "what" a governed run is deciding
+
+**Does NOT own:**
+- Operator UX
+- Governance policy enforcement
+- Provider-specific clients in the UI
+
+### Organism — The Thinking Layer
+
+**Owns:**
+- Intent interpretation — decomposing human goals into machine specs
+- Multi-model collaborative planning (huddle loop)
+- Adversarial governance — assumption breakers, constraint checkers, skeptics
+- Simulation and gap-chasing
+- Suggestor-level reasoning that feeds governed proposals
+
+**Does NOT own:**
+- Authority — recomputed at Converge's commit boundary
+- Truth definitions and product projections
+- The operator-facing control surface
+
+### Converge — The Commit Boundary
 
 **Owns:**
 - The [[Philosophy/Nine Axioms|nine axioms]] — non-negotiable
@@ -57,88 +79,67 @@ Converge is the foundation of a three-layer stack built by Reflective Labs. Unde
 - [[Concepts/Context and Facts|Context, Facts, ProposedFacts]] — the type system
 - [[Concepts/Invariants|Invariants]] — executable guarantees
 - [[Concepts/Domain Packs|Domain packs]] — trust, money, delivery, knowledge, data_metrics
-- [[Architecture/Ports|Ports]] — the trait boundaries
-- [[Architecture/Providers|Providers]] — LLM, storage, search, optimization adapters
-- Traceability and audit
+- Cedar-backed policy and authority evaluation
+- Budgets, stop rules, traceability, and audit
 
 **Does NOT own:**
-- How plans are made (that's Organism)
-- What the user sees (that's the product layer)
-- Business domain logic (that's the product layer)
-- Whether a plan is good enough (that's Organism's adversarial review)
+- How plans are made (that is Organism)
+- What the user sees (that is Helm)
+- Product-specific truth definitions and domain state (that is Axiom)
 
-### Organism (Layer 2) — The Thinking Layer
+### Providers — The Capability Layer
 
 **Owns:**
-- Intent interpretation — decomposing human goals into machine specs
-- Multi-model collaborative planning (huddle loop)
-- Adversarial governance — assumption breakers, constraint checkers, skeptics
-- Simulation — outcome/cost/policy/causal stress testing
-- Organizational learning — calibrating planning priors from execution outcomes
+- External LLM, search, storage, optimization, and tool adapters
+- Concrete implementations behind `ChatBackend`, `WebSearchBackend`, `DdLlm`, `DdSearch`, and MCP-style surfaces
 
 **Does NOT own:**
-- Authority — recomputed at Converge's commit boundary, never inherited from reasoning
-- The convergence engine — Organism submits to Converge, doesn't replace it
-- Product UX — that's the product layer
+- Governance decisions
+- Product workflows
+- UI-facing business logic
 
-**Critical invariant:** No plan reaches the Converge commit boundary without passing BOTH adversarial review AND simulation. Authority is never inherited from reasoning.
+**Critical invariant:** Authority is never inherited from reasoning. Organism may produce `ProposedFact` and `AgentEffect`; Converge alone decides what becomes fact.
 
-### Products (Layer 3) — What Users Touch
-
-**Wolfgang** (wolfgang.bot)
-- AI workspace with knowledge-grounded expert discussion
-- Professor Wolfgang persona — contrarian, challenges your thinking
-- Desktop (Tauri + Svelte) and web (SvelteKit + Firebase)
-- Uses: converge-provider (LLM routing), converge-storage (GCS), converge-runtime (auth)
-- RAG over curated knowledge bases via LanceDB + OpenAI embeddings
-
-**SaaS Killer** (crm.prio.ai)
-- JTBD-driven CRM/ERP substrate — job-centric, not record-centric
-- 20 capability modules across 7 suites (Foundation, Relationship, Commercial, Revenue, Work, Trust, Intelligence)
-- 9 executable truths that compile to Converge intent packets
-- Each truth maps to a `TypesRootIntent` via `TruthConvergeBinding`
-- Desktop (Tauri + Svelte) with live convergence visibility
-- Uses: converge-core directly (proposals, facts, promotion gates)
+Products like Wolfgang, the governance hackathon, and Monterro usually own both Helm and Axiom. The naming split is intentional: what operators touch is not the same as what defines truth.
 
 ## The Flow
 
 ```
-Human intent
+Axiom defines truth, projections, and run configuration
     ↓
-Organism decomposes → plans → debates → simulates
+Axiom invokes `Engine.run()`
     ↓
-Converge receives intent packet → runs agents → converges → promotes facts
+Organism decomposes → plans → debates → researches → emits proposals
     ↓
-Product projects converged facts into domain records → shows results to user
+Converge evaluates policy, budget, convergence, and promotion
+    ↓
+Providers supply capability calls behind adapter boundaries
+    ↓
+Axiom projects converged facts into product state
+    ↓
+Helm shows the result to the operator
 ```
 
-Products never bypass Organism to reach Converge directly for complex decisions. Simple CRUD doesn't need convergence. Governed decisions always go through the full stack.
+Providers never decide. Organism never self-authorizes. Helm never talks to providers directly.
 
 ## The Dependency Rule
 
 ```
-Products depend on Organism and/or Converge
+Helm depends on Axiom
+Axiom depends on Organism and/or Converge
 Organism depends on Converge
-Converge depends on nothing above it
+Converge depends on provider capability adapters below it
+Providers depend on the outside world, not on application layers above them
 ```
 
-This is the hexagonal architecture applied at the organizational level. Converge defines [[Architecture/Ports|ports]]. Organism and products are adapters. Converge never imports from them.
+This is the hexagonal architecture applied at the organizational level. Converge defines [[Architecture/Ports|ports]]. Organism and product layers are adapters. Converge never imports from anything above it.
 
 When a product needs a capability that doesn't exist:
 1. If it's a governance/convergence capability → build it in **Converge**
 2. If it's a reasoning/planning capability → build it in **Organism**
-3. If it's product-specific → build it in the **product**
+3. If it's truth modeling or projection → build it in **Axiom**
+4. If it's control-surface specific → build it in **Helm**
 
 Never work around Converge. Patch it.
-
-## Domains and Branding
-
-| Layer | Brand | Domain | Repo |
-|---|---|---|---|
-| Foundation | Converge | converge.zone | Reflective-Lab/converge |
-| Intelligence | Organism | organism.zone | Reflective-Labs/organism.zone |
-| Product | Wolfgang | wolfgang.bot | Reflective-Labs/wolfgang-app |
-| Product | SaaS Killer | crm.prio.ai | saas-killer |
-| Company | Reflective Labs | reflective.se | — |
 
 See also: [[Philosophy/Why Converge]], [[Philosophy/Nine Axioms]], [[Architecture/Hexagonal Architecture]]

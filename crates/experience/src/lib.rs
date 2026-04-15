@@ -20,14 +20,17 @@ pub use lancedb_store::{LanceDbConfig, LanceDbExperienceStore, SimilarEvent, Vec
 pub use surrealdb_store::{SurrealDbConfig, SurrealDbExperienceStore};
 pub use validate::validate_envelope;
 
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 
 use converge_core::{
-    ArtifactKind, EventQuery, ExperienceEvent, ExperienceEventEnvelope, ExperienceStore,
-    ExperienceStoreError, ExperienceStoreResult, LifecycleEvent, ReplayTrace, TimeRange,
+    ArtifactKind, EventQuery, ExperienceEvent, ExperienceEventEnvelope, ExperienceEventKind,
+    ExperienceStore, ExperienceStoreError, ExperienceStoreResult, LifecycleEvent, ReplayTrace,
+    TimeRange,
 };
+use serde::{Deserialize, Serialize};
 
 /// In-memory experience store (dev/test).
 #[derive(Debug, Default)]
@@ -168,6 +171,82 @@ impl<S: ExperienceStore + 'static> ExperienceEventObserver for StoreObserver<S> 
     }
 }
 
+/// Human-readable label for an experience event kind.
+#[must_use]
+pub fn event_kind_label(kind: ExperienceEventKind) -> &'static str {
+    match kind {
+        ExperienceEventKind::ProposalCreated => "proposal_created",
+        ExperienceEventKind::ProposalValidated => "proposal_validated",
+        ExperienceEventKind::FactPromoted => "fact_promoted",
+        ExperienceEventKind::RecallExecuted => "recall_executed",
+        ExperienceEventKind::ReplayTraceRecorded => "trace_link_recorded",
+        ExperienceEventKind::ReplayabilityDowngraded => "replayability_downgraded",
+        ExperienceEventKind::ArtifactStateTransitioned => "artifact_state_transitioned",
+        ExperienceEventKind::ArtifactRollbackRecorded => "artifact_rollback_recorded",
+        ExperienceEventKind::BackendInvoked => "backend_invoked",
+        ExperienceEventKind::OutcomeRecorded => "outcome_recorded",
+        ExperienceEventKind::BudgetExceeded => "budget_exceeded",
+        ExperienceEventKind::PolicySnapshotCaptured => "policy_snapshot_captured",
+    }
+}
+
+/// Generic summary of a set of experience events.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExperienceEventSummary {
+    pub total_events: usize,
+    pub proposal_created: usize,
+    pub proposal_validated: usize,
+    pub fact_promoted: usize,
+    pub recall_executed: usize,
+    pub trace_link_recorded: usize,
+    pub replayability_downgraded: usize,
+    pub artifact_state_transitioned: usize,
+    pub artifact_rollback_recorded: usize,
+    pub backend_invoked: usize,
+    pub outcome_recorded: usize,
+    pub budget_exceeded: usize,
+    pub policy_snapshot_captured: usize,
+    pub by_kind: BTreeMap<String, usize>,
+}
+
+/// Summarize experience events into reusable telemetry counts.
+#[must_use]
+pub fn summarize_events(events: &[ExperienceEventEnvelope]) -> ExperienceEventSummary {
+    let mut summary = ExperienceEventSummary {
+        total_events: events.len(),
+        ..ExperienceEventSummary::default()
+    };
+
+    for envelope in events {
+        let kind = envelope.event.kind();
+        *summary
+            .by_kind
+            .entry(event_kind_label(kind).to_string())
+            .or_insert(0) += 1;
+
+        match kind {
+            ExperienceEventKind::ProposalCreated => summary.proposal_created += 1,
+            ExperienceEventKind::ProposalValidated => summary.proposal_validated += 1,
+            ExperienceEventKind::FactPromoted => summary.fact_promoted += 1,
+            ExperienceEventKind::RecallExecuted => summary.recall_executed += 1,
+            ExperienceEventKind::ReplayTraceRecorded => summary.trace_link_recorded += 1,
+            ExperienceEventKind::ReplayabilityDowngraded => summary.replayability_downgraded += 1,
+            ExperienceEventKind::ArtifactStateTransitioned => {
+                summary.artifact_state_transitioned += 1
+            }
+            ExperienceEventKind::ArtifactRollbackRecorded => {
+                summary.artifact_rollback_recorded += 1
+            }
+            ExperienceEventKind::BackendInvoked => summary.backend_invoked += 1,
+            ExperienceEventKind::OutcomeRecorded => summary.outcome_recorded += 1,
+            ExperienceEventKind::BudgetExceeded => summary.budget_exceeded += 1,
+            ExperienceEventKind::PolicySnapshotCaptured => summary.policy_snapshot_captured += 1,
+        }
+    }
+
+    summary
+}
+
 fn event_matches_query(event: &ExperienceEventEnvelope, query: &EventQuery) -> bool {
     if let Some(ref tenant_id) = query.tenant_id {
         if event.tenant_id.as_deref() != Some(tenant_id.as_str()) {
@@ -256,6 +335,53 @@ mod tests {
         };
         let results = store.query_events(&query_other).expect("query events");
         assert!(results.is_empty());
+    }
+
+    #[test]
+    fn summarize_events_counts_all_kinds() {
+        let events = vec![
+            ExperienceEventEnvelope::new(
+                "evt-1",
+                ExperienceEvent::FactPromoted {
+                    proposal_id: "proposal-1".into(),
+                    fact_id: "fact-1".into(),
+                    promoted_by: "agent-1".into(),
+                    reason: "promoted".into(),
+                    requires_human: false,
+                },
+            ),
+            ExperienceEventEnvelope::new(
+                "evt-2",
+                ExperienceEvent::OutcomeRecorded {
+                    chain_id: "chain-1".to_string(),
+                    step: DecisionStep::Planning,
+                    passed: true,
+                    stop_reason: Some("converged".into()),
+                    latency_ms: None,
+                    tokens: None,
+                    cost_microdollars: None,
+                    backend: Some("converge-engine".into()),
+                },
+            ),
+            ExperienceEventEnvelope::new(
+                "evt-3",
+                ExperienceEvent::BudgetExceeded {
+                    chain_id: "chain-1".to_string(),
+                    resource: "engine-budget".into(),
+                    limit: "max_cycles (20)".into(),
+                    observed: None,
+                },
+            ),
+        ];
+
+        let summary = summarize_events(&events);
+        assert_eq!(summary.total_events, 3);
+        assert_eq!(summary.fact_promoted, 1);
+        assert_eq!(summary.outcome_recorded, 1);
+        assert_eq!(summary.budget_exceeded, 1);
+        assert_eq!(summary.by_kind.get("fact_promoted"), Some(&1));
+        assert_eq!(summary.by_kind.get("outcome_recorded"), Some(&1));
+        assert_eq!(summary.by_kind.get("budget_exceeded"), Some(&1));
     }
 
     #[test]

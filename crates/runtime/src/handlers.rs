@@ -9,9 +9,9 @@ use axum::{
     extract::{Json, Path, State},
     routing::{get, post},
 };
+use converge_axiom::gherkin::{GherkinValidator, IssueCategory, Severity, ValidationConfig};
 use converge_core::traits::{ChatBackend, ChatRequest, ChatResponse, LlmError};
 use converge_core::{Context, ContextKey, Engine};
-use converge_axiom::gherkin::{GherkinValidator, IssueCategory, Severity, ValidationConfig};
 
 /// Stub chat backend that returns empty responses.
 /// Real LLM validation should be configured via organism-application.

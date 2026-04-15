@@ -66,4 +66,4 @@ Any PR adding a `pub struct`, `pub enum`, or `pub trait` to a publishable crate 
 - No more "local copies for purity" — if you need a type, depend on it
 - Slightly more explicit dependency edges, but the dep graph is already well-structured
 - New contributors have a clear reference for where types live
-- Future transport adapters or sync wrappers must follow the same ownership rules
+- Future transport adapters must follow the same ownership rules

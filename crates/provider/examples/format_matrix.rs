@@ -309,7 +309,8 @@ fn print_results(results: &[CellResult]) {
         if cells.is_empty() {
             continue;
         }
-        let avg_in = cells.iter().map(|c| c.input_tokens()).sum::<u32>() as f64 / cells.len() as f64;
+        let avg_in =
+            cells.iter().map(|c| c.input_tokens()).sum::<u32>() as f64 / cells.len() as f64;
         let avg_out =
             cells.iter().map(|c| c.output_tokens()).sum::<u32>() as f64 / cells.len() as f64;
         let avg_total = avg_in + avg_out;
@@ -330,10 +331,7 @@ fn print_results(results: &[CellResult]) {
 
     // ── Latency by model ──
     println!("\n## Average latency by model\n");
-    println!(
-        "{:<30} {:>10} {:>10} {:>10}",
-        "Model", "Avg", "Min", "Max"
-    );
+    println!("{:<30} {:>10} {:>10} {:>10}", "Model", "Avg", "Min", "Max");
     println!("{}", "-".repeat(62));
 
     for (i, model) in MODELS.iter().enumerate() {
