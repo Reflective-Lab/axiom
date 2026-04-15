@@ -335,7 +335,7 @@ impl SelectionCriteria {
     pub fn interactive() -> Self {
         Self {
             latency: LatencyClass::Interactive,
-            cost: CostTier::Standard,
+            cost: CostTier::Minimal,
             complexity: TaskComplexity::Classification,
             ..Default::default()
         }

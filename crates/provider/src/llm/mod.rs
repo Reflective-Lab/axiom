@@ -33,6 +33,9 @@ mod error_classification;
 mod mistral;
 #[cfg(feature = "openai")]
 mod openai;
+#[cfg(feature = "openrouter")]
+mod openrouter;
+mod resilient;
 mod selection;
 
 #[cfg(feature = "anthropic")]
@@ -43,6 +46,9 @@ mod gemini;
 pub use mistral::MistralBackend;
 #[cfg(feature = "openai")]
 pub use openai::OpenAiBackend;
+#[cfg(feature = "openrouter")]
+pub use openrouter::OpenRouterBackend;
+pub use resilient::ResilientChatBackend;
 pub use selection::{
     ChatBackendSelectionConfig, ChatBackendSelectionConfigError, SelectedChatBackend,
     select_chat_backend, select_chat_backend_with_secret_provider,

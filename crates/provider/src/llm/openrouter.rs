@@ -17,25 +17,33 @@ use converge_core::traits::{
     LlmError as ChatLlmError, TokenUsage as ChatTokenUsage, ToolCall as ChatToolCall,
 };
 
-pub struct OpenAiBackend {
+/// OpenRouter backend — routes to any model through `openrouter.ai/api`.
+///
+/// OpenRouter uses the OpenAI chat completions format. Model names follow
+/// the `provider/model` convention (e.g. `anthropic/claude-sonnet-4`).
+pub struct OpenRouterBackend {
     api_key: SecretString,
     model: String,
     base_url: String,
     client: Client,
     temperature: f32,
     max_retries: usize,
+    site_url: String,
+    site_name: String,
 }
 
-impl OpenAiBackend {
+impl OpenRouterBackend {
     #[must_use]
     pub fn new(api_key: impl Into<String>) -> Self {
         Self {
             api_key: SecretString::new(api_key),
-            model: "gpt-4o".to_string(),
-            base_url: "https://api.openai.com".to_string(),
+            model: "anthropic/claude-sonnet-4".to_string(),
+            base_url: "https://openrouter.ai/api".to_string(),
             client: Client::new(),
             temperature: 0.0,
             max_retries: 3,
+            site_url: String::new(),
+            site_name: String::new(),
         }
     }
 
@@ -46,17 +54,37 @@ impl OpenAiBackend {
     pub fn from_secret_provider(secrets: &dyn SecretProvider) -> BackendResult<Self> {
         let api_key =
             secrets
-                .get_secret("OPENAI_API_KEY")
+                .get_secret("OPENROUTER_API_KEY")
                 .map_err(|e| BackendError::Unavailable {
-                    message: format!("OPENAI_API_KEY: {e}"),
+                    message: format!("OPENROUTER_API_KEY: {e}"),
                 })?;
+
+        let model = secrets
+            .get_secret("OPENROUTER_MODEL")
+            .map(|s| s.expose().to_string())
+            .unwrap_or_else(|_| "anthropic/claude-sonnet-4".to_string());
+        let base_url = secrets
+            .get_secret("OPENROUTER_BASE_URL")
+            .map(|s| s.expose().to_string())
+            .unwrap_or_else(|_| "https://openrouter.ai/api".to_string());
+        let site_url = secrets
+            .get_secret("OPENROUTER_SITE_URL")
+            .map(|s| s.expose().to_string())
+            .unwrap_or_default();
+        let site_name = secrets
+            .get_secret("OPENROUTER_SITE_NAME")
+            .map(|s| s.expose().to_string())
+            .unwrap_or_default();
+
         Ok(Self {
             api_key,
-            model: "gpt-4o".to_string(),
-            base_url: "https://api.openai.com".to_string(),
+            model,
+            base_url,
             client: Client::new(),
             temperature: 0.0,
             max_retries: 3,
+            site_url,
+            site_name,
         })
     }
 
@@ -84,6 +112,18 @@ impl OpenAiBackend {
         self
     }
 
+    #[must_use]
+    pub fn with_site_url(mut self, url: impl Into<String>) -> Self {
+        self.site_url = url.into();
+        self
+    }
+
+    #[must_use]
+    pub fn with_site_name(mut self, name: impl Into<String>) -> Self {
+        self.site_name = name.into();
+        self
+    }
+
     fn build_headers(&self) -> BackendResult<HeaderMap> {
         let mut headers = HeaderMap::new();
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
@@ -94,10 +134,22 @@ impl OpenAiBackend {
                 message: format!("Invalid API key: {e}"),
             })?,
         );
+
+        if !self.site_url.is_empty() {
+            if let Ok(val) = HeaderValue::from_str(&self.site_url) {
+                headers.insert("HTTP-Referer", val);
+            }
+        }
+        if !self.site_name.is_empty() {
+            if let Ok(val) = HeaderValue::from_str(&self.site_name) {
+                headers.insert("X-Title", val);
+            }
+        }
+
         Ok(headers)
     }
 
-    fn build_request(&self, req: &ChatRequest) -> OpenAiRequest {
+    fn build_request(&self, req: &ChatRequest) -> OpenRouterRequest {
         let model = req.model.clone().unwrap_or_else(|| self.model.clone());
         let temperature = req.temperature.unwrap_or(self.temperature);
         let max_tokens = req.max_tokens.map(|t| t as usize).unwrap_or(4096);
@@ -105,8 +157,8 @@ impl OpenAiBackend {
         let mut messages = Vec::new();
 
         // Append format instruction to system prompt for all structured formats.
-        // JSON also gets native response_format, but OpenAI requires the word "json"
-        // in the messages when using json_object mode.
+        // JSON also gets native response_format, but OpenAI-compatible APIs require
+        // the word "json" in the messages when using json_object mode.
         let system_content = if let Some(instruction) = req.response_format.system_instruction() {
             let base = req.system.clone().unwrap_or_default();
             Some(format!("{base}\n\n{instruction}"))
@@ -115,7 +167,7 @@ impl OpenAiBackend {
         };
 
         if let Some(system) = &system_content {
-            messages.push(OpenAiMessage {
+            messages.push(OpenRouterMessage {
                 role: "system".to_string(),
                 content: Some(system.clone()),
                 tool_calls: None,
@@ -136,9 +188,9 @@ impl OpenAiBackend {
                 Some(
                     msg.tool_calls
                         .iter()
-                        .map(|tool_call| OpenAiResponseToolCall {
+                        .map(|tool_call| OpenRouterResponseToolCall {
                             id: tool_call.id.clone(),
-                            function: OpenAiResponseFunction {
+                            function: OpenRouterResponseFunction {
                                 name: tool_call.name.clone(),
                                 arguments: tool_call.arguments.clone(),
                             },
@@ -151,7 +203,7 @@ impl OpenAiBackend {
             } else {
                 Some(msg.content.clone())
             };
-            messages.push(OpenAiMessage {
+            messages.push(OpenRouterMessage {
                 role: role.to_string(),
                 content,
                 tool_calls,
@@ -159,15 +211,15 @@ impl OpenAiBackend {
             });
         }
 
-        let tools: Option<Vec<OpenAiTool>> = if req.tools.is_empty() {
+        let tools: Option<Vec<OpenRouterTool>> = if req.tools.is_empty() {
             None
         } else {
             Some(
                 req.tools
                     .iter()
-                    .map(|t| OpenAiTool {
+                    .map(|t| OpenRouterTool {
                         r#type: "function".to_string(),
-                        function: OpenAiFunction {
+                        function: OpenRouterFunction {
                             name: t.name.clone(),
                             description: Some(t.description.clone()),
                             parameters: Some(t.parameters.clone()),
@@ -192,7 +244,7 @@ impl OpenAiBackend {
             Some(req.stop_sequences.clone())
         };
 
-        OpenAiRequest {
+        OpenRouterRequest {
             model,
             messages,
             temperature: Some(temperature),
@@ -204,9 +256,9 @@ impl OpenAiBackend {
     }
 
     async fn chat_async(&self, req: ChatRequest) -> Result<ChatResponse, ChatLlmError> {
-        let openai_req = self.build_request(&req);
+        let openrouter_req = self.build_request(&req);
         let model = req.model.clone().unwrap_or_else(|| self.model.clone());
-        let response = self.execute_with_retries(&model, &openai_req).await?;
+        let response = self.execute_with_retries(&model, &openrouter_req).await?;
 
         let choice = response.choices.first();
 
@@ -252,8 +304,8 @@ impl OpenAiBackend {
     async fn execute_with_retries(
         &self,
         model: &str,
-        request: &OpenAiRequest,
-    ) -> Result<OpenAiResponse, ChatLlmError> {
+        request: &OpenRouterRequest,
+    ) -> Result<OpenRouterResponse, ChatLlmError> {
         let url = format!("{}/v1/chat/completions", self.base_url);
         let headers = self.build_headers().map_err(map_backend_error)?;
 
@@ -277,7 +329,7 @@ impl OpenAiBackend {
                     let status = response.status();
 
                     if status.is_success() {
-                        match response.json::<OpenAiResponse>().await {
+                        match response.json::<OpenRouterResponse>().await {
                             Ok(parsed) => return Ok(parsed),
                             Err(e) => {
                                 last_error = Some(parse_error(e));
@@ -304,7 +356,7 @@ impl OpenAiBackend {
     }
 }
 
-impl ChatBackend for OpenAiBackend {
+impl ChatBackend for OpenRouterBackend {
     type ChatFut<'a>
         = BoxFuture<'a, Result<ChatResponse, ChatLlmError>>
     where
@@ -316,19 +368,19 @@ impl ChatBackend for OpenAiBackend {
 }
 
 // ============================================================================
-// OpenAI API Types
+// OpenRouter API Types (OpenAI-compatible)
 // ============================================================================
 
 #[derive(Debug, Serialize)]
-struct OpenAiRequest {
+struct OpenRouterRequest {
     model: String,
-    messages: Vec<OpenAiMessage>,
+    messages: Vec<OpenRouterMessage>,
     #[serde(skip_serializing_if = "Option::is_none")]
     temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     max_tokens: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    tools: Option<Vec<OpenAiTool>>,
+    tools: Option<Vec<OpenRouterTool>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     response_format: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -336,24 +388,24 @@ struct OpenAiRequest {
 }
 
 #[derive(Debug, Serialize)]
-struct OpenAiMessage {
+struct OpenRouterMessage {
     role: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    tool_calls: Option<Vec<OpenAiResponseToolCall>>,
+    tool_calls: Option<Vec<OpenRouterResponseToolCall>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     tool_call_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
-struct OpenAiTool {
+struct OpenRouterTool {
     r#type: String,
-    function: OpenAiFunction,
+    function: OpenRouterFunction,
 }
 
 #[derive(Debug, Serialize)]
-struct OpenAiFunction {
+struct OpenRouterFunction {
     name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<String>,
@@ -362,38 +414,38 @@ struct OpenAiFunction {
 }
 
 #[derive(Debug, Deserialize)]
-struct OpenAiResponse {
+struct OpenRouterResponse {
     model: String,
-    choices: Vec<OpenAiChoice>,
-    usage: Option<OpenAiUsage>,
+    choices: Vec<OpenRouterChoice>,
+    usage: Option<OpenRouterUsage>,
 }
 
 #[derive(Debug, Deserialize)]
-struct OpenAiChoice {
-    message: OpenAiResponseMessage,
+struct OpenRouterChoice {
+    message: OpenRouterResponseMessage,
     finish_reason: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
-struct OpenAiResponseMessage {
+struct OpenRouterResponseMessage {
     content: Option<String>,
-    tool_calls: Option<Vec<OpenAiResponseToolCall>>,
+    tool_calls: Option<Vec<OpenRouterResponseToolCall>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct OpenAiResponseToolCall {
+struct OpenRouterResponseToolCall {
     id: String,
-    function: OpenAiResponseFunction,
+    function: OpenRouterResponseFunction,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct OpenAiResponseFunction {
+struct OpenRouterResponseFunction {
     name: String,
     arguments: String,
 }
 
 #[derive(Debug, Deserialize)]
-struct OpenAiUsage {
+struct OpenRouterUsage {
     prompt_tokens: u32,
     completion_tokens: u32,
     total_tokens: u32,
@@ -409,23 +461,30 @@ mod tests {
     use converge_core::traits::{
         ChatMessage, ChatRequest, ChatRole, ResponseFormat, ToolDefinition,
     };
-    use wiremock::matchers::{method, path};
+    use wiremock::matchers::{header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[test]
-    fn test_openai_backend_creation() {
-        let backend = OpenAiBackend::new("test-key")
-            .with_model("gpt-4o-mini")
+    fn test_openrouter_backend_creation() {
+        let backend = OpenRouterBackend::new("test-key")
+            .with_model("openai/gpt-4o")
             .with_temperature(0.5);
 
-        assert_eq!(backend.model, "gpt-4o-mini");
+        assert_eq!(backend.model, "openai/gpt-4o");
         assert_eq!(backend.temperature, 0.5);
         assert_eq!(backend.api_key.expose(), "test-key");
+        assert_eq!(backend.base_url, "https://openrouter.ai/api");
+    }
+
+    #[test]
+    fn test_default_model_is_claude() {
+        let backend = OpenRouterBackend::new("test-key");
+        assert_eq!(backend.model, "anthropic/claude-sonnet-4");
     }
 
     #[test]
     fn test_build_request_basic() {
-        let backend = OpenAiBackend::new("test-key");
+        let backend = OpenRouterBackend::new("test-key");
         let req = ChatRequest {
             messages: vec![ChatMessage {
                 role: ChatRole::User,
@@ -442,48 +501,17 @@ mod tests {
             model: None,
         };
 
-        let openai_req = backend.build_request(&req);
+        let openrouter_req = backend.build_request(&req);
 
-        assert_eq!(openai_req.model, "gpt-4o");
-        assert_eq!(openai_req.messages.len(), 1);
-        assert_eq!(openai_req.messages[0].role, "user");
-        assert!(openai_req.tools.is_none());
-        assert!(openai_req.response_format.is_none());
-    }
-
-    #[test]
-    fn test_build_request_with_system() {
-        let backend = OpenAiBackend::new("test-key");
-        let req = ChatRequest {
-            messages: vec![ChatMessage {
-                role: ChatRole::User,
-                content: "Hi".to_string(),
-                tool_calls: Vec::new(),
-                tool_call_id: None,
-            }],
-            system: Some("You are helpful.".to_string()),
-            tools: Vec::new(),
-            response_format: ResponseFormat::default(),
-            max_tokens: None,
-            temperature: None,
-            stop_sequences: Vec::new(),
-            model: None,
-        };
-
-        let openai_req = backend.build_request(&req);
-
-        assert_eq!(openai_req.messages.len(), 2);
-        assert_eq!(openai_req.messages[0].role, "system");
-        assert_eq!(
-            openai_req.messages[0].content.as_deref(),
-            Some("You are helpful.")
-        );
-        assert_eq!(openai_req.messages[1].role, "user");
+        assert_eq!(openrouter_req.model, "anthropic/claude-sonnet-4");
+        assert_eq!(openrouter_req.messages.len(), 1);
+        assert_eq!(openrouter_req.messages[0].role, "user");
+        assert!(openrouter_req.tools.is_none());
     }
 
     #[test]
     fn test_build_request_with_tools() {
-        let backend = OpenAiBackend::new("test-key");
+        let backend = OpenRouterBackend::new("test-key");
         let req = ChatRequest {
             messages: vec![ChatMessage {
                 role: ChatRole::User,
@@ -504,67 +532,42 @@ mod tests {
             model: None,
         };
 
-        let openai_req = backend.build_request(&req);
-        let tools = openai_req.tools.unwrap();
+        let openrouter_req = backend.build_request(&req);
+        let tools = openrouter_req.tools.unwrap();
 
         assert_eq!(tools.len(), 1);
-        assert_eq!(tools[0].r#type, "function");
         assert_eq!(tools[0].function.name, "get_weather");
     }
 
     #[test]
-    fn test_build_request_json_format() {
-        let backend = OpenAiBackend::new("test-key");
-        let req = ChatRequest {
-            messages: vec![ChatMessage {
-                role: ChatRole::User,
-                content: "Return JSON".to_string(),
-                tool_calls: Vec::new(),
-                tool_call_id: None,
-            }],
-            system: None,
-            tools: Vec::new(),
-            response_format: ResponseFormat::Json,
-            max_tokens: None,
-            temperature: None,
-            stop_sequences: Vec::new(),
-            model: None,
-        };
+    fn test_site_headers_set() {
+        let backend = OpenRouterBackend::new("test-key")
+            .with_site_url("https://converge.zone")
+            .with_site_name("Converge Hackathon");
 
-        let openai_req = backend.build_request(&req);
+        let headers = backend.build_headers().unwrap();
 
         assert_eq!(
-            openai_req.response_format,
-            Some(serde_json::json!({"type": "json_object"}))
+            headers.get("HTTP-Referer").unwrap().to_str().unwrap(),
+            "https://converge.zone"
+        );
+        assert_eq!(
+            headers.get("X-Title").unwrap().to_str().unwrap(),
+            "Converge Hackathon"
         );
     }
 
     #[test]
-    fn test_build_request_with_stop_sequences() {
-        let backend = OpenAiBackend::new("test-key");
-        let req = ChatRequest {
-            messages: vec![ChatMessage {
-                role: ChatRole::User,
-                content: "Go".to_string(),
-                tool_calls: Vec::new(),
-                tool_call_id: None,
-            }],
-            system: None,
-            tools: Vec::new(),
-            response_format: ResponseFormat::default(),
-            max_tokens: None,
-            temperature: None,
-            stop_sequences: vec!["STOP".to_string()],
-            model: None,
-        };
+    fn test_site_headers_omitted_when_empty() {
+        let backend = OpenRouterBackend::new("test-key");
+        let headers = backend.build_headers().unwrap();
 
-        let openai_req = backend.build_request(&req);
-
-        assert_eq!(openai_req.stop, Some(vec!["STOP".to_string()]));
+        assert!(headers.get("HTTP-Referer").is_none());
+        assert!(headers.get("X-Title").is_none());
     }
 
     #[test]
-    fn test_chat_runtime_multiturn_and_tool_calls() {
+    fn test_chat_with_mock_server() {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -574,131 +577,56 @@ mod tests {
         runtime.block_on(async {
             Mock::given(method("POST"))
                 .and(path("/v1/chat/completions"))
+                .and(header("HTTP-Referer", "https://converge.zone"))
+                .and(header("X-Title", "Converge"))
                 .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                    "id": "chatcmpl_test",
-                    "model": "gpt-4o",
+                    "id": "gen-test",
+                    "model": "anthropic/claude-sonnet-4",
                     "choices": [{
                         "message": {
-                            "content": "I'll use a tool.",
-                            "tool_calls": [{
-                                "id": "call_1",
-                                "type": "function",
-                                "function": {
-                                    "name": "lookup_weather",
-                                    "arguments": "{\"city\":\"Paris\"}"
-                                }
-                            }]
+                            "content": "Hello from OpenRouter!",
+                            "tool_calls": null
                         },
-                        "finish_reason": "tool_calls"
+                        "finish_reason": "stop"
                     }],
                     "usage": {
-                        "prompt_tokens": 12,
-                        "completion_tokens": 4,
-                        "total_tokens": 16
+                        "prompt_tokens": 10,
+                        "completion_tokens": 5,
+                        "total_tokens": 15
                     }
                 })))
                 .mount(&server)
                 .await;
         });
 
-        let backend = OpenAiBackend::new("test-key").with_base_url(server.uri());
+        let backend = OpenRouterBackend::new("test-key")
+            .with_base_url(server.uri())
+            .with_site_url("https://converge.zone")
+            .with_site_name("Converge");
+
         let response = runtime
             .block_on(backend.chat(ChatRequest {
-                messages: vec![
-                    ChatMessage {
-                        role: ChatRole::User,
-                        content: "Weather?".to_string(),
-                        tool_calls: Vec::new(),
-                        tool_call_id: None,
-                    },
-                    ChatMessage {
-                        role: ChatRole::Assistant,
-                        content: "Let me check.".to_string(),
-                        tool_calls: Vec::new(),
-                        tool_call_id: None,
-                    },
-                ],
-                system: Some("You are helpful.".to_string()),
-                tools: vec![ToolDefinition {
-                    name: "lookup_weather".to_string(),
-                    description: "Lookup weather".to_string(),
-                    parameters: serde_json::json!({
-                        "type": "object",
-                        "properties": {"city": {"type": "string"}}
-                    }),
+                messages: vec![ChatMessage {
+                    role: ChatRole::User,
+                    content: "Hello".to_string(),
+                    tool_calls: Vec::new(),
+                    tool_call_id: None,
                 }],
-                response_format: ResponseFormat::Json,
-                max_tokens: Some(64),
-                temperature: Some(0.0),
-                stop_sequences: vec!["DONE".to_string()],
+                system: None,
+                tools: Vec::new(),
+                response_format: ResponseFormat::default(),
+                max_tokens: None,
+                temperature: None,
+                stop_sequences: Vec::new(),
                 model: None,
             }))
             .unwrap();
 
-        assert_eq!(response.content, "I'll use a tool.");
-        assert_eq!(response.tool_calls.len(), 1);
-        assert_eq!(response.tool_calls[0].name, "lookup_weather");
-        assert_eq!(response.finish_reason, Some(ChatFinishReason::ToolCalls));
-
-        let requests = runtime.block_on(server.received_requests()).unwrap();
-        assert_eq!(requests.len(), 1);
-        let body: serde_json::Value = serde_json::from_slice(&requests[0].body).unwrap();
-        assert_eq!(body["messages"][0]["role"], "system");
-        assert_eq!(body["messages"][1]["role"], "user");
-        assert_eq!(body["messages"][2]["role"], "assistant");
-        assert_eq!(body["tools"][0]["function"]["name"], "lookup_weather");
-        assert_eq!(body["response_format"]["type"], "json_object");
-        assert_eq!(body["stop"][0], "DONE");
+        assert_eq!(response.content, "Hello from OpenRouter!");
+        assert_eq!(response.finish_reason, Some(ChatFinishReason::Stop));
+        assert_eq!(response.usage.as_ref().unwrap().total_tokens, 15);
 
         drop(server);
         drop(runtime);
-    }
-
-    #[test]
-    fn test_build_request_with_assistant_tool_call_history() {
-        let backend = OpenAiBackend::new("test-key");
-        let req = ChatRequest {
-            messages: vec![
-                ChatMessage {
-                    role: ChatRole::User,
-                    content: "Weather in Paris?".to_string(),
-                    tool_calls: Vec::new(),
-                    tool_call_id: None,
-                },
-                ChatMessage {
-                    role: ChatRole::Assistant,
-                    content: String::new(),
-                    tool_calls: vec![ChatToolCall {
-                        id: "call_1".to_string(),
-                        name: "lookup_weather".to_string(),
-                        arguments: r#"{"city":"Paris"}"#.to_string(),
-                    }],
-                    tool_call_id: None,
-                },
-                ChatMessage {
-                    role: ChatRole::Tool,
-                    content: r#"{"temp_c":18}"#.to_string(),
-                    tool_calls: Vec::new(),
-                    tool_call_id: Some("call_1".to_string()),
-                },
-            ],
-            system: None,
-            tools: Vec::new(),
-            response_format: ResponseFormat::default(),
-            max_tokens: None,
-            temperature: None,
-            stop_sequences: Vec::new(),
-            model: None,
-        };
-
-        let request = backend.build_request(&req);
-        assert_eq!(request.messages[1].role, "assistant");
-        assert!(request.messages[1].content.is_none());
-        assert_eq!(
-            request.messages[1].tool_calls.as_ref().map(Vec::len),
-            Some(1)
-        );
-        assert_eq!(request.messages[2].role, "tool");
-        assert_eq!(request.messages[2].tool_call_id.as_deref(), Some("call_1"));
     }
 }

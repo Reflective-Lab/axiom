@@ -105,7 +105,17 @@ impl MistralBackend {
 
         let mut messages = Vec::new();
 
-        if let Some(system) = &req.system {
+        // Append format instruction to system prompt for all structured formats.
+        // JSON also gets native response_format, but the API may require "json"
+        // to appear in the messages when using json_object mode.
+        let system_content = if let Some(instruction) = req.response_format.system_instruction() {
+            let base = req.system.clone().unwrap_or_default();
+            Some(format!("{base}\n\n{instruction}"))
+        } else {
+            req.system.clone()
+        };
+
+        if let Some(system) = &system_content {
             messages.push(MistralMessage {
                 role: "system".to_string(),
                 content: Some(serde_json::Value::String(system.clone())),
@@ -170,7 +180,7 @@ impl MistralBackend {
 
         let response_format = match req.response_format {
             ResponseFormat::Json => Some(serde_json::json!({ "type": "json_object" })),
-            ResponseFormat::Text => None,
+            _ => None,
         };
 
         let stop = if req.stop_sequences.is_empty() {

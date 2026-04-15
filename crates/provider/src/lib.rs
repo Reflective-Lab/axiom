@@ -39,6 +39,7 @@
 //! ## LLM Backends (ChatBackend implementations)
 //! - [`AnthropicBackend`] - Claude API (Anthropic)
 //! - [`OpenAiBackend`] - GPT-4, GPT-3.5 (OpenAI)
+//! - [`OpenRouterBackend`] - Any model via OpenRouter (openrouter.ai)
 //! - [`GeminiBackend`] - Gemini Pro (Google)
 //! - [`MistralBackend`] - Mistral chat completions (Mistral AI)
 //!
@@ -115,9 +116,11 @@ pub use llm::GeminiBackend;
 pub use llm::MistralBackend;
 #[cfg(feature = "openai")]
 pub use llm::OpenAiBackend;
+#[cfg(feature = "openrouter")]
+pub use llm::OpenRouterBackend;
 pub use llm::{
-    ChatBackendSelectionConfig, ChatBackendSelectionConfigError, SelectedChatBackend,
-    select_chat_backend, select_chat_backend_with_secret_provider,
+    ChatBackendSelectionConfig, ChatBackendSelectionConfigError, ResilientChatBackend,
+    SelectedChatBackend, select_chat_backend, select_chat_backend_with_secret_provider,
 };
 
 // Re-exports: search providers

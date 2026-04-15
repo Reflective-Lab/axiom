@@ -759,18 +759,98 @@ impl Default for ModelSelector {
                 ModelMetadata::new("qwen", "qwen-turbo", CostClass::VeryLow, 1500, 0.70),
                 #[cfg(feature = "qwen")]
                 ModelMetadata::new("qwen", "qwen-plus", CostClass::Low, 2500, 0.80),
-                // OpenRouter (examples - actual models depend on routing)
-                #[cfg(feature = "openai")]
+                // OpenRouter — routes to any upstream model via openrouter.ai
+                #[cfg(feature = "openrouter")]
                 ModelMetadata::new(
                     "openrouter",
-                    "anthropic/claude-haiku-4-5-20251001",
+                    "anthropic/claude-haiku-4.5",
                     CostClass::VeryLow,
                     1200,
                     0.78,
-                ),
-                #[cfg(feature = "openai")]
-                ModelMetadata::new("openrouter", "openai/gpt-4", CostClass::Medium, 5000, 0.90)
-                    .with_reasoning(true),
+                )
+                .with_tool_use(true)
+                .with_vision(true)
+                .with_context_tokens(200_000),
+                #[cfg(feature = "openrouter")]
+                ModelMetadata::new(
+                    "openrouter",
+                    "anthropic/claude-sonnet-4",
+                    CostClass::Low,
+                    2500,
+                    0.93,
+                )
+                .with_reasoning(true)
+                .with_tool_use(true)
+                .with_vision(true)
+                .with_structured_output(true)
+                .with_code(true)
+                .with_context_tokens(200_000),
+                #[cfg(feature = "openrouter")]
+                ModelMetadata::new(
+                    "openrouter",
+                    "openai/gpt-4o",
+                    CostClass::Low,
+                    2500,
+                    0.92,
+                )
+                .with_reasoning(true)
+                .with_tool_use(true)
+                .with_vision(true)
+                .with_structured_output(true)
+                .with_code(true)
+                .with_context_tokens(128_000),
+                #[cfg(feature = "openrouter")]
+                ModelMetadata::new(
+                    "openrouter",
+                    "openai/gpt-4o-mini",
+                    CostClass::VeryLow,
+                    1200,
+                    0.82,
+                )
+                .with_tool_use(true)
+                .with_vision(true)
+                .with_structured_output(true)
+                .with_context_tokens(128_000),
+                #[cfg(feature = "openrouter")]
+                ModelMetadata::new(
+                    "openrouter",
+                    "google/gemini-2.5-flash",
+                    CostClass::VeryLow,
+                    800,
+                    0.84,
+                )
+                .with_tool_use(true)
+                .with_vision(true)
+                .with_structured_output(true)
+                .with_code(true)
+                .with_reasoning(true)
+                .with_multilingual(true)
+                .with_context_tokens(1_000_000),
+                #[cfg(feature = "openrouter")]
+                ModelMetadata::new(
+                    "openrouter",
+                    "meta-llama/llama-3.1-70b-instruct",
+                    CostClass::VeryLow,
+                    1500,
+                    0.80,
+                )
+                .with_tool_use(true)
+                .with_code(true)
+                .with_context_tokens(128_000),
+                #[cfg(feature = "openrouter")]
+                ModelMetadata::new(
+                    "openrouter",
+                    "mistralai/mistral-large",
+                    CostClass::Medium,
+                    4000,
+                    0.88,
+                )
+                .with_reasoning(true)
+                .with_tool_use(true)
+                .with_structured_output(true)
+                .with_code(true)
+                .with_multilingual(true)
+                .with_context_tokens(128_000),
                 // MinMax
                 #[cfg(feature = "minmax")]
                 ModelMetadata::new("minmax", "abab5.5-chat", CostClass::Low, 2000, 0.75),

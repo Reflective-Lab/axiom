@@ -15,7 +15,7 @@ use crate::secret::{EnvSecretProvider, SecretProvider, SecretString};
 use converge_core::backend::{BackendError, BackendResult};
 use converge_core::traits::{
     BoxFuture, ChatBackend, ChatRequest, ChatResponse, ChatRole, FinishReason as ChatFinishReason,
-    LlmError as ChatLlmError, ResponseFormat, TokenUsage as ChatTokenUsage, ToolCall,
+    LlmError as ChatLlmError, TokenUsage as ChatTokenUsage, ToolCall,
 };
 
 pub struct AnthropicBackend {
@@ -212,12 +212,10 @@ impl AnthropicBackend {
             Some(req.stop_sequences.clone())
         };
 
-        // Anthropic doesn't have a JSON mode flag — we prepend a system instruction.
-        let system = if req.response_format == ResponseFormat::Json {
+        // Anthropic doesn't have a structured output mode — prepend a system instruction.
+        let system = if let Some(instruction) = req.response_format.system_instruction() {
             let base = system.unwrap_or_default();
-            Some(format!(
-                "{base}\n\nYou MUST respond with valid JSON only. No other text."
-            ))
+            Some(format!("{base}\n\n{instruction}"))
         } else {
             system
         };

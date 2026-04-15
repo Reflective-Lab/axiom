@@ -13,6 +13,8 @@ use crate::llm::GeminiBackend;
 use crate::llm::MistralBackend;
 #[cfg(feature = "openai")]
 use crate::llm::OpenAiBackend;
+#[cfg(feature = "openrouter")]
+use crate::llm::OpenRouterBackend;
 use crate::model_selection::{ProviderRegistry, SelectionResult};
 use crate::secret::{EnvSecretProvider, SecretProvider};
 use converge_core::model_selection::{
@@ -166,7 +168,7 @@ pub fn select_chat_backend_with_secret_provider(
     let registry = if let Some(provider) = config.provider_override.as_deref() {
         let provider = normalize_provider_name(provider).ok_or_else(|| LlmError::InvalidRequest {
             message: format!(
-                "Unsupported CONVERGE_LLM_FORCE_PROVIDER={provider}. Expected one of: anthropic, openai, gemini, mistral."
+                "Unsupported CONVERGE_LLM_FORCE_PROVIDER={provider}. Expected one of: anthropic, openai, gemini, mistral, openrouter."
             ),
         })?;
 
@@ -189,7 +191,7 @@ pub fn select_chat_backend_with_secret_provider(
 }
 
 fn chat_provider_registry(secrets: &dyn SecretProvider) -> ProviderRegistry {
-    let supported: Vec<&str> = ["anthropic", "openai", "gemini", "mistral"]
+    let supported: Vec<&str> = ["anthropic", "openai", "gemini", "mistral", "openrouter"]
         .into_iter()
         .filter(|provider| is_chat_provider_available(provider, secrets))
         .collect();
@@ -232,6 +234,13 @@ fn instantiate_selected_backend(
                 .with_model(model);
             Ok(Arc::new(backend))
         }
+        #[cfg(feature = "openrouter")]
+        "openrouter" => {
+            let backend = OpenRouterBackend::from_secret_provider(secrets)
+                .map_err(backend_error)?
+                .with_model(model);
+            Ok(Arc::new(backend))
+        }
         _ => Err(LlmError::ProviderError {
             message: format!("Selected provider {provider} does not have a chat backend"),
             code: None,
@@ -256,6 +265,8 @@ fn is_chat_provider_available(provider: &str, secrets: &dyn SecretProvider) -> b
         "gemini" => secrets.has_secret("GEMINI_API_KEY"),
         #[cfg(feature = "mistral")]
         "mistral" => secrets.has_secret("MISTRAL_API_KEY"),
+        #[cfg(feature = "openrouter")]
+        "openrouter" => secrets.has_secret("OPENROUTER_API_KEY"),
         _ => false,
     }
 }
@@ -266,6 +277,7 @@ fn normalize_provider_name(value: &str) -> Option<&'static str> {
         "openai" | "gpt" => Some("openai"),
         "gemini" | "google" => Some("gemini"),
         "mistral" | "mixtral" => Some("mistral"),
+        "openrouter" | "router" => Some("openrouter"),
         _ => None,
     }
 }

@@ -102,12 +102,105 @@ pub struct ToolCall {
     pub arguments: String,
 }
 
+/// Requested output format for a chat completion.
+///
+/// Guides the model toward producing parseable structured output. Some formats
+/// have native API enforcement (JSON on OpenAI/Gemini), others rely on system
+/// prompt instructions.
+///
+/// # Choosing a format
+///
+/// | Format   | Use when                                       | Token cost | Parse cost |
+/// |----------|------------------------------------------------|------------|------------|
+/// | Text     | Free-form prose, no structure needed           | Lowest     | None       |
+/// | Markdown | Human-readable reports, tables, decision briefs| Low        | Optional   |
+/// | Json     | Machine-consumed data, API responses, storage  | Medium     | Cheap      |
+/// | Yaml     | Human-reviewable structured data, config       | Low        | Cheap      |
+/// | Toml     | Flat config, simple records, settings          | Lowest     | Cheap      |
+///
+/// **JSON** is the safest default for machine consumption — every model handles it
+/// and most providers enforce it at the API level.
+///
+/// **YAML** produces ~20-30% fewer tokens than JSON for the same data (no braces,
+/// no quotes on keys), while remaining parseable and human-readable. Good alternative
+/// when token cost matters and the consumer can parse YAML.
+///
+/// **TOML** is the most compact for flat structures but breaks down on deeply nested
+/// data or arrays of objects. Best for config-shaped output.
+///
+/// **Markdown** is for presentation, not data interchange. Use it when a human reads
+/// the output directly. Some models (GPT-4o, Claude Haiku) will default to JSON
+/// wrapped in code fences instead of actual Markdown structure — prefer Claude Sonnet,
+/// Gemini, Llama, or Mistral for Markdown output.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseFormat {
+    /// Free-form text. No structure, no parsing. Use when the output is prose
+    /// or when the model should decide its own presentation.
     #[default]
     Text,
+    /// Markdown with headings, lists, tables, code blocks. Best for human-readable
+    /// reports and decision briefs. Not a data interchange format.
+    Markdown,
+    /// Strict JSON. Most reliable structured format — all models handle it, most
+    /// providers enforce it at the API level. Default choice for machine consumption.
     Json,
+    /// YAML without anchors, aliases, or custom tags. More compact than JSON
+    /// (~20-30% fewer tokens), human-editable. Good when a human reviews or edits
+    /// the output and token cost matters.
+    Yaml,
+    /// TOML. Most compact for flat key-value data and simple tables. Avoid for
+    /// deeply nested structures or arrays of complex objects — TOML syntax gets
+    /// awkward and some models produce invalid inline tables.
+    Toml,
+}
+
+impl ResponseFormat {
+    /// Returns the recommended format for structured data extraction.
+    ///
+    /// YAML is the default: 10% fewer tokens than JSON, 100% model compliance,
+    /// human-reviewable. Use `Json` only when you need strict schema enforcement
+    /// or the consumer requires it.
+    #[must_use]
+    pub fn default_structured() -> Self {
+        Self::Yaml
+    }
+
+    /// Returns the safest fallback format for retries after a parse failure.
+    ///
+    /// JSON has native API enforcement on most providers and 100% compliance
+    /// across all tested models.
+    #[must_use]
+    pub fn fallback(self) -> Option<Self> {
+        match self {
+            Self::Json | Self::Text => None, // already the safest / no structure
+            Self::Yaml | Self::Toml | Self::Markdown => Some(Self::Json),
+        }
+    }
+
+    /// Returns a system prompt instruction that tells the model to produce this format.
+    ///
+    /// All structured formats return `Some`. `Text` returns `None` (no constraint).
+    /// Backends always include this instruction in the system prompt. For JSON,
+    /// backends may additionally enable native API-level enforcement where available.
+    #[must_use]
+    pub fn system_instruction(self) -> Option<&'static str> {
+        match self {
+            Self::Text => None,
+            Self::Markdown => Some(
+                "You MUST respond with valid Markdown only. Use headings, lists, and tables to structure the data. Do NOT wrap output in code fences or return serialized JSON/YAML. Present data as readable Markdown.",
+            ),
+            Self::Json => Some(
+                "You MUST respond with valid JSON only. No other text.",
+            ),
+            Self::Yaml => Some(
+                "You MUST respond with valid YAML only. No anchors, no aliases, no custom tags. No other text or code fences.",
+            ),
+            Self::Toml => Some(
+                "You MUST respond with valid TOML only. Use sections and key-value pairs. No inline tables for complex data. No other text or code fences.",
+            ),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

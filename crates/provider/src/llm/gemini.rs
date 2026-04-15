@@ -141,6 +141,17 @@ impl GeminiBackend {
             }
         }
 
+        // For non-JSON structured formats, append instruction to system text.
+        // JSON uses native response_mime_type; others need prompt-based enforcement.
+        let system_text = match req.response_format {
+            ResponseFormat::Json | ResponseFormat::Text => system_text,
+            _ => {
+                let instruction = req.response_format.system_instruction().unwrap_or_default();
+                let base = system_text.unwrap_or_default();
+                Some(format!("{base}\n\n{instruction}"))
+            }
+        };
+
         let system_instruction = system_text.map(|text| GeminiSystemInstruction {
             parts: vec![GeminiTextPart { text }],
         });
@@ -148,9 +159,10 @@ impl GeminiBackend {
         let max_output_tokens = req.max_tokens.map(|t| t as usize).unwrap_or(4096);
         let temperature = req.temperature.unwrap_or(self.temperature);
 
+        // Only JSON has native Gemini enforcement via response_mime_type.
         let response_mime_type = match req.response_format {
             ResponseFormat::Json => Some("application/json".to_string()),
-            ResponseFormat::Text => None,
+            _ => None,
         };
 
         let stop_sequences = if req.stop_sequences.is_empty() {
