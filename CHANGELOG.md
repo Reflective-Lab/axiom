@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-04-15
+
+### Added
+- **Axiom Layer**: Renamed `converge-tool` to `converge-axiom`. It now serves as the canonical truth layer, providing validation, simulation, and Cedar policy visibility.
+- **Async Engine**: `Engine::run` is now a native `async` function. All agent execution and convergence cycles are now runtime-agnostic and non-blocking.
+- **OpenRouter Backend**: New `OpenRouterBackend` implementation in `converge-provider` for unified access to 100+ models.
+- **Structured Response Formats**: `ResponseFormat` now supports Markdown, YAML, and TOML. YAML is the new default for structured extraction (10% fewer tokens, higher compliance).
+- **Resilient Chat**: Added `ResilientChatBackend` with automatic retry, format fallback (YAML -> JSON), and model-based provider fallback.
+
+### Changed
+- `JobExecutor` in `converge-runtime` now uses `tokio` tasks and `async` execution instead of `std::thread` and `blocking_recv`.
+- Updated ecosystem documentation to the five-layer stack (Helm, Axiom, Organism, Converge, Providers).
+- Normalized all `Tracing` spans to use `Instrument` for better async observability.
+
+### Fixed
+- Fixed `JobExecutor` streaming buffer and event forwarding in SSE/gRPC handlers.
+- Resolved type ownership boundaries in `converge-core` as per ADR-005.
+
 ## [3.0.4] - 2026-04-14
 
 ### Fixed
@@ -125,7 +143,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic agent runtime
 - Core traits and abstractions
 
-[Unreleased]: https://github.com/Reflective-Lab/converge/compare/v3.0.4...HEAD
+[Unreleased]: https://github.com/Reflective-Lab/converge/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/Reflective-Lab/converge/compare/v3.0.4...v3.2.0
 [3.0.4]: https://github.com/Reflective-Lab/converge/compare/v3.0.3...v3.0.4
 [3.0.3]: https://github.com/Reflective-Lab/converge/compare/v3.0.2...v3.0.3
 [3.0.2]: https://github.com/Reflective-Lab/converge/compare/v3.0.1...v3.0.2
