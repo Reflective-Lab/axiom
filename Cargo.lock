@@ -261,9 +261,8 @@ dependencies = [
 
 [[package]]
 name = "converge-core"
-version = "3.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c731ad01d250bace4d2c231d8c6fb3b51e0f015738e28b8b830149d65e236c43"
+version = "3.3.0"
+source = "git+https://github.com/Reflective-Lab/converge?tag=v3.3.0#fafa97d2687cb7bfbb1ae4858438b515648b26a3"
 dependencies = [
  "async-trait",
  "converge-pack",
@@ -277,24 +276,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "converge-mcp"
-version = "3.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da21dc41a2248549d3cdd645cf1c601519fcb8b64d8a89a553e46d4d6b7642cb"
-dependencies = [
- "async-trait",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "converge-pack"
-version = "3.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6777736a697745a1d1fadab2e56db71593dfb4f5a91cd0960748faf6d3963ad"
+version = "3.3.0"
+source = "git+https://github.com/Reflective-Lab/converge?tag=v3.3.0#fafa97d2687cb7bfbb1ae4858438b515648b26a3"
 dependencies = [
  "async-trait",
  "serde",
@@ -304,13 +288,11 @@ dependencies = [
 
 [[package]]
 name = "converge-provider"
-version = "3.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "865db0db16657e5d062f6b8e93a2a4658abbfc2da21bfca67a5637035fed331d"
+version = "3.3.0"
+source = "git+https://github.com/Reflective-Lab/converge?tag=v3.3.0#fafa97d2687cb7bfbb1ae4858438b515648b26a3"
 dependencies = [
  "base64",
  "converge-core",
- "converge-mcp",
  "converge-pack",
  "converge-provider-api",
  "regex-lite",
@@ -329,9 +311,8 @@ dependencies = [
 
 [[package]]
 name = "converge-provider-api"
-version = "3.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e133b7caf054928155f3f126e3e890d4c691378b774f365b257913a7832db76"
+version = "3.3.0"
+source = "git+https://github.com/Reflective-Lab/converge?tag=v3.3.0#fafa97d2687cb7bfbb1ae4858438b515648b26a3"
 dependencies = [
  "serde",
  "thiserror 2.0.18",

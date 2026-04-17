@@ -56,6 +56,7 @@ impl ChatBackend for StaticChatBackend {
                 usage: None,
                 model: None,
                 finish_reason: None,
+                metadata: Default::default(),
             })
         })();
         std::future::ready(result)
