@@ -343,8 +343,7 @@ fn sanitize_suggested_title(suggested: &str, fallback: &str) -> String {
     let stripped = trimmed
         .strip_prefix("Truth:")
         .or_else(|| trimmed.strip_prefix("Feature:"))
-        .map(str::trim)
-        .unwrap_or(trimmed);
+        .map_or(trimmed, str::trim);
     if stripped.is_empty() {
         fallback.to_string()
     } else {

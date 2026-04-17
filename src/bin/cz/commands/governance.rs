@@ -16,11 +16,11 @@
 
 use crate::cli::{AckArgs, AssignArgs, DigestArgs, EscalateArgs, OutputFormat, ValidateArgs};
 use crate::commands::{CmdError, CmdResult, find_workspace_root};
-use chrono::Utc;
-use colored::Colorize;
 use axiom_truth::{
     GherkinValidator, IssueCategory, Severity, StaticChatBackend, ValidationConfig, ValidationIssue,
 };
+use chrono::Utc;
+use colored::Colorize;
 use converge_core::model_selection::SelectionCriteria;
 use converge_core::traits::DynChatBackend;
 use converge_provider::{ChatBackendSelectionConfig, select_chat_backend};

@@ -37,7 +37,7 @@ impl StaticChatBackend {
 impl ChatBackend for StaticChatBackend {
     type ChatFut<'a> = Ready<Result<ChatResponse, LlmError>>;
 
-    fn chat<'a>(&'a self, _req: ChatRequest) -> Self::ChatFut<'a> {
+    fn chat(&self, _req: ChatRequest) -> Self::ChatFut<'_> {
         let result = (|| {
             let mut responses = self.responses.lock().map_err(|_| LlmError::ProviderError {
                 message: "static mock backend mutex poisoned".into(),

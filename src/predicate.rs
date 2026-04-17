@@ -153,17 +153,17 @@ pub fn parse_steps(
                 }
 
                 // Extract context key from Given steps
-                if let Some(key) = extract_context_key(text) {
-                    if is_valid_key(&key) {
-                        current_key = Some(key.clone());
-                        // "Given any fact under key X" → HasFacts
-                        if text.contains("any fact") || text.contains("facts") {
-                            predicates.push(Predicate::HasFacts { key });
-                        }
+                if let Some(key) = extract_context_key(text)
+                    && is_valid_key(&key)
+                {
+                    current_key = Some(key.clone());
+                    // "Given any fact under key X" → HasFacts
+                    if text.contains("any fact") || text.contains("facts") {
+                        predicates.push(Predicate::HasFacts { key });
                     }
-                    // Quoted strings that aren't context keys in Given are ignored
-                    // (e.g., "Converged" in 'engine halts with reason "Converged"')
                 }
+                // Quoted strings that aren't context keys in Given are ignored
+                // (e.g., "Converged" in 'engine halts with reason "Converged"')
             }
             "Then" => {
                 let pred = parse_then_step(text, table, &current_key)?;
@@ -190,7 +190,7 @@ fn parse_then_step(
     current_key: &Option<String>,
 ) -> Result<Predicate, PredicateError> {
     // Pattern: "contains at least N facts"
-    let count_at_least = Regex::new(r#"(?:contains?|at least)\s+(\d+)\s+facts?"#).unwrap();
+    let count_at_least = Regex::new(r"(?:contains?|at least)\s+(\d+)\s+facts?").unwrap();
     if let Some(caps) = count_at_least.captures(text) {
         let min: usize = caps[1].parse().unwrap_or(1);
         let key = extract_context_key(text)
@@ -203,7 +203,7 @@ fn parse_then_step(
     }
 
     // Pattern: "contains at most N facts"
-    let count_at_most = Regex::new(r#"at most\s+(\d+)\s+facts?"#).unwrap();
+    let count_at_most = Regex::new(r"at most\s+(\d+)\s+facts?").unwrap();
     if let Some(caps) = count_at_most.captures(text) {
         let max: usize = caps[1].parse().unwrap_or(1);
         let key = extract_context_key(text)
@@ -224,7 +224,7 @@ fn parse_then_step(
 
     // Pattern: "for each X fact there exists a Y fact"
     let cross_ref =
-        Regex::new(r#"for each\s+(\w+)\s+fact.*?exists?\s+(?:a |an )?(\w+)\s+fact"#).unwrap();
+        Regex::new(r"for each\s+(\w+)\s+fact.*?exists?\s+(?:a |an )?(\w+)\s+fact").unwrap();
     if let Some(caps) = cross_ref.captures(text) {
         let source_key = caps[1].to_string();
         let target_key = caps[2].to_string();

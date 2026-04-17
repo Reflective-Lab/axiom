@@ -144,21 +144,21 @@ pub fn extract_jtbd(content: &str) -> Result<(Option<JTBDMetadata>, Vec<JTBDMeta
 
     while i < lines.len() {
         // Look for file-level JTBD (after "Truth:" or "Feature:")
-        if lines[i].trim().starts_with("Truth:") || lines[i].trim().starts_with("Feature:") {
-            if let Some((jtbd, next_i)) = parse_jtbd_block(&lines, i + 1)? {
-                file_jtbd = Some(jtbd);
-                i = next_i;
-                continue;
-            }
+        if (lines[i].trim().starts_with("Truth:") || lines[i].trim().starts_with("Feature:"))
+            && let Some((jtbd, next_i)) = parse_jtbd_block(&lines, i + 1)?
+        {
+            file_jtbd = Some(jtbd);
+            i = next_i;
+            continue;
         }
 
         // Look for scenario-level JTBD (after "Scenario:")
-        if lines[i].trim().starts_with("Scenario:") {
-            if let Some((jtbd, next_i)) = parse_jtbd_block(&lines, i + 1)? {
-                scenario_jtbds.push(jtbd);
-                i = next_i;
-                continue;
-            }
+        if lines[i].trim().starts_with("Scenario:")
+            && let Some((jtbd, next_i)) = parse_jtbd_block(&lines, i + 1)?
+        {
+            scenario_jtbds.push(jtbd);
+            i = next_i;
+            continue;
         }
 
         i += 1;

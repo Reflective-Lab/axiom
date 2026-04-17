@@ -181,7 +181,7 @@ pub fn parse_cedar_rules(policy_text: &str) -> Vec<PolicyRule> {
                     // skip
                 } else if condition.contains("==")
                     || condition.contains("<=")
-                    || condition.contains(">")
+                    || condition.contains('>')
                     || condition.contains(".contains(")
                 {
                     // Clean up Cedar syntax for display
@@ -274,7 +274,7 @@ pub fn check_coverage(governance: &TruthGovernance, policy_text: &str) -> Policy
             .iter()
             .flat_map(|r| r.conditions.iter())
             .filter(|c| c.contains("gates_passed.contains"))
-            .map(|c| c.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         if gates_in_policy.is_empty() {
@@ -310,7 +310,18 @@ mod tests {
     use super::*;
     use crate::truths::parse_truth_document;
 
-    const VENDOR_POLICY: &str = include_str!("../../policy/policies/vendor_selection.cedar");
+    const VENDOR_POLICY: &str = r#"
+permit(principal, action == Action::"promote", resource)
+when {
+  principal.role == "governance_reviewer"
+};
+
+forbid(principal, action == Action::"commit", resource)
+when {
+  context.cost > 50000 &&
+  context.cfo_approval == false
+};
+"#;
 
     #[test]
     fn extracts_requirements_from_governance() {

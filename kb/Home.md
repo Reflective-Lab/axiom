@@ -44,6 +44,11 @@ Axiom validates, simulates, and compiles business specifications into enforceabl
 
 - [[Workflow/Daily Journey]] — how to use Axiom in development
 
+## Experiments
+
+- [[Experiments/INDEX]] — hypothesis-driven development with evidence logging
+- [[Experiments/LOG]] — mutation log of all experiments
+
 ## Meta
 
 - [[INDEX]] — entity catalog

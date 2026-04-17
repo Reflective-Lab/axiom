@@ -385,7 +385,7 @@ fn check_resources(
     }
 
     // Extract resource references from scenario steps
-    let resource_pattern = regex::Regex::new(r#"[a-z][a-z0-9_]*(?:_[a-z0-9]+)+"#).ok();
+    let resource_pattern = regex::Regex::new(r"[a-z][a-z0-9_]*(?:_[a-z0-9]+)+").ok();
 
     if let Some(pattern) = &resource_pattern {
         for line in gherkin.lines() {
@@ -437,22 +437,21 @@ fn check_resources(
     }
 
     // Check if authority actors are referenced in scenarios
-    if let Some(authority) = &gov.authority {
-        if let Some(actor) = &authority.actor {
-            let actor_referenced = gherkin.contains(actor);
-            if !actor_referenced {
-                findings.push(SimulationFinding {
-                    severity: FindingSeverity::Info,
-                    category: "resources",
-                    message: format!(
-                        "Authority actor `{actor}` is declared but not referenced in any scenario."
-                    ),
-                    suggestion: Some(
-                        "Consider adding a scenario step that involves the authorized actor."
-                            .into(),
-                    ),
-                });
-            }
+    if let Some(authority) = &gov.authority
+        && let Some(actor) = &authority.actor
+    {
+        let actor_referenced = gherkin.contains(actor);
+        if !actor_referenced {
+            findings.push(SimulationFinding {
+                severity: FindingSeverity::Info,
+                category: "resources",
+                message: format!(
+                    "Authority actor `{actor}` is declared but not referenced in any scenario."
+                ),
+                suggestion: Some(
+                    "Consider adding a scenario step that involves the authorized actor.".into(),
+                ),
+            });
         }
     }
 
