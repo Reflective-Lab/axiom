@@ -25,3 +25,9 @@ source: llm
 - Created Building/Writing Truths.md — authoring guide
 - Created Building/CLI Reference.md — cz command reference
 - Created Workflow/Daily Journey.md — development workflow
+
+## 2026-04-17
+
+- Created AGENTS.md — canonical agent entrypoint (philosophy, public surface, rules, architecture, workflows)
+- Updated MILESTONES.md — axiom-specific milestones starting with v0.5 Foundation Hardening
+- Refactored justfile — removed converge-specific tasks, focused on axiom development workflow
