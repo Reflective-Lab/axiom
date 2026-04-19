@@ -547,14 +547,14 @@ Scenario: Candidate vendors produce traceable evaluation outcomes
     #[test]
     fn local_keeps_declarative_titles() {
         let guidance = local_heading_guidance(
-            r#"Truth: Enterprise AI vendor selection is auditable and approval-gated
+            r"Truth: Enterprise AI vendor selection is auditable and approval-gated
 
 Constraint:
   Cost Limit: first-year spend stays within procurement budget
 
 Evidence:
   Requires: security_assessment
-"#,
+",
             "Enterprise AI vendor selection is auditable and approval-gated",
             "local".into(),
         );

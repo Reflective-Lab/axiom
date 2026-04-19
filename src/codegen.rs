@@ -1323,7 +1323,7 @@ mod tests {
     #[test]
     fn format_raw_string_with_quotes() {
         let result = format_raw_string(r#"{"key":"value"}"#);
-        assert_eq!(result, r###"r#"{"key":"value"}"#"###);
+        assert_eq!(result, r##"r#"{"key":"value"}"#"##);
     }
 
     #[test]

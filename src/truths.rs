@@ -354,7 +354,7 @@ mod tests {
 
     #[test]
     fn rejects_unknown_block_headers() {
-        let content = r#"Truth: Test
+        let content = r"Truth: Test
 
   Trigger:
     When: event_happens
@@ -362,7 +362,7 @@ mod tests {
   Scenario: Works
     Given precondition
     Then result
-"#;
+";
 
         let err = parse_truth_document(content).unwrap_err();
         assert!(
@@ -373,7 +373,7 @@ mod tests {
 
     #[test]
     fn rejects_unknown_fields() {
-        let content = r#"Truth: Test
+        let content = r"Truth: Test
 
   Authority:
     Owner: system
@@ -381,7 +381,7 @@ mod tests {
   Scenario: Works
     Given precondition
     Then result
-"#;
+";
 
         let err = parse_truth_document(content).unwrap_err();
         assert!(err.to_string().contains("unknown field `Owner`"));
@@ -412,7 +412,7 @@ mod tests {
 
     #[test]
     fn rejects_malformed_declaration_lines() {
-        let content = r#"Truth: Test
+        let content = r"Truth: Test
 
   Evidence:
     Requires
@@ -421,7 +421,7 @@ mod tests {
     Given precondition
     When action happens
     Then result is produced
-"#;
+";
 
         let err = parse_truth_document(content).unwrap_err();
         assert!(err.to_string().contains("invalid declaration line"));

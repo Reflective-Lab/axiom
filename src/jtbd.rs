@@ -634,14 +634,14 @@ Truth: Invoice issued after work and collected on time
 
     #[test]
     fn test_parse_plain_text_jtbd() {
-        let content = r#"
+        let content = r"
 Truth: Example
 
   # JTBD
   # As: Founder
   # Functional: Invoice customers
   # So that: Cash flows predictably
-"#;
+";
 
         let (file_jtbd, _) = extract_jtbd(content).unwrap();
         let jtbd = file_jtbd.unwrap();

@@ -927,7 +927,7 @@ mod tests {
         assert!(config.check_conventions);
         assert!(config.check_business_sense);
         assert!(config.check_compilability);
-        assert_eq!(config.min_confidence, 0.7);
+        assert!((config.min_confidence - 0.7).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -938,7 +938,7 @@ mod tests {
             ..ValidationConfig::default()
         };
         assert!(!config.check_business_sense);
-        assert_eq!(config.min_confidence, 0.9);
+        assert!((config.min_confidence - 0.9).abs() < f64::EPSILON);
         assert!(config.check_conventions);
     }
 
@@ -1287,14 +1287,14 @@ Truth: Growth Strategy Pack
 
     #[tokio::test]
     async fn validator_populates_scenario_metas() {
-        let content = r#"
+        let content = r"
 Truth: Test
   @invariant @structural @id:test_inv
   Scenario: Test invariant
     Given precondition
     When action occurs
     Then outcome is verified
-"#;
+";
 
         let validator = GherkinValidator::new(mock_valid_backend(), ValidationConfig::default());
         let result = validator.validate(content, "test.truth").await.unwrap();

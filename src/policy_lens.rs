@@ -325,7 +325,7 @@ when {
 
     #[test]
     fn extracts_requirements_from_governance() {
-        let content = r#"Truth: Governed vendor selection
+        let content = r"Truth: Governed vendor selection
 
 Intent:
   Outcome: Select a vendor.
@@ -346,7 +346,7 @@ Scenario: Vendors evaluated
   Given vendors exist
   When evaluated
   Then one is selected
-"#;
+";
         let doc = parse_truth_document(content).unwrap();
         let reqs = extract_requirements(&doc.governance);
 
@@ -384,7 +384,7 @@ when {
 
     #[test]
     fn coverage_report_with_vendor_policy() {
-        let content = r#"Truth: Governed vendor selection
+        let content = r"Truth: Governed vendor selection
 
 Intent:
   Outcome: Select a vendor.
@@ -404,7 +404,7 @@ Scenario: Vendors evaluated
   Given vendors exist
   When evaluated
   Then one is selected
-"#;
+";
         let doc = parse_truth_document(content).unwrap();
         let report = check_coverage(&doc.governance, VENDOR_POLICY);
 

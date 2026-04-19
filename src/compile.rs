@@ -559,7 +559,7 @@ mod tests {
     // =========================================================================
 
     #[test]
-    #[ignore] // Requires wasm32-unknown-unknown target installed
+    #[ignore = "requires wasm32-unknown-unknown target"]
     fn compile_minimal_invariant() {
         use crate::predicate::Predicate;
 
@@ -588,7 +588,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Requires wasm32-unknown-unknown target installed
+    #[ignore = "requires wasm32-unknown-unknown target"]
     fn compile_truth_file_end_to_end() {
         let truth_path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("examples")
@@ -614,7 +614,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Requires wasm32-unknown-unknown target installed
+    #[ignore = "requires wasm32-unknown-unknown target"]
     fn compile_invalid_rust_returns_build_error() {
         let result = WasmCompiler::compile("this is not valid rust", &CompileConfig::default());
         assert!(result.is_err());

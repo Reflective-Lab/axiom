@@ -1,6 +1,6 @@
 [package]
 name = "axiom-truth"
-version = "0.5.1"
+version = "0.6.0"
 edition = "2024"
 rust-version = "1.94.0"
 license = "MIT"
@@ -19,8 +19,8 @@ name = "cz"
 path = "src/bin/cz/main.rs"
 
 [dependencies]
-converge-provider = { path = "../converge/crates/provider" }
-converge-provider-api = { path = "../converge/crates/provider-api" }
+converge-provider = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.4.0" }
+converge-provider-api = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.4.0" }
 futures = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }

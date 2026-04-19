@@ -497,13 +497,13 @@ Scenario: Vendors produce traceable outcomes
 
     #[test]
     fn missing_intent_will_not_converge() {
-        let content = r#"Truth: No intent
+        let content = r"Truth: No intent
 
 Scenario: Something happens
   Given a precondition
   When an action occurs
   Then a result is observed
-"#;
+";
         let doc = parse_truth_document(content).unwrap();
         let report = simulate(&doc, &SimulationConfig::default());
         assert_eq!(report.verdict, Verdict::WillNotConverge);
@@ -518,7 +518,7 @@ Scenario: Something happens
 
     #[test]
     fn missing_then_steps_will_not_converge() {
-        let content = r#"Truth: No assertions
+        let content = r"Truth: No assertions
 
 Intent:
   Outcome: Do something.
@@ -532,7 +532,7 @@ Evidence:
 Scenario: Missing outcome
   Given a shortlist of vendors
   When the workflow ranks them
-"#;
+";
         let doc = parse_truth_document(content).unwrap();
         let report = simulate(&doc, &SimulationConfig::default());
         assert_eq!(report.verdict, Verdict::WillNotConverge);
@@ -546,7 +546,7 @@ Scenario: Missing outcome
 
     #[test]
     fn approval_without_evidence_is_risky() {
-        let content = r#"Truth: Approval gate without evidence
+        let content = r"Truth: Approval gate without evidence
 
 Intent:
   Outcome: Approve a vendor.
@@ -559,7 +559,7 @@ Scenario: Approval happens
   Given a vendor is shortlisted
   When the board reviews
   Then the vendor is approved
-"#;
+";
         let doc = parse_truth_document(content).unwrap();
         let report = simulate(&doc, &SimulationConfig::default());
         assert_eq!(report.verdict, Verdict::WillNotConverge);
@@ -573,7 +573,7 @@ Scenario: Approval happens
 
     #[test]
     fn simulate_spec_convenience() {
-        let content = r#"Truth: Quick test
+        let content = r"Truth: Quick test
 
 Intent:
   Outcome: Works.
@@ -588,7 +588,7 @@ Scenario: It works
   Given something exists
   When validated
   Then it passes
-"#;
+";
         let report = simulate_spec(content, &SimulationConfig::default()).unwrap();
         assert!(report.can_converge());
     }
