@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0] - 2026-04-19
+## [0.5.1] - 2026-04-19
 
 ### Added
 - AGENTS.md — canonical agent entrypoint documenting philosophy, public surface, rules, architecture, and workflows
@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standalone single-crate repo (no longer part of converge workspace)
 - Depends on Converge provider surfaces rather than the engine crate
 
-[Unreleased]: https://github.com/Reflective-Lab/axiom/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/Reflective-Lab/axiom/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/Reflective-Lab/axiom/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/Reflective-Lab/axiom/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Reflective-Lab/axiom/releases/tag/v0.4.1
