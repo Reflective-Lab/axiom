@@ -467,17 +467,11 @@ fn load_findings(dir: &Path) -> Vec<Finding> {
     let mut findings = Vec::new();
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.flatten() {
-            if entry
-                .path()
-                .extension()
-                .map(|e| e == "json")
-                .unwrap_or(false)
+            if entry.path().extension().is_some_and(|e| e == "json")
+                && let Ok(content) = fs::read_to_string(entry.path())
+                && let Ok(finding) = serde_json::from_str::<Finding>(&content)
             {
-                if let Ok(content) = fs::read_to_string(entry.path()) {
-                    if let Ok(finding) = serde_json::from_str::<Finding>(&content) {
-                        findings.push(finding);
-                    }
-                }
+                findings.push(finding);
             }
         }
     }
@@ -630,23 +624,22 @@ fn ensure_converge_dirs(root: &Path) -> CmdResult {
 
 fn find_truth_files(path: &Path, files: &mut Vec<PathBuf>) {
     if path.is_file() {
-        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-            if ext == "truths" || ext == "truth" || ext == "feature" {
-                files.push(path.to_path_buf());
-            }
+        if let Some(ext) = path.extension().and_then(|e| e.to_str())
+            && (ext == "truths" || ext == "truth" || ext == "feature")
+        {
+            files.push(path.to_path_buf());
         }
-    } else if path.is_dir() {
-        if let Ok(entries) = fs::read_dir(path) {
-            for entry in entries.flatten() {
-                let entry_path = entry.path();
-                // Skip hidden directories and common non-source directories
-                if let Some(name) = entry_path.file_name().and_then(|n| n.to_str()) {
-                    if name.starts_with('.') || name == "node_modules" || name == "target" {
-                        continue;
-                    }
-                }
-                find_truth_files(&entry_path, files);
+    } else if path.is_dir()
+        && let Ok(entries) = fs::read_dir(path)
+    {
+        for entry in entries.flatten() {
+            let entry_path = entry.path();
+            if let Some(name) = entry_path.file_name().and_then(|n| n.to_str())
+                && (name.starts_with('.') || name == "node_modules" || name == "target")
+            {
+                continue;
             }
+            find_truth_files(&entry_path, files);
         }
     }
 }
@@ -660,12 +653,7 @@ fn count_files(dir: &Path, extension: &str) -> usize {
         .map(|entries| {
             entries
                 .flatten()
-                .filter(|e| {
-                    e.path()
-                        .extension()
-                        .map(|ext| ext == extension)
-                        .unwrap_or(false)
-                })
+                .filter(|e| e.path().extension().is_some_and(|ext| ext == extension))
                 .count()
         })
         .unwrap_or(0)

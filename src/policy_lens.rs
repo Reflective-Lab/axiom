@@ -125,7 +125,7 @@ pub fn extract_requirements(governance: &TruthGovernance) -> PolicyRequirements 
 
     // Constraint → spending limits + resource type hints
     if let Some(constraint) = &governance.constraint {
-        reqs.spending_limits = constraint.cost_limit.clone();
+        reqs.spending_limits.clone_from(&constraint.cost_limit);
         if !constraint.cost_limit.is_empty() || !constraint.budget.is_empty() {
             reqs.resource_type = Some("spend".into());
         }
@@ -133,7 +133,7 @@ pub fn extract_requirements(governance: &TruthGovernance) -> PolicyRequirements 
 
     // Exception → escalation
     if let Some(exception) = &governance.exception {
-        reqs.escalation_targets = exception.escalates_to.clone();
+        reqs.escalation_targets.clone_from(&exception.escalates_to);
     }
 
     reqs

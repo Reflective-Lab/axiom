@@ -157,12 +157,12 @@ fn has_cargo_workspace(root: &Path) -> bool {
     if let Ok(entries) = fs::read_dir(root) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.is_dir() {
-                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    if name.starts_with("converge-") && path.join("Cargo.toml").exists() {
-                        return true;
-                    }
-                }
+            if path.is_dir()
+                && let Some(name) = path.file_name().and_then(|n| n.to_str())
+                && name.starts_with("converge-")
+                && path.join("Cargo.toml").exists()
+            {
+                return true;
             }
         }
     }

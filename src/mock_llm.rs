@@ -3,7 +3,7 @@
 
 //! Minimal local LLM mocks used by axiom-truth tests and CLI fallback paths.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::future::Ready;
 use std::sync::Mutex;
 
@@ -56,7 +56,7 @@ impl ChatBackend for StaticChatBackend {
                 usage: None,
                 model: None,
                 finish_reason: None,
-                metadata: Default::default(),
+                metadata: HashMap::default(),
             })
         })();
         std::future::ready(result)

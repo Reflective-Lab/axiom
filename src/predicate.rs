@@ -166,13 +166,13 @@ pub fn parse_steps(
                 // (e.g., "Converged" in 'engine halts with reason "Converged"')
             }
             "Then" => {
-                let pred = parse_then_step(text, table, &current_key)?;
+                let pred = parse_then_step(text, table, current_key.as_ref())?;
                 predicates.push(pred);
             }
             "And" => {
                 // "And" continues the previous step type's context
                 if text.contains("must include") || text.contains("must contain") {
-                    let pred = parse_then_step(text, table, &current_key)?;
+                    let pred = parse_then_step(text, table, current_key.as_ref())?;
                     predicates.push(pred);
                 }
             }
@@ -187,14 +187,14 @@ pub fn parse_steps(
 fn parse_then_step(
     text: &str,
     table: &[Vec<String>],
-    current_key: &Option<String>,
+    current_key: Option<&String>,
 ) -> Result<Predicate, PredicateError> {
     // Pattern: "contains at least N facts"
     let count_at_least = Regex::new(r"(?:contains?|at least)\s+(\d+)\s+facts?").unwrap();
     if let Some(caps) = count_at_least.captures(text) {
         let min: usize = caps[1].parse().unwrap_or(1);
         let key = extract_context_key(text)
-            .or_else(|| current_key.clone())
+            .or_else(|| current_key.cloned())
             .unwrap_or_default();
         if !key.is_empty() {
             validate_key(&key)?;
@@ -207,7 +207,7 @@ fn parse_then_step(
     if let Some(caps) = count_at_most.captures(text) {
         let max: usize = caps[1].parse().unwrap_or(1);
         let key = extract_context_key(text)
-            .or_else(|| current_key.clone())
+            .or_else(|| current_key.cloned())
             .unwrap_or_default();
         if !key.is_empty() {
             validate_key(&key)?;
@@ -217,7 +217,7 @@ fn parse_then_step(
 
     // Pattern: "must not contain any forbidden term" (with table)
     if text.contains("must not contain") {
-        let key = current_key.clone().unwrap_or_default();
+        let key = current_key.cloned().unwrap_or_default();
         let forbidden = parse_forbidden_terms(table);
         return Ok(Predicate::ContentMustNotContain { key, forbidden });
     }
@@ -237,7 +237,7 @@ fn parse_then_step(
     // Pattern: "must include" with table of fields
     if (text.contains("must include") || text.contains("must contain a field")) && !table.is_empty()
     {
-        let key = current_key.clone().unwrap_or_default();
+        let key = current_key.cloned().unwrap_or_default();
         let fields = parse_field_requirements(table);
         return Ok(Predicate::RequiredFields { key, fields });
     }
@@ -245,7 +245,7 @@ fn parse_then_step(
     // Pattern: "must contain a field X with a non-empty value"
     let field_pattern = Regex::new(r#"must contain (?:a )?field\s+"(\w+)""#).unwrap();
     if let Some(caps) = field_pattern.captures(text) {
-        let key = current_key.clone().unwrap_or_default();
+        let key = current_key.cloned().unwrap_or_default();
         return Ok(Predicate::ContentMustContain {
             key,
             required_field: caps[1].to_string(),

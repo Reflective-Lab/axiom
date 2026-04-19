@@ -38,7 +38,9 @@
 //!                                            └── Convention check
 //! ```
 
-use converge_provider_api::{ChatMessage, ChatRequest, ChatResponse, ChatRole, DynChatBackend};
+use converge_provider_api::{
+    ChatMessage, ChatRequest, ChatResponse, ChatRole, DynChatBackend, ResponseFormat,
+};
 use regex::Regex;
 use std::path::Path;
 use std::sync::Arc;
@@ -413,7 +415,7 @@ impl GherkinValidator {
         }
 
         // Check overall feature structure
-        let feature_issues = self.validate_feature(&feature, &document.governance)?;
+        let feature_issues = self.validate_feature(&feature, &document.governance);
         issues.extend(feature_issues);
 
         // Extract structured metadata from scenario tags
@@ -505,11 +507,12 @@ impl GherkinValidator {
     }
 
     /// Validates the overall feature structure.
+    #[allow(clippy::unused_self)]
     fn validate_feature(
         &self,
         feature: &gherkin::Feature,
         governance: &TruthGovernance,
-    ) -> Result<Vec<ValidationIssue>, ValidationError> {
+    ) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
 
         // Check that the feature has a description
@@ -569,7 +572,7 @@ impl GherkinValidator {
             });
         }
 
-        Ok(issues)
+        issues
     }
 
     /// Uses LLM to check if a scenario makes business sense.
@@ -697,6 +700,7 @@ Respond with ONLY one of:
     }
 
     /// Checks scenario against Converge Gherkin conventions (no LLM needed).
+    #[allow(clippy::unused_self)]
     fn check_conventions(&self, scenario: &gherkin::Scenario) -> Vec<ValidationIssue> {
         let mut issues = Vec::new();
 
@@ -846,7 +850,7 @@ async fn chat(
         }],
         system: Some(system.to_string()),
         tools: Vec::new(),
-        response_format: Default::default(),
+        response_format: ResponseFormat::default(),
         max_tokens,
         temperature,
         stop_sequences: Vec::new(),

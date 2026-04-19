@@ -381,7 +381,7 @@ fn check_resources(
 
     // Collect declared evidence resources
     if let Some(evidence) = &gov.evidence {
-        summary.declared_evidence = evidence.requires.clone();
+        summary.declared_evidence.clone_from(&evidence.requires);
     }
 
     // Extract resource references from scenario steps

@@ -45,14 +45,13 @@ pub async fn run(args: DoctorArgs) -> CmdResult {
 }
 
 async fn gather_checks(args: &DoctorArgs) -> Vec<Check> {
-    let mut checks = Vec::new();
-
-    // Global tools
-    checks.push(check_tool("rustc", &["--version"], "https://rustup.rs"));
-    checks.push(check_tool("cargo", &["--version"], "https://rustup.rs"));
-    checks.push(check_tool("just", &["--version"], "cargo install just"));
-    checks.push(check_tool("docker", &["--version"], "https://docker.com"));
-    checks.push(check_tool("git", &["--version"], "https://git-scm.com"));
+    let mut checks = vec![
+        check_tool("rustc", &["--version"], "https://rustup.rs"),
+        check_tool("cargo", &["--version"], "https://rustup.rs"),
+        check_tool("just", &["--version"], "cargo install just"),
+        check_tool("docker", &["--version"], "https://docker.com"),
+        check_tool("git", &["--version"], "https://git-scm.com"),
+    ];
 
     // Language-specific (check if component exists before requiring)
     if args.component.is_none() || args.component.as_deref() == Some("www") {
