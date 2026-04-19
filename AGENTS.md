@@ -23,7 +23,7 @@ Specifications must be validated, simulated, and compiled BEFORE they reach Conv
 | Layer | Technology |
 |---|---|
 | Truth validation & codegen | Rust (Edition 2024, rust-version 1.94) |
-| Converge contract | `converge-core`, `converge-provider`, `converge-pack` (v3.2.1) |
+| Converge contract | `converge-provider-api`, `converge-provider` |
 | Task runner | just |
 | CLI tool | `cz` (workspace orchestrator) |
 
@@ -55,9 +55,9 @@ These are not suggestions.
 - No feature flags. No backwards-compat shims. Converge owns versioning.
 - `.truths` files are immutable once committed; new versions are new files.
 - `just lint` clean before considering work done.
-- Use Converge types directly (`converge-pack`, `converge-core`, `converge-provider`). No wrapper layers.
+- Use the narrow Converge capability contract directly (`converge-provider-api`, `converge-provider`). No wrapper layers.
 - Before validating a spec type, check `kb/Concepts/Truth Documents.md` — the schema is authoritative.
-- Do not depend on Converge internal crates (`converge-runtime`, `converge-analytics`, etc).
+- Do not depend on Converge internal crates (`converge-core`, `converge-runtime`, `converge-analytics`, etc).
 - Simulation results must be deterministic and reproducible.
 
 ## Architecture

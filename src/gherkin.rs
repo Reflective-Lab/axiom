@@ -38,7 +38,7 @@
 //!                                            └── Convention check
 //! ```
 
-use converge_core::traits::{ChatMessage, ChatRequest, ChatResponse, ChatRole, DynChatBackend};
+use converge_provider_api::{ChatMessage, ChatRequest, ChatResponse, ChatRole, DynChatBackend};
 use regex::Regex;
 use std::path::Path;
 use std::sync::Arc;
@@ -179,7 +179,7 @@ pub enum ScenarioKind {
 
 /// Invariant class parsed from tags.
 ///
-/// Maps to `converge_core::InvariantClass`.
+/// Maps to Converge runtime invariant classes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InvariantClassTag {
     /// Checked after every merge. Violation = immediate failure.

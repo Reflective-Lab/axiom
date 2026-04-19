@@ -7,7 +7,7 @@ use std::collections::VecDeque;
 use std::future::Ready;
 use std::sync::Mutex;
 
-use converge_core::traits::{ChatBackend, ChatRequest, ChatResponse, LlmError};
+use converge_provider_api::{ChatBackend, ChatRequest, ChatResponse, LlmError};
 
 #[derive(Debug)]
 pub struct StaticChatBackend {

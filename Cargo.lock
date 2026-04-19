@@ -101,14 +101,14 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
 name = "axiom-truth"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "async-trait",
  "chrono",
  "clap",
  "colored",
- "converge-core",
  "converge-provider",
+ "converge-provider-api",
  "dotenv",
  "futures",
  "gherkin",
@@ -261,11 +261,11 @@ dependencies = [
 
 [[package]]
 name = "converge-core"
-version = "3.3.0"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.3.0#fafa97d2687cb7bfbb1ae4858438b515648b26a3"
+version = "3.4.0"
 dependencies = [
  "async-trait",
  "converge-pack",
+ "converge-provider-api",
  "hex",
  "serde",
  "serde_json",
@@ -277,8 +277,7 @@ dependencies = [
 
 [[package]]
 name = "converge-pack"
-version = "3.3.0"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.3.0#fafa97d2687cb7bfbb1ae4858438b515648b26a3"
+version = "3.4.0"
 dependencies = [
  "async-trait",
  "serde",
@@ -288,8 +287,7 @@ dependencies = [
 
 [[package]]
 name = "converge-provider"
-version = "3.3.0"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.3.0#fafa97d2687cb7bfbb1ae4858438b515648b26a3"
+version = "3.4.0"
 dependencies = [
  "base64",
  "converge-core",
@@ -311,10 +309,10 @@ dependencies = [
 
 [[package]]
 name = "converge-provider-api"
-version = "3.3.0"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.3.0#fafa97d2687cb7bfbb1ae4858438b515648b26a3"
+version = "3.4.0"
 dependencies = [
  "serde",
+ "serde_json",
  "thiserror 2.0.18",
 ]
 

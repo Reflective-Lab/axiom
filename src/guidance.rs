@@ -9,8 +9,8 @@
 
 use std::sync::Arc;
 
-use converge_core::traits::{ChatMessage, ChatRequest, ChatRole, DynChatBackend, ResponseFormat};
-use converge_provider::{ChatBackendSelectionConfig, select_chat_backend};
+use converge_provider::{ChatBackendSelectionConfig, select_healthy_chat_backend};
+use converge_provider_api::{ChatMessage, ChatRequest, ChatRole, DynChatBackend, ResponseFormat};
 use serde::{Deserialize, Serialize};
 
 use crate::truths::parse_truth_document;
@@ -100,7 +100,7 @@ async fn request_live_guidance(
     config: &GuidanceConfig,
 ) -> Result<GuidanceResponse, String> {
     let ctx = draft_context(spec, current_title);
-    let selected = select_backend(config)?;
+    let selected = select_backend(config).await?;
     let prompt = build_prompt(current_title, &ctx, spec)?;
 
     let response = selected
@@ -153,13 +153,14 @@ struct SelectedBackend {
     model: String,
 }
 
-fn select_backend(config: &GuidanceConfig) -> Result<SelectedBackend, String> {
+async fn select_backend(config: &GuidanceConfig) -> Result<SelectedBackend, String> {
     let mut selection = ChatBackendSelectionConfig::from_env()
         .map_err(|error| format!("ChatBackend selection configuration failed: {error}"))?;
     if let Some(provider) = &config.provider_override {
         selection = selection.with_provider_override(provider.clone());
     }
-    let selected = select_chat_backend(&selection)
+    let selected = select_healthy_chat_backend(&selection)
+        .await
         .map_err(|error| format!("No live chat backend is available: {error}"))?;
     let provider = selected.provider().to_string();
     let model = selected.model().to_string();

@@ -5,7 +5,7 @@ source: mixed
 
 # Axiom — The Truth Layer
 
-Axiom validates, simulates, and compiles business specifications into enforceable WASM invariants for [[Architecture/Converge Contract|Converge]]. Where Converge enforces correctness at runtime, Axiom ensures specifications are correct *before* they reach the engine.
+Axiom validates, simulates, and compiles business specifications into enforceable WASM invariants for [[Architecture/Converge Contract|Converge]]. It sits beneath Helm as the truth-definition surface and above Organism and Converge in the authoring and validation story. Where Converge enforces correctness at runtime, Axiom ensures specifications are correct *before* they reach the engine.
 
 **Start here:**
 - [[Philosophy/Why Axiom]] — what problem this solves

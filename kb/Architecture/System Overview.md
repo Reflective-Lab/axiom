@@ -39,8 +39,8 @@ axiom-truth
 
 ## Dependencies
 
-- **converge-core** 3.2.1 — `DynChatBackend`, `ChatRequest`/`ChatResponse`
-- **converge-provider** 3.2.1 — LLM provider implementations
+- **converge-provider-api** — chat capability contracts and selection vocabulary
+- **converge-provider** — LLM provider implementations and selection helpers
 - **gherkin** 0.14 — Gherkin parser
 - **clap** 4.5 — CLI framework
 - **tokio** — async runtime

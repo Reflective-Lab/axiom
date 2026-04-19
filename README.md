@@ -62,6 +62,15 @@ let validator = GherkinValidator::new(backend, ValidationConfig::default());
 let result = validator.validate_file("specs/money.truths").await?;
 ```
 
+## Converge Boundary
+
+Axiom uses the narrow Converge provider surface for live validation help:
+
+- `converge-provider-api` for chat contracts and selection vocabulary
+- `converge-provider` for concrete backend implementations and selection helpers
+
+Axiom does not depend on the Converge engine crate as part of its public integration contract.
+
 ## Architecture
 
 See [architecture/](architecture/) for ADRs and API surface documentation.

@@ -21,9 +21,8 @@ use axiom_truth::{
 };
 use chrono::Utc;
 use colored::Colorize;
-use converge_core::model_selection::SelectionCriteria;
-use converge_core::traits::DynChatBackend;
-use converge_provider::{ChatBackendSelectionConfig, select_chat_backend};
+use converge_provider::{ChatBackendSelectionConfig, select_healthy_chat_backend};
+use converge_provider_api::{DynChatBackend, SelectionCriteria};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -127,7 +126,7 @@ pub async fn validate(args: ValidateArgs) -> CmdResult {
     println!();
 
     // Create the validator
-    let (provider, config) = create_validator_config(&args)?;
+    let (provider, config) = create_validator_config(&args).await?;
     let validator = GherkinValidator::new(provider, config);
 
     // Validate each file
@@ -250,7 +249,7 @@ pub async fn validate(args: ValidateArgs) -> CmdResult {
     }
 }
 
-fn create_validator_config(
+async fn create_validator_config(
     args: &ValidateArgs,
 ) -> Result<(Arc<dyn DynChatBackend>, ValidationConfig), CmdError> {
     // Determine what checks to run
@@ -298,7 +297,8 @@ fn create_validator_config(
             selection_config.criteria = SelectionCriteria::analysis();
         }
 
-        let selected = select_chat_backend(&selection_config)
+        let selected = select_healthy_chat_backend(&selection_config)
+            .await
             .map_err(|e| CmdError::new(format!("Failed to select LLM backend: {e}")))?;
         return Ok((selected.backend, config));
     }
@@ -680,23 +680,18 @@ fn get_current_user() -> String {
 #[cfg(test)]
 mod tests {
     use converge_provider::ChatBackendSelectionConfig;
+    use converge_provider_api::SelectionCriteria;
 
     #[test]
     fn selection_config_defaults_to_interactive_profile() {
         let config = ChatBackendSelectionConfig::default();
-        assert_eq!(
-            config.criteria,
-            converge_core::model_selection::SelectionCriteria::interactive()
-        );
+        assert_eq!(config.criteria, SelectionCriteria::interactive());
     }
 
     #[test]
     fn analysis_profile_is_available_for_governance() {
-        let config = ChatBackendSelectionConfig::default()
-            .with_criteria(converge_core::model_selection::SelectionCriteria::analysis());
-        assert_eq!(
-            config.criteria,
-            converge_core::model_selection::SelectionCriteria::analysis()
-        );
+        let config =
+            ChatBackendSelectionConfig::default().with_criteria(SelectionCriteria::analysis());
+        assert_eq!(config.criteria, SelectionCriteria::analysis());
     }
 }
