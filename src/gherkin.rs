@@ -1344,6 +1344,449 @@ Truth: Test
         assert!(result.is_err());
     }
 
+    // =========================================================================
+    // GherkinValidator — async validation with mocked backend
+    // =========================================================================
+
+    #[tokio::test]
+    async fn valid_spec_produces_no_errors() {
+        let content = r"
+Truth: Reliable Invoicing
+  Ensure invoices are generated promptly.
+
+  Scenario: Invoice generated on delivery
+    Given work is marked as delivered
+    When the billing cycle runs
+    Then an invoice must be created
+";
+
+        let validator = GherkinValidator::new(mock_valid_backend(), ValidationConfig::default());
+        let result = validator.validate(content, "invoice.truths").await.unwrap();
+
+        assert!(result.is_valid);
+        assert!(!result.has_errors());
+        assert_eq!(result.scenario_count, 1);
+    }
+
+    #[tokio::test]
+    async fn conventions_only_mode_flags_missing_then() {
+        let content = r"
+Feature: Incomplete
+  Scenario: No outcome defined
+    Given a precondition
+    When an action occurs
+";
+        let config = ValidationConfig {
+            check_business_sense: false,
+            check_compilability: false,
+            check_conventions: true,
+            min_confidence: 0.7,
+        };
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::constant("VALID"));
+        let validator = GherkinValidator::new(backend, config);
+        let result = validator
+            .validate(content, "no_then.feature")
+            .await
+            .unwrap();
+
+        assert!(!result.is_valid);
+        assert!(result.has_errors());
+        let then_issue = result
+            .issues
+            .iter()
+            .find(|i| i.message.contains("Then"))
+            .unwrap();
+        assert_eq!(then_issue.severity, Severity::Error);
+        assert_eq!(then_issue.category, IssueCategory::Convention);
+    }
+
+    #[tokio::test]
+    async fn llm_unclear_response_produces_warning() {
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::queued([
+            "UNCLEAR: What does 'delivered' mean in this context?",
+            "COMPILABLE: Structural",
+        ]));
+
+        let content = r"
+Feature: Ambiguous
+  Scenario: Vague delivery check
+    Given work is delivered
+    When system runs
+    Then it should be invoiced
+";
+        let validator = GherkinValidator::new(backend, ValidationConfig::default());
+        let result = validator
+            .validate(content, "ambiguous.feature")
+            .await
+            .unwrap();
+
+        let unclear_issue = result
+            .issues
+            .iter()
+            .find(|i| i.category == IssueCategory::BusinessSense)
+            .unwrap();
+        assert_eq!(unclear_issue.severity, Severity::Warning);
+        assert!(unclear_issue.message.contains("Ambiguous"));
+        assert!(unclear_issue.suggestion.is_some());
+    }
+
+    #[tokio::test]
+    async fn llm_not_compilable_response_produces_error() {
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::queued([
+            "VALID",
+            "NOT_COMPILABLE: Requires external API call at runtime",
+        ]));
+
+        let content = r"
+Feature: External Check
+  Scenario: Requires network
+    Given an external API is available
+    When the system checks status
+    Then the response must be 200
+";
+        let validator = GherkinValidator::new(backend, ValidationConfig::default());
+        let result = validator
+            .validate(content, "external.feature")
+            .await
+            .unwrap();
+
+        let compile_issue = result
+            .issues
+            .iter()
+            .find(|i| i.category == IssueCategory::Compilability)
+            .unwrap();
+        assert_eq!(compile_issue.severity, Severity::Error);
+        assert!(compile_issue.message.contains("Cannot compile"));
+    }
+
+    #[tokio::test]
+    async fn llm_needs_refactor_response_produces_warning() {
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::queued([
+            "VALID",
+            "NEEDS_REFACTOR: Split into two scenarios for testability",
+        ]));
+
+        let content = r"
+Feature: Refactor Needed
+  Scenario: Complex check
+    Given multiple preconditions hold
+    When the system converges
+    Then all outcomes must be satisfied
+";
+        let validator = GherkinValidator::new(backend, ValidationConfig::default());
+        let result = validator
+            .validate(content, "refactor.feature")
+            .await
+            .unwrap();
+
+        let refactor_issue = result
+            .issues
+            .iter()
+            .find(|i| i.category == IssueCategory::Compilability)
+            .unwrap();
+        assert_eq!(refactor_issue.severity, Severity::Warning);
+        assert!(refactor_issue.suggestion.is_some());
+    }
+
+    #[tokio::test]
+    async fn empty_feature_produces_error() {
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::constant("VALID"));
+        let content = r"
+Feature: Empty
+";
+        let config = ValidationConfig {
+            check_business_sense: false,
+            check_compilability: false,
+            check_conventions: true,
+            min_confidence: 0.7,
+        };
+        let validator = GherkinValidator::new(backend, config);
+        let result = validator.validate(content, "empty.feature").await.unwrap();
+
+        assert!(!result.is_valid);
+        let empty_issue = result
+            .issues
+            .iter()
+            .find(|i| i.message.contains("no scenarios"))
+            .unwrap();
+        assert_eq!(empty_issue.severity, Severity::Error);
+    }
+
+    #[tokio::test]
+    async fn missing_description_produces_warning() {
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::queued([
+            "VALID",
+            "COMPILABLE: Structural",
+        ]));
+        let content = r"
+Feature: No Description
+  Scenario: Basic
+    Given X
+    When Y
+    Then Z
+";
+        let validator = GherkinValidator::new(backend, ValidationConfig::default());
+        let result = validator.validate(content, "nodesc.feature").await.unwrap();
+
+        assert!(result.has_warnings());
+        assert!(
+            result
+                .issues
+                .iter()
+                .any(|i| i.message.contains("lacks a description"))
+        );
+    }
+
+    #[tokio::test]
+    async fn approval_without_authority_produces_warning() {
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::queued([
+            "VALID",
+            "COMPILABLE: Acceptance",
+        ]));
+        let content = r"
+Truth: Release Process
+  Manages release approvals.
+
+  Scenario: Approval required
+    Given a release candidate exists
+    When approval is requested
+    Then deployment must be approved
+";
+        let validator = GherkinValidator::new(backend, ValidationConfig::default());
+        let result = validator.validate(content, "release.truths").await.unwrap();
+
+        assert!(
+            result
+                .issues
+                .iter()
+                .any(|i| i.message.contains("Authority block"))
+        );
+    }
+
+    #[tokio::test]
+    async fn missing_intent_produces_warning() {
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::queued([
+            "VALID",
+            "COMPILABLE: Structural",
+        ]));
+        let content = r"
+Truth: No Intent
+  Description only.
+
+  Scenario: Something happens
+    Given precondition
+    When action
+    Then outcome
+";
+        let validator = GherkinValidator::new(backend, ValidationConfig::default());
+        let result = validator
+            .validate(content, "nointent.truths")
+            .await
+            .unwrap();
+
+        assert!(
+            result
+                .issues
+                .iter()
+                .any(|i| i.message.contains("Intent block"))
+        );
+    }
+
+    #[tokio::test]
+    async fn validate_file_nonexistent_returns_io_error() {
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::constant("VALID"));
+        let validator = GherkinValidator::new(backend, ValidationConfig::default());
+        let result = validator.validate_file("/nonexistent/path.truths").await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, ValidationError::IoError(_)));
+    }
+
+    #[tokio::test]
+    async fn parse_error_on_invalid_gherkin() {
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::constant("VALID"));
+        let validator = GherkinValidator::new(backend, ValidationConfig::default());
+        let result = validator
+            .validate("not valid gherkin content", "bad.feature")
+            .await;
+
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            ValidationError::ParseError(_)
+        ));
+    }
+
+    // =========================================================================
+    // SpecGenerator tests
+    // =========================================================================
+
+    #[tokio::test]
+    async fn generate_from_text_returns_trimmed_content() {
+        let expected = "Truth: Payment\n  Scenario: Pay on delivery\n    Given work done\n    Then invoice sent";
+        let backend: Arc<dyn DynChatBackend> =
+            Arc::new(StaticChatBackend::constant(format!("  {expected}  \n")));
+        let generator = SpecGenerator::new(backend);
+        let result = generator
+            .generate_from_text("We need to pay for delivered work")
+            .await
+            .unwrap();
+
+        assert_eq!(result, expected);
+    }
+
+    #[tokio::test]
+    async fn generate_from_empty_text_still_calls_backend() {
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::constant(
+            "Truth: Empty\n  Scenario: Noop\n    Then nothing",
+        ));
+        let generator = SpecGenerator::new(backend);
+        let result = generator.generate_from_text("").await.unwrap();
+
+        assert!(result.starts_with("Truth:"));
+    }
+
+    // =========================================================================
+    // SpecValidation helper methods
+    // =========================================================================
+
+    #[test]
+    fn spec_validation_summary_valid() {
+        let v = SpecValidation {
+            is_valid: true,
+            file_path: "test.truths".to_string(),
+            scenario_count: 3,
+            issues: vec![ValidationIssue {
+                location: "Feature".to_string(),
+                category: IssueCategory::Convention,
+                severity: Severity::Warning,
+                message: "some warning".to_string(),
+                suggestion: None,
+            }],
+            confidence: 0.9,
+            scenario_metas: vec![],
+            governance: TruthGovernance::default(),
+        };
+
+        let summary = v.summary();
+        assert!(summary.contains("3 scenarios"));
+        assert!(summary.contains("1 warnings"));
+        assert!(summary.contains("test.truths"));
+    }
+
+    #[test]
+    fn spec_validation_summary_invalid() {
+        let v = SpecValidation {
+            is_valid: false,
+            file_path: "bad.feature".to_string(),
+            scenario_count: 1,
+            issues: vec![
+                ValidationIssue {
+                    location: "Scenario".to_string(),
+                    category: IssueCategory::Syntax,
+                    severity: Severity::Error,
+                    message: "broken".to_string(),
+                    suggestion: None,
+                },
+                ValidationIssue {
+                    location: "Feature".to_string(),
+                    category: IssueCategory::Convention,
+                    severity: Severity::Warning,
+                    message: "meh".to_string(),
+                    suggestion: None,
+                },
+            ],
+            confidence: 0.5,
+            scenario_metas: vec![],
+            governance: TruthGovernance::default(),
+        };
+
+        let summary = v.summary();
+        assert!(summary.contains("1 errors"));
+        assert!(summary.contains("1 warnings"));
+        assert!(summary.contains("bad.feature"));
+    }
+
+    // =========================================================================
+    // ValidationError Display
+    // =========================================================================
+
+    #[test]
+    fn validation_error_display() {
+        let parse = ValidationError::ParseError("bad syntax".into());
+        assert_eq!(format!("{parse}"), "Parse error: bad syntax");
+
+        let io = ValidationError::IoError("not found".into());
+        assert_eq!(format!("{io}"), "IO error: not found");
+
+        let llm = ValidationError::LlmError("timeout".into());
+        assert_eq!(format!("{llm}"), "LLM error: timeout");
+    }
+
+    // =========================================================================
+    // GherkinValidator Debug
+    // =========================================================================
+
+    #[test]
+    fn validator_debug_format() {
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::constant("VALID"));
+        let validator = GherkinValidator::new(backend, ValidationConfig::default());
+        let debug = format!("{validator:?}");
+        assert!(debug.contains("GherkinValidator"));
+        assert!(debug.contains("config"));
+    }
+
+    #[test]
+    fn spec_generator_debug_format() {
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::constant(""));
+        let generator = SpecGenerator::new(backend);
+        let debug = format!("{generator:?}");
+        assert!(debug.contains("SpecGenerator"));
+    }
+
+    // =========================================================================
+    // Convention checks — maybe language
+    // =========================================================================
+
+    #[tokio::test]
+    async fn maybe_language_flagged() {
+        let content = r"
+Feature: Uncertain
+  Scenario: Perhaps works
+    Given something
+    When maybe it runs
+    Then it should work
+";
+        let config = ValidationConfig {
+            check_business_sense: false,
+            check_compilability: false,
+            check_conventions: true,
+            min_confidence: 0.7,
+        };
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::constant("VALID"));
+        let validator = GherkinValidator::new(backend, config);
+        let result = validator.validate(content, "maybe.feature").await.unwrap();
+
+        assert!(result.issues.iter().any(|i| i.message.contains("maybe")));
+    }
+
+    #[tokio::test]
+    async fn scenario_without_name_flagged() {
+        let content = "Feature: Test\n  Scenario:\n    Given X\n    Then Y\n";
+        let config = ValidationConfig {
+            check_business_sense: false,
+            check_compilability: false,
+            check_conventions: true,
+            min_confidence: 0.7,
+        };
+        let backend: Arc<dyn DynChatBackend> = Arc::new(StaticChatBackend::constant("VALID"));
+        let validator = GherkinValidator::new(backend, config);
+        let result = validator.validate(content, "noname.feature").await.unwrap();
+
+        assert!(result.issues.iter().any(|i| i.message.contains("no name")));
+    }
+
     mod property_tests {
         use super::*;
         use proptest::prelude::*;
