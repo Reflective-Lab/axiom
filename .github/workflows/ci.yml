@@ -9,76 +9,52 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_VERSION: "1.94.0"
-  # Crates that need protoc or external system deps
-  EXCLUDES: >-
-    --exclude converge-runtime
-    --exclude converge-remote
-    --exclude example-custom-agent
-    --exclude example-meeting-scheduler
-    --exclude example-custom-provider
-    --exclude example-local-inference
-    --exclude example-expense-approval
-    --exclude example-vendor-selection
-    --exclude example-loan-application
-    --exclude example-hello-convergence
 
 jobs:
   check:
     name: Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Check workspace
-        run: cargo check --workspace ${{ env.EXCLUDES }}
+        run: cargo check --workspace
 
   test:
     name: Test
     runs-on: ubuntu-latest
     needs: check
     steps:
-      - uses: actions/checkout@v4
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --workspace ${{ env.EXCLUDES }}
+        run: cargo test --workspace
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
     needs: check
     steps:
-      - uses: actions/checkout@v4
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - name: Clippy
-        run: cargo clippy --workspace ${{ env.EXCLUDES }}
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
   format:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}

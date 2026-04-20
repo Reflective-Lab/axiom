@@ -1,5 +1,13 @@
 # Axiom
 
+[![CI](https://github.com/Reflective-Lab/axiom/actions/workflows/ci.yml/badge.svg)](https://github.com/Reflective-Lab/axiom/actions/workflows/ci.yml)
+[![Security](https://github.com/Reflective-Lab/axiom/actions/workflows/security.yml/badge.svg)](https://github.com/Reflective-Lab/axiom/actions/workflows/security.yml)
+[![codecov](https://codecov.io/gh/Reflective-Lab/axiom/graph/badge.svg)](https://codecov.io/gh/Reflective-Lab/axiom)
+[![dependency status](https://deps.rs/repo/github/Reflective-Lab/axiom/status.svg)](https://deps.rs/repo/github/Reflective-Lab/axiom)
+![MSRV](https://img.shields.io/badge/MSRV-1.94.0-blue)
+<img alt="gitleaks badge" src="https://img.shields.io/badge/protected%20by-gitleaks-blue">
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **The truth layer** — validation, simulation, guidance, and policy lens for [Converge](https://github.com/Reflective-Lab/converge).
 
 Axiom validates business specifications written in Gherkin-style `.truths` files using LLMs, generates Rust invariant code, and provides policy analysis tooling.
