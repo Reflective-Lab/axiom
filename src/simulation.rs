@@ -461,11 +461,13 @@ fn check_resources(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::truths::parse_truth_document;
+    use crate::truths::{
+        AuthorityBlock, ConstraintBlock, EvidenceBlock, ExceptionBlock, IntentBlock,
+        parse_truth_document,
+    };
 
-    #[test]
-    fn complete_spec_is_ready() {
-        let content = r#"Truth: Vendor selection is governed
+    fn full_spec() -> &'static str {
+        r#"Truth: Vendor selection is governed
 
 Intent:
   Outcome: Select a vendor with auditable rationale.
@@ -488,12 +490,147 @@ Scenario: Vendors produce traceable outcomes
   And each vendor has a security_assessment and pricing_analysis
   When the governance_review_board evaluates each vendor
   Then each vendor should produce a compliance screening result
-"#;
-        let doc = parse_truth_document(content).unwrap();
+"#
+    }
+
+    fn minimal_valid_spec() -> &'static str {
+        r"Truth: Minimal
+
+Intent:
+  Outcome: Works.
+
+Authority:
+  Actor: admin
+
+Evidence:
+  Requires: proof
+
+Scenario: It works
+  Given something exists
+  When validated
+  Then it passes
+"
+    }
+
+    // ─── Verdict display ───
+
+    #[test]
+    fn verdict_display() {
+        assert_eq!(Verdict::Ready.to_string(), "ready");
+        assert_eq!(Verdict::Risky.to_string(), "risky");
+        assert_eq!(Verdict::WillNotConverge.to_string(), "will-not-converge");
+    }
+
+    #[test]
+    fn finding_severity_display() {
+        assert_eq!(FindingSeverity::Info.to_string(), "info");
+        assert_eq!(FindingSeverity::Warning.to_string(), "warning");
+        assert_eq!(FindingSeverity::Error.to_string(), "error");
+    }
+
+    // ─── SimulationReport::can_converge ───
+
+    #[test]
+    fn can_converge_ready() {
+        let report = SimulationReport {
+            verdict: Verdict::Ready,
+            findings: vec![],
+            governance_coverage: GovernanceCoverage::default(),
+            scenario_count: 1,
+            resource_summary: ResourceSummary::default(),
+        };
+        assert!(report.can_converge());
+    }
+
+    #[test]
+    fn can_converge_risky() {
+        let report = SimulationReport {
+            verdict: Verdict::Risky,
+            findings: vec![],
+            governance_coverage: GovernanceCoverage::default(),
+            scenario_count: 1,
+            resource_summary: ResourceSummary::default(),
+        };
+        assert!(report.can_converge());
+    }
+
+    #[test]
+    fn cannot_converge_will_not() {
+        let report = SimulationReport {
+            verdict: Verdict::WillNotConverge,
+            findings: vec![],
+            governance_coverage: GovernanceCoverage::default(),
+            scenario_count: 0,
+            resource_summary: ResourceSummary::default(),
+        };
+        assert!(!report.can_converge());
+    }
+
+    // ─── SimulationFinding construction ───
+
+    #[test]
+    fn finding_with_suggestion() {
+        let f = SimulationFinding {
+            severity: FindingSeverity::Warning,
+            category: "test",
+            message: "something is off".into(),
+            suggestion: Some("fix it".into()),
+        };
+        assert_eq!(f.severity, FindingSeverity::Warning);
+        assert_eq!(f.category, "test");
+        assert!(f.suggestion.is_some());
+    }
+
+    #[test]
+    fn finding_without_suggestion() {
+        let f = SimulationFinding {
+            severity: FindingSeverity::Info,
+            category: "test",
+            message: "just info".into(),
+            suggestion: None,
+        };
+        assert!(f.suggestion.is_none());
+    }
+
+    // ─── simulate: complete spec ───
+
+    #[test]
+    fn complete_spec_is_ready() {
+        let doc = parse_truth_document(full_spec()).unwrap();
         let report = simulate(&doc, &SimulationConfig::default());
         assert_eq!(report.verdict, Verdict::Ready);
         assert!(report.can_converge());
     }
+
+    #[test]
+    fn complete_spec_governance_coverage() {
+        let doc = parse_truth_document(full_spec()).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(report.governance_coverage.has_intent);
+        assert!(report.governance_coverage.has_outcome);
+        assert!(report.governance_coverage.has_authority);
+        assert!(report.governance_coverage.has_actor);
+        assert!(report.governance_coverage.has_constraint);
+        assert!(report.governance_coverage.has_evidence);
+        assert_eq!(report.governance_coverage.evidence_count, 2);
+    }
+
+    #[test]
+    fn complete_spec_scenario_count() {
+        let doc = parse_truth_document(full_spec()).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert_eq!(report.scenario_count, 1);
+    }
+
+    #[test]
+    fn complete_spec_resource_summary() {
+        let doc = parse_truth_document(full_spec()).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert_eq!(report.resource_summary.declared_evidence.len(), 2);
+        assert!(report.resource_summary.missing.is_empty());
+    }
+
+    // ─── simulate: missing governance blocks ───
 
     #[test]
     fn missing_intent_will_not_converge() {
@@ -515,6 +652,60 @@ Scenario: Something happens
                 .any(|f| f.message.contains("Missing Intent"))
         );
     }
+
+    #[test]
+    fn missing_authority_will_not_converge() {
+        let content = r"Truth: No authority
+
+Intent:
+  Outcome: Do a thing.
+
+Evidence:
+  Requires: proof
+
+Scenario: Action
+  Given precondition
+  When something happens
+  Then outcome
+";
+        let doc = parse_truth_document(content).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert_eq!(report.verdict, Verdict::WillNotConverge);
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|f| f.message.contains("Missing Authority"))
+        );
+    }
+
+    #[test]
+    fn missing_evidence_will_not_converge() {
+        let content = r"Truth: No evidence
+
+Intent:
+  Outcome: Do a thing.
+
+Authority:
+  Actor: admin
+
+Scenario: Action
+  Given precondition
+  When something happens
+  Then outcome
+";
+        let doc = parse_truth_document(content).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert_eq!(report.verdict, Verdict::WillNotConverge);
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|f| f.message.contains("Missing Evidence"))
+        );
+    }
+
+    // ─── simulate: scenario issues ───
 
     #[test]
     fn missing_then_steps_will_not_converge() {
@@ -545,6 +736,87 @@ Scenario: Missing outcome
     }
 
     #[test]
+    fn missing_given_steps_produces_warning() {
+        let content = r"Truth: No given
+
+Intent:
+  Outcome: Do something.
+
+Authority:
+  Actor: admin
+
+Evidence:
+  Requires: report
+
+Scenario: No preconditions
+  When something happens
+  Then it works
+";
+        let doc = parse_truth_document(content).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|f| f.message.contains("No Given steps"))
+        );
+    }
+
+    #[test]
+    fn missing_when_steps_produces_warning() {
+        let content = r"Truth: No when
+
+Intent:
+  Outcome: Do something.
+
+Authority:
+  Actor: admin
+
+Evidence:
+  Requires: report
+
+Scenario: No action
+  Given a state
+  Then it is fine
+";
+        let doc = parse_truth_document(content).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|f| f.message.contains("No When steps"))
+        );
+    }
+
+    #[test]
+    fn no_scenarios_will_not_converge() {
+        let content = r"Truth: Empty
+
+Intent:
+  Outcome: Nothing to do.
+
+Authority:
+  Actor: admin
+
+Evidence:
+  Requires: proof
+";
+        let doc = parse_truth_document(content).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert_eq!(report.verdict, Verdict::WillNotConverge);
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|f| f.message.contains("No scenarios found"))
+        );
+        assert_eq!(report.scenario_count, 0);
+    }
+
+    // ─── simulate: coherence checks ───
+
+    #[test]
     fn approval_without_evidence_is_risky() {
         let content = r"Truth: Approval gate without evidence
 
@@ -572,11 +844,325 @@ Scenario: Approval happens
     }
 
     #[test]
+    fn constraint_without_authority_warns() {
+        let doc = TruthDocument {
+            governance: TruthGovernance {
+                intent: Some(IntentBlock {
+                    outcome: Some("Do it".into()),
+                    goal: None,
+                }),
+                authority: None,
+                constraint: Some(ConstraintBlock {
+                    budget: vec!["100k".into()],
+                    cost_limit: vec![],
+                    must_not: vec![],
+                }),
+                evidence: Some(EvidenceBlock {
+                    requires: vec!["proof".into()],
+                    provenance: vec![],
+                    audit: vec!["log".into()],
+                }),
+                exception: None,
+            },
+            gherkin: "Scenario: Test\n  Given a state\n  When action\n  Then result".into(),
+        };
+        let config = SimulationConfig {
+            require_authority: false,
+            ..SimulationConfig::default()
+        };
+        let report = simulate(&doc, &config);
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|f| f.message.contains("who enforces"))
+        );
+    }
+
+    // ─── simulate: governance detail checks ───
+
+    #[test]
+    fn intent_without_outcome_warns() {
+        let doc = TruthDocument {
+            governance: TruthGovernance {
+                intent: Some(IntentBlock {
+                    outcome: None,
+                    goal: Some("A goal".into()),
+                }),
+                authority: Some(AuthorityBlock {
+                    actor: Some("admin".into()),
+                    ..AuthorityBlock::default()
+                }),
+                constraint: None,
+                evidence: Some(EvidenceBlock {
+                    requires: vec!["proof".into()],
+                    provenance: vec![],
+                    audit: vec!["log".into()],
+                }),
+                exception: None,
+            },
+            gherkin: "Scenario: Test\n  Given state\n  When admin acts\n  Then done".into(),
+        };
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|f| f.message.contains("missing Outcome"))
+        );
+    }
+
+    #[test]
+    fn authority_without_actor_warns() {
+        let doc = TruthDocument {
+            governance: TruthGovernance {
+                intent: Some(IntentBlock {
+                    outcome: Some("Do it".into()),
+                    goal: None,
+                }),
+                authority: Some(AuthorityBlock::default()),
+                constraint: None,
+                evidence: Some(EvidenceBlock {
+                    requires: vec!["proof".into()],
+                    provenance: vec![],
+                    audit: vec!["log".into()],
+                }),
+                exception: None,
+            },
+            gherkin: "Scenario: Test\n  Given state\n  When action\n  Then done".into(),
+        };
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|f| f.message.contains("missing Actor"))
+        );
+    }
+
+    #[test]
+    fn empty_evidence_requires_warns() {
+        let doc = TruthDocument {
+            governance: TruthGovernance {
+                intent: Some(IntentBlock {
+                    outcome: Some("Do it".into()),
+                    goal: None,
+                }),
+                authority: Some(AuthorityBlock {
+                    actor: Some("admin".into()),
+                    ..AuthorityBlock::default()
+                }),
+                constraint: None,
+                evidence: Some(EvidenceBlock {
+                    requires: vec![],
+                    provenance: vec![],
+                    audit: vec!["log".into()],
+                }),
+                exception: None,
+            },
+            gherkin: "Scenario: Test\n  Given state\n  When admin acts\n  Then done".into(),
+        };
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|f| f.message.contains("no Requires fields"))
+        );
+    }
+
+    #[test]
+    fn empty_constraint_block_info() {
+        let doc = TruthDocument {
+            governance: TruthGovernance {
+                intent: Some(IntentBlock {
+                    outcome: Some("Do it".into()),
+                    goal: None,
+                }),
+                authority: Some(AuthorityBlock {
+                    actor: Some("admin".into()),
+                    ..AuthorityBlock::default()
+                }),
+                constraint: Some(ConstraintBlock::default()),
+                evidence: Some(EvidenceBlock {
+                    requires: vec!["proof".into()],
+                    provenance: vec![],
+                    audit: vec!["log".into()],
+                }),
+                exception: None,
+            },
+            gherkin: "Scenario: Test\n  Given state\n  When admin acts\n  Then done".into(),
+        };
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(report.findings.iter().any(|f| {
+            f.severity == FindingSeverity::Info && f.message.contains("no guardrails")
+        }));
+    }
+
+    #[test]
+    fn exception_with_escalation_path() {
+        let doc = TruthDocument {
+            governance: TruthGovernance {
+                intent: Some(IntentBlock {
+                    outcome: Some("Do it".into()),
+                    goal: None,
+                }),
+                authority: Some(AuthorityBlock {
+                    actor: Some("admin".into()),
+                    ..AuthorityBlock::default()
+                }),
+                constraint: None,
+                evidence: Some(EvidenceBlock {
+                    requires: vec!["proof".into()],
+                    provenance: vec![],
+                    audit: vec!["log".into()],
+                }),
+                exception: Some(ExceptionBlock {
+                    escalates_to: vec!["ceo".into()],
+                    requires: vec![],
+                }),
+            },
+            gherkin: "Scenario: Test\n  Given state\n  When admin acts\n  Then done".into(),
+        };
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(report.governance_coverage.has_exception);
+        assert!(report.governance_coverage.has_escalation_path);
+    }
+
+    // ─── SimulationConfig variations ───
+
+    #[test]
+    fn relaxed_config_allows_missing_governance() {
+        let content = r"Truth: Bare minimum
+
+Scenario: Just do it
+  Given a state
+  When an action
+  Then a result
+";
+        let doc = parse_truth_document(content).unwrap();
+        let config = SimulationConfig {
+            require_intent: false,
+            require_authority: false,
+            require_evidence: false,
+            require_assertions: false,
+            check_resource_availability: false,
+        };
+        let report = simulate(&doc, &config);
+        let has_errors = report
+            .findings
+            .iter()
+            .any(|f| f.severity == FindingSeverity::Error);
+        assert!(!has_errors);
+        assert_ne!(report.verdict, Verdict::WillNotConverge);
+    }
+
+    #[test]
+    fn default_config_is_strict() {
+        let config = SimulationConfig::default();
+        assert!(config.require_intent);
+        assert!(config.require_authority);
+        assert!(config.require_evidence);
+        assert!(config.require_assertions);
+        assert!(config.check_resource_availability);
+    }
+
+    // ─── simulate_spec convenience ───
+
+    #[test]
     fn simulate_spec_convenience() {
-        let content = r"Truth: Quick test
+        let report = simulate_spec(minimal_valid_spec(), &SimulationConfig::default()).unwrap();
+        assert!(report.can_converge());
+    }
+
+    #[test]
+    fn simulate_spec_garbage_input() {
+        let result = simulate_spec(
+            "this is not a truth spec at all",
+            &SimulationConfig::default(),
+        );
+        // Parser may be lenient; either an error or a WillNotConverge verdict is acceptable
+        match result {
+            Err(_) => {}
+            Ok(report) => assert_eq!(report.verdict, Verdict::WillNotConverge),
+        }
+    }
+
+    #[test]
+    fn simulate_spec_empty_string() {
+        let result = simulate_spec("", &SimulationConfig::default());
+        match result {
+            Err(_) => {}
+            Ok(report) => assert_eq!(report.verdict, Verdict::WillNotConverge),
+        }
+    }
+
+    // ─── resource checks ───
+
+    #[test]
+    fn undeclared_evidence_like_resource_warns() {
+        let content = r"Truth: Resource mismatch
 
 Intent:
-  Outcome: Works.
+  Outcome: Check resources.
+
+Authority:
+  Actor: admin
+
+Evidence:
+  Requires: security_assessment
+  Audit: decision_log
+
+Scenario: Uses undeclared evidence
+  Given a vendor
+  When admin reviews the compliance_report
+  Then the security_assessment is valid
+";
+        let doc = parse_truth_document(content).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(
+            report
+                .resource_summary
+                .missing
+                .contains(&"compliance_report".to_string())
+        );
+    }
+
+    #[test]
+    fn actor_not_referenced_in_scenarios_info() {
+        let content = r"Truth: Unused actor
+
+Intent:
+  Outcome: Something.
+
+Authority:
+  Actor: mysterious_committee
+
+Evidence:
+  Requires: proof
+
+Scenario: Nobody calls the actor
+  Given a state
+  When something happens
+  Then it works
+";
+        let doc = parse_truth_document(content).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(report.findings.iter().any(|f| {
+            f.severity == FindingSeverity::Info
+                && f.message.contains("mysterious_committee")
+                && f.message.contains("not referenced")
+        }));
+    }
+
+    // ─── multiple scenarios ───
+
+    #[test]
+    fn multiple_scenarios_counted() {
+        let content = r"Truth: Multi-scenario
+
+Intent:
+  Outcome: Test multiple.
 
 Authority:
   Actor: admin
@@ -584,12 +1170,93 @@ Authority:
 Evidence:
   Requires: proof
 
-Scenario: It works
-  Given something exists
-  When validated
-  Then it passes
+Scenario: First
+  Given state
+  When admin acts
+  Then result
+
+Scenario: Second
+  Given another state
+  When admin acts again
+  Then another result
 ";
-        let report = simulate_spec(content, &SimulationConfig::default()).unwrap();
-        assert!(report.can_converge());
+        let doc = parse_truth_document(content).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert_eq!(report.scenario_count, 2);
+    }
+
+    // ─── only governance, no scenarios ───
+
+    #[test]
+    fn spec_with_only_governance_no_scenarios() {
+        let doc = TruthDocument {
+            governance: TruthGovernance {
+                intent: Some(IntentBlock {
+                    outcome: Some("Goal".into()),
+                    goal: None,
+                }),
+                authority: Some(AuthorityBlock {
+                    actor: Some("admin".into()),
+                    ..AuthorityBlock::default()
+                }),
+                constraint: None,
+                evidence: Some(EvidenceBlock {
+                    requires: vec!["proof".into()],
+                    provenance: vec![],
+                    audit: vec![],
+                }),
+                exception: None,
+            },
+            gherkin: String::new(),
+        };
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert_eq!(report.verdict, Verdict::WillNotConverge);
+        assert_eq!(report.scenario_count, 0);
+    }
+
+    // ─── nil governance (all None) ───
+
+    #[test]
+    fn nil_governance_with_relaxed_config() {
+        let content = r"Truth: Nil governance
+
+Scenario: Solo
+  Given x
+  When y
+  Then z
+";
+        let doc = parse_truth_document(content).unwrap();
+        let config = SimulationConfig {
+            require_intent: false,
+            require_authority: false,
+            require_evidence: false,
+            require_assertions: true,
+            check_resource_availability: false,
+        };
+        let report = simulate(&doc, &config);
+        assert!(!report.governance_coverage.has_intent);
+        assert!(!report.governance_coverage.has_authority);
+        assert!(!report.governance_coverage.has_evidence);
+        assert_eq!(report.verdict, Verdict::Ready);
+    }
+
+    #[test]
+    fn nil_governance_with_strict_config() {
+        let content = r"Truth: Nil governance strict
+
+Scenario: Solo
+  Given x
+  When y
+  Then z
+";
+        let doc = parse_truth_document(content).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert_eq!(report.verdict, Verdict::WillNotConverge);
+        let error_count = report
+            .findings
+            .iter()
+            .filter(|f| f.severity == FindingSeverity::Error)
+            .count();
+        assert!(error_count >= 3); // intent, authority, evidence
     }
 }

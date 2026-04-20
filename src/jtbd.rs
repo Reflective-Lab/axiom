@@ -607,6 +607,64 @@ pub enum ValidationSeverity {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
+
+    fn minimal_jtbd() -> JTBDMetadata {
+        JTBDMetadata {
+            actor: "Founder".to_string(),
+            job_functional: "Do something".to_string(),
+            job_emotional: None,
+            job_relational: None,
+            so_that: "Achieve outcome".to_string(),
+            scope: None,
+            success_metrics: Vec::new(),
+            failure_modes: Vec::new(),
+            exceptions: Vec::new(),
+            evidence_required: Vec::new(),
+            audit_requirements: Vec::new(),
+            links: Vec::new(),
+        }
+    }
+
+    fn full_jtbd() -> JTBDMetadata {
+        JTBDMetadata {
+            actor: "CFO".to_string(),
+            job_functional: "Close the books on time".to_string(),
+            job_emotional: Some("Feel in control of financials".to_string()),
+            job_relational: Some("Be trusted by the board".to_string()),
+            so_that: "Quarterly reports are accurate".to_string(),
+            scope: Some(Scope {
+                pack: Some("finance".to_string()),
+                segment: Some("enterprise".to_string()),
+                objects: vec!["Invoice".to_string(), "Payment".to_string()],
+            }),
+            success_metrics: vec![
+                SuccessMetric {
+                    id: "close_time".to_string(),
+                    target: "<= 3d".to_string(),
+                    window: "30d".to_string(),
+                    dimension: Some("functional".to_string()),
+                },
+                SuccessMetric {
+                    id: "accuracy".to_string(),
+                    target: ">= 0.99".to_string(),
+                    window: "90d".to_string(),
+                    dimension: Some("functional".to_string()),
+                },
+            ],
+            failure_modes: vec!["Late close".to_string(), "Mismatched totals".to_string()],
+            exceptions: vec!["Holiday periods".to_string()],
+            evidence_required: vec!["Reconciliation report".to_string()],
+            audit_requirements: vec!["SOX compliance".to_string()],
+            links: vec![Link {
+                url: Some("https://example.com/policy".to_string()),
+                ref_: Some("@invariant:closed_period_readonly".to_string()),
+                label: Some("Policy doc".to_string()),
+            }],
+        }
+    }
+
+    // ── YAML parsing ──
 
     #[test]
     fn test_parse_yaml_jtbd() {
@@ -633,6 +691,282 @@ Truth: Invoice issued after work and collected on time
     }
 
     #[test]
+    fn test_yaml_all_12_fields() {
+        let content = r#"
+Truth: Full JTBD
+
+  # JTBD:
+  #   actor: CFO
+  #   job_functional: "Close the books"
+  #   job_emotional: "Feel in control"
+  #   job_relational: "Be trusted by the board"
+  #   so_that: "Reports are accurate"
+  #   scope:
+  #     pack: finance
+  #     segment: enterprise
+  #     objects:
+  #       - Invoice
+  #       - Payment
+  #   success_metrics:
+  #     - id: close_time
+  #       target: "<= 3d"
+  #       window: 30d
+  #       dimension: functional
+  #   failure_modes:
+  #     - "Late close"
+  #   exceptions:
+  #     - "Holiday periods"
+  #   evidence_required:
+  #     - "Reconciliation report"
+  #   audit_requirements:
+  #     - "SOX compliance"
+  #   links:
+  #     - url: "https://example.com"
+  #       ref: "@invariant:closed_period_readonly"
+  #       label: "Policy doc"
+"#;
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+
+        assert_eq!(jtbd.actor, "CFO");
+        assert_eq!(jtbd.job_functional, "Close the books");
+        assert_eq!(jtbd.job_emotional.as_deref(), Some("Feel in control"));
+        assert_eq!(
+            jtbd.job_relational.as_deref(),
+            Some("Be trusted by the board")
+        );
+        assert_eq!(jtbd.so_that, "Reports are accurate");
+
+        let scope = jtbd.scope.unwrap();
+        assert_eq!(scope.pack.as_deref(), Some("finance"));
+        assert_eq!(scope.segment.as_deref(), Some("enterprise"));
+        assert_eq!(scope.objects, vec!["Invoice", "Payment"]);
+
+        assert_eq!(jtbd.success_metrics.len(), 1);
+        assert_eq!(jtbd.success_metrics[0].id, "close_time");
+        assert_eq!(jtbd.success_metrics[0].target, "<= 3d");
+        assert_eq!(jtbd.success_metrics[0].window, "30d");
+        assert_eq!(
+            jtbd.success_metrics[0].dimension.as_deref(),
+            Some("functional")
+        );
+
+        assert_eq!(jtbd.failure_modes, vec!["Late close"]);
+        assert_eq!(jtbd.exceptions, vec!["Holiday periods"]);
+        assert_eq!(jtbd.evidence_required, vec!["Reconciliation report"]);
+        assert_eq!(jtbd.audit_requirements, vec!["SOX compliance"]);
+
+        assert_eq!(jtbd.links.len(), 1);
+        assert_eq!(jtbd.links[0].url.as_deref(), Some("https://example.com"));
+        assert_eq!(
+            jtbd.links[0].ref_.as_deref(),
+            Some("@invariant:closed_period_readonly")
+        );
+        assert_eq!(jtbd.links[0].label.as_deref(), Some("Policy doc"));
+    }
+
+    #[test]
+    fn test_yaml_minimal_required_only() {
+        let content = r#"
+Truth: Minimal
+
+  # JTBD:
+  #   actor: Dev
+  #   job_functional: "Ship code"
+  #   so_that: "Users get value"
+"#;
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+
+        assert_eq!(jtbd.actor, "Dev");
+        assert_eq!(jtbd.job_functional, "Ship code");
+        assert!(jtbd.job_emotional.is_none());
+        assert!(jtbd.job_relational.is_none());
+        assert_eq!(jtbd.so_that, "Users get value");
+        assert!(jtbd.scope.is_none());
+        assert!(jtbd.success_metrics.is_empty());
+        assert!(jtbd.failure_modes.is_empty());
+        assert!(jtbd.exceptions.is_empty());
+        assert!(jtbd.evidence_required.is_empty());
+        assert!(jtbd.audit_requirements.is_empty());
+        assert!(jtbd.links.is_empty());
+    }
+
+    #[test]
+    fn test_yaml_multiple_success_metrics() {
+        let content = r#"
+Truth: Multi-metric
+
+  # JTBD:
+  #   actor: SRE
+  #   job_functional: "Keep systems up"
+  #   so_that: "Customers trust us"
+  #   success_metrics:
+  #     - id: uptime
+  #       target: ">= 0.999"
+  #       window: 30d
+  #       dimension: functional
+  #     - id: mttr
+  #       target: "<= 15m"
+  #       window: 90d
+  #     - id: satisfaction
+  #       target: ">= 4.5"
+  #       window: 7d
+  #       dimension: emotional
+"#;
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+
+        assert_eq!(jtbd.success_metrics.len(), 3);
+        assert_eq!(jtbd.success_metrics[0].id, "uptime");
+        assert_eq!(jtbd.success_metrics[1].id, "mttr");
+        assert!(jtbd.success_metrics[1].dimension.is_none());
+        assert_eq!(jtbd.success_metrics[2].id, "satisfaction");
+        assert_eq!(
+            jtbd.success_metrics[2].dimension.as_deref(),
+            Some("emotional")
+        );
+    }
+
+    #[test]
+    fn test_yaml_feature_keyword() {
+        let content = r#"
+Feature: Payment processing
+
+  # JTBD:
+  #   actor: Accountant
+  #   job_functional: "Process payments"
+  #   so_that: "Vendors are paid on time"
+"#;
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+        assert_eq!(jtbd.actor, "Accountant");
+    }
+
+    #[test]
+    fn test_yaml_scenario_level_jtbd() {
+        let content = r#"
+Truth: Invoicing
+
+  # JTBD:
+  #   actor: Founder
+  #   job_functional: "Invoice customers"
+  #   so_that: "Cash flows"
+
+  Scenario: Send invoice on time
+
+    # JTBD:
+    #   actor: BookKeeper
+    #   job_functional: "Generate invoice within 24h"
+    #   so_that: "No late fees"
+
+  Scenario: Retry failed payment
+
+    # JTBD:
+    #   actor: System
+    #   job_functional: "Retry payment automatically"
+    #   so_that: "Revenue is not lost"
+"#;
+
+        let (file_jtbd, scenario_jtbds) = extract_jtbd(content).unwrap();
+
+        let file = file_jtbd.unwrap();
+        assert_eq!(file.actor, "Founder");
+
+        assert_eq!(scenario_jtbds.len(), 2);
+        assert_eq!(scenario_jtbds[0].actor, "BookKeeper");
+        assert_eq!(
+            scenario_jtbds[0].job_functional,
+            "Generate invoice within 24h"
+        );
+        assert_eq!(scenario_jtbds[1].actor, "System");
+        assert_eq!(scenario_jtbds[1].so_that, "Revenue is not lost");
+    }
+
+    #[test]
+    fn test_yaml_multiple_failure_modes_and_exceptions() {
+        let content = r#"
+Truth: Robust parsing
+
+  # JTBD:
+  #   actor: Engineer
+  #   job_functional: "Parse data"
+  #   so_that: "Data is correct"
+  #   failure_modes:
+  #     - "Corrupt input"
+  #     - "Timeout"
+  #     - "Partial write"
+  #   exceptions:
+  #     - "Legacy format"
+  #     - "Empty file"
+"#;
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+
+        assert_eq!(jtbd.failure_modes.len(), 3);
+        assert_eq!(jtbd.failure_modes[0], "Corrupt input");
+        assert_eq!(jtbd.failure_modes[2], "Partial write");
+        assert_eq!(jtbd.exceptions.len(), 2);
+    }
+
+    #[test]
+    fn test_yaml_scope_without_objects() {
+        let content = r#"
+Truth: Scoped
+
+  # JTBD:
+  #   actor: Admin
+  #   job_functional: "Manage users"
+  #   so_that: "Access is controlled"
+  #   scope:
+  #     pack: identity
+  #     segment: saas
+"#;
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+
+        let scope = jtbd.scope.unwrap();
+        assert_eq!(scope.pack.as_deref(), Some("identity"));
+        assert_eq!(scope.segment.as_deref(), Some("saas"));
+        assert!(scope.objects.is_empty());
+    }
+
+    #[test]
+    fn test_yaml_links_url_only() {
+        let content = r#"
+Truth: Linked
+
+  # JTBD:
+  #   actor: PM
+  #   job_functional: "Track progress"
+  #   so_that: "Nothing slips"
+  #   links:
+  #     - url: "https://docs.example.com"
+  #     - label: "Internal wiki"
+"#;
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+
+        assert_eq!(jtbd.links.len(), 2);
+        assert_eq!(
+            jtbd.links[0].url.as_deref(),
+            Some("https://docs.example.com")
+        );
+        assert!(jtbd.links[0].ref_.is_none());
+        assert!(jtbd.links[1].url.is_none());
+        assert_eq!(jtbd.links[1].label.as_deref(), Some("Internal wiki"));
+    }
+
+    // ── Plain text parsing ──
+
+    #[test]
     fn test_parse_plain_text_jtbd() {
         let content = r"
 Truth: Example
@@ -652,28 +986,747 @@ Truth: Example
     }
 
     #[test]
+    fn test_plain_text_all_basic_fields() {
+        let content = r"
+Truth: Full plain text
+
+  # JTBD
+  # As: Designer
+  # Functional: Create mockups quickly
+  # Emotional: Feel creative and unblocked
+  # Relational: Be seen as design leader
+  # So that: Product ships with great UX
+";
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+
+        assert_eq!(jtbd.actor, "Designer");
+        assert_eq!(jtbd.job_functional, "Create mockups quickly");
+        assert_eq!(
+            jtbd.job_emotional.as_deref(),
+            Some("Feel creative and unblocked")
+        );
+        assert_eq!(
+            jtbd.job_relational.as_deref(),
+            Some("Be seen as design leader")
+        );
+        assert_eq!(jtbd.so_that, "Product ships with great UX");
+    }
+
+    #[test]
+    fn test_plain_text_underscore_keys() {
+        let content = r"
+Truth: Underscore keys
+
+  # JTBD
+  # As: Ops
+  # job_functional: Deploy services
+  # job_emotional: Feel safe deploying
+  # job_relational: Team trusts the pipeline
+  # so_that: Zero-downtime releases
+";
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+
+        assert_eq!(jtbd.actor, "Ops");
+        assert_eq!(jtbd.job_functional, "Deploy services");
+        assert_eq!(jtbd.job_emotional.as_deref(), Some("Feel safe deploying"));
+        assert_eq!(
+            jtbd.job_relational.as_deref(),
+            Some("Team trusts the pipeline")
+        );
+        assert_eq!(jtbd.so_that, "Zero-downtime releases");
+    }
+
+    #[test]
+    fn test_plain_text_with_scope() {
+        let content = r"
+Truth: Scoped plain
+
+  # JTBD
+  # As: Admin
+  # Functional: Manage accounts
+  # So that: Compliance is met
+  # Scope: identity.enterprise [User, Role, Permission]
+";
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+
+        let scope = jtbd.scope.unwrap();
+        assert_eq!(scope.pack.as_deref(), Some("identity"));
+        assert_eq!(scope.segment.as_deref(), Some("enterprise"));
+        assert_eq!(scope.objects, vec!["User", "Role", "Permission"]);
+    }
+
+    #[test]
+    fn test_plain_text_failure_modes_and_exceptions() {
+        let content = r"
+Truth: Error paths
+
+  # JTBD
+  # As: Tester
+  # Functional: Validate inputs
+  # So that: Bugs are caught early
+  # Failure mode: Invalid email format
+  # Failure_mode: Missing required field
+  # Exception: Legacy API clients
+";
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+
+        assert_eq!(jtbd.failure_modes.len(), 2);
+        assert_eq!(jtbd.failure_modes[0], "Invalid email format");
+        assert_eq!(jtbd.failure_modes[1], "Missing required field");
+        assert_eq!(jtbd.exceptions, vec!["Legacy API clients"]);
+    }
+
+    #[test]
+    fn test_plain_text_evidence_and_audit() {
+        let content = r"
+Truth: Auditable
+
+  # JTBD
+  # As: Compliance Officer
+  # Functional: Audit transactions
+  # So that: Regulations are met
+  # Evidence: Transaction log
+  # Audit: GDPR data retention
+";
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+
+        assert_eq!(jtbd.evidence_required, vec!["Transaction log"]);
+        assert_eq!(jtbd.audit_requirements, vec!["GDPR data retention"]);
+    }
+
+    #[test]
+    fn test_plain_text_scenario_level() {
+        let content = r"
+Truth: Multi-scenario
+
+  # JTBD
+  # As: PM
+  # Functional: Oversee project
+  # So that: Delivery is on track
+
+  Scenario: Daily standup
+
+    # JTBD
+    # As: Developer
+    # Functional: Report status
+    # So that: Blockers are surfaced
+";
+
+        let (file_jtbd, scenario_jtbds) = extract_jtbd(content).unwrap();
+
+        assert!(file_jtbd.is_some());
+        assert_eq!(file_jtbd.unwrap().actor, "PM");
+        assert_eq!(scenario_jtbds.len(), 1);
+        assert_eq!(scenario_jtbds[0].actor, "Developer");
+    }
+
+    #[test]
+    fn test_plain_text_quoted_values() {
+        let content = r#"
+Truth: Quoted
+
+  # JTBD
+  # As: "Product Manager"
+  # Functional: "Define and prioritize features"
+  # So that: "Team builds the right thing"
+"#;
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+
+        assert_eq!(jtbd.actor, "Product Manager");
+        assert_eq!(jtbd.job_functional, "Define and prioritize features");
+    }
+
+    // ── Validation ──
+
+    #[test]
     fn test_validate_jtbd() {
-        let jtbd = JTBDMetadata {
-            actor: "Founder".to_string(),
-            job_functional: "Do something".to_string(),
-            job_emotional: None,
-            job_relational: None,
-            so_that: "Achieve outcome".to_string(),
-            scope: None,
-            success_metrics: Vec::new(),
-            failure_modes: Vec::new(),
-            exceptions: Vec::new(),
-            evidence_required: Vec::new(),
-            audit_requirements: Vec::new(),
-            links: Vec::new(),
-        };
+        let jtbd = minimal_jtbd();
 
         let issues = validate_jtbd(&jtbd, false);
-        assert_eq!(issues.len(), 2); // Missing job_emotional and job_relational
+        assert_eq!(issues.len(), 2);
         assert!(
             issues
                 .iter()
                 .all(|i| i.severity == ValidationSeverity::Warning)
         );
+    }
+
+    #[test]
+    fn test_validate_strict_mode_errors_on_missing_recommended() {
+        let jtbd = minimal_jtbd();
+
+        let issues = validate_jtbd(&jtbd, true);
+        assert_eq!(issues.len(), 2);
+        assert!(
+            issues
+                .iter()
+                .all(|i| i.severity == ValidationSeverity::Error)
+        );
+        assert!(issues.iter().any(|i| i.field == "job_emotional"));
+        assert!(issues.iter().any(|i| i.field == "job_relational"));
+    }
+
+    #[test]
+    fn test_validate_complete_jtbd_no_issues() {
+        let jtbd = full_jtbd();
+        let issues = validate_jtbd(&jtbd, true);
+        assert!(
+            issues.is_empty(),
+            "Expected no issues for full JTBD, got: {issues:?}"
+        );
+    }
+
+    #[test]
+    fn test_validate_lenient_with_emotional_only() {
+        let mut jtbd = minimal_jtbd();
+        jtbd.job_emotional = Some("Feel good".to_string());
+
+        let issues = validate_jtbd(&jtbd, false);
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].field, "job_relational");
+        assert_eq!(issues[0].severity, ValidationSeverity::Warning);
+    }
+
+    #[test]
+    fn test_validate_lenient_with_relational_only() {
+        let mut jtbd = minimal_jtbd();
+        jtbd.job_relational = Some("Be trusted".to_string());
+
+        let issues = validate_jtbd(&jtbd, false);
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].field, "job_emotional");
+    }
+
+    #[test]
+    fn test_validate_duplicate_metric_ids() {
+        let mut jtbd = full_jtbd();
+        jtbd.success_metrics.push(SuccessMetric {
+            id: "close_time".to_string(),
+            target: ">= 0.5".to_string(),
+            window: "7d".to_string(),
+            dimension: None,
+        });
+
+        let issues = validate_jtbd(&jtbd, false);
+        assert!(issues.iter().any(|i| i.field == "success_metrics"
+            && i.severity == ValidationSeverity::Error
+            && i.message.contains("Duplicate")));
+    }
+
+    #[test]
+    fn test_validate_unique_metric_ids_no_error() {
+        let jtbd = full_jtbd();
+        let issues = validate_jtbd(&jtbd, true);
+        assert!(!issues.iter().any(|i| i.field == "success_metrics"));
+    }
+
+    #[test]
+    fn test_validation_severity_ordering() {
+        assert!(ValidationSeverity::Warning < ValidationSeverity::Error);
+    }
+
+    // ── Error cases ──
+
+    #[test]
+    fn test_yaml_missing_actor() {
+        let content = r#"
+Truth: Missing actor
+
+  # JTBD:
+  #   job_functional: "Do thing"
+  #   so_that: "Get result"
+"#;
+
+        let err = extract_jtbd(content).unwrap_err();
+        assert!(matches!(err, JTBDError::MissingRequiredField(ref f) if f == "actor"));
+    }
+
+    #[test]
+    fn test_yaml_missing_job_functional() {
+        let content = r#"
+Truth: Missing functional
+
+  # JTBD:
+  #   actor: Dev
+  #   so_that: "Get result"
+"#;
+
+        let err = extract_jtbd(content).unwrap_err();
+        assert!(matches!(err, JTBDError::MissingRequiredField(ref f) if f == "job_functional"));
+    }
+
+    #[test]
+    fn test_yaml_missing_so_that() {
+        let content = r#"
+Truth: Missing so_that
+
+  # JTBD:
+  #   actor: Dev
+  #   job_functional: "Do thing"
+"#;
+
+        let err = extract_jtbd(content).unwrap_err();
+        assert!(matches!(err, JTBDError::MissingRequiredField(ref f) if f == "so_that"));
+    }
+
+    #[test]
+    fn test_plain_text_missing_actor() {
+        let content = r"
+Truth: No actor
+
+  # JTBD
+  # Functional: Do thing
+  # So that: Get result
+";
+
+        let err = extract_jtbd(content).unwrap_err();
+        assert!(matches!(err, JTBDError::MissingRequiredField(ref f) if f == "actor"));
+    }
+
+    #[test]
+    fn test_plain_text_missing_functional() {
+        let content = r"
+Truth: No functional
+
+  # JTBD
+  # As: Dev
+  # So that: Get result
+";
+
+        let err = extract_jtbd(content).unwrap_err();
+        assert!(matches!(err, JTBDError::MissingRequiredField(ref f) if f == "job_functional"));
+    }
+
+    #[test]
+    fn test_plain_text_missing_so_that() {
+        let content = r"
+Truth: No so_that
+
+  # JTBD
+  # As: Dev
+  # Functional: Do thing
+";
+
+        let err = extract_jtbd(content).unwrap_err();
+        assert!(matches!(err, JTBDError::MissingRequiredField(ref f) if f == "so_that"));
+    }
+
+    #[test]
+    fn test_yaml_malformed_yaml() {
+        let content = r"
+Truth: Bad YAML
+
+  # JTBD:
+  #   actor: [invalid
+  #   unclosed: bracket
+";
+
+        let err = extract_jtbd(content).unwrap_err();
+        assert!(matches!(err, JTBDError::InvalidYaml(_)));
+    }
+
+    // ── Edge cases ──
+
+    #[test]
+    fn test_empty_content() {
+        let (file_jtbd, scenario_jtbds) = extract_jtbd("").unwrap();
+        assert!(file_jtbd.is_none());
+        assert!(scenario_jtbds.is_empty());
+    }
+
+    #[test]
+    fn test_no_jtbd_blocks() {
+        let content = r"
+Truth: No JTBD here
+
+  Given something
+  When action
+  Then result
+";
+
+        let (file_jtbd, scenario_jtbds) = extract_jtbd(content).unwrap();
+        assert!(file_jtbd.is_none());
+        assert!(scenario_jtbds.is_empty());
+    }
+
+    #[test]
+    fn test_truth_without_jtbd_followed_by_scenario_with_jtbd() {
+        let content = r#"
+Truth: No file-level JTBD
+
+  Scenario: Has JTBD
+
+    # JTBD:
+    #   actor: Tester
+    #   job_functional: "Test things"
+    #   so_that: "Quality"
+"#;
+
+        let (file_jtbd, scenario_jtbds) = extract_jtbd(content).unwrap();
+        assert!(file_jtbd.is_none());
+        assert_eq!(scenario_jtbds.len(), 1);
+        assert_eq!(scenario_jtbds[0].actor, "Tester");
+    }
+
+    #[test]
+    fn test_unicode_in_fields() {
+        let content = r#"
+Truth: Unicode support
+
+  # JTBD:
+  #   actor: "Gründer"
+  #   job_functional: "Rechnungen erstellen"
+  #   job_emotional: "Sicherheit fühlen 🔒"
+  #   so_that: "Geld fließt zuverlässig"
+"#;
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+
+        assert_eq!(jtbd.actor, "Gründer");
+        assert_eq!(jtbd.job_functional, "Rechnungen erstellen");
+        assert!(jtbd.job_emotional.as_ref().unwrap().contains("🔒"));
+        assert_eq!(jtbd.so_that, "Geld fließt zuverlässig");
+    }
+
+    #[test]
+    fn test_special_characters_in_values() {
+        let content = r#"
+Truth: Special chars
+
+  # JTBD:
+  #   actor: "Dev/Ops"
+  #   job_functional: "Deploy (safely) & monitor"
+  #   so_that: "99.9% uptime - no exceptions"
+"#;
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+
+        assert_eq!(jtbd.actor, "Dev/Ops");
+        assert!(jtbd.job_functional.contains('&'));
+        assert!(jtbd.so_that.contains("99.9%"));
+    }
+
+    #[test]
+    fn test_whitespace_only_content() {
+        let (file_jtbd, scenario_jtbds) = extract_jtbd("   \n\n  \n").unwrap();
+        assert!(file_jtbd.is_none());
+        assert!(scenario_jtbds.is_empty());
+    }
+
+    #[test]
+    fn test_multiple_blank_lines_between_truth_and_jtbd() {
+        let content = r#"
+Truth: Spaced out
+
+
+
+  # JTBD:
+  #   actor: Dev
+  #   job_functional: "Code"
+  #   so_that: "Ship"
+"#;
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+        assert_eq!(jtbd.actor, "Dev");
+    }
+
+    #[test]
+    fn test_no_space_after_hash() {
+        let content = r"
+Truth: Tight hashes
+
+  # JTBD
+  #As: Dev
+  #Functional: Code
+  #So that: Ship
+";
+        // Lines with "#As:" (no space) get stripped by strip_prefix('#') -> "As: Dev"
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+        assert_eq!(jtbd.actor, "Dev");
+    }
+
+    #[test]
+    fn test_jtbd_block_stops_at_non_comment_line() {
+        let content = r#"
+Truth: Stopped
+
+  # JTBD:
+  #   actor: Dev
+  #   job_functional: "Code"
+  #   so_that: "Ship"
+  Given something happens
+  Then result
+"#;
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+        assert_eq!(jtbd.actor, "Dev");
+        assert_eq!(jtbd.so_that, "Ship");
+    }
+
+    #[test]
+    fn test_truth_at_start_of_line_no_indent() {
+        let content = r#"
+Truth: At start
+
+# JTBD:
+#   actor: Dev
+#   job_functional: "Code"
+#   so_that: "Ship"
+"#;
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+        assert_eq!(jtbd.actor, "Dev");
+    }
+
+    #[test]
+    fn test_scope_pack_only_no_segment() {
+        let content = r"
+Truth: Pack only scope
+
+  # JTBD
+  # As: Admin
+  # Functional: Manage
+  # So that: Control
+  # Scope: billing [Invoice]
+";
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+
+        let scope = jtbd.scope.unwrap();
+        assert_eq!(scope.pack.as_deref(), Some("billing"));
+        assert!(scope.segment.is_none());
+        assert_eq!(scope.objects, vec!["Invoice"]);
+    }
+
+    #[test]
+    fn test_error_display_messages() {
+        let missing = JTBDError::MissingRequiredField("actor".to_string());
+        assert_eq!(missing.to_string(), "Missing required field: actor");
+
+        let yaml = JTBDError::InvalidYaml("bad indent".to_string());
+        assert_eq!(yaml.to_string(), "Invalid YAML: bad indent");
+
+        let parse = JTBDError::ParseError("unexpected token".to_string());
+        assert_eq!(parse.to_string(), "Parse error: unexpected token");
+    }
+
+    #[test]
+    fn test_jtbd_metadata_clone_and_eq() {
+        let a = full_jtbd();
+        let b = a.clone();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_jtbd_metadata_serde_roundtrip() {
+        let original = full_jtbd();
+        let json = serde_json::to_string(&original).unwrap();
+        let deserialized: JTBDMetadata = serde_json::from_str(&json).unwrap();
+        assert_eq!(original, deserialized);
+    }
+
+    #[test]
+    fn test_validation_issue_serde_roundtrip() {
+        let issue = JTBDValidationIssue {
+            field: "job_emotional".to_string(),
+            severity: ValidationSeverity::Warning,
+            message: "Missing recommended field".to_string(),
+        };
+        let json = serde_json::to_string(&issue).unwrap();
+        let deserialized: JTBDValidationIssue = serde_json::from_str(&json).unwrap();
+        assert_eq!(issue, deserialized);
+    }
+
+    #[test]
+    fn test_multiple_scenarios_no_file_jtbd() {
+        let content = r#"
+Truth: No file JTBD
+
+  Scenario: First
+
+    # JTBD:
+    #   actor: A
+    #   job_functional: "Do A"
+    #   so_that: "Result A"
+
+  Scenario: Second
+
+    # JTBD:
+    #   actor: B
+    #   job_functional: "Do B"
+    #   so_that: "Result B"
+
+  Scenario: Third
+
+    # JTBD:
+    #   actor: C
+    #   job_functional: "Do C"
+    #   so_that: "Result C"
+"#;
+
+        let (file_jtbd, scenarios) = extract_jtbd(content).unwrap();
+        assert!(file_jtbd.is_none());
+        assert_eq!(scenarios.len(), 3);
+        assert_eq!(scenarios[0].actor, "A");
+        assert_eq!(scenarios[1].actor, "B");
+        assert_eq!(scenarios[2].actor, "C");
+    }
+
+    #[test]
+    fn test_scenario_without_jtbd_skipped() {
+        let content = r#"
+Truth: Mixed
+
+  Scenario: No JTBD
+    Given something
+    Then result
+
+  Scenario: Has JTBD
+
+    # JTBD:
+    #   actor: Dev
+    #   job_functional: "Test"
+    #   so_that: "Quality"
+"#;
+
+        let (_, scenarios) = extract_jtbd(content).unwrap();
+        assert_eq!(scenarios.len(), 1);
+        assert_eq!(scenarios[0].actor, "Dev");
+    }
+
+    #[test]
+    fn test_yaml_evidence_and_audit_lists() {
+        let content = r#"
+Truth: Evidence
+
+  # JTBD:
+  #   actor: Auditor
+  #   job_functional: "Review compliance"
+  #   so_that: "Regulations met"
+  #   evidence_required:
+  #     - "Transaction log"
+  #     - "User consent records"
+  #   audit_requirements:
+  #     - "SOX section 404"
+  #     - "GDPR Art 30"
+"#;
+
+        let (file_jtbd, _) = extract_jtbd(content).unwrap();
+        let jtbd = file_jtbd.unwrap();
+
+        assert_eq!(jtbd.evidence_required.len(), 2);
+        assert_eq!(jtbd.evidence_required[0], "Transaction log");
+        assert_eq!(jtbd.audit_requirements.len(), 2);
+        assert_eq!(jtbd.audit_requirements[1], "GDPR Art 30");
+    }
+
+    // ── Property tests ──
+
+    proptest! {
+        #[test]
+        fn yaml_roundtrip_never_panics(
+            actor in "[A-Za-z ]{1,30}",
+            func in "[A-Za-z ]{1,50}",
+            so_that in "[A-Za-z ]{1,50}",
+        ) {
+            let content = format!(
+                "Truth: Prop test\n\n  # JTBD:\n  #   actor: \"{actor}\"\n  #   job_functional: \"{func}\"\n  #   so_that: \"{so_that}\"\n"
+            );
+            let result = extract_jtbd(&content);
+            prop_assert!(result.is_ok());
+            let (file_jtbd, _) = result.unwrap();
+            prop_assert!(file_jtbd.is_some());
+            let jtbd = file_jtbd.unwrap();
+            prop_assert_eq!(jtbd.actor.trim(), actor.trim());
+            prop_assert_eq!(jtbd.job_functional.trim(), func.trim());
+            prop_assert_eq!(jtbd.so_that.trim(), so_that.trim());
+        }
+
+        #[test]
+        fn plain_text_roundtrip_never_panics(
+            actor in "[A-Za-z]{1,20}",
+            func in "[A-Za-z ]{1,40}",
+            so_that in "[A-Za-z ]{1,40}",
+        ) {
+            let content = format!(
+                "Truth: Prop test\n\n  # JTBD\n  # As: {actor}\n  # Functional: {func}\n  # So that: {so_that}\n"
+            );
+            let result = extract_jtbd(&content);
+            prop_assert!(result.is_ok());
+            let (file_jtbd, _) = result.unwrap();
+            prop_assert!(file_jtbd.is_some());
+        }
+
+        #[test]
+        fn validate_never_panics(
+            has_emotional in any::<bool>(),
+            has_relational in any::<bool>(),
+            strict in any::<bool>(),
+        ) {
+            let mut jtbd = minimal_jtbd();
+            if has_emotional {
+                jtbd.job_emotional = Some("Feel good".to_string());
+            }
+            if has_relational {
+                jtbd.job_relational = Some("Be trusted".to_string());
+            }
+            let issues = validate_jtbd(&jtbd, strict);
+            let expected = usize::from(!has_emotional) + usize::from(!has_relational);
+            prop_assert_eq!(issues.len(), expected);
+        }
+
+        #[test]
+        fn serde_roundtrip_preserves_data(
+            actor in "[A-Za-z]{1,20}",
+            func in "[A-Za-z ]{1,40}",
+        ) {
+            let jtbd = JTBDMetadata {
+                actor: actor.clone(),
+                job_functional: func.clone(),
+                job_emotional: None,
+                job_relational: None,
+                so_that: "outcome".to_string(),
+                scope: None,
+                success_metrics: Vec::new(),
+                failure_modes: Vec::new(),
+                exceptions: Vec::new(),
+                evidence_required: Vec::new(),
+                audit_requirements: Vec::new(),
+                links: Vec::new(),
+            };
+            let json = serde_json::to_string(&jtbd).unwrap();
+            let back: JTBDMetadata = serde_json::from_str(&json).unwrap();
+            prop_assert_eq!(jtbd, back);
+        }
+
+        #[test]
+        fn content_without_truth_keyword_yields_none(
+            garbage in "[a-z ]{0,100}",
+        ) {
+            let result = extract_jtbd(&garbage);
+            prop_assert!(result.is_ok());
+            let (file_jtbd, scenarios) = result.unwrap();
+            prop_assert!(file_jtbd.is_none());
+            prop_assert!(scenarios.is_empty());
+        }
     }
 }

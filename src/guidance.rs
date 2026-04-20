@@ -518,6 +518,9 @@ fn truncated_excerpt(spec: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
+
+    // ─── extract_title ───
 
     #[test]
     fn local_rewrites_topic_titles() {
@@ -569,5 +572,810 @@ Evidence:
             Some("Governed vendor selection".into())
         );
         assert_eq!(extract_title("no heading here"), None);
+    }
+
+    #[test]
+    fn extract_title_feature_prefix() {
+        assert_eq!(
+            extract_title("Feature: My cool feature\n"),
+            Some("My cool feature".into())
+        );
+    }
+
+    #[test]
+    fn extract_title_skips_empty_value() {
+        assert_eq!(
+            extract_title("Truth:   \nFeature: Real title"),
+            Some("Real title".into())
+        );
+    }
+
+    #[test]
+    fn extract_title_with_leading_whitespace() {
+        assert_eq!(
+            extract_title("  Truth: Indented heading"),
+            Some("Indented heading".into())
+        );
+    }
+
+    #[test]
+    fn extract_title_empty_spec() {
+        assert_eq!(extract_title(""), None);
+    }
+
+    #[test]
+    fn extract_title_special_characters() {
+        assert_eq!(
+            extract_title("Truth: Héllo wörld — «special» ñ"),
+            Some("Héllo wörld — «special» ñ".into())
+        );
+    }
+
+    // ─── GuidanceConfig ───
+
+    #[test]
+    fn guidance_config_default() {
+        let cfg = GuidanceConfig::default();
+        assert!(cfg.provider_override.is_none());
+        assert!(cfg.model_override.is_none());
+    }
+
+    #[test]
+    fn guidance_config_with_overrides() {
+        let cfg = GuidanceConfig {
+            provider_override: Some("openai".into()),
+            model_override: Some("gpt-4o".into()),
+        };
+        assert_eq!(cfg.provider_override.as_deref(), Some("openai"));
+        assert_eq!(cfg.model_override.as_deref(), Some("gpt-4o"));
+    }
+
+    // ─── GuidanceResponse ───
+
+    #[test]
+    fn guidance_response_serializes_to_camel_case() {
+        let resp = GuidanceResponse {
+            current_title: "t".into(),
+            suggested_title: "s".into(),
+            should_rewrite: true,
+            source: "local-heuristic".into(),
+            source_label: "Local".into(),
+            provider: None,
+            model: None,
+            rationale: vec!["r".into()],
+            description_hints: vec![],
+            note: "n".into(),
+        };
+        let json = serde_json::to_value(&resp).unwrap();
+        assert!(json.get("shouldRewrite").is_some());
+        assert!(json.get("currentTitle").is_some());
+        assert!(json.get("suggestedTitle").is_some());
+        assert!(json.get("sourceLabel").is_some());
+        assert!(json.get("descriptionHints").is_some());
+    }
+
+    #[test]
+    fn guidance_response_equality() {
+        let a = GuidanceResponse {
+            current_title: "x".into(),
+            suggested_title: "y".into(),
+            should_rewrite: false,
+            source: "s".into(),
+            source_label: "l".into(),
+            provider: None,
+            model: None,
+            rationale: vec![],
+            description_hints: vec![],
+            note: String::new(),
+        };
+        let b = a.clone();
+        assert_eq!(a, b);
+    }
+
+    // ─── DraftContext ───
+
+    #[test]
+    fn draft_context_from_minimal_spec() {
+        let ctx = draft_context("Truth: Simple\n\nScenario: test\n  Given x", "Simple");
+        assert_eq!(ctx.title, "Simple");
+        assert_eq!(ctx.scenario_count, 1);
+        assert!(!ctx.has_intent);
+        assert!(!ctx.has_authority);
+        assert!(!ctx.has_constraint);
+        assert!(!ctx.has_evidence);
+        assert!(!ctx.has_exception);
+    }
+
+    #[test]
+    fn draft_context_with_governance_blocks() {
+        let spec = "\
+Truth: Governed truth
+
+Intent:
+  Outcome: clarity
+
+Authority:
+  Actor: board
+
+Constraint:
+  Cost Limit: budget
+
+Evidence:
+  Requires: audit_trail
+
+Exception:
+  Override: emergency
+
+Scenario: First
+  Given x
+Scenario: Second
+  Given y
+";
+        let ctx = draft_context(spec, "Governed truth");
+        assert_eq!(ctx.title, "Governed truth");
+        assert!(ctx.has_intent);
+        assert!(ctx.has_authority);
+        assert!(ctx.has_constraint);
+        assert!(ctx.has_evidence);
+        assert!(ctx.has_exception);
+        assert_eq!(ctx.scenario_count, 2);
+    }
+
+    #[test]
+    fn draft_context_empty_spec() {
+        let ctx = draft_context("", "");
+        assert_eq!(ctx.title, "");
+        assert_eq!(ctx.scenario_count, 0);
+        assert_eq!(ctx.description_line_count, 0);
+    }
+
+    #[test]
+    fn draft_context_trims_title() {
+        let ctx = draft_context("Truth:  padded  \n", "  padded  ");
+        assert_eq!(ctx.title, "padded");
+    }
+
+    #[test]
+    fn draft_context_description_lines() {
+        let spec = "\
+Truth: Has description
+  This is line one
+  This is line two
+
+Scenario: test
+  Given x
+";
+        let ctx = draft_context(spec, "Has description");
+        assert_eq!(ctx.description_line_count, 2);
+    }
+
+    // ─── sanitize_suggested_title ───
+
+    #[test]
+    fn sanitize_strips_truth_prefix() {
+        assert_eq!(
+            sanitize_suggested_title("Truth: Good title", "fallback"),
+            "Good title"
+        );
+    }
+
+    #[test]
+    fn sanitize_strips_feature_prefix() {
+        assert_eq!(
+            sanitize_suggested_title("Feature: Good title", "fallback"),
+            "Good title"
+        );
+    }
+
+    #[test]
+    fn sanitize_empty_falls_back() {
+        assert_eq!(sanitize_suggested_title("", "fallback"), "fallback");
+        assert_eq!(sanitize_suggested_title("   ", "fallback"), "fallback");
+    }
+
+    #[test]
+    fn sanitize_preserves_clean_title() {
+        assert_eq!(
+            sanitize_suggested_title("Already clean", "x"),
+            "Already clean"
+        );
+    }
+
+    #[test]
+    fn sanitize_truth_prefix_only() {
+        assert_eq!(sanitize_suggested_title("Truth:", "fallback"), "fallback");
+    }
+
+    // ─── parse_llm_guidance ───
+
+    #[test]
+    fn parse_valid_llm_json() {
+        let json = r#"{"shouldRewrite":true,"suggestedTitle":"Better","rationale":["r1"],"descriptionHints":["h1"]}"#;
+        let g = parse_llm_guidance(json).unwrap();
+        assert!(g.should_rewrite);
+        assert_eq!(g.suggested_title, "Better");
+        assert_eq!(g.rationale, vec!["r1"]);
+        assert_eq!(g.description_hints, vec!["h1"]);
+    }
+
+    #[test]
+    fn parse_llm_guidance_extracts_json_from_surrounding_text() {
+        let raw =
+            "Here is the result:\n{\"shouldRewrite\":false,\"suggestedTitle\":\"Same\"}\nDone.";
+        let g = parse_llm_guidance(raw).unwrap();
+        assert!(!g.should_rewrite);
+        assert_eq!(g.suggested_title, "Same");
+    }
+
+    #[test]
+    fn parse_llm_guidance_defaults_on_missing_fields() {
+        let json = "{}";
+        let g = parse_llm_guidance(json).unwrap();
+        assert!(!g.should_rewrite);
+        assert!(g.suggested_title.is_empty());
+        assert!(g.rationale.is_empty());
+        assert!(g.description_hints.is_empty());
+    }
+
+    #[test]
+    fn parse_llm_guidance_rejects_garbage() {
+        assert!(parse_llm_guidance("not json at all").is_err());
+    }
+
+    #[test]
+    fn parse_llm_guidance_empty_string() {
+        assert!(parse_llm_guidance("").is_err());
+    }
+
+    // ─── normalize_rationale ───
+
+    #[test]
+    fn normalize_rationale_filters_empty() {
+        let result = normalize_rationale(vec![String::new(), "  ".into()], "fallback".into());
+        assert_eq!(result, vec!["fallback"]);
+    }
+
+    #[test]
+    fn normalize_rationale_keeps_non_empty() {
+        let result = normalize_rationale(vec!["good reason".into()], "fallback".into());
+        assert_eq!(result, vec!["good reason"]);
+    }
+
+    // ─── normalize_description_hints ───
+
+    #[test]
+    fn normalize_hints_truncates_to_two() {
+        let result = normalize_description_hints(vec!["a".into(), "b".into(), "c".into()]);
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn normalize_hints_removes_blank() {
+        let result = normalize_description_hints(vec![String::new(), "  ".into(), "real".into()]);
+        assert_eq!(result, vec!["real"]);
+    }
+
+    // ─── provider_label ───
+
+    #[test]
+    fn known_provider_labels() {
+        assert_eq!(provider_label("openrouter"), "OpenRouter");
+        assert_eq!(provider_label("openai"), "OpenAI");
+        assert_eq!(provider_label("anthropic"), "Anthropic");
+        assert_eq!(provider_label("gemini"), "Gemini");
+        assert_eq!(provider_label("mistral"), "Mistral");
+    }
+
+    #[test]
+    fn unknown_provider_label_fallback() {
+        assert_eq!(provider_label("deepseek"), "Live");
+        assert_eq!(provider_label(""), "Live");
+    }
+
+    // ─── title_is_declarative ───
+
+    #[test]
+    fn declarative_verbs_detected() {
+        assert!(title_is_declarative("selection is auditable"));
+        assert!(title_is_declarative("policy must be enforced"));
+        assert!(title_is_declarative("access requires approval"));
+        assert!(title_is_declarative("state remains consistent"));
+        assert!(title_is_declarative("pipeline produces artifacts"));
+        assert!(title_is_declarative("gate blocks unapproved changes"));
+        assert!(title_is_declarative("policy allows exceptions"));
+    }
+
+    #[test]
+    fn non_declarative_titles() {
+        assert!(!title_is_declarative("vendor selection"));
+        assert!(!title_is_declarative("evaluation workflow"));
+        assert!(!title_is_declarative(""));
+    }
+
+    // ─── join_phrases ───
+
+    #[test]
+    fn join_empty() {
+        assert_eq!(join_phrases(&[]), "");
+    }
+
+    #[test]
+    fn join_single() {
+        assert_eq!(join_phrases(&["auditable"]), "auditable");
+    }
+
+    #[test]
+    fn join_two() {
+        assert_eq!(
+            join_phrases(&["auditable", "constrained"]),
+            "auditable and constrained"
+        );
+    }
+
+    #[test]
+    fn join_three() {
+        assert_eq!(
+            join_phrases(&["auditable", "constrained", "approval-gated"]),
+            "auditable, constrained, and approval-gated"
+        );
+    }
+
+    #[test]
+    fn join_four() {
+        assert_eq!(join_phrases(&["a", "b", "c", "d"]), "a, b, c, and d");
+    }
+
+    // ─── quality_predicate ───
+
+    #[test]
+    fn predicate_all_false() {
+        assert_eq!(
+            quality_predicate(false, false, false),
+            "is explicit and reviewable"
+        );
+    }
+
+    #[test]
+    fn predicate_evidence_only() {
+        assert_eq!(quality_predicate(false, false, true), "is auditable");
+    }
+
+    #[test]
+    fn predicate_all_true() {
+        assert_eq!(
+            quality_predicate(true, true, true),
+            "is auditable, constrained, and approval-gated"
+        );
+    }
+
+    #[test]
+    fn predicate_authority_and_constraint() {
+        assert_eq!(
+            quality_predicate(true, true, false),
+            "is constrained and approval-gated"
+        );
+    }
+
+    // ─── normalize_subject ───
+
+    #[test]
+    fn subject_reorders_for_pattern() {
+        assert_eq!(
+            normalize_subject("Selection for enterprise AI"),
+            "Enterprise AI selection"
+        );
+    }
+
+    #[test]
+    fn subject_strips_suffix() {
+        assert_eq!(
+            normalize_subject("Evaluation for vendor rollout"),
+            "Vendor evaluation"
+        );
+    }
+
+    #[test]
+    fn subject_non_reorderable() {
+        assert_eq!(normalize_subject("Budget controls"), "Budget controls");
+    }
+
+    #[test]
+    fn subject_trailing_dot() {
+        assert_eq!(normalize_subject("Controls."), "Controls");
+    }
+
+    #[test]
+    fn subject_empty() {
+        assert_eq!(normalize_subject(""), "");
+    }
+
+    // ─── uppercase_first ───
+
+    #[test]
+    fn uppercase_first_normal() {
+        assert_eq!(uppercase_first("hello"), "Hello");
+    }
+
+    #[test]
+    fn uppercase_first_empty() {
+        assert_eq!(uppercase_first(""), "");
+    }
+
+    #[test]
+    fn uppercase_first_already_upper() {
+        assert_eq!(uppercase_first("Already"), "Already");
+    }
+
+    // ─── description_line_count ───
+
+    #[test]
+    fn description_count_no_heading() {
+        assert_eq!(description_line_count("just text\nno heading"), 0);
+    }
+
+    #[test]
+    fn description_count_with_blank_lines_before_content() {
+        let spec = "Truth: Title\n\n  Description line\n\nScenario: test";
+        assert_eq!(description_line_count(spec), 1);
+    }
+
+    #[test]
+    fn description_count_stops_at_governance() {
+        let spec = "Truth: Title\n  desc 1\n  desc 2\nIntent:\n  Outcome: x";
+        assert_eq!(description_line_count(spec), 2);
+    }
+
+    #[test]
+    fn description_count_stops_at_tag() {
+        let spec = "Truth: Title\n  desc\n@slow\nScenario: x";
+        assert_eq!(description_line_count(spec), 1);
+    }
+
+    // ─── is_heading_boundary ───
+
+    #[test]
+    fn heading_boundaries() {
+        assert!(is_heading_boundary("Intent:"));
+        assert!(is_heading_boundary("Authority:"));
+        assert!(is_heading_boundary("Constraint:"));
+        assert!(is_heading_boundary("Evidence:"));
+        assert!(is_heading_boundary("Exception:"));
+        assert!(is_heading_boundary("@tag"));
+        assert!(is_heading_boundary("Background: setup"));
+        assert!(is_heading_boundary("Scenario: test"));
+        assert!(is_heading_boundary("Rule: something"));
+        assert!(is_heading_boundary("Example: one"));
+        assert!(is_heading_boundary("Examples: table"));
+    }
+
+    #[test]
+    fn non_boundaries() {
+        assert!(!is_heading_boundary("just text"));
+        assert!(!is_heading_boundary(""));
+        assert!(!is_heading_boundary("  Intent:"));
+    }
+
+    // ─── truncated_excerpt ───
+
+    #[test]
+    fn excerpt_short_spec_unchanged() {
+        let spec = "Truth: Short\nScenario: x";
+        assert_eq!(truncated_excerpt(spec), spec);
+    }
+
+    #[test]
+    fn excerpt_truncates_many_lines() {
+        let lines: Vec<String> = (0..50).map(|i| format!("Line {i}")).collect();
+        let spec = lines.join("\n");
+        let excerpt = truncated_excerpt(&spec);
+        assert_eq!(excerpt.lines().count(), 20);
+    }
+
+    // ─── local_heading_guidance branches ───
+
+    #[test]
+    fn local_guidance_with_workflow_in_title() {
+        let spec = "Truth: Onboarding workflow\n\nScenario: test\n  Given x";
+        let g = local_heading_guidance(spec, "Onboarding workflow", "note".into());
+        assert!(g.should_rewrite);
+        assert!(g.rationale.iter().any(|r| r.contains("claim or rule")));
+    }
+
+    #[test]
+    fn local_guidance_with_process_in_title() {
+        let spec = "Truth: Review process\n\nScenario: test\n  Given x";
+        let g = local_heading_guidance(spec, "Review process", "note".into());
+        assert!(g.should_rewrite);
+    }
+
+    #[test]
+    fn local_guidance_with_for_pattern() {
+        let spec = "Truth: Screening for vendors\n\nScenario: test\n  Given x";
+        let g = local_heading_guidance(spec, "Screening for vendors", "note".into());
+        assert!(g.should_rewrite);
+        assert!(g.rationale.iter().any(|r| r.contains("initiative")));
+    }
+
+    #[test]
+    fn local_guidance_source_fields() {
+        let spec = "Truth: Topic title\n\nScenario: test\n  Given x";
+        let g = local_heading_guidance(spec, "Topic title", "my note".into());
+        assert_eq!(g.source, "local-heuristic");
+        assert_eq!(g.source_label, "Local");
+        assert!(g.provider.is_none());
+        assert!(g.model.is_none());
+        assert_eq!(g.note, "my note");
+    }
+
+    #[test]
+    fn local_guidance_with_approval_in_spec() {
+        let spec = "Truth: Budget is constrained\n\nApproval required before proceeding.\n\nScenario: test\n  Given x";
+        let g = local_heading_guidance(spec, "Budget is constrained", "note".into());
+        assert!(!g.should_rewrite);
+    }
+
+    #[test]
+    fn local_guidance_with_traceable_in_spec() {
+        let spec =
+            "Truth: Selection topic\n\nAll steps must be traceable.\n\nScenario: test\n  Given x";
+        let g = local_heading_guidance(spec, "Selection topic", "note".into());
+        assert!(g.should_rewrite);
+        let title_lower = g.suggested_title.to_ascii_lowercase();
+        assert!(title_lower.contains("auditable"));
+    }
+
+    #[test]
+    fn local_guidance_with_governance_in_spec() {
+        let spec =
+            "Truth: Policy topic\n\nGovernance framework applies.\n\nScenario: test\n  Given x";
+        let g = local_heading_guidance(spec, "Policy topic", "note".into());
+        assert!(g.should_rewrite);
+        let title_lower = g.suggested_title.to_ascii_lowercase();
+        assert!(title_lower.contains("constrained"));
+    }
+
+    #[test]
+    fn local_guidance_missing_evidence_adds_rationale() {
+        let spec = "Truth: Vendor selection topic\n\nScenario: test\n  Given x";
+        let g = local_heading_guidance(spec, "Vendor selection topic", "note".into());
+        assert!(g.rationale.iter().any(|r| r.contains("evidence")));
+    }
+
+    #[test]
+    fn local_guidance_missing_constraint_adds_rationale() {
+        let spec = "Truth: Vendor selection topic\n\nScenario: test\n  Given x";
+        let g = local_heading_guidance(spec, "Vendor selection topic", "note".into());
+        assert!(g.rationale.iter().any(|r| r.contains("constraints")));
+    }
+
+    // ─── build_description_hints ───
+
+    #[test]
+    fn hints_for_no_description() {
+        let ctx = DraftContext {
+            title: "T".into(),
+            description_line_count: 0,
+            scenario_count: 0,
+            has_intent: false,
+            has_authority: false,
+            has_constraint: false,
+            has_evidence: false,
+            has_exception: false,
+        };
+        let hints = build_description_hints(&ctx, "Truth: T");
+        assert!(hints.iter().any(|h| h.contains("reproducible")));
+    }
+
+    #[test]
+    fn hints_for_authority() {
+        let ctx = DraftContext {
+            title: "T".into(),
+            description_line_count: 1,
+            scenario_count: 0,
+            has_intent: false,
+            has_authority: true,
+            has_constraint: false,
+            has_evidence: true,
+            has_exception: false,
+        };
+        let hints = build_description_hints(&ctx, "Truth: T");
+        assert!(hints.iter().any(|h| h.contains("approval")));
+    }
+
+    #[test]
+    fn hints_no_constraint_no_authority() {
+        let ctx = DraftContext {
+            title: "T".into(),
+            description_line_count: 1,
+            scenario_count: 0,
+            has_intent: false,
+            has_authority: false,
+            has_constraint: false,
+            has_evidence: true,
+            has_exception: false,
+        };
+        let hints = build_description_hints(&ctx, "Truth: T");
+        assert!(hints.iter().any(|h| h.contains("policy")));
+    }
+
+    #[test]
+    fn hints_no_evidence_adds_traceable() {
+        let ctx = DraftContext {
+            title: "T".into(),
+            description_line_count: 1,
+            scenario_count: 0,
+            has_intent: false,
+            has_authority: false,
+            has_constraint: true,
+            has_evidence: false,
+            has_exception: false,
+        };
+        let hints = build_description_hints(&ctx, "Truth: T");
+        assert!(hints.iter().any(|h| h.contains("traceable")));
+    }
+
+    #[test]
+    fn hints_max_two() {
+        let ctx = DraftContext {
+            title: "T".into(),
+            description_line_count: 0,
+            scenario_count: 0,
+            has_intent: false,
+            has_authority: true,
+            has_constraint: false,
+            has_evidence: false,
+            has_exception: false,
+        };
+        let hints = build_description_hints(&ctx, "Truth: T");
+        assert!(hints.len() <= 2);
+    }
+
+    // ─── guide_heading (async, no backend) ───
+
+    #[tokio::test]
+    async fn guide_heading_returns_none_for_no_title() {
+        let config = GuidanceConfig::default();
+        let result = guide_heading("no heading here", &config).await;
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn guide_heading_returns_none_for_empty_spec() {
+        let config = GuidanceConfig::default();
+        let result = guide_heading("", &config).await;
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn guide_heading_falls_back_to_local_on_no_backend() {
+        let config = GuidanceConfig::default();
+        let spec = "Truth: Vendor selection for AI rollout\n\nScenario: test\n  Given x";
+        let result = guide_heading(spec, &config).await;
+        assert!(result.is_some());
+        let resp = result.unwrap();
+        assert_eq!(resp.source, "local-heuristic");
+        assert!(resp.note.contains("Live guidance failed"));
+    }
+
+    // ─── build_prompt ───
+
+    #[test]
+    fn build_prompt_includes_title_and_context() {
+        let ctx = draft_context("Truth: Title\nScenario: test\n  Given x", "Title");
+        let prompt =
+            build_prompt("Title", &ctx, "Truth: Title\nScenario: test\n  Given x").unwrap();
+        assert!(prompt.contains("Title"));
+        assert!(prompt.contains("shouldRewrite"));
+        assert!(prompt.contains("suggestedTitle"));
+    }
+
+    // ─── DraftContext serialization ───
+
+    #[test]
+    fn draft_context_serializes_to_camel_case() {
+        let ctx = DraftContext {
+            title: "T".into(),
+            description_line_count: 0,
+            scenario_count: 1,
+            has_intent: true,
+            has_authority: false,
+            has_constraint: false,
+            has_evidence: false,
+            has_exception: false,
+        };
+        let json = serde_json::to_value(&ctx).unwrap();
+        assert!(json.get("descriptionLineCount").is_some());
+        assert!(json.get("scenarioCount").is_some());
+        assert!(json.get("hasIntent").is_some());
+    }
+
+    // ─── reorderable_subject ───
+
+    #[test]
+    fn reorderable_subjects() {
+        assert!(reorderable_subject("Selection"));
+        assert!(reorderable_subject("Vendor Evaluation"));
+        assert!(reorderable_subject("Final Approval"));
+        assert!(reorderable_subject("Peer Review"));
+        assert!(reorderable_subject("Initial Screening"));
+        assert!(reorderable_subject("Feature Comparison"));
+    }
+
+    #[test]
+    fn non_reorderable_subjects() {
+        assert!(!reorderable_subject("Budget"));
+        assert!(!reorderable_subject("Controls"));
+        assert!(!reorderable_subject(""));
+    }
+
+    // ─── strip_context_suffix ───
+
+    #[test]
+    fn strip_known_suffixes() {
+        assert_eq!(
+            strip_context_suffix("enterprise AI rollout"),
+            "enterprise AI"
+        );
+        assert_eq!(strip_context_suffix("onboarding workflow"), "onboarding");
+        assert_eq!(strip_context_suffix("review process"), "review");
+        assert_eq!(strip_context_suffix("compliance program"), "compliance");
+    }
+
+    #[test]
+    fn strip_no_suffix() {
+        assert_eq!(strip_context_suffix("plain text"), "plain text");
+    }
+
+    // ─── Property tests ───
+
+    proptest! {
+        #[test]
+        fn extract_title_never_panics(s in "\\PC*") {
+            let _ = extract_title(&s);
+        }
+
+        #[test]
+        fn draft_context_never_panics(s in "\\PC*") {
+            let _ = draft_context(&s, "any title");
+        }
+
+        #[test]
+        fn local_heading_guidance_never_panics(s in "\\PC{0,500}") {
+            let title = extract_title(&s).unwrap_or_default();
+            let _ = local_heading_guidance(&s, &title, "test".into());
+        }
+
+        #[test]
+        fn sanitize_never_panics(s in "\\PC*") {
+            let result = sanitize_suggested_title(&s, "fallback");
+            assert!(!result.is_empty());
+        }
+
+        #[test]
+        fn parse_llm_guidance_never_panics(s in "\\PC*") {
+            let _ = parse_llm_guidance(&s);
+        }
+
+        #[test]
+        fn any_valid_spec_produces_response(
+            title in "[A-Za-z ]{3,30}",
+            scenario in "[A-Za-z ]{3,30}"
+        ) {
+            let spec = format!("Truth: {title}\n\nScenario: {scenario}\n  Given x");
+            let g = local_heading_guidance(&spec, &title, "test".into());
+            assert_eq!(g.current_title, title.trim());
+            assert!(!g.source.is_empty());
+        }
+
+        #[test]
+        fn truncated_excerpt_bounded(s in "\\PC{0,5000}") {
+            let excerpt = truncated_excerpt(&s);
+            assert!(excerpt.lines().count() <= 21);
+        }
+
+        #[test]
+        fn description_line_count_never_panics(s in "\\PC*") {
+            let _ = description_line_count(&s);
+        }
     }
 }

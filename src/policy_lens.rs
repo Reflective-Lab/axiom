@@ -308,7 +308,11 @@ pub fn check_coverage(governance: &TruthGovernance, policy_text: &str) -> Policy
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::truths::parse_truth_document;
+    use crate::truths::{
+        AuthorityBlock, ConstraintBlock, EvidenceBlock, ExceptionBlock, TruthGovernance,
+        parse_truth_document,
+    };
+    use proptest::prelude::*;
 
     const VENDOR_POLICY: &str = r#"
 permit(principal, action == Action::"promote", resource)
@@ -322,6 +326,91 @@ when {
   context.cfo_approval == false
 };
 "#;
+
+    fn gov_with_authority(actor: &str) -> TruthGovernance {
+        TruthGovernance {
+            authority: Some(AuthorityBlock {
+                actor: Some(actor.into()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }
+    }
+
+    // ── PolicyRuleKind Display ──────────────────────────────────────
+
+    #[test]
+    fn display_permit() {
+        assert_eq!(PolicyRuleKind::Permit.to_string(), "permit");
+    }
+
+    #[test]
+    fn display_forbid() {
+        assert_eq!(PolicyRuleKind::Forbid.to_string(), "forbid");
+    }
+
+    // ── PolicyRuleKind equality ─────────────────────────────────────
+
+    #[test]
+    fn rule_kind_equality() {
+        assert_eq!(PolicyRuleKind::Permit, PolicyRuleKind::Permit);
+        assert_eq!(PolicyRuleKind::Forbid, PolicyRuleKind::Forbid);
+        assert_ne!(PolicyRuleKind::Permit, PolicyRuleKind::Forbid);
+    }
+
+    // ── Struct constructors ─────────────────────────────────────────
+
+    #[test]
+    fn policy_rule_fields() {
+        let rule = PolicyRule {
+            kind: PolicyRuleKind::Permit,
+            action: "deploy".into(),
+            conditions: vec!["role == admin".into()],
+            source_line: 42,
+        };
+        assert_eq!(rule.kind, PolicyRuleKind::Permit);
+        assert_eq!(rule.action, "deploy");
+        assert_eq!(rule.conditions, vec!["role == admin"]);
+        assert_eq!(rule.source_line, 42);
+    }
+
+    #[test]
+    fn policy_requirements_default() {
+        let reqs = PolicyRequirements::default();
+        assert!(reqs.gated_actions.is_empty());
+        assert!(reqs.required_gates.is_empty());
+        assert!(reqs.authority_level.is_none());
+        assert!(!reqs.requires_human_approval);
+        assert!(reqs.resource_type.is_none());
+        assert!(reqs.spending_limits.is_empty());
+        assert!(reqs.escalation_targets.is_empty());
+    }
+
+    #[test]
+    fn gated_action_fields() {
+        let ga = GatedAction {
+            action: "commit".into(),
+            reason: "board approval".into(),
+        };
+        assert_eq!(ga.action, "commit");
+        assert_eq!(ga.reason, "board approval");
+    }
+
+    #[test]
+    fn coverage_report_fields() {
+        let report = PolicyCoverageReport {
+            requirements: PolicyRequirements::default(),
+            rules: vec![],
+            covered_actions: vec!["commit".into()],
+            uncovered_actions: vec!["promote".into()],
+            observations: vec!["note".into()],
+        };
+        assert_eq!(report.covered_actions.len(), 1);
+        assert_eq!(report.uncovered_actions.len(), 1);
+        assert_eq!(report.observations.len(), 1);
+    }
+
+    // ── extract_requirements ────────────────────────────────────────
 
     #[test]
     fn extracts_requirements_from_governance() {
@@ -361,6 +450,199 @@ Scenario: Vendors evaluated
     }
 
     #[test]
+    fn extract_empty_governance() {
+        let gov = TruthGovernance::default();
+        let reqs = extract_requirements(&gov);
+        assert!(reqs.gated_actions.is_empty());
+        assert!(reqs.required_gates.is_empty());
+        assert!(reqs.authority_level.is_none());
+        assert!(!reqs.requires_human_approval);
+        assert!(reqs.resource_type.is_none());
+        assert!(reqs.spending_limits.is_empty());
+        assert!(reqs.escalation_targets.is_empty());
+    }
+
+    #[test]
+    fn extract_authority_board_sets_supervisory() {
+        let reqs = extract_requirements(&gov_with_authority("review_board"));
+        assert_eq!(reqs.authority_level, Some("supervisory".into()));
+    }
+
+    #[test]
+    fn extract_authority_committee_sets_supervisory() {
+        let reqs = extract_requirements(&gov_with_authority("ethics_committee"));
+        assert_eq!(reqs.authority_level, Some("supervisory".into()));
+    }
+
+    #[test]
+    fn extract_authority_ceo_sets_sovereign() {
+        let reqs = extract_requirements(&gov_with_authority("ceo"));
+        assert_eq!(reqs.authority_level, Some("sovereign".into()));
+    }
+
+    #[test]
+    fn extract_authority_cfo_sets_sovereign() {
+        let reqs = extract_requirements(&gov_with_authority("cfo_office"));
+        assert_eq!(reqs.authority_level, Some("sovereign".into()));
+    }
+
+    #[test]
+    fn extract_authority_cro_sets_sovereign() {
+        let reqs = extract_requirements(&gov_with_authority("cro"));
+        assert_eq!(reqs.authority_level, Some("sovereign".into()));
+    }
+
+    #[test]
+    fn extract_authority_unknown_actor_no_level() {
+        let reqs = extract_requirements(&gov_with_authority("ops_team"));
+        assert_eq!(reqs.authority_level, None);
+    }
+
+    #[test]
+    fn extract_authority_no_actor() {
+        let gov = TruthGovernance {
+            authority: Some(AuthorityBlock::default()),
+            ..Default::default()
+        };
+        let reqs = extract_requirements(&gov);
+        assert_eq!(reqs.authority_level, None);
+        // Authority block present => promote gated action
+        assert!(reqs.gated_actions.iter().any(|g| g.action == "promote"));
+    }
+
+    #[test]
+    fn extract_approval_sets_human_approval_and_gated_commit() {
+        let gov = TruthGovernance {
+            authority: Some(AuthorityBlock {
+                requires_approval: vec!["legal_review".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let reqs = extract_requirements(&gov);
+        assert!(reqs.requires_human_approval);
+        let commit_actions: Vec<_> = reqs
+            .gated_actions
+            .iter()
+            .filter(|g| g.action == "commit")
+            .collect();
+        assert!(!commit_actions.is_empty());
+        assert!(commit_actions[0].reason.contains("legal_review"));
+    }
+
+    #[test]
+    fn extract_multiple_approvals() {
+        let gov = TruthGovernance {
+            authority: Some(AuthorityBlock {
+                requires_approval: vec!["legal".into(), "finance".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let reqs = extract_requirements(&gov);
+        let commit_gates: Vec<_> = reqs
+            .gated_actions
+            .iter()
+            .filter(|g| g.action == "commit")
+            .collect();
+        assert_eq!(commit_gates.len(), 2);
+    }
+
+    #[test]
+    fn extract_must_not_creates_gated_commit() {
+        let gov = TruthGovernance {
+            authority: Some(AuthorityBlock {
+                must_not: vec!["bypass compliance".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let reqs = extract_requirements(&gov);
+        let must_not_gates: Vec<_> = reqs
+            .gated_actions
+            .iter()
+            .filter(|g| g.reason.contains("Must not"))
+            .collect();
+        assert_eq!(must_not_gates.len(), 1);
+        assert!(must_not_gates[0].reason.contains("bypass compliance"));
+    }
+
+    #[test]
+    fn extract_authority_always_adds_promote_gate() {
+        let gov = gov_with_authority("anyone");
+        let reqs = extract_requirements(&gov);
+        assert!(reqs.gated_actions.iter().any(|g| g.action == "promote"));
+    }
+
+    #[test]
+    fn extract_evidence_gates() {
+        let gov = TruthGovernance {
+            evidence: Some(EvidenceBlock {
+                requires: vec!["pen_test".into(), "code_review".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let reqs = extract_requirements(&gov);
+        assert_eq!(reqs.required_gates, vec!["pen_test", "code_review"]);
+    }
+
+    #[test]
+    fn extract_constraint_cost_limit_sets_resource_type() {
+        let gov = TruthGovernance {
+            constraint: Some(ConstraintBlock {
+                cost_limit: vec!["10k".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let reqs = extract_requirements(&gov);
+        assert_eq!(reqs.resource_type, Some("spend".into()));
+        assert_eq!(reqs.spending_limits, vec!["10k"]);
+    }
+
+    #[test]
+    fn extract_constraint_budget_sets_resource_type() {
+        let gov = TruthGovernance {
+            constraint: Some(ConstraintBlock {
+                budget: vec!["quarterly".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let reqs = extract_requirements(&gov);
+        assert_eq!(reqs.resource_type, Some("spend".into()));
+    }
+
+    #[test]
+    fn extract_constraint_no_cost_or_budget() {
+        let gov = TruthGovernance {
+            constraint: Some(ConstraintBlock {
+                must_not: vec!["exceed headcount".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let reqs = extract_requirements(&gov);
+        assert_eq!(reqs.resource_type, None);
+    }
+
+    #[test]
+    fn extract_exception_escalation_targets() {
+        let gov = TruthGovernance {
+            exception: Some(ExceptionBlock {
+                escalates_to: vec!["cto".into(), "board".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let reqs = extract_requirements(&gov);
+        assert_eq!(reqs.escalation_targets, vec!["cto", "board"]);
+    }
+
+    // ── parse_cedar_rules ───────────────────────────────────────────
+
+    #[test]
     fn parses_cedar_rules() {
         let policy = r#"
 permit(principal, action == Action::"validate", resource)
@@ -381,6 +663,186 @@ when {
         assert_eq!(rules[1].kind, PolicyRuleKind::Forbid);
         assert_eq!(rules[1].action, "commit");
     }
+
+    #[test]
+    fn parse_empty_policy() {
+        let rules = parse_cedar_rules("");
+        assert!(rules.is_empty());
+    }
+
+    #[test]
+    fn parse_whitespace_only_policy() {
+        let rules = parse_cedar_rules("   \n\n  \n");
+        assert!(rules.is_empty());
+    }
+
+    #[test]
+    fn parse_comments_only() {
+        let rules = parse_cedar_rules("// just a comment\n// another one\n");
+        assert!(rules.is_empty());
+    }
+
+    #[test]
+    fn parse_no_action_in_rule() {
+        let policy = r#"
+permit(principal, action, resource)
+when {
+  principal.role == "admin"
+};
+"#;
+        let rules = parse_cedar_rules(policy);
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].action, "");
+        assert_eq!(rules[0].kind, PolicyRuleKind::Permit);
+    }
+
+    #[test]
+    fn parse_source_line_is_one_indexed() {
+        let policy = r#"permit(principal, action == Action::"deploy", resource)
+when {
+  principal.role == "deployer"
+};
+"#;
+        let rules = parse_cedar_rules(policy);
+        assert_eq!(rules[0].source_line, 1);
+    }
+
+    #[test]
+    fn parse_source_line_skips_blank_lines() {
+        let policy = "\n\npermit(principal, action == Action::\"x\", resource)\nwhen { };\n";
+        let rules = parse_cedar_rules(policy);
+        assert_eq!(rules[0].source_line, 3);
+    }
+
+    #[test]
+    fn parse_condition_with_equality() {
+        let policy = r#"
+permit(principal, action == Action::"read", resource)
+when {
+  resource.classification == "public"
+};
+"#;
+        let rules = parse_cedar_rules(policy);
+        assert_eq!(rules.len(), 1);
+        assert!(
+            rules[0]
+                .conditions
+                .iter()
+                .any(|c| c.contains("classification"))
+        );
+    }
+
+    #[test]
+    fn parse_condition_with_contains() {
+        let policy = r#"
+permit(principal, action == Action::"access", resource)
+when {
+  context.gates_passed.contains("sec_review")
+};
+"#;
+        let rules = parse_cedar_rules(policy);
+        assert!(
+            rules[0]
+                .conditions
+                .iter()
+                .any(|c| c.contains("gates_passed.contains"))
+        );
+    }
+
+    #[test]
+    fn parse_condition_with_less_equal() {
+        let policy = r#"
+forbid(principal, action == Action::"spend", resource)
+when {
+  context.amount <= 1000
+};
+"#;
+        let rules = parse_cedar_rules(policy);
+        assert!(!rules[0].conditions.is_empty());
+    }
+
+    #[test]
+    fn parse_condition_cleans_resource_prefix() {
+        let policy = r#"
+permit(principal, action == Action::"r", resource)
+when {
+  resource.owner == "team_a"
+};
+"#;
+        let rules = parse_cedar_rules(policy);
+        let owner_cond = rules[0].conditions.iter().find(|c| c.contains("owner"));
+        assert!(owner_cond.is_some());
+        assert!(!owner_cond.unwrap().contains("resource."));
+    }
+
+    #[test]
+    fn parse_condition_cleans_principal_prefix() {
+        let policy = r#"
+permit(principal, action == Action::"r", resource)
+when {
+  principal.level == "senior"
+};
+"#;
+        let rules = parse_cedar_rules(policy);
+        let level_cond = rules[0].conditions.iter().find(|c| c.contains("level"));
+        assert!(level_cond.is_some());
+        assert!(!level_cond.unwrap().contains("principal."));
+    }
+
+    #[test]
+    fn parse_condition_replaces_double_equals_false() {
+        let policy = r#"
+forbid(principal, action == Action::"x", resource)
+when {
+  context.approved == false
+};
+"#;
+        let rules = parse_cedar_rules(policy);
+        assert!(rules[0].conditions.iter().any(|c| c.contains("NOT SET")));
+    }
+
+    #[test]
+    fn parse_condition_replaces_or_operator() {
+        let policy = r#"
+permit(principal, action == Action::"x", resource)
+when {
+  context.level == "a" || context.level == "b"
+};
+"#;
+        let rules = parse_cedar_rules(policy);
+        assert!(rules[0].conditions.iter().any(|c| c.contains("OR")));
+    }
+
+    #[test]
+    fn parse_multiple_rules() {
+        let policy = r#"
+permit(principal, action == Action::"a", resource) when { };
+permit(principal, action == Action::"b", resource) when { };
+forbid(principal, action == Action::"c", resource) when { };
+"#;
+        let rules = parse_cedar_rules(policy);
+        assert_eq!(rules.len(), 3);
+        assert_eq!(rules[0].action, "a");
+        assert_eq!(rules[1].action, "b");
+        assert_eq!(rules[2].action, "c");
+        assert_eq!(rules[2].kind, PolicyRuleKind::Forbid);
+    }
+
+    #[test]
+    fn parse_nested_conditions_block() {
+        let policy = r#"
+forbid(principal, action == Action::"deploy", resource)
+when {
+  context.env == "production" &&
+  context.approvals <= 0
+};
+"#;
+        let rules = parse_cedar_rules(policy);
+        assert_eq!(rules.len(), 1);
+        assert!(rules[0].conditions.len() >= 2);
+    }
+
+    // ── check_coverage ──────────────────────────────────────────────
 
     #[test]
     fn coverage_report_with_vendor_policy() {
@@ -410,5 +872,305 @@ Scenario: Vendors evaluated
 
         assert!(!report.covered_actions.is_empty());
         assert!(!report.observations.is_empty());
+    }
+
+    #[test]
+    fn coverage_empty_governance_empty_policy() {
+        let gov = TruthGovernance::default();
+        let report = check_coverage(&gov, "");
+        assert!(report.covered_actions.is_empty());
+        assert!(report.uncovered_actions.is_empty());
+        assert!(report.observations.is_empty());
+        assert!(report.rules.is_empty());
+    }
+
+    #[test]
+    fn coverage_no_policy_leaves_actions_uncovered() {
+        let gov = TruthGovernance {
+            authority: Some(AuthorityBlock {
+                requires_approval: vec!["sign_off".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let report = check_coverage(&gov, "");
+        assert!(!report.uncovered_actions.is_empty());
+        assert!(report.covered_actions.is_empty());
+    }
+
+    #[test]
+    fn coverage_all_actions_covered() {
+        let gov = TruthGovernance {
+            authority: Some(AuthorityBlock {
+                actor: Some("ceo".into()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        // Authority block with no approvals/must_not => only "promote" gated
+        let policy = r#"permit(principal, action == Action::"promote", resource) when { };"#;
+        let report = check_coverage(&gov, policy);
+        assert!(report.covered_actions.contains(&"promote".to_string()));
+        assert!(report.uncovered_actions.is_empty());
+    }
+
+    #[test]
+    fn coverage_deduplicates_actions() {
+        let gov = TruthGovernance {
+            authority: Some(AuthorityBlock {
+                requires_approval: vec!["a".into(), "b".into()],
+                must_not: vec!["x".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        // commit appears multiple times in gated_actions, but should dedup in covered
+        let policy = r#"
+permit(principal, action == Action::"commit", resource) when { };
+permit(principal, action == Action::"promote", resource) when { };
+"#;
+        let report = check_coverage(&gov, policy);
+        let commit_count = report
+            .covered_actions
+            .iter()
+            .filter(|a| *a == "commit")
+            .count();
+        assert_eq!(commit_count, 1);
+    }
+
+    #[test]
+    fn coverage_removes_covered_from_uncovered() {
+        let gov = TruthGovernance {
+            authority: Some(AuthorityBlock {
+                requires_approval: vec!["sign".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        // commit is both gated (from approval) and covered (in policy)
+        // promote is gated (always with authority) but not in policy
+        let policy = r#"permit(principal, action == Action::"commit", resource) when { };"#;
+        let report = check_coverage(&gov, policy);
+        assert!(report.covered_actions.contains(&"commit".to_string()));
+        assert!(!report.uncovered_actions.contains(&"commit".to_string()));
+        assert!(report.uncovered_actions.contains(&"promote".to_string()));
+    }
+
+    #[test]
+    fn coverage_observes_missing_human_approval_check() {
+        let gov = TruthGovernance {
+            authority: Some(AuthorityBlock {
+                requires_approval: vec!["manager".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let policy = r#"permit(principal, action == Action::"commit", resource) when { };"#;
+        let report = check_coverage(&gov, policy);
+        assert!(
+            report
+                .observations
+                .iter()
+                .any(|o| o.contains("no human_approval check"))
+        );
+    }
+
+    #[test]
+    fn coverage_observes_present_human_approval_check() {
+        let gov = TruthGovernance {
+            authority: Some(AuthorityBlock {
+                requires_approval: vec!["manager".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let policy = r#"
+forbid(principal, action == Action::"commit", resource)
+when {
+  context.human_approval_present == false
+};
+"#;
+        let report = check_coverage(&gov, policy);
+        assert!(
+            report
+                .observations
+                .iter()
+                .any(|o| o.contains("enforces human approval"))
+        );
+    }
+
+    #[test]
+    fn coverage_observes_missing_gates_check() {
+        let gov = TruthGovernance {
+            evidence: Some(EvidenceBlock {
+                requires: vec!["audit_trail".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let policy = r#"permit(principal, action == Action::"read", resource) when { };"#;
+        let report = check_coverage(&gov, policy);
+        assert!(
+            report
+                .observations
+                .iter()
+                .any(|o| o.contains("doesn't check gates_passed"))
+        );
+    }
+
+    #[test]
+    fn coverage_no_gate_observation_when_policy_checks_gates() {
+        let gov = TruthGovernance {
+            evidence: Some(EvidenceBlock {
+                requires: vec!["pen_test".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let policy = r#"
+permit(principal, action == Action::"commit", resource)
+when {
+  context.gates_passed.contains("pen_test")
+};
+"#;
+        let report = check_coverage(&gov, policy);
+        assert!(
+            !report
+                .observations
+                .iter()
+                .any(|o| o.contains("doesn't check gates_passed"))
+        );
+    }
+
+    #[test]
+    fn coverage_observes_missing_amount_check() {
+        let gov = TruthGovernance {
+            constraint: Some(ConstraintBlock {
+                cost_limit: vec!["50k".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let policy = r#"permit(principal, action == Action::"spend", resource) when { };"#;
+        let report = check_coverage(&gov, policy);
+        assert!(
+            report
+                .observations
+                .iter()
+                .any(|o| o.contains("no amount checks"))
+        );
+    }
+
+    #[test]
+    fn coverage_observes_present_amount_check() {
+        let gov = TruthGovernance {
+            constraint: Some(ConstraintBlock {
+                cost_limit: vec!["50k".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let policy = r#"
+forbid(principal, action == Action::"spend", resource)
+when {
+  context.amount > 50000
+};
+"#;
+        let report = check_coverage(&gov, policy);
+        assert!(
+            report
+                .observations
+                .iter()
+                .any(|o| o.contains("enforces spending limits"))
+        );
+    }
+
+    #[test]
+    fn coverage_complex_multi_block_governance() {
+        let gov = TruthGovernance {
+            authority: Some(AuthorityBlock {
+                actor: Some("cfo".into()),
+                requires_approval: vec!["legal".into()],
+                must_not: vec!["skip_audit".into()],
+                ..Default::default()
+            }),
+            evidence: Some(EvidenceBlock {
+                requires: vec!["risk_assessment".into()],
+                ..Default::default()
+            }),
+            constraint: Some(ConstraintBlock {
+                cost_limit: vec!["100k".into()],
+                ..Default::default()
+            }),
+            exception: Some(ExceptionBlock {
+                escalates_to: vec!["board".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let policy = r#"
+permit(principal, action == Action::"commit", resource)
+when {
+  context.human_approval_present == true &&
+  context.gates_passed.contains("risk_assessment") &&
+  context.amount <= 100000
+};
+permit(principal, action == Action::"promote", resource)
+when {
+  principal.role == "cfo"
+};
+"#;
+        let report = check_coverage(&gov, policy);
+        assert_eq!(
+            report.requirements.authority_level,
+            Some("sovereign".into())
+        );
+        assert!(report.requirements.requires_human_approval);
+        assert!(!report.requirements.escalation_targets.is_empty());
+        assert!(report.covered_actions.contains(&"commit".to_string()));
+        assert!(report.covered_actions.contains(&"promote".to_string()));
+        assert!(report.uncovered_actions.is_empty());
+    }
+
+    // ── Property tests ──────────────────────────────────────────────
+
+    proptest! {
+        #[test]
+        fn coverage_total_gte_covered(
+            n_approvals in 0..5_usize,
+            n_must_not in 0..5_usize,
+        ) {
+            let gov = TruthGovernance {
+                authority: Some(AuthorityBlock {
+                    requires_approval: (0..n_approvals).map(|i| format!("a{i}")).collect(),
+                    must_not: (0..n_must_not).map(|i| format!("m{i}")).collect(),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            };
+            let report = check_coverage(&gov, VENDOR_POLICY);
+            let total = report.covered_actions.len() + report.uncovered_actions.len();
+            prop_assert!(total >= report.covered_actions.len());
+            // No duplicates between covered and uncovered
+            for a in &report.covered_actions {
+                prop_assert!(!report.uncovered_actions.contains(a));
+            }
+        }
+
+        #[test]
+        fn parse_never_panics_on_arbitrary_input(s in ".*") {
+            let _ = parse_cedar_rules(&s);
+        }
+
+        #[test]
+        fn empty_governance_produces_empty_requirements(
+            _dummy in 0..1_i32,
+        ) {
+            let gov = TruthGovernance::default();
+            let reqs = extract_requirements(&gov);
+            prop_assert!(reqs.gated_actions.is_empty());
+            prop_assert!(reqs.required_gates.is_empty());
+            prop_assert!(!reqs.requires_human_approval);
+        }
     }
 }
