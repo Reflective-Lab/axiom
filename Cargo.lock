@@ -261,8 +261,9 @@ dependencies = [
 
 [[package]]
 name = "converge-core"
-version = "3.4.0"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.4.0#4d321e2e8964ceee8f3e79ff48638eea268d6ce6"
+version = "3.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f12055219b52497fe5383a50dacb4c49e1d5c95a75c7c80d06b273a30a148ca"
 dependencies = [
  "async-trait",
  "converge-pack",
@@ -279,19 +280,23 @@ dependencies = [
 
 [[package]]
 name = "converge-pack"
-version = "3.4.0"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.4.0#4d321e2e8964ceee8f3e79ff48638eea268d6ce6"
+version = "3.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61bc9c1ca92f316b94cc6d3d4fe180d08c95d50a5b9ed1aae79bb2a58362891a"
 dependencies = [
  "async-trait",
+ "hex",
  "serde",
+ "serde_json",
  "strum",
  "thiserror 2.0.18",
 ]
 
 [[package]]
 name = "converge-provider"
-version = "3.4.0"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.4.0#4d321e2e8964ceee8f3e79ff48638eea268d6ce6"
+version = "3.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8bdc8553c0c417011e716bb9417cd446b96e55cc58500155fafc987c2bfe2fc"
 dependencies = [
  "base64",
  "converge-core",
@@ -313,8 +318,9 @@ dependencies = [
 
 [[package]]
 name = "converge-provider-api"
-version = "3.4.0"
-source = "git+https://github.com/Reflective-Lab/converge?tag=v3.4.0#4d321e2e8964ceee8f3e79ff48638eea268d6ce6"
+version = "3.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6c626bc269cc82108844934b8d5bf427c58310e0477382d8e164fe4023183fe"
 dependencies = [
  "serde",
  "serde_json",
