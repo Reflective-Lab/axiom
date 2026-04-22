@@ -19,7 +19,7 @@ name = "cz"
 path = "src/bin/cz/main.rs"
 
 [dependencies]
-converge-provider = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.4.0" }
+converge-provider = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.7.1" }
 converge-provider-api = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.4.0" }
 futures = "0.3"
 serde = { version = "1", features = ["derive"] }
