@@ -78,24 +78,26 @@ validate:
 clean:
     cargo clean
 
+# ── Git ────────────────────────────────────────────────────────────────
+
 # Install git pre-commit hooks (fmt + clippy)
-hooks:
+git-hooks:
     git config core.hooksPath .githooks
     @echo "Git hooks installed — .githooks/pre-commit will run on each commit"
+
+# Repo state and recent commits
+git-sync:
+    @bash scripts/workflow/sync.sh
+
+# Build health, test results
+git-status:
+    @bash scripts/workflow/status.sh
 
 # ── Workflow ───────────────────────────────────────────────────────────
 
 # Session opener — repo health + recent activity
-focus:
+wow-focus:
     @bash scripts/workflow/focus.sh
-
-# Team sync — PRs, issues, recent commits
-sync:
-    @bash scripts/workflow/sync.sh
-
-# Build health, test results
-status:
-    @bash scripts/workflow/status.sh
 
 # ── Info ───────────────────────────────────────────────────────────────
 
