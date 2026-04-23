@@ -4,6 +4,7 @@ build/
 dist/
 .svelte-kit/
 .obsidian/
+.claude/settings.local.json
 **/*.rs.bk
 *.swp
 *.swo

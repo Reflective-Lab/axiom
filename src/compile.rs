@@ -430,8 +430,19 @@ fn steps_to_tuples(steps: &[gherkin::Step]) -> Vec<(String, String, Vec<Vec<Stri
 
 /// Compute SHA-256 content hash.
 pub fn content_hash(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+
     let hash = Sha256::digest(bytes);
-    format!("sha256:{hash:x}")
+    let hash_bytes: &[u8] = hash.as_ref();
+    let mut encoded = String::with_capacity("sha256:".len() + (hash_bytes.len() * 2));
+    encoded.push_str("sha256:");
+
+    for &byte in hash_bytes {
+        encoded.push(char::from(HEX[usize::from(byte >> 4)]));
+        encoded.push(char::from(HEX[usize::from(byte & 0x0f)]));
+    }
+
+    encoded
 }
 
 // ============================================================================

@@ -28,11 +28,11 @@ thiserror = "2"
 tracing = "0.1"
 tokio = { version = ">=1.23.1, <2", features = ["full", "macros", "sync"] }
 dotenvy = "0.15"
-gherkin = "0.14"
+gherkin = "0.15"
 regex = "1.11"
-sha2 = "0.10"
+sha2 = "0.11"
 clap = { version = "4.5", features = ["derive", "env", "wrap_help"] }
-colored = "2"
+colored = "3.1.1"
 chrono = { version = ">=0.4.20, <0.5", features = ["serde"] }
 serde_yaml = "0.9"
 async-trait = "0.1"
