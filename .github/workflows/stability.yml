@@ -45,7 +45,14 @@ jobs:
         with:
           tool: cargo-audit
       - name: Run cargo-audit (blocking)
-        run: cargo audit --deny warnings
+        run: |
+          for attempt in 1 2 3; do
+            cargo audit --deny warnings && exit 0
+            if [ "$attempt" = "3" ]; then
+              exit 1
+            fi
+            sleep $((attempt * 10))
+          done
 
   deny:
     name: Cargo Deny
