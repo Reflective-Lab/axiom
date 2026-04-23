@@ -24,6 +24,8 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-deny
+      - name: Reset advisory database cache
+        run: rm -rf "${CARGO_HOME:-$HOME/.cargo}/advisory-dbs"
       - name: Run cargo-deny
         run: cargo deny check advisories licenses bans sources
       - name: Fetch latest versions from deps.rs

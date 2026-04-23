@@ -52,7 +52,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: EmbarkStudios/cargo-deny-action@v1
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+      - name: Reset advisory database cache
+        run: rm -rf "${CARGO_HOME:-$HOME/.cargo}/advisory-dbs"
+      - name: Run cargo-deny
+        run: cargo deny check advisories licenses bans sources
 
   # ── Optional: Live provider endpoints (if secrets configured) ─────────
 
