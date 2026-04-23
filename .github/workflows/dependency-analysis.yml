@@ -26,6 +26,42 @@ jobs:
           tool: cargo-deny
       - name: Run cargo-deny
         run: cargo deny check advisories licenses bans sources
+      - name: Fetch latest versions from deps.rs
+        run: |
+          curl --fail --silent --show-error --retry 3 \
+            --output deps-rs.html \
+            https://deps.rs/repo/github/Reflective-Lab/axiom
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import html
+          import re
+
+          page = open("deps-rs.html", encoding="utf-8").read()
+          rows = re.findall(
+              r'<tr><td>.*?<a href="/crate/([^/]+)/[^"]+">([^<]+)</a>.*?</td>'
+              r'<td class="has-text-right"><code>([^<]+)</code></td>'
+              r'<td class="has-text-right"><code>([^<]+)</code></td>'
+              r'<td class="has-text-right"><span class="tag [^"]+">([^<]+)</span></td>',
+              page,
+              flags=re.S,
+          )
+
+          if not rows:
+              raise SystemExit("could not parse deps.rs dependency table")
+
+          print("### deps.rs Latest Versions")
+          print()
+          print("| Crate | Required | Latest | Status |")
+          print("|---|---:|---:|---|")
+          for _, crate, required, latest, status in rows:
+              print(
+                  "| "
+                  + " | ".join(
+                      html.unescape(value).replace("|", "\\|")
+                      for value in [crate, required, latest, status]
+                  )
+                  + " |"
+              )
+          PY
       - name: Summarize dependency graph
         run: |
           cargo metadata --format-version 1 > dependency-metadata.json
@@ -46,7 +82,7 @@ jobs:
           ]
           registry_packages = [
               package for package in metadata["packages"]
-              if package.get("source", "").startswith("registry+")
+              if str(package.get("source") or "").startswith("registry+")
           ]
 
           print("### Dependency Analysis")
