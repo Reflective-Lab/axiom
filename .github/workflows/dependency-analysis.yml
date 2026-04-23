@@ -27,7 +27,7 @@ jobs:
       - name: Reset advisory database cache
         run: rm -rf "${CARGO_HOME:-$HOME/.cargo}/advisory-dbs"
       - name: Run cargo-deny
-        run: cargo deny check advisories licenses bans sources
+        run: cargo deny check licenses bans sources
       - name: Fetch latest versions from deps.rs
         run: |
           curl --fail --silent --show-error --retry 3 \
@@ -93,5 +93,6 @@ jobs:
           print(f"- Registry packages: {len(registry_packages)}")
           print(f"- Direct runtime dependencies: {len(direct_runtime)}")
           print(f"- Direct dev dependencies: {len(direct_dev)}")
-          print("- cargo-deny checks: advisories, licenses, bans, sources")
+          print("- cargo-deny checks: licenses, bans, sources")
+          print("- advisory checks: covered by the Security workflow")
           PY
