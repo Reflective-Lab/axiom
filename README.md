@@ -3,6 +3,7 @@
 [![CI](https://github.com/Reflective-Lab/axiom/actions/workflows/ci.yml/badge.svg)](https://github.com/Reflective-Lab/axiom/actions/workflows/ci.yml)
 [![Security](https://github.com/Reflective-Lab/axiom/actions/workflows/security.yml/badge.svg)](https://github.com/Reflective-Lab/axiom/actions/workflows/security.yml)
 [![Stability](https://github.com/Reflective-Lab/axiom/actions/workflows/stability.yml/badge.svg)](https://github.com/Reflective-Lab/axiom/actions/workflows/stability.yml)
+[![Dependency Analysis](https://github.com/Reflective-Lab/axiom/actions/workflows/dependency-analysis.yml/badge.svg)](https://github.com/Reflective-Lab/axiom/actions/workflows/dependency-analysis.yml)
 ![coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/kpernyer/91948402ce6ceccca2cd19b2ff83248a/raw/axiom-coverage.json)
 [![Crates.io](https://img.shields.io/crates/v/axiom-truth.svg)](https://crates.io/crates/axiom-truth)
 [![docs.rs](https://docs.rs/axiom-truth/badge.svg)](https://docs.rs/axiom-truth)

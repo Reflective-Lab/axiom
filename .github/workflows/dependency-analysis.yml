@@ -1,0 +1,59 @@
+name: Dependency Analysis
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_VERSION: "1.94.0"
+
+jobs:
+  dependency-analysis:
+    name: Dependency Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+      - name: Run cargo-deny
+        run: cargo deny check advisories licenses bans sources
+      - name: Summarize dependency graph
+        run: |
+          cargo metadata --format-version 1 > dependency-metadata.json
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+
+          metadata = json.load(open("dependency-metadata.json", encoding="utf-8"))
+          root_id = metadata["workspace_members"][0]
+          packages = {package["id"]: package for package in metadata["packages"]}
+          root = packages[root_id]
+          direct_runtime = [
+              dependency for dependency in root["dependencies"]
+              if dependency.get("kind") is None
+          ]
+          direct_dev = [
+              dependency for dependency in root["dependencies"]
+              if dependency.get("kind") == "dev"
+          ]
+          registry_packages = [
+              package for package in metadata["packages"]
+              if package.get("source", "").startswith("registry+")
+          ]
+
+          print("### Dependency Analysis")
+          print()
+          print(f"- Workspace packages: {len(metadata['workspace_members'])}")
+          print(f"- Registry packages: {len(registry_packages)}")
+          print(f"- Direct runtime dependencies: {len(direct_runtime)}")
+          print(f"- Direct dev dependencies: {len(direct_dev)}")
+          print("- cargo-deny checks: advisories, licenses, bans, sources")
+          PY

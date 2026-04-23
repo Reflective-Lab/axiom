@@ -27,21 +27,16 @@ jobs:
           tool: cargo-llvm-cov
       - name: Generate coverage
         run: cargo llvm-cov --workspace --json --output-path coverage.json
-        continue-on-error: true
       - name: Extract coverage percentage
         id: cov
         run: |
-          if [ -f coverage.json ]; then
-            COV=$(python3 -c "import json; d=json.load(open('coverage.json')); print(f\"{d['data'][0]['totals']['lines']['percent']:.1f}\")")
-            echo "percent=$COV" >> "$GITHUB_OUTPUT"
-            echo "### Coverage: ${COV}%" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "percent=0" >> "$GITHUB_OUTPUT"
-            echo "### Coverage: unknown" >> "$GITHUB_STEP_SUMMARY"
-          fi
+          test -s coverage.json
+          COV=$(python3 -c "import json; d=json.load(open('coverage.json')); print(f\"{d['data'][0]['totals']['lines']['percent']:.1f}\")")
+          echo "percent=$COV" >> "$GITHUB_OUTPUT"
+          echo "### Coverage: ${COV}%" >> "$GITHUB_STEP_SUMMARY"
       - name: Update coverage badge
         if: github.ref == 'refs/heads/main'
-        uses: schneegans/dynamic-badges-action@v1.7.0
+        uses: schneegans/dynamic-badges-action@v1.8.0
         with:
           auth: ${{ secrets.GIST_TOKEN }}
           gistID: 91948402ce6ceccca2cd19b2ff83248a

@@ -22,7 +22,7 @@ use std::process::ExitCode;
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    dotenv::dotenv().ok();
+    dotenvy::dotenv().ok();
     let cli = Cli::parse();
 
     let result = match cli.command {
