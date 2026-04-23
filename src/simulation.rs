@@ -38,6 +38,9 @@ pub struct SimulationConfig {
     pub require_assertions: bool,
     /// Require scenario Given steps to reference resources declared in Evidence.
     pub check_resource_availability: bool,
+    /// Enable vendor-selection-specific pre-flight checks when the spec
+    /// appears to describe a vendor/procurement evaluation.
+    pub check_vendor_selection: bool,
 }
 
 impl Default for SimulationConfig {
@@ -48,6 +51,7 @@ impl Default for SimulationConfig {
             require_evidence: true,
             require_assertions: true,
             check_resource_availability: true,
+            check_vendor_selection: true,
         }
     }
 }
@@ -100,6 +104,21 @@ pub struct SimulationFinding {
     pub suggestion: Option<String>,
 }
 
+/// Vendor-selection-specific pre-flight coverage.
+#[derive(Debug, Clone, Default)]
+pub struct VendorSelectionCoverage {
+    /// Whether the spec appears to describe vendor/procurement evaluation.
+    pub detected: bool,
+    /// Number of distinct evaluation dimensions found (compliance, cost, risk, etc.).
+    pub evaluation_dimensions: usize,
+    /// Vendor names or references found in scenarios.
+    pub vendor_references: Vec<String>,
+    /// Whether a scoring/ranking criterion is present.
+    pub has_ranking_criterion: bool,
+    /// Whether a commitment/approval gate is present.
+    pub has_commitment_gate: bool,
+}
+
 /// The result of simulating a Truth spec.
 #[derive(Debug, Clone)]
 pub struct SimulationReport {
@@ -108,6 +127,7 @@ pub struct SimulationReport {
     pub governance_coverage: GovernanceCoverage,
     pub scenario_count: usize,
     pub resource_summary: ResourceSummary,
+    pub vendor_selection: VendorSelectionCoverage,
 }
 
 impl SimulationReport {
@@ -150,6 +170,11 @@ pub fn simulate(doc: &TruthDocument, config: &SimulationConfig) -> SimulationRep
     let governance_coverage = check_governance(&doc.governance, config, &mut findings);
     let scenario_count = check_scenarios(&doc.gherkin, config, &mut findings);
     let resource_summary = check_resources(&doc.governance, &doc.gherkin, config, &mut findings);
+    let vendor_selection = if config.check_vendor_selection {
+        check_vendor_selection(&doc.governance, &doc.gherkin, &mut findings)
+    } else {
+        VendorSelectionCoverage::default()
+    };
 
     let has_errors = findings
         .iter()
@@ -172,6 +197,7 @@ pub fn simulate(doc: &TruthDocument, config: &SimulationConfig) -> SimulationRep
         governance_coverage,
         scenario_count,
         resource_summary,
+        vendor_selection,
     }
 }
 
@@ -458,6 +484,162 @@ fn check_resources(
     summary
 }
 
+const VENDOR_KEYWORDS: &[&str] = &[
+    "vendor",
+    "procurement",
+    "supplier",
+    "rfp",
+    "shortlist",
+    "sourcing",
+];
+
+const EVALUATION_DIMENSIONS: &[&str] = &[
+    "compliance",
+    "cost",
+    "risk",
+    "security",
+    "capability",
+    "stability",
+    "performance",
+    "pricing",
+    "budget",
+    "certification",
+    "regulatory",
+    "timeline",
+    "delivery",
+];
+
+fn check_vendor_selection(
+    gov: &TruthGovernance,
+    gherkin: &str,
+    findings: &mut Vec<SimulationFinding>,
+) -> VendorSelectionCoverage {
+    let mut coverage = VendorSelectionCoverage::default();
+
+    let combined = format!(
+        "{} {}",
+        gov.intent
+            .as_ref()
+            .and_then(|i| i.outcome.as_deref())
+            .unwrap_or(""),
+        gherkin
+    )
+    .to_lowercase();
+
+    coverage.detected = VENDOR_KEYWORDS.iter().any(|kw| combined.contains(kw));
+    if !coverage.detected {
+        return coverage;
+    }
+
+    // Count evaluation dimensions mentioned
+    let dimensions: Vec<&str> = EVALUATION_DIMENSIONS
+        .iter()
+        .copied()
+        .filter(|d| combined.contains(d))
+        .collect();
+    coverage.evaluation_dimensions = dimensions.len();
+
+    if coverage.evaluation_dimensions < 3 {
+        findings.push(SimulationFinding {
+            severity: FindingSeverity::Warning,
+            category: "vendor-selection",
+            message: format!(
+                "Vendor selection spec mentions only {} evaluation dimension(s): {}. \
+                 At least 3 are recommended for meaningful differentiation.",
+                coverage.evaluation_dimensions,
+                if dimensions.is_empty() {
+                    "none".to_string()
+                } else {
+                    dimensions.join(", ")
+                }
+            ),
+            suggestion: Some(
+                "Add evaluation criteria such as compliance, cost, risk, security, capability."
+                    .into(),
+            ),
+        });
+    }
+
+    // Extract vendor references from Given steps
+    let vendor_pattern = regex::Regex::new(r#"(?i)(?:vendors?|suppliers?)\s+"([^"]+)""#).ok();
+    if let Some(pat) = &vendor_pattern {
+        for cap in pat.captures_iter(gherkin) {
+            if let Some(names) = cap.get(1) {
+                for name in names.as_str().split(',') {
+                    let trimmed = name.trim().to_string();
+                    if !trimmed.is_empty() && !coverage.vendor_references.contains(&trimmed) {
+                        coverage.vendor_references.push(trimmed);
+                    }
+                }
+            }
+        }
+    }
+
+    if coverage.vendor_references.len() < 3 {
+        findings.push(SimulationFinding {
+            severity: FindingSeverity::Info,
+            category: "vendor-selection",
+            message: format!(
+                "Only {} vendor(s) referenced in scenarios. \
+                 3+ vendors recommended for meaningful comparison.",
+                coverage.vendor_references.len()
+            ),
+            suggestion: Some(
+                "Add more vendors in Given steps: Given vendors \"Acme, Beta, Gamma\"".into(),
+            ),
+        });
+    }
+
+    // Check for ranking/shortlist criteria in scenario steps only
+    let scenario_text: String = gherkin
+        .lines()
+        .filter(|l| {
+            let t = l.trim();
+            t.starts_with("Then ") || t.starts_with("And ")
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase();
+
+    coverage.has_ranking_criterion = scenario_text.contains("rank")
+        || scenario_text.contains("shortlist")
+        || scenario_text.contains("scored")
+        || scenario_text.contains("recommendation");
+
+    if !coverage.has_ranking_criterion {
+        findings.push(SimulationFinding {
+            severity: FindingSeverity::Warning,
+            category: "vendor-selection",
+            message: "No ranking or shortlisting criterion detected.".into(),
+            suggestion: Some(
+                "Add a Then step asserting a ranked shortlist or recommendation is produced."
+                    .into(),
+            ),
+        });
+    }
+
+    // Check for commitment/approval gate
+    coverage.has_commitment_gate = gov
+        .authority
+        .as_ref()
+        .is_some_and(|a| !a.requires_approval.is_empty());
+
+    if !coverage.has_commitment_gate {
+        findings.push(SimulationFinding {
+            severity: FindingSeverity::Warning,
+            category: "vendor-selection",
+            message: "No commitment approval gate found. Vendor selections with financial \
+                      impact should require human approval."
+                .into(),
+            suggestion: Some(
+                "Add `Requires Approval: vendor_commitment` to the Authority block.".into(),
+            ),
+        });
+    }
+
+    coverage
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -471,7 +653,7 @@ mod tests {
 
 Intent:
   Outcome: Select a vendor with auditable rationale.
-  Goal: Evaluate candidates on cost and compliance.
+  Goal: Evaluate candidates on cost, compliance, and risk.
 
 Authority:
   Actor: governance_review_board
@@ -486,10 +668,11 @@ Evidence:
   Audit: decision_log
 
 Scenario: Vendors produce traceable outcomes
-  Given candidate vendors "Acme AI, Beta ML"
+  Given candidate vendors "Acme AI, Beta ML, Gamma LLM"
   And each vendor has a security_assessment and pricing_analysis
   When the governance_review_board evaluates each vendor
   Then each vendor should produce a compliance screening result
+  And a ranked shortlist is produced
 "#
     }
 
@@ -538,6 +721,7 @@ Scenario: It works
             governance_coverage: GovernanceCoverage::default(),
             scenario_count: 1,
             resource_summary: ResourceSummary::default(),
+            vendor_selection: VendorSelectionCoverage::default(),
         };
         assert!(report.can_converge());
     }
@@ -550,6 +734,7 @@ Scenario: It works
             governance_coverage: GovernanceCoverage::default(),
             scenario_count: 1,
             resource_summary: ResourceSummary::default(),
+            vendor_selection: VendorSelectionCoverage::default(),
         };
         assert!(report.can_converge());
     }
@@ -562,6 +747,7 @@ Scenario: It works
             governance_coverage: GovernanceCoverage::default(),
             scenario_count: 0,
             resource_summary: ResourceSummary::default(),
+            vendor_selection: VendorSelectionCoverage::default(),
         };
         assert!(!report.can_converge());
     }
@@ -868,6 +1054,7 @@ Scenario: Approval happens
         };
         let config = SimulationConfig {
             require_authority: false,
+            check_vendor_selection: false,
             ..SimulationConfig::default()
         };
         let report = simulate(&doc, &config);
@@ -1047,6 +1234,7 @@ Scenario: Just do it
             require_evidence: false,
             require_assertions: false,
             check_resource_availability: false,
+            check_vendor_selection: false,
         };
         let report = simulate(&doc, &config);
         let has_errors = report
@@ -1232,6 +1420,7 @@ Scenario: Solo
             require_evidence: false,
             require_assertions: true,
             check_resource_availability: false,
+            check_vendor_selection: false,
         };
         let report = simulate(&doc, &config);
         assert!(!report.governance_coverage.has_intent);
@@ -1258,5 +1447,208 @@ Scenario: Solo
             .filter(|f| f.severity == FindingSeverity::Error)
             .count();
         assert!(error_count >= 3); // intent, authority, evidence
+    }
+
+    // ─── vendor selection checks ───
+
+    #[test]
+    fn vendor_spec_detected() {
+        let doc = parse_truth_document(full_spec()).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(report.vendor_selection.detected);
+    }
+
+    #[test]
+    fn vendor_spec_extracts_vendor_names() {
+        let doc = parse_truth_document(full_spec()).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(
+            report
+                .vendor_selection
+                .vendor_references
+                .contains(&"Acme AI".to_string())
+        );
+        assert!(
+            report
+                .vendor_selection
+                .vendor_references
+                .contains(&"Beta ML".to_string())
+        );
+    }
+
+    #[test]
+    fn vendor_spec_counts_evaluation_dimensions() {
+        let doc = parse_truth_document(full_spec()).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(report.vendor_selection.evaluation_dimensions >= 2);
+    }
+
+    #[test]
+    fn vendor_spec_detects_approval_gate() {
+        let doc = parse_truth_document(full_spec()).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(report.vendor_selection.has_commitment_gate);
+    }
+
+    #[test]
+    fn non_vendor_spec_not_detected() {
+        let doc = parse_truth_document(minimal_valid_spec()).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(!report.vendor_selection.detected);
+    }
+
+    #[test]
+    fn vendor_spec_few_dimensions_warns() {
+        let content = r#"Truth: Thin vendor eval
+
+Intent:
+  Outcome: Select a vendor.
+
+Authority:
+  Actor: admin
+  Requires Approval: commitment
+
+Evidence:
+  Requires: proof
+
+Scenario: Pick a vendor
+  Given vendors "Acme"
+  When evaluated
+  Then a recommendation is produced
+"#;
+        let doc = parse_truth_document(content).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(report.vendor_selection.detected);
+        assert!(report.findings.iter().any(|f| {
+            f.category == "vendor-selection" && f.message.contains("evaluation dimension")
+        }));
+    }
+
+    #[test]
+    fn vendor_spec_no_ranking_warns() {
+        let content = r#"Truth: No ranking vendor eval
+
+Intent:
+  Outcome: Select a vendor with compliance and cost and risk analysis.
+
+Authority:
+  Actor: board
+  Requires Approval: commitment
+
+Evidence:
+  Requires: compliance_report
+
+Scenario: Evaluate vendors
+  Given vendors "Acme, Beta, Gamma"
+  When the board evaluates
+  Then all vendors are screened
+"#;
+        let doc = parse_truth_document(content).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(report.vendor_selection.detected);
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|f| { f.category == "vendor-selection" && f.message.contains("ranking") })
+        );
+    }
+
+    #[test]
+    fn vendor_spec_no_approval_gate_warns() {
+        let content = r#"Truth: No approval vendor eval
+
+Intent:
+  Outcome: Select a vendor with compliance and cost and risk.
+
+Authority:
+  Actor: admin
+
+Evidence:
+  Requires: report
+
+Scenario: Pick vendor
+  Given vendors "Acme, Beta, Gamma"
+  When evaluated
+  Then a ranked shortlist is produced
+"#;
+        let doc = parse_truth_document(content).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(report.vendor_selection.detected);
+        assert!(report.findings.iter().any(|f| {
+            f.category == "vendor-selection" && f.message.contains("commitment approval gate")
+        }));
+    }
+
+    #[test]
+    fn vendor_check_disabled() {
+        let content = r#"Truth: Vendor eval
+
+Intent:
+  Outcome: Select a vendor.
+
+Authority:
+  Actor: admin
+
+Evidence:
+  Requires: proof
+
+Scenario: Quick
+  Given vendors "A"
+  When checked
+  Then done
+"#;
+        let doc = parse_truth_document(content).unwrap();
+        let config = SimulationConfig {
+            check_vendor_selection: false,
+            ..SimulationConfig::default()
+        };
+        let report = simulate(&doc, &config);
+        assert!(!report.vendor_selection.detected);
+        assert!(
+            !report
+                .findings
+                .iter()
+                .any(|f| f.category == "vendor-selection")
+        );
+    }
+
+    #[test]
+    fn vendor_spec_complete_no_vendor_warnings() {
+        let content = r#"Truth: Complete vendor selection
+
+Intent:
+  Outcome: Select a vendor with compliance, cost, risk, security, and capability analysis.
+
+Authority:
+  Actor: governance_review_board
+  Requires Approval: vendor_commitment
+
+Constraint:
+  Cost Limit: annual spend within budget.
+
+Evidence:
+  Requires: compliance_assessment
+  Requires: risk_assessment
+  Requires: cost_analysis
+  Audit: decision_log
+
+Scenario: Full evaluation
+  Given vendors "Acme AI, Beta ML, Gamma LLM"
+  And each vendor has compliance and risk data
+  When the governance_review_board evaluates
+  Then a ranked shortlist is produced
+  And the recommendation has evidence from all criteria
+"#;
+        let doc = parse_truth_document(content).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(report.vendor_selection.detected);
+        assert!(report.vendor_selection.evaluation_dimensions >= 3);
+        assert!(report.vendor_selection.has_ranking_criterion);
+        assert!(report.vendor_selection.has_commitment_gate);
+        assert_eq!(report.vendor_selection.vendor_references.len(), 3);
+        assert!(!report.findings.iter().any(|f| {
+            f.category == "vendor-selection" && f.severity == FindingSeverity::Warning
+        }));
     }
 }

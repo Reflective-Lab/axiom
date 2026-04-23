@@ -65,6 +65,14 @@ pub struct GatedAction {
     pub reason: String,
 }
 
+/// A spending threshold extracted from Cedar policy conditions.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpendingThreshold {
+    pub amount: u64,
+    pub rule_kind: PolicyRuleKind,
+    pub source_line: usize,
+}
+
 /// Cross-reference report between Truth governance and Cedar policy.
 #[derive(Debug, Clone)]
 pub struct PolicyCoverageReport {
@@ -73,6 +81,8 @@ pub struct PolicyCoverageReport {
     pub covered_actions: Vec<String>,
     pub uncovered_actions: Vec<String>,
     pub observations: Vec<String>,
+    /// Spending thresholds extracted from Cedar amount/cost conditions.
+    pub spending_thresholds: Vec<SpendingThreshold>,
 }
 
 /// Extract policy requirements from a Truth's governance blocks.
@@ -296,13 +306,45 @@ pub fn check_coverage(governance: &TruthGovernance, policy_text: &str) -> Policy
         }
     }
 
+    let spending_thresholds = extract_spending_thresholds(&rules);
+
     PolicyCoverageReport {
         requirements,
         rules,
         covered_actions: covered,
         uncovered_actions: uncovered,
         observations,
+        spending_thresholds,
     }
+}
+
+/// Extract spending thresholds from Cedar policy amount/cost conditions.
+fn extract_spending_thresholds(rules: &[PolicyRule]) -> Vec<SpendingThreshold> {
+    let amount_pattern = regex::Regex::new(r"(?:amount|cost)\s*[><=]+\s*(\d+)").ok();
+    let Some(pattern) = &amount_pattern else {
+        return Vec::new();
+    };
+
+    let mut thresholds = Vec::new();
+    for rule in rules {
+        for condition in &rule.conditions {
+            for cap in pattern.captures_iter(condition) {
+                if let Some(amount_str) = cap.get(1)
+                    && let Ok(amount) = amount_str.as_str().parse::<u64>()
+                {
+                    thresholds.push(SpendingThreshold {
+                        amount,
+                        rule_kind: rule.kind,
+                        source_line: rule.source_line,
+                    });
+                }
+            }
+        }
+    }
+
+    thresholds.sort_by_key(|t| t.amount);
+    thresholds.dedup_by_key(|t| t.amount);
+    thresholds
 }
 
 #[cfg(test)]
@@ -404,6 +446,7 @@ when {
             covered_actions: vec!["commit".into()],
             uncovered_actions: vec!["promote".into()],
             observations: vec!["note".into()],
+            spending_thresholds: vec![],
         };
         assert_eq!(report.covered_actions.len(), 1);
         assert_eq!(report.uncovered_actions.len(), 1);
@@ -1130,6 +1173,52 @@ when {
         assert!(report.covered_actions.contains(&"commit".to_string()));
         assert!(report.covered_actions.contains(&"promote".to_string()));
         assert!(report.uncovered_actions.is_empty());
+    }
+
+    // ── spending thresholds ────────────────────────────────────────
+
+    #[test]
+    fn extracts_spending_threshold_from_vendor_policy() {
+        let gov = TruthGovernance::default();
+        let report = check_coverage(&gov, VENDOR_POLICY);
+        assert_eq!(report.spending_thresholds.len(), 1);
+        assert_eq!(report.spending_thresholds[0].amount, 50000);
+        assert_eq!(
+            report.spending_thresholds[0].rule_kind,
+            PolicyRuleKind::Forbid
+        );
+    }
+
+    #[test]
+    fn extracts_multiple_thresholds_sorted() {
+        let policy = r#"
+forbid(principal, action == Action::"commit", resource)
+when { context.amount > 100000 };
+
+permit(principal, action == Action::"commit", resource)
+when { context.cost <= 10000 };
+
+forbid(principal, action == Action::"commit", resource)
+when { context.amount > 50000 };
+"#;
+        let gov = TruthGovernance::default();
+        let report = check_coverage(&gov, policy);
+        assert!(report.spending_thresholds.len() >= 2);
+        // Sorted by amount
+        for w in report.spending_thresholds.windows(2) {
+            assert!(w[0].amount <= w[1].amount);
+        }
+    }
+
+    #[test]
+    fn no_thresholds_in_non_financial_policy() {
+        let policy = r#"
+permit(principal, action == Action::"read", resource)
+when { principal.role == "viewer" };
+"#;
+        let gov = TruthGovernance::default();
+        let report = check_coverage(&gov, policy);
+        assert!(report.spending_thresholds.is_empty());
     }
 
     // ── Property tests ──────────────────────────────────────────────

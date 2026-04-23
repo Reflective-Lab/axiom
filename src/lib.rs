@@ -49,8 +49,12 @@ pub use gherkin::{
     extract_scenario_meta,
 };
 pub use mock_llm::StaticChatBackend;
-pub use policy_lens::{PolicyCoverageReport, PolicyRequirements, PolicyRule, check_coverage};
-pub use simulation::{SimulationConfig, SimulationReport, Verdict, simulate, simulate_spec};
+pub use policy_lens::{
+    PolicyCoverageReport, PolicyRequirements, PolicyRule, SpendingThreshold, check_coverage,
+};
+pub use simulation::{
+    SimulationConfig, SimulationReport, VendorSelectionCoverage, Verdict, simulate, simulate_spec,
+};
 pub use truths::{
     AuthorityBlock, ConstraintBlock, EvidenceBlock, ExceptionBlock, IntentBlock, TruthDocument,
     TruthGovernance, parse_truth_document,
