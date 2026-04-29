@@ -225,9 +225,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.6.0"
+version = "4.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b193af5b67834b676abd72466a96c1024e6a6ad978a1f484bd90b85c94041351"
+checksum = "1ddb117e43bbf7dacf0a4190fef4d345b9bad68dfc649cb349e7d17d28428e51"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -248,9 +248,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "4.6.0"
+version = "4.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1110bd8a634a1ab8cb04345d8d878267d57c3cf1b38d91b71af6686408bbca6a"
+checksum = "f2ce8604710f6733aa641a2b3731eaa1e8b3d9973d5e3565da11800813f997a9"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -287,9 +287,9 @@ checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
 
 [[package]]
 name = "converge-core"
-version = "3.7.3"
+version = "3.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e61386a393e5c07eac00fa3f8093da732a2f6a7da266935e925e1d73db643780"
+checksum = "d864788b3ced576affd9ab3066d04e45e806cf5565f2ada96af65b1c868b9b0b"
 dependencies = [
  "async-trait",
  "converge-pack",
@@ -306,9 +306,9 @@ dependencies = [
 
 [[package]]
 name = "converge-model"
-version = "3.7.3"
+version = "3.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e327a4c6d2be0bf74e620755338be682d7e2e9ee2a9f5abaf57bcfaccaeed932"
+checksum = "e7053ed610380d8b1c0e5f7bfb913cfbbd75e34cb216b2a441d2cd6936284b3d"
 dependencies = [
  "converge-core",
  "converge-pack",
@@ -318,9 +318,9 @@ dependencies = [
 
 [[package]]
 name = "converge-optimization"
-version = "3.7.3"
+version = "3.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd9c066db70126b148cf0485088dbaf261b5b58cdcec48ff840c051195b107d5"
+checksum = "ca025858b07137e12a10f97f9adf5ccd1f77101f00fd2470fee40d43d4b119ea"
 dependencies = [
  "async-trait",
  "bitvec",
@@ -341,9 +341,9 @@ dependencies = [
 
 [[package]]
 name = "converge-pack"
-version = "3.7.3"
+version = "3.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b3499bae944247e38a846f3bb0cde59e7413c777d86c266072a6559cb9cd365"
+checksum = "b22434a144f752c367ceca5c797b28d82a4100d917b662089d7a40e223ad51c6"
 dependencies = [
  "async-trait",
  "hex",
@@ -355,9 +355,9 @@ dependencies = [
 
 [[package]]
 name = "converge-provider"
-version = "3.7.3"
+version = "3.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a828f0229daeba66a80dab02ae2fcaae65c2edae340bf649516c18a9c6fa1848"
+checksum = "9b6ff9680017370b958ab6463b1b8f2178102d367976bd5d29e7269bf9595106"
 dependencies = [
  "async-trait",
  "base64",
@@ -381,9 +381,9 @@ dependencies = [
 
 [[package]]
 name = "converge-provider-api"
-version = "3.7.3"
+version = "3.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c99d8437b79ccb88238ca59e0239408eac856aa659a7c7545c8970d4a6b0f5d"
+checksum = "b12218f39dcefa7e807311468d5623dbc85fad428d5801983f2bd57f7f9d380c"
 dependencies = [
  "serde",
  "serde_json",
@@ -2055,9 +2055,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.52.0"
+version = "1.52.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a91135f59b1cbf38c91e73cf3386fca9bb77915c45ce2771460c9d92f0f3d776"
+checksum = "b67dee974fe86fd92cc45b7a95fdd2f99a36a6d7b0d431a231178d3d670bbcc6"
 dependencies = [
  "bytes",
  "libc",
