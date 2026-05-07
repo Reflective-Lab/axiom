@@ -30,6 +30,12 @@ Axiom validates business specifications written in Gherkin-style `.truths` files
 └─────────────────────────────────────────────┘
 ```
 
+## A New World
+
+The old world demanded that all ambiguity be drained *before* execution; the new world keeps the gap between human intent and machine decision open and closes it safely at runtime. But "safely" only works if the upfront contract — the thing the human signs onto — is precise and enforceable. Axiom compiles that contract.
+
+**Why it matters.** Truth Documents, validated and codegenned into Rust + WASM invariants, are how upfront human intent becomes runtime-enforceable structure. Without Axiom, the rest of the stack has no fixed point worth converging on; with it, the new world keeps its rigor where the old world used to keep its workflow.
+
 ## What it does
 
 | Module | Purpose |
@@ -78,8 +84,8 @@ let result = validator.validate_file("specs/money.truths").await?;
 
 Axiom uses the narrow Converge provider surface for live validation help:
 
-- `converge-provider-api` for chat contracts and selection vocabulary
-- `converge-provider` for concrete backend implementations and selection helpers
+- `converge-provider` for chat contracts, provider capability vocabulary, and selection types
+- `converge-manifold-adapters` for concrete backend selection helpers
 
 Axiom does not depend on the Converge engine crate as part of its public integration contract.
 

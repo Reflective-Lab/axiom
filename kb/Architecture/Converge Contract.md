@@ -7,13 +7,13 @@ source: mixed
 
 Shared stack guidance: `~/dev/work/converge/kb/Architecture/Golden Path Matrix.md`.
 
-Axiom is a **client of Converge**. It depends on two Converge crates for live
-LLM-backed validation:
+Axiom is a **client of Converge**. It depends on the public provider surface
+for live LLM-backed validation and on manifold for backend selection:
 
 | Crate | What Axiom uses |
 |---|---|
-| `converge-provider-api` | `DynChatBackend`, `ChatRequest`, `ChatResponse`, `ChatRole`, `ChatMessage`, `ResponseFormat`, `SelectionCriteria` |
-| `converge-provider` | LLM backend implementations and selection helpers |
+| `converge-provider` | `DynChatBackend`, `ChatRequest`, `ChatResponse`, `ChatRole`, `ChatMessage`, `ResponseFormat`, `SelectionCriteria` |
+| `converge-manifold-adapters` | `manifold::select_healthy_chat_backend` for concrete backend selection |
 
 ## Boundary
 
@@ -25,7 +25,7 @@ Axiom **produces** artifacts that Converge **consumes**:
 
 That is the key boundary:
 
-- Axiom consumes provider capability contracts for validation help
+- Axiom consumes provider capability contracts and selection helpers for validation help
 - Axiom produces truth artifacts and compiled modules
 - Converge consumes those artifacts at runtime
 
@@ -77,7 +77,7 @@ about. The engine uses this to schedule invariant evaluation *after* those keys
 are populated. This is a causal subscription — Axiom declares "run me after
 these facts exist."
 
-**Deterministic simulation.** The v0.5 milestone includes "Implement
+**Deterministic simulation.** The current milestone includes "Implement
 deterministic simulation (reproducible across runs)." For this to mean anything
 real, Axiom must model what Converge means by "deterministic": same context +
 same effects → same merge order → same Merkle root. Axiom's simulation should

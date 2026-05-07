@@ -31,6 +31,8 @@ Axiom validates, simulates, and compiles business specifications into enforceabl
 ## Architecture
 
 - [[Architecture/System Overview]] — modules, pipeline, dependencies
+- [[Architecture/API Surfaces]] — public Rust and crate boundaries
+- [[Architecture/Intent Compilation]] — TruthDocument to IntentPacket mapping
 - [[Architecture/Converge Contract]] — how Axiom relates to Converge
 - [[Architecture/WASM Compilation]] — the Rust → WASM build pipeline
 

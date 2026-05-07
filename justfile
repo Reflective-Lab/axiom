@@ -86,18 +86,30 @@ git-hooks:
     @echo "Git hooks installed — .githooks/pre-commit will run on each commit"
 
 # Repo state and recent commits
-git-sync:
-    @bash scripts/workflow/sync.sh
+sync:
+    @git status --short
+    @git log --oneline -5
 
-# Build health, test results
-git-status:
-    @bash scripts/workflow/status.sh
+# Build health
+status:
+    @cargo check
+
+# Compatibility name for older local habits
+git-sync: sync
+
+# Compatibility name for older local habits
+git-status: status
 
 # ── Workflow ───────────────────────────────────────────────────────────
 
 # Session opener — repo health + recent activity
-wow-focus:
-    @bash scripts/workflow/focus.sh
+focus:
+    @git status --short
+    @git log --oneline -5
+    @just --list
+
+# Compatibility name for older local habits
+wow-focus: focus
 
 # ── Info ───────────────────────────────────────────────────────────────
 

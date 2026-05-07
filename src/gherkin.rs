@@ -38,7 +38,7 @@
 //!                                            └── Convention check
 //! ```
 
-use converge_provider_api::{
+use converge_provider::{
     ChatMessage, ChatRequest, ChatResponse, ChatRole, DynChatBackend, ResponseFormat,
 };
 use regex::Regex;

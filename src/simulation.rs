@@ -38,9 +38,8 @@ pub struct SimulationConfig {
     pub require_assertions: bool,
     /// Require scenario Given steps to reference resources declared in Evidence.
     pub check_resource_availability: bool,
-    /// Enable vendor-selection-specific pre-flight checks when the spec
-    /// appears to describe a vendor/procurement evaluation.
-    pub check_vendor_selection: bool,
+    /// Optional downstream domain profiles for domain-specific pre-flight checks.
+    pub domain_profiles: Vec<DomainProfile>,
 }
 
 impl Default for SimulationConfig {
@@ -51,9 +50,30 @@ impl Default for SimulationConfig {
             require_evidence: true,
             require_assertions: true,
             check_resource_availability: true,
-            check_vendor_selection: true,
+            domain_profiles: Vec::new(),
         }
     }
+}
+
+impl SimulationConfig {
+    /// Enable one domain-specific validation profile.
+    #[must_use]
+    pub fn with_domain_profile(mut self, profile: DomainProfile) -> Self {
+        if !self.domain_profiles.contains(&profile) {
+            self.domain_profiles.push(profile);
+        }
+        self
+    }
+}
+
+/// Optional domain-specific simulation profile.
+///
+/// Core Axiom checks remain domain-neutral. Profiles let downstream layers add
+/// richer readiness checks without baking their semantics into every run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DomainProfile {
+    /// Vendor/procurement evaluation coverage checks.
+    VendorSelection,
 }
 
 /// Overall simulation verdict.
@@ -119,6 +139,20 @@ pub struct VendorSelectionCoverage {
     pub has_commitment_gate: bool,
 }
 
+/// Domain-specific profile coverage.
+#[derive(Debug, Clone)]
+pub enum DomainProfileCoverage {
+    VendorSelection(VendorSelectionCoverage),
+}
+
+/// Result produced by one enabled domain profile.
+#[derive(Debug, Clone)]
+pub struct DomainProfileReport {
+    pub profile: DomainProfile,
+    pub findings: Vec<SimulationFinding>,
+    pub coverage: DomainProfileCoverage,
+}
+
 /// The result of simulating a Truth spec.
 #[derive(Debug, Clone)]
 pub struct SimulationReport {
@@ -127,13 +161,24 @@ pub struct SimulationReport {
     pub governance_coverage: GovernanceCoverage,
     pub scenario_count: usize,
     pub resource_summary: ResourceSummary,
-    pub vendor_selection: VendorSelectionCoverage,
+    pub domain_profiles: Vec<DomainProfileReport>,
 }
 
 impl SimulationReport {
     /// Whether the spec has a realistic chance of converging.
     pub fn can_converge(&self) -> bool {
         self.verdict != Verdict::WillNotConverge
+    }
+
+    /// Return vendor-selection coverage when that domain profile was enabled.
+    #[must_use]
+    pub fn vendor_selection(&self) -> Option<&VendorSelectionCoverage> {
+        self.domain_profiles
+            .iter()
+            .map(|report| match &report.coverage {
+                DomainProfileCoverage::VendorSelection(coverage) => coverage,
+            })
+            .next()
     }
 }
 
@@ -170,11 +215,11 @@ pub fn simulate(doc: &TruthDocument, config: &SimulationConfig) -> SimulationRep
     let governance_coverage = check_governance(&doc.governance, config, &mut findings);
     let scenario_count = check_scenarios(&doc.gherkin, config, &mut findings);
     let resource_summary = check_resources(&doc.governance, &doc.gherkin, config, &mut findings);
-    let vendor_selection = if config.check_vendor_selection {
-        check_vendor_selection(&doc.governance, &doc.gherkin, &mut findings)
-    } else {
-        VendorSelectionCoverage::default()
-    };
+    let domain_profiles =
+        check_domain_profiles(&doc.governance, &doc.gherkin, &config.domain_profiles);
+    for profile_report in &domain_profiles {
+        findings.extend(profile_report.findings.iter().cloned());
+    }
 
     let has_errors = findings
         .iter()
@@ -197,7 +242,7 @@ pub fn simulate(doc: &TruthDocument, config: &SimulationConfig) -> SimulationRep
         governance_coverage,
         scenario_count,
         resource_summary,
-        vendor_selection,
+        domain_profiles,
     }
 }
 
@@ -484,6 +529,28 @@ fn check_resources(
     summary
 }
 
+fn check_domain_profiles(
+    gov: &TruthGovernance,
+    gherkin: &str,
+    profiles: &[DomainProfile],
+) -> Vec<DomainProfileReport> {
+    profiles
+        .iter()
+        .copied()
+        .map(|profile| match profile {
+            DomainProfile::VendorSelection => {
+                let mut findings = Vec::new();
+                let coverage = check_vendor_selection(gov, gherkin, &mut findings);
+                DomainProfileReport {
+                    profile,
+                    findings,
+                    coverage: DomainProfileCoverage::VendorSelection(coverage),
+                }
+            }
+        })
+        .collect()
+}
+
 const VENDOR_KEYWORDS: &[&str] = &[
     "vendor",
     "procurement",
@@ -695,6 +762,16 @@ Scenario: It works
 "
     }
 
+    fn vendor_config() -> SimulationConfig {
+        SimulationConfig::default().with_domain_profile(DomainProfile::VendorSelection)
+    }
+
+    fn vendor_selection(report: &SimulationReport) -> &VendorSelectionCoverage {
+        report
+            .vendor_selection()
+            .expect("vendor selection profile should be enabled")
+    }
+
     // ─── Verdict display ───
 
     #[test]
@@ -721,7 +798,7 @@ Scenario: It works
             governance_coverage: GovernanceCoverage::default(),
             scenario_count: 1,
             resource_summary: ResourceSummary::default(),
-            vendor_selection: VendorSelectionCoverage::default(),
+            domain_profiles: vec![],
         };
         assert!(report.can_converge());
     }
@@ -734,7 +811,7 @@ Scenario: It works
             governance_coverage: GovernanceCoverage::default(),
             scenario_count: 1,
             resource_summary: ResourceSummary::default(),
-            vendor_selection: VendorSelectionCoverage::default(),
+            domain_profiles: vec![],
         };
         assert!(report.can_converge());
     }
@@ -747,7 +824,7 @@ Scenario: It works
             governance_coverage: GovernanceCoverage::default(),
             scenario_count: 0,
             resource_summary: ResourceSummary::default(),
-            vendor_selection: VendorSelectionCoverage::default(),
+            domain_profiles: vec![],
         };
         assert!(!report.can_converge());
     }
@@ -1054,7 +1131,6 @@ Scenario: Approval happens
         };
         let config = SimulationConfig {
             require_authority: false,
-            check_vendor_selection: false,
             ..SimulationConfig::default()
         };
         let report = simulate(&doc, &config);
@@ -1234,7 +1310,7 @@ Scenario: Just do it
             require_evidence: false,
             require_assertions: false,
             check_resource_availability: false,
-            check_vendor_selection: false,
+            domain_profiles: vec![],
         };
         let report = simulate(&doc, &config);
         let has_errors = report
@@ -1253,6 +1329,7 @@ Scenario: Just do it
         assert!(config.require_evidence);
         assert!(config.require_assertions);
         assert!(config.check_resource_availability);
+        assert!(config.domain_profiles.is_empty());
     }
 
     // ─── simulate_spec convenience ───
@@ -1420,7 +1497,7 @@ Scenario: Solo
             require_evidence: false,
             require_assertions: true,
             check_resource_availability: false,
-            check_vendor_selection: false,
+            domain_profiles: vec![],
         };
         let report = simulate(&doc, &config);
         assert!(!report.governance_coverage.has_intent);
@@ -1449,28 +1526,48 @@ Scenario: Solo
         assert!(error_count >= 3); // intent, authority, evidence
     }
 
-    // ─── vendor selection checks ───
+    // ─── domain profile checks ───
+
+    #[test]
+    fn default_config_does_not_run_domain_profiles() {
+        let doc = parse_truth_document(full_spec()).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(report.domain_profiles.is_empty());
+        assert!(report.vendor_selection().is_none());
+        assert!(
+            !report
+                .findings
+                .iter()
+                .any(|f| f.category == "vendor-selection")
+        );
+    }
+
+    #[test]
+    fn domain_profile_deduplicates() {
+        let config = SimulationConfig::default()
+            .with_domain_profile(DomainProfile::VendorSelection)
+            .with_domain_profile(DomainProfile::VendorSelection);
+        assert_eq!(config.domain_profiles.len(), 1);
+    }
 
     #[test]
     fn vendor_spec_detected() {
         let doc = parse_truth_document(full_spec()).unwrap();
-        let report = simulate(&doc, &SimulationConfig::default());
-        assert!(report.vendor_selection.detected);
+        let report = simulate(&doc, &vendor_config());
+        assert!(vendor_selection(&report).detected);
     }
 
     #[test]
     fn vendor_spec_extracts_vendor_names() {
         let doc = parse_truth_document(full_spec()).unwrap();
-        let report = simulate(&doc, &SimulationConfig::default());
+        let report = simulate(&doc, &vendor_config());
         assert!(
-            report
-                .vendor_selection
+            vendor_selection(&report)
                 .vendor_references
                 .contains(&"Acme AI".to_string())
         );
         assert!(
-            report
-                .vendor_selection
+            vendor_selection(&report)
                 .vendor_references
                 .contains(&"Beta ML".to_string())
         );
@@ -1479,22 +1576,22 @@ Scenario: Solo
     #[test]
     fn vendor_spec_counts_evaluation_dimensions() {
         let doc = parse_truth_document(full_spec()).unwrap();
-        let report = simulate(&doc, &SimulationConfig::default());
-        assert!(report.vendor_selection.evaluation_dimensions >= 2);
+        let report = simulate(&doc, &vendor_config());
+        assert!(vendor_selection(&report).evaluation_dimensions >= 2);
     }
 
     #[test]
     fn vendor_spec_detects_approval_gate() {
         let doc = parse_truth_document(full_spec()).unwrap();
-        let report = simulate(&doc, &SimulationConfig::default());
-        assert!(report.vendor_selection.has_commitment_gate);
+        let report = simulate(&doc, &vendor_config());
+        assert!(vendor_selection(&report).has_commitment_gate);
     }
 
     #[test]
     fn non_vendor_spec_not_detected() {
         let doc = parse_truth_document(minimal_valid_spec()).unwrap();
-        let report = simulate(&doc, &SimulationConfig::default());
-        assert!(!report.vendor_selection.detected);
+        let report = simulate(&doc, &vendor_config());
+        assert!(!vendor_selection(&report).detected);
     }
 
     #[test]
@@ -1517,8 +1614,8 @@ Scenario: Pick a vendor
   Then a recommendation is produced
 "#;
         let doc = parse_truth_document(content).unwrap();
-        let report = simulate(&doc, &SimulationConfig::default());
-        assert!(report.vendor_selection.detected);
+        let report = simulate(&doc, &vendor_config());
+        assert!(vendor_selection(&report).detected);
         assert!(report.findings.iter().any(|f| {
             f.category == "vendor-selection" && f.message.contains("evaluation dimension")
         }));
@@ -1544,8 +1641,8 @@ Scenario: Evaluate vendors
   Then all vendors are screened
 "#;
         let doc = parse_truth_document(content).unwrap();
-        let report = simulate(&doc, &SimulationConfig::default());
-        assert!(report.vendor_selection.detected);
+        let report = simulate(&doc, &vendor_config());
+        assert!(vendor_selection(&report).detected);
         assert!(
             report
                 .findings
@@ -1573,15 +1670,15 @@ Scenario: Pick vendor
   Then a ranked shortlist is produced
 "#;
         let doc = parse_truth_document(content).unwrap();
-        let report = simulate(&doc, &SimulationConfig::default());
-        assert!(report.vendor_selection.detected);
+        let report = simulate(&doc, &vendor_config());
+        assert!(vendor_selection(&report).detected);
         assert!(report.findings.iter().any(|f| {
             f.category == "vendor-selection" && f.message.contains("commitment approval gate")
         }));
     }
 
     #[test]
-    fn vendor_check_disabled() {
+    fn vendor_profile_not_enabled() {
         let content = r#"Truth: Vendor eval
 
 Intent:
@@ -1599,12 +1696,8 @@ Scenario: Quick
   Then done
 "#;
         let doc = parse_truth_document(content).unwrap();
-        let config = SimulationConfig {
-            check_vendor_selection: false,
-            ..SimulationConfig::default()
-        };
-        let report = simulate(&doc, &config);
-        assert!(!report.vendor_selection.detected);
+        let report = simulate(&doc, &SimulationConfig::default());
+        assert!(report.vendor_selection().is_none());
         assert!(
             !report
                 .findings
@@ -1641,12 +1734,13 @@ Scenario: Full evaluation
   And the recommendation has evidence from all criteria
 "#;
         let doc = parse_truth_document(content).unwrap();
-        let report = simulate(&doc, &SimulationConfig::default());
-        assert!(report.vendor_selection.detected);
-        assert!(report.vendor_selection.evaluation_dimensions >= 3);
-        assert!(report.vendor_selection.has_ranking_criterion);
-        assert!(report.vendor_selection.has_commitment_gate);
-        assert_eq!(report.vendor_selection.vendor_references.len(), 3);
+        let report = simulate(&doc, &vendor_config());
+        let coverage = vendor_selection(&report);
+        assert!(coverage.detected);
+        assert!(coverage.evaluation_dimensions >= 3);
+        assert!(coverage.has_ranking_criterion);
+        assert!(coverage.has_commitment_gate);
+        assert_eq!(coverage.vendor_references.len(), 3);
         assert!(!report.findings.iter().any(|f| {
             f.category == "vendor-selection" && f.severity == FindingSeverity::Warning
         }));

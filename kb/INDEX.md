@@ -11,6 +11,7 @@ source: llm
 |---|---|---|
 | gherkin | LLM-powered validation of `.truths` specs | `src/gherkin.rs` |
 | truths | Governance block parsing (Intent, Authority, Constraint, Evidence, Exception) | `src/truths.rs` |
+| intent | TruthDocument to organism `IntentPacket` compilation | `src/intent.rs` |
 | codegen | WASM invariant code generation from predicates | `src/codegen.rs` |
 | compile | Rust → WASM compilation pipeline | `src/compile.rs` |
 | predicate | Gherkin step → semantic predicate extraction | `src/predicate.rs` |
@@ -46,6 +47,8 @@ source: llm
 | `ScenarioMeta` | gherkin | Parsed scenario tags (kind, invariant class, provider) |
 | `TruthDocument` | truths | Parsed `.truths` file with Gherkin + governance |
 | `TruthGovernance` | truths | Intent, Authority, Constraint, Evidence, Exception blocks |
+| `CompileError` | intent | Truth governance to runtime intent compilation errors |
+| `CompileFromSourceError` | intent | Combined parse and compile errors for raw source input |
 | `CompiledModule` | compile | WASM bytes + manifest + source hash |
 | `Predicate` | predicate | Semantic predicate extracted from Gherkin steps |
 | `SimulationReport` | simulation | Pre-flight analysis with verdict and findings |

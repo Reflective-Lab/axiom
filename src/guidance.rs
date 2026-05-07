@@ -9,8 +9,10 @@
 
 use std::sync::Arc;
 
-use converge_provider::{ChatBackendSelectionConfig, select_healthy_chat_backend};
-use converge_provider_api::{ChatMessage, ChatRequest, ChatRole, DynChatBackend, ResponseFormat};
+use converge_provider::{
+    ChatBackendSelectionConfig, ChatMessage, ChatRequest, ChatRole, DynChatBackend, ResponseFormat,
+};
+use manifold::select_healthy_chat_backend;
 use serde::{Deserialize, Serialize};
 
 use crate::truths::parse_truth_document;

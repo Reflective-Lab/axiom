@@ -21,8 +21,8 @@ use axiom_truth::{
 };
 use chrono::Utc;
 use colored::Colorize;
-use converge_provider::{ChatBackendSelectionConfig, select_healthy_chat_backend};
-use converge_provider_api::{DynChatBackend, SelectionCriteria};
+use converge_provider::{ChatBackendSelectionConfig, DynChatBackend, SelectionCriteria};
+use manifold::select_healthy_chat_backend;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -667,8 +667,7 @@ fn get_current_user() -> String {
 
 #[cfg(test)]
 mod tests {
-    use converge_provider::ChatBackendSelectionConfig;
-    use converge_provider_api::SelectionCriteria;
+    use converge_provider::{ChatBackendSelectionConfig, SelectionCriteria};
 
     #[test]
     fn selection_config_defaults_to_interactive_profile() {

@@ -23,7 +23,9 @@ Specifications must be validated, simulated, and compiled BEFORE they reach Conv
 | Layer | Technology |
 |---|---|
 | Truth validation & codegen | Rust (Edition 2024, rust-version 1.94) |
-| Converge contract | `converge-provider-api`, `converge-provider` |
+| Converge provider contract | `converge-provider` |
+| Backend selection | `converge-manifold-adapters` |
+| Runtime intent contract | `organism-pack` |
 | Task runner | just |
 | CLI tool | `cz` (workspace orchestrator) |
 
@@ -31,7 +33,7 @@ Specifications must be validated, simulated, and compiled BEFORE they reach Conv
 
 | Artifact | Purpose |
 |---|---|
-| `axiom-truth` crate | Core validation, codegen, simulation, policy lens |
+| `axiom-truth` crate | Core validation, codegen, simulation, policy lens, and runtime intent compilation |
 | `cz` CLI | Developer-facing orchestrator for truths workflow |
 | `.truths` format | Business specification language (Gherkin + governance) |
 
@@ -55,7 +57,7 @@ These are not suggestions.
 - No feature flags. No backwards-compat shims. Converge owns versioning.
 - `.truths` files are immutable once committed; new versions are new files.
 - `just lint` clean before considering work done.
-- Use the narrow Converge capability contract directly (`converge-provider-api`, `converge-provider`). No wrapper layers.
+- Use the narrow Converge capability contract directly (`converge-provider`). Use `converge-manifold-adapters` only for backend selection. No wrapper layers.
 - Before validating a spec type, check `kb/Concepts/Truth Documents.md` — the schema is authoritative.
 - Do not depend on Converge internal crates (`converge-core`, `converge-runtime`, `converge-analytics`, etc).
 - Simulation results must be deterministic and reproducible.
