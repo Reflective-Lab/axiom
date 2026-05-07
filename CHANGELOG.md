@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.8.0] - 2026-05-07
+## [0.8.1] - 2026-05-07
 
 ### Added
 - `intent` module: `compile_intent(&TruthDocument) -> IntentPacket` and `compile_intent_from_source(&str)`. Axiom now owns the bridge from Truth-shaped governance to organism's runtime contract.
-- `organism-pack` dependency (path `../organism/crates/pack`, version `1.5.1`) — needed to produce `IntentPacket`. When publishing 0.8.0, a compatible `organism-pack` release must be on crates.io first.
+- `organism-pack` dependency (path `../organism/crates/pack`, version `1.5.1`) — needed to produce `IntentPacket`. When publishing 0.8.1, a compatible `organism-pack` release must be on crates.io first.
 
 ### Changed
 - Architectural inversion: `axiom-truth → organism-pack` replaces the prior `organism → axiom-truth` arrow. organism's runtime no longer parses, mentions, or knows about Truth in any form. Callers compile via axiom, then hand the resulting `IntentPacket` to `organism_runtime::Runtime::admit_intent`.
@@ -40,8 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standalone single-crate repo (no longer part of converge workspace)
 - Depends on Converge provider surfaces rather than the engine crate
 
-[Unreleased]: https://github.com/Reflective-Lab/axiom/compare/v0.8.0...HEAD
-[0.8.0]: https://github.com/Reflective-Lab/axiom/compare/v0.5.1...v0.8.0
+[Unreleased]: https://github.com/Reflective-Lab/axiom/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/Reflective-Lab/axiom/compare/v0.5.1...v0.8.1
 [0.5.1]: https://github.com/Reflective-Lab/axiom/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/Reflective-Lab/axiom/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Reflective-Lab/axiom/releases/tag/v0.4.1

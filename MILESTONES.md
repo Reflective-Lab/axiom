@@ -4,7 +4,7 @@
 
 ## Current: v0.8 — Runtime Intent Boundary
 **Deadline:** 2026-05-15 | **Epic:** Foundation (Axiom is well-structured and reliable)
-**Session:** 2026-05-07 — local 0.8.0 build green; runtime intent bridge moved into Axiom
+**Session:** 2026-05-07 — local 0.8.1 release build green; runtime intent bridge moved into Axiom
 
 - [x] Create AGENTS.md (canonical project entrypoint)
 - [x] Refactor justfile (remove Converge-specific tasks, add axiom focus)
@@ -16,7 +16,7 @@
 - [ ] Document truth validation pipeline contract (kb/Architecture/Validation Pipeline.md)
 - [ ] Implement deterministic simulation (reproducible across runs)
 - [ ] Add integration tests against mock Converge types
-- [ ] Publish axiom-truth 0.8.0 to crates.io
+- [ ] Publish axiom-truth 0.8.1 to crates.io
 
 ## Completed: v0.4.1 — Initial Release
 Completed: 2026-04-15

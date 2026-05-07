@@ -12,8 +12,8 @@ source: llm
 - Added Architecture/API Surfaces.md — canonical public API reference, including the `.truths` source → `parse_truth_document` → `compile_intent` → `IntentPacket` flow.
 - Created Architecture/Intent Compilation.md — full field mapping (Authority/Constraint/Exception → IntentPacket), error model, caller flow.
 - Updated top-level `lib.rs` doc comment — added Compiling to runtime intent section with caller example.
-- Aligned AGENTS.md, MILESTONES.md, and Justfile workflow recipes to the 0.8.0 surface: `converge-provider` + `converge-manifold-adapters` + `organism-pack`; `just focus`, `just sync`, and `just status` now exist.
-- Bumped axiom-truth 0.7.0 → 0.8.0 (new public module + new dep is a minor bump).
+- Aligned AGENTS.md, MILESTONES.md, and Justfile workflow recipes to the 0.8.1 surface: `converge-provider` + `converge-manifold-adapters` + `organism-pack`; `just focus`, `just sync`, and `just status` now exist.
+- Bumped axiom-truth 0.7.0 → 0.8.1 (new public module + new dep is a minor bump).
 
 ## 2026-05-04
 

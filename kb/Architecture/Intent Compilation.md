@@ -80,7 +80,7 @@ bridge in axiom keeps the dependency arrow honest:
 axiom-truth → organism-pack    (Truth produces; organism contract consumed)
 ```
 
-Before 0.8.0 the arrow ran the other way: `organism-intent::bridge` parsed
+Before 0.8.1 the arrow ran the other way: `organism-intent::bridge` parsed
 axiom's `TruthDocument` directly, forcing organism to depend on axiom. The
 inversion (Phase 2 of the May 2026 refactor) moved the bridge here.
 

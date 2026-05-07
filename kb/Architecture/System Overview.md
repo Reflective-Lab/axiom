@@ -68,7 +68,7 @@ axiom-truth ──depends on──▶ organism-pack
             (Truth produces IntentPacket; organism never imports Truth)
 ```
 
-This was inverted in 0.8.0. Prior versions had organism depending on
+This was inverted in 0.8.1. Prior versions had organism depending on
 axiom-truth via a bridge in `organism-intent`. That bridge moved here, taking
 Truth-shaped types out of organism entirely.
 
