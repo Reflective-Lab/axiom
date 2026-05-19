@@ -87,7 +87,7 @@ source: llm
 | Fixture | Location | Purpose |
 |---|---|---|
 | Round-driven Formation Design | `tests/round_driven_marquee.rs`; `kb/Marquee/Round-Driven Formation Design.md` | JTBD and staged `AxiomRunReport` fixture for a dynamic design huddle plus selected work Formation |
-| Escrow Release | `tests/escrow_release_marquee.rs`; `kb/Marquee/Escrow Release.md` | Strict-verdict fixture for irreversible commitments: Satisfied, Blocked, and Invalid |
+| Escrow Release | `tests/escrow_release_marquee.rs`; `kb/Marquee/Escrow Release.md` | Strict-verdict fixture for irreversible commitments, including the Tally release observation adapter recipe |
 
 ## Scenario Tags
 

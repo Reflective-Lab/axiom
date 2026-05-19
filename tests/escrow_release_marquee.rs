@@ -13,9 +13,12 @@
 
 use axiom_truth::{
     AxiomRunObservation, AxiomRunReport, AxiomRunVerdict, ClauseId, ClauseInput, EvidenceRefRecord,
-    JtbdClauseKind, JtbdInput, ObservedStopReason, PromotedFactRecord, RunIntegrityProof,
-    TimeBudget, TraceLinkRecord, TruthPackage, decode_jtbd,
+    JtbdClauseKind, JtbdInput, ObservedStopReason, PromotedFactRecord, PromotionAuthorityRecord,
+    RunIntegrityProof, TimeBudget, TraceLinkRecord, TruthPackage, decode_jtbd,
 };
+
+const TALLY_TRANSITION_SIGNATURE_TRUTH_KEY: &str = "transition-requires-signature";
+const TALLY_RELEASE_CONDITIONS_TRUTH_KEY: &str = "release-requires-conditions-met";
 
 fn escrow_release_jtbd() -> JtbdInput {
     JtbdInput {
@@ -272,6 +275,59 @@ fn escrow_release_invalid_when_forbidden_release_condition_is_promoted() {
     assert_eq!(audit.facts_audited, 6);
 }
 
+#[test]
+fn tally_release_outcome_adapts_to_satisfied_axiom_observation() {
+    let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
+    let outcome = tally_release_outcome();
+
+    let observation =
+        adapt_tally_release_outcome(&package, &outcome).expect("Tally release adapts");
+    let report = AxiomRunReport::verify(&package, observation);
+
+    assert_eq!(report.verdict, AxiomRunVerdict::Satisfied);
+    assert!(report.expected_stop_reason_matched());
+    assert!(report.promoted_facts.iter().all(|fact| {
+        fact.promotion_authority
+            .as_ref()
+            .is_some_and(|authority| authority.gate_id == "converge.gate.tally-release")
+    }));
+
+    let audit = report
+        .audit_fact_lineage(&package)
+        .expect("Tally-adapted release preserves clause-level custody");
+    assert_eq!(audit.evidence_coverage.len(), 5);
+    assert_eq!(audit.failure_coverage.len(), 1);
+    assert_eq!(audit.facts_audited, 5);
+}
+
+#[test]
+fn tally_release_outcome_missing_release_truth_key_is_invalid() {
+    let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
+    let mut outcome = tally_release_outcome();
+    outcome
+        .truth_keys
+        .retain(|truth_key| *truth_key != TALLY_RELEASE_CONDITIONS_TRUTH_KEY);
+
+    let observation =
+        adapt_tally_release_outcome(&package, &outcome).expect("Tally release adapts");
+    let report = AxiomRunReport::verify(&package, observation);
+
+    assert_eq!(report.verdict, AxiomRunVerdict::Invalid);
+    assert!(report.expected_stop_reason_matched());
+}
+
+#[test]
+fn tally_release_adapter_rejects_non_release_transition() {
+    let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
+    let mut outcome = tally_release_outcome();
+    outcome.to_state = "Verified";
+
+    let err = adapt_tally_release_outcome(&package, &outcome)
+        .expect_err("non-release transition is not an escrow release observation");
+
+    assert_eq!(err, "expected Tally transition Verified -> Released");
+}
+
 fn satisfied_release_facts(package: &TruthPackage) -> Vec<PromotedFactRecord> {
     let buyer_approval = evidence_clause_id(package, "buyer_approval");
     let delivery_confirmed = evidence_clause_id(package, "delivery_confirmed");
@@ -314,6 +370,91 @@ fn satisfied_release_facts(package: &TruthPackage) -> Vec<PromotedFactRecord> {
     ]
 }
 
+fn adapt_tally_release_outcome(
+    package: &TruthPackage,
+    outcome: &TallyReleaseOutcome<'_>,
+) -> Result<AxiomRunObservation, String> {
+    if outcome.from_state != "Verified" || outcome.to_state != "Released" {
+        return Err("expected Tally transition Verified -> Released".to_string());
+    }
+    if outcome.reason != "ConditionsMet" {
+        return Err("expected Tally ConditionsMet release reason".to_string());
+    }
+
+    let buyer_approval = evidence_clause_id(package, "buyer_approval");
+    let delivery_confirmed = evidence_clause_id(package, "delivery_confirmed");
+    let compliance_cleared = evidence_clause_id(package, "compliance_cleared");
+    let idempotency_key = evidence_clause_id(package, "idempotency_key");
+    let disbursement_recorded = evidence_clause_id(package, "disbursement_recorded");
+    let double_release = failure_clause_id(package, "double_release");
+    let mut promoted_facts = Vec::new();
+
+    if outcome.signing_policy_satisfied
+        && outcome
+            .truth_keys
+            .contains(&TALLY_TRANSITION_SIGNATURE_TRUTH_KEY)
+        && outcome.has_principal_signer("Transferor")
+        && outcome.has_principal_signer("Acquirer")
+    {
+        promoted_facts.push(tally_fact(
+            "HumanApproval",
+            "tally.release.principal-signatures",
+            "Organism signing witnesses cover both principals for the release transition",
+            vec![buyer_approval],
+            &outcome.promotion_authority,
+        ));
+    }
+
+    if outcome
+        .truth_keys
+        .contains(&TALLY_RELEASE_CONDITIONS_TRUTH_KEY)
+    {
+        promoted_facts.push(tally_fact(
+            "Evidence",
+            "tally.release.conditions-met",
+            "Tally release transition carried the release conditions truth key",
+            vec![delivery_confirmed],
+            &outcome.promotion_authority,
+        ));
+    }
+
+    promoted_facts.push(tally_fact(
+        "PolicyDecision",
+        "tally.release.current-policy",
+        "Converge promotion gate observed the current release policy hash",
+        vec![compliance_cleared],
+        &outcome.promotion_authority,
+    ));
+    promoted_facts.push(tally_fact(
+        "Diagnostic",
+        "tally.release.idempotency",
+        "Tally transition record id is unique for this release attempt",
+        vec![idempotency_key, double_release],
+        &outcome.promotion_authority,
+    ));
+    promoted_facts.push(tally_fact(
+        "CustodyReceipt",
+        "tally.release.custody-receipt",
+        &format!(
+            "custody release receipt recorded by {} with external ref {}",
+            outcome.release_receipt.adapter, outcome.release_receipt.external_ref
+        ),
+        vec![disbursement_recorded],
+        &outcome.promotion_authority,
+    ));
+
+    Ok(AxiomRunObservation {
+        stop_reason: ObservedStopReason::Converged,
+        promoted_facts,
+        integrity: RunIntegrityProof::sha256_merkle("sha256:tally-release", 12, 5),
+        replay_notes: vec![format!(
+            "adapted Tally transition {} into AxiomRunObservation",
+            outcome.record_id
+        )],
+        run_stages: Vec::new(),
+    })
+}
+
 fn evidence_clause_id(package: &TruthPackage, key: &str) -> ClauseId {
     package
         .source_jtbd
@@ -334,6 +475,73 @@ fn failure_clause_id(package: &TruthPackage, key: &str) -> ClauseId {
             || panic!("missing failure clause {key}"),
             |clause| clause.id.clone(),
         )
+}
+
+#[derive(Debug, Clone)]
+struct TallyReleaseOutcome<'a> {
+    record_id: &'a str,
+    from_state: &'a str,
+    to_state: &'a str,
+    reason: &'a str,
+    truth_keys: Vec<&'a str>,
+    signers: Vec<TallySigner<'a>>,
+    signing_policy_satisfied: bool,
+    release_receipt: TallyReleaseReceipt<'a>,
+    promotion_authority: PromotionAuthorityRecord,
+}
+
+impl TallyReleaseOutcome<'_> {
+    fn has_principal_signer(&self, role: &str) -> bool {
+        self.signers
+            .iter()
+            .any(|signer| signer.role == role && !signer.signature_ref.trim().is_empty())
+    }
+}
+
+#[derive(Debug, Clone)]
+struct TallySigner<'a> {
+    role: &'a str,
+    signature_ref: &'a str,
+}
+
+#[derive(Debug, Clone)]
+struct TallyReleaseReceipt<'a> {
+    adapter: &'a str,
+    external_ref: &'a str,
+}
+
+fn tally_release_outcome() -> TallyReleaseOutcome<'static> {
+    TallyReleaseOutcome {
+        record_id: "tally.axiom-transition::agreement-7::Verified->Released::202605190930000000",
+        from_state: "Verified",
+        to_state: "Released",
+        reason: "ConditionsMet",
+        truth_keys: vec![
+            TALLY_TRANSITION_SIGNATURE_TRUTH_KEY,
+            TALLY_RELEASE_CONDITIONS_TRUTH_KEY,
+        ],
+        signers: vec![
+            TallySigner {
+                role: "Transferor",
+                signature_ref: "organism:sig:seller",
+            },
+            TallySigner {
+                role: "Acquirer",
+                signature_ref: "organism:sig:buyer",
+            },
+        ],
+        signing_policy_satisfied: true,
+        release_receipt: TallyReleaseReceipt {
+            adapter: "attestation:namecheap",
+            external_ref: "attestation-namecheap-release-agreement-7",
+        },
+        promotion_authority: PromotionAuthorityRecord {
+            gate_id: "converge.gate.tally-release".to_string(),
+            policy_version_hash: "sha256:tally-release-policy".to_string(),
+            approver_id: "arbiter.tally.release".to_string(),
+            approver_kind: "SystemPolicy".to_string(),
+        },
+    }
 }
 
 fn fact(
@@ -357,5 +565,30 @@ fn fact(
             replayable: true,
         }),
         promotion_authority: None,
+    }
+}
+
+fn tally_fact(
+    context_key: &str,
+    fact_id: &str,
+    summary: &str,
+    source_clause_ids: Vec<ClauseId>,
+    authority: &PromotionAuthorityRecord,
+) -> PromotedFactRecord {
+    PromotedFactRecord {
+        context_key: context_key.to_string(),
+        fact_id: fact_id.to_string(),
+        summary: summary.to_string(),
+        source_clause_ids,
+        evidence_refs: vec![EvidenceRefRecord {
+            evidence_id: format!("tally.evidence.{fact_id}"),
+            source: "tally-release-adapter".to_string(),
+        }],
+        trace_link: Some(TraceLinkRecord {
+            trace_id: format!("tally.trace.{fact_id}"),
+            location: Some("/Users/kpernyer/dev/reflective/marquee-apps/tally-escrow".to_string()),
+            replayable: true,
+        }),
+        promotion_authority: Some(authority.clone()),
     }
 }

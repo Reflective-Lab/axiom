@@ -143,8 +143,8 @@ learn from.
 - Primary app: Tally escrow release at
   `/Users/kpernyer/dev/reflective/marquee-apps/tally-escrow`.
 - Current parallel slice: a strict `escrow_release` fixture, explicitly labeled
-  as a fixture proof until it is wired to the Tally app's real transition and
-  custody facts.
+  as a fixture proof, plus an Axiom-side adapter recipe for the Tally release
+  transition/custody shape.
 - v1.0 expansion order: Quorum sensemaking at
   `/Users/kpernyer/dev/reflective/marquee-apps/quorum-sense`, then Scout
   sourcing at `/Users/kpernyer/dev/reflective/marquee-apps/scout-sourcing`.
@@ -157,6 +157,7 @@ learn from.
 - [x] Decode the JTBD into a Truth Package whose verifier spec has required evidence and forbidden actions
 - [x] Add concrete policy requirement artifacts for the commitment envelope
 - [x] Fixture at least three cases: satisfied release, blocked release, and invalid release attempt
+- [x] Add an Axiom-side adapter recipe from Tally release transition facts, custody receipt, signing witnesses, and observed promotion authority into `AxiomRunObservation`
 - [ ] Replace the fixture with a live `tally-escrow` run once release transition facts can be adapted into `AxiomRunObservation`
 - [x] Prove Axiom declares authority requirements while reports preserve Converge's observed promotion gate and policy hash
 - [x] Prove promoted commitment facts trace back to the source job clause, evidence requirement, failure mode, and truth version in the fixture

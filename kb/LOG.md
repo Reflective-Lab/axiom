@@ -28,6 +28,7 @@ source: llm
 - Locked the sequence: v0.12 is Tally escrow release; v0.13 is decoder calibration. Added `Architecture/Decoder Calibration.md` and documented the v0.12 report data needed to become future calibration feedstock.
 - Started v0.12 implementation by emitting deterministic policy requirement artifacts from the Truth Package decoder and asserting the escrow release commitment envelope covers authority, required evidence, and forbidden failure modes.
 - Extended promoted fact report records with optional Converge promotion authority data (gate ID, policy hash, approver) so Axiom reports can show authority was observed at promotion without treating Axiom as the authority source.
+- Added the Axiom-side Tally release observation adapter recipe: a local wire-shaped release outcome maps transition truth keys, Organism signing witnesses, custody receipt, idempotency, and observed promotion authority into `AxiomRunObservation`; missing release truth key now produces an `Invalid` verifier result.
 
 ## 2026-05-17
 

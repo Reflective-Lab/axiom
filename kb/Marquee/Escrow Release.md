@@ -9,12 +9,14 @@ Escrow release is the v0.12 strict-verdict pressure test for Axiom. It is an
 irreversible commitment: once funds leave escrow, the system cannot treat a
 bad release as a harmless planning miss.
 
-This is currently a fixture proof, not a live marquee proof. The concrete app
-target is `/Users/kpernyer/dev/reflective/marquee-apps/tally-escrow`; it
-already has Tally domain types, release TruthSpecs, a real Converge suggestor,
-an attestation custody adapter, Organism signing flow, and bilateral Axiom
+This is currently a fixture proof plus an adapter recipe, not a live marquee
+proof. The concrete app target is
+`/Users/kpernyer/dev/reflective/marquee-apps/tally-escrow`; it already has
+Tally domain types, release TruthSpecs, a real Converge suggestor, an
+attestation custody adapter, Organism signing flow, and bilateral Axiom
 transition records. The Axiom fixture should be replaced by a live Tally run
-once release transition facts can be adapted into `AxiomRunObservation`.
+once the app emits a stable release outcome that can be adapted into
+`AxiomRunObservation`.
 
 ## JTBD
 
@@ -44,6 +46,32 @@ Time budget: 15 minutes
 | Satisfied release | Converged run with all five evidence clauses cited and the double-release guard cited | `Satisfied` | The commitment has the required buyer, delivery, policy, idempotency, and disbursement evidence. |
 | Blocked release | Human-in-the-loop gate pending for buyer authorization | `Blocked` | Funds did not leave escrow while a required human/authority gate was unresolved. |
 | Invalid release | A promoted policy fact states that release proceeded despite a sanctioned recipient | `Invalid` | The run crossed an explicit failure-mode/forbidden-action boundary. |
+
+## Tally Adapter Recipe
+
+`tests/escrow_release_marquee.rs` includes the Axiom-side recipe for adapting a
+Tally release outcome into `AxiomRunObservation`. The recipe deliberately uses a
+local wire shape instead of depending on the Tally crate:
+
+- transition record: `Verified -> Released`, reason `ConditionsMet`, and truth
+  keys including `transition-requires-signature` and
+  `release-requires-conditions-met`;
+- signing witnesses: both principal roles covered by Organism signature refs;
+- custody receipt: release receipt adapter and external reference;
+- promotion authority: Converge gate ID, policy hash, and approver observed at
+  promotion.
+
+The adapter maps those fields onto the escrow JTBD clauses:
+
+- principal signatures -> buyer authorization evidence;
+- release conditions truth key -> delivery/condition evidence;
+- observed promotion authority -> current policy evidence;
+- transition record ID -> idempotency evidence plus double-release guard;
+- custody release receipt -> disbursement/custody evidence.
+
+The verifier still decides the verdict. If the Tally release truth key is
+missing, the adapted observation lacks required evidence and the report becomes
+`Invalid`.
 
 ## Boundary Claims
 
@@ -78,10 +106,11 @@ The first useful implementation shape is intentionally narrow:
 ## Residual Gap
 
 The fixture does not yet prove the Tally runtime can produce the observations.
-The remaining v0.12 gap is translating the policy requirement artifacts into a
-concrete Cedar envelope plus a live `tally-escrow` release transition run.
-Without that, this is still valuable as a strict verdict proof, but it should
-be labeled as fixture-backed.
+The remaining v0.12 gap is replacing the local wire-shaped adapter fixture with
+a live `tally-escrow` release transition run and translating the policy
+requirement artifacts into a concrete Cedar envelope. Without that, this is
+still valuable as a strict verdict proof plus adapter recipe, but it should be
+labeled as fixture-backed.
 
 ## Handoff To Calibration
 
