@@ -235,6 +235,12 @@ fn round_driven_marquee_report_preserves_design_and_work_stage_boundaries() {
 
     assert_eq!(report.verdict, AxiomRunVerdict::Satisfied);
     assert!(report.expected_stop_reason_matched());
+
+    let audit = report
+        .audit_fact_lineage(&package)
+        .expect("every promoted fact traces back through the JTBD chain");
+    assert_eq!(audit.evidence_coverage.len(), 8);
+    assert_eq!(audit.failure_coverage.len(), 1);
     assert_eq!(report.run_stages.len(), 2);
     assert_eq!(
         report

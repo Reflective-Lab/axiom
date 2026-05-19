@@ -912,6 +912,123 @@ impl AxiomRunReport {
             .iter()
             .find(|stage| stage.stage_id == stage_id)
     }
+
+    /// Prove that every promoted fact in this report traces back to the source
+    /// JTBD clauses it served and that the truth version is consistent.
+    ///
+    /// Checks performed:
+    /// - report `package_id` matches `package.package_id`
+    /// - report `truth_version` matches `package.truth_version`
+    /// - every `source_clause_ids` entry on every promoted fact is a known
+    ///   clause in the package
+    /// - every promoted fact cites at least one `EvidenceRequired` or
+    ///   `FailureMode` clause it serves (scope-only facts that cite only
+    ///   `Actor` / `FunctionalJob` / `SoThat` are rejected — facts must
+    ///   discharge an evidence requirement or guard a failure mode)
+    ///
+    /// On success returns a `FactLineageAudit` summarizing which evidence and
+    /// failure-mode clauses were covered by the run's facts.
+    pub fn audit_fact_lineage(
+        &self,
+        package: &TruthPackage,
+    ) -> Result<FactLineageAudit, FactLineageAuditError> {
+        if self.package_id != package.package_id {
+            return Err(FactLineageAuditError::PackageMismatch {
+                report: self.package_id.clone(),
+                package: package.package_id.clone(),
+            });
+        }
+        if self.truth_version != package.truth_version {
+            return Err(FactLineageAuditError::TruthVersionMismatch {
+                report: self.truth_version.clone(),
+                package: package.truth_version.clone(),
+            });
+        }
+
+        let known_ids: BTreeSet<&ClauseId> = package
+            .source_jtbd
+            .clauses
+            .iter()
+            .map(|clause| &clause.id)
+            .collect();
+        let evidence_ids: BTreeSet<&ClauseId> = package
+            .source_jtbd
+            .clauses_by_kind(JtbdClauseKind::EvidenceRequired)
+            .map(|clause| &clause.id)
+            .collect();
+        let failure_ids: BTreeSet<&ClauseId> = package
+            .source_jtbd
+            .clauses_by_kind(JtbdClauseKind::FailureMode)
+            .map(|clause| &clause.id)
+            .collect();
+
+        let mut evidence_coverage: BTreeSet<ClauseId> = BTreeSet::new();
+        let mut failure_coverage: BTreeSet<ClauseId> = BTreeSet::new();
+
+        for fact in &self.promoted_facts {
+            let mut serves_contract = false;
+            for clause_id in &fact.source_clause_ids {
+                if !known_ids.contains(clause_id) {
+                    return Err(FactLineageAuditError::UnknownClause {
+                        fact_id: fact.fact_id.clone(),
+                        clause_id: clause_id.clone(),
+                    });
+                }
+                if evidence_ids.contains(clause_id) {
+                    evidence_coverage.insert(clause_id.clone());
+                    serves_contract = true;
+                }
+                if failure_ids.contains(clause_id) {
+                    failure_coverage.insert(clause_id.clone());
+                    serves_contract = true;
+                }
+            }
+            if !serves_contract {
+                return Err(FactLineageAuditError::ScopeOnlyFact {
+                    fact_id: fact.fact_id.clone(),
+                });
+            }
+        }
+
+        Ok(FactLineageAudit {
+            package_id: package.package_id.clone(),
+            truth_version: package.truth_version.clone(),
+            facts_audited: self.promoted_facts.len(),
+            evidence_coverage,
+            failure_coverage,
+        })
+    }
+}
+
+/// Summary of a successful fact-lineage audit. Captures which evidence and
+/// failure-mode clauses the run's promoted facts covered.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FactLineageAudit {
+    pub package_id: TruthPackageId,
+    pub truth_version: String,
+    pub facts_audited: usize,
+    pub evidence_coverage: BTreeSet<ClauseId>,
+    pub failure_coverage: BTreeSet<ClauseId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum FactLineageAuditError {
+    #[error("report package_id {report:?} does not match audit package {package:?}")]
+    PackageMismatch {
+        report: TruthPackageId,
+        package: TruthPackageId,
+    },
+    #[error("report truth_version {report} does not match audit package {package}")]
+    TruthVersionMismatch { report: String, package: String },
+    #[error("promoted fact {fact_id} cites clause {clause_id} not present in the package")]
+    UnknownClause {
+        fact_id: String,
+        clause_id: ClauseId,
+    },
+    #[error(
+        "promoted fact {fact_id} does not cite any evidence_required or failure_mode clause it serves"
+    )]
+    ScopeOnlyFact { fact_id: String },
 }
 
 fn compute_verdict(package: &TruthPackage, observation: &AxiomRunObservation) -> AxiomRunVerdict {
@@ -2317,5 +2434,101 @@ mod tests {
             serde_json::to_value(&first).unwrap(),
             serde_json::to_value(&second).unwrap()
         );
+    }
+
+    #[test]
+    fn audit_fact_lineage_succeeds_when_facts_cite_evidence_clauses() {
+        let package = decode_jtbd(vendor_input()).unwrap();
+        let report = AxiomRunReport::verify(&package, satisfying_observation(&package));
+
+        let audit = report.audit_fact_lineage(&package).unwrap();
+        assert_eq!(audit.package_id, package.package_id);
+        assert_eq!(audit.truth_version, package.truth_version);
+        assert_eq!(
+            audit.facts_audited,
+            package.verifier_spec.required_evidence.len()
+        );
+        assert_eq!(audit.evidence_coverage.len(), 2);
+        assert!(audit.failure_coverage.is_empty());
+    }
+
+    #[test]
+    fn audit_fact_lineage_rejects_unknown_clause() {
+        let package = decode_jtbd(vendor_input()).unwrap();
+        let mut observation = satisfying_observation(&package);
+        observation.promoted_facts.push(promoted_fact(
+            "Evidence",
+            "fact.unknown",
+            "stray fact",
+            vec![ClauseId::new("vendor_commitment", "evidence.missing")],
+        ));
+        // Use from_observation directly so the verdict path doesn't short-circuit
+        // before audit_fact_lineage sees the unknown clause.
+        let report =
+            AxiomRunReport::from_observation(&package, AxiomRunVerdict::Satisfied, observation);
+
+        match report.audit_fact_lineage(&package) {
+            Err(FactLineageAuditError::UnknownClause { fact_id, .. }) => {
+                assert_eq!(fact_id, "fact.unknown");
+            }
+            other => panic!("expected UnknownClause, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn audit_fact_lineage_rejects_fact_that_cites_only_scope_clauses() {
+        let package = decode_jtbd(vendor_input()).unwrap();
+        let actor_clause = package
+            .source_jtbd
+            .clauses_by_kind(JtbdClauseKind::Actor)
+            .next()
+            .unwrap()
+            .id
+            .clone();
+        let observation = AxiomRunObservation {
+            stop_reason: ObservedStopReason::Converged,
+            promoted_facts: vec![promoted_fact(
+                "Diagnostic",
+                "fact.scope-only",
+                "actor identity confirmed",
+                vec![actor_clause],
+            )],
+            integrity: RunIntegrityProof::sha256_merkle("sha256:test", 1, 1),
+            replay_notes: vec![],
+            run_stages: Vec::new(),
+        };
+        let report =
+            AxiomRunReport::from_observation(&package, AxiomRunVerdict::Satisfied, observation);
+
+        match report.audit_fact_lineage(&package) {
+            Err(FactLineageAuditError::ScopeOnlyFact { fact_id }) => {
+                assert_eq!(fact_id, "fact.scope-only");
+            }
+            other => panic!("expected ScopeOnlyFact, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn audit_fact_lineage_rejects_package_id_mismatch() {
+        let package = decode_jtbd(vendor_input()).unwrap();
+        let mut report = AxiomRunReport::verify(&package, satisfying_observation(&package));
+        report.package_id = TruthPackageId::new("truth_package.other");
+
+        assert!(matches!(
+            report.audit_fact_lineage(&package),
+            Err(FactLineageAuditError::PackageMismatch { .. })
+        ));
+    }
+
+    #[test]
+    fn audit_fact_lineage_rejects_truth_version_mismatch() {
+        let package = decode_jtbd(vendor_input()).unwrap();
+        let mut report = AxiomRunReport::verify(&package, satisfying_observation(&package));
+        report.truth_version = "v0".to_string();
+
+        assert!(matches!(
+            report.audit_fact_lineage(&package),
+            Err(FactLineageAuditError::TruthVersionMismatch { .. })
+        ));
     }
 }

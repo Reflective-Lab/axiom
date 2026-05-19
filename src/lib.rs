@@ -89,13 +89,13 @@ pub use simulation::{
 pub use truth_package::{
     ArtifactId, ArtifactKind, ArtifactLineage, AxiomRunObservation, AxiomRunReport,
     AxiomRunStageRecord, AxiomRunVerdict, ClauseDisposition, ClauseFingerprint, ClauseId,
-    ClauseInput, DecodeJtbdError, EvidenceRefRecord, ExpectedStopReason, GeneratedArtifact,
-    JtbdClause, JtbdClauseKind, JtbdDocument, JtbdInput, LineageError, LineageMap,
-    ObservedStopReason, PromotedFactRecord, ProofObligation, ProofObligationKind, ReplayProfile,
-    RunIntegrityProof, TimeBudget, TraceLinkRecord, TruthOverlayError, TruthPackage,
-    TruthPackageArtifacts, TruthPackageError, TruthPackageId, TruthProjectionOverlay,
-    TruthProjectionSource, TruthProjectionVersion, VerifierSpec, apply_truth_projection_overlay,
-    canonicalize_clause_text, decode_jtbd,
+    ClauseInput, DecodeJtbdError, EvidenceRefRecord, ExpectedStopReason, FactLineageAudit,
+    FactLineageAuditError, GeneratedArtifact, JtbdClause, JtbdClauseKind, JtbdDocument, JtbdInput,
+    LineageError, LineageMap, ObservedStopReason, PromotedFactRecord, ProofObligation,
+    ProofObligationKind, ReplayProfile, RunIntegrityProof, TimeBudget, TraceLinkRecord,
+    TruthOverlayError, TruthPackage, TruthPackageArtifacts, TruthPackageError, TruthPackageId,
+    TruthProjectionOverlay, TruthProjectionSource, TruthProjectionVersion, VerifierSpec,
+    apply_truth_projection_overlay, canonicalize_clause_text, decode_jtbd,
 };
 pub use truths::{
     AuthorityBlock, ConstraintBlock, EvidenceBlock, ExceptionBlock, IntentBlock, TruthDocument,
