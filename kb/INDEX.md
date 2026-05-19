@@ -102,6 +102,8 @@ source: llm
 | Warden Compliance | `tests/warden_compliance_marquee.rs`; `tests/fixtures/warden_compliance_shadow_run_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/warden-compliance` | Fifth app probe for Axiom-Helm-App contract, compliance registry shadow-run readiness, and Helm ledger approval/publication receipt candidates |
 | Triage Keeper | `tests/triage_keeper_marquee.rs`; `tests/fixtures/triage_keeper_maintenance_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/triage-keeper` | Sixth app probe for Axiom-Helm-App contract, weekly maintenance readiness, and Helm ledger decision/approval/plan receipt candidates |
 | Inkling Notes | `tests/inkling_notes_marquee.rs`; `tests/fixtures/inkling_vault_navigation_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/inkling-notes` | Seventh app probe for Axiom-Helm-App contract, local-first vault enrichment, snapshot/permission/index receipt candidates, and non-destructive suggestion boundaries |
+| Plumb Execution | `tests/plumb_execution_marquee.rs`; `tests/fixtures/plumb_strategy_revision_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/plumb-execution` | Eighth app probe for Axiom-Helm-App contract, closed-loop strategy execution readiness, and Helm ledger drift/revision/approval/commit receipt candidates |
+| Catalyst Biz | `tests/catalyst_biz_marquee.rs`; `tests/fixtures/catalyst_inbound_account_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/catalyst-biz` | Ninth app probe for Axiom-Helm-App contract, inbound business-operation readiness, and Helm ledger approval/routing/action/outcome receipt candidates |
 
 ## Scenario Tags
 

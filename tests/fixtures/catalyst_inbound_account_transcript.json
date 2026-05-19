@@ -1,0 +1,140 @@
+{
+  "source": {
+    "run_id": "catalyst-biz-run-2026-05-20-inbound-acme",
+    "app_path": "/Users/kpernyer/dev/reflective/marquee-apps/catalyst-biz",
+    "command": "CATALYST_OUTPUT=json bun run execute-job qualify-inbound-lead",
+    "captured_at": "2026-05-20T13:30:00Z",
+    "domain_hint": "catalyst-biz.inbound-account"
+  },
+  "execution_run": {
+    "execution_run_id": "catalyst.qualify-inbound-lead.acme-telemetry.202605201330",
+    "job_key": "qualify-inbound-lead",
+    "status": "Completed",
+    "truth_keys": [
+      "job-definition-bound",
+      "account-context-loaded",
+      "inbound-intent-captured",
+      "consent-policy-checked",
+      "fit-score-explained",
+      "owner-capacity-checked",
+      "hitl-approval-recorded",
+      "routing-decision-recorded",
+      "next-action-receipt-issued",
+      "outcome-tracking-registered",
+      "provider-facts-cited",
+      "honest-stop-or-business-result"
+    ],
+    "job_definition": {
+      "key": "qualify-inbound-lead",
+      "title": "Inbound Pipeline",
+      "requires_hitl": true,
+      "phases": ["Analysis", "HITL Gate", "Routing"],
+      "source_hash": "sha256:catalyst-job-qualify-inbound-lead"
+    },
+    "account_context": {
+      "organization_id": "org_acme_telemetry",
+      "lifecycle": "prospect",
+      "open_opportunity_count": 1,
+      "recent_timeline_refs": [
+        "timeline://crm/acme-telemetry/inbound-form",
+        "timeline://crm/acme-telemetry/product-webinar"
+      ],
+      "source_hash": "sha256:catalyst-account-context-acme"
+    },
+    "inbound_intent": {
+      "contact_ref_hash": "sha256:catalyst-contact-jordan-hale",
+      "contact_title": "VP Revenue Operations",
+      "inbound_summary_hash": "sha256:catalyst-inbound-summary-renewal-leakage",
+      "use_case": "reduce renewal leakage across regional teams",
+      "submitted_at": "2026-05-20T13:01:22Z"
+    },
+    "consent_policy": {
+      "policy_id": "arbiter.policy.consent.outreach.v3",
+      "status": "Allowed",
+      "suppression_list_checked": true,
+      "consent_evidence_ref": "embassy://crm/consent/acme-telemetry",
+      "policy_hash": "sha256:catalyst-consent-policy-v3"
+    },
+    "fit_assessment": {
+      "assessment_id": "fit.catalyst.acme-telemetry.20260520",
+      "score_basis_points": 8200,
+      "tier": "high-fit",
+      "dimensions": [
+        {
+          "dimension": "firmographic_fit",
+          "provider_id": "prism.fit-model.v2",
+          "evidence_ref": "mnemos://account/acme-telemetry/profile",
+          "source_hash": "sha256:catalyst-fit-firmographic"
+        },
+        {
+          "dimension": "intent_strength",
+          "provider_id": "prism.intent-model.v4",
+          "evidence_ref": "embassy://marketing/webinar/acme-telemetry",
+          "source_hash": "sha256:catalyst-fit-intent"
+        }
+      ]
+    },
+    "owner_routing": {
+      "owner_user_id": "user.eva.account-owner",
+      "territory": "nordics-midmarket",
+      "capacity_status": "Available",
+      "routing_basis_hash": "sha256:catalyst-routing-capacity"
+    },
+    "approval": {
+      "approval_id": "approval.catalyst.inbound.acme.routing",
+      "approver_id": "operator.ari.growth",
+      "status": "Approved",
+      "scope": "qualify-and-route-inbound-lead",
+      "note_hash": "sha256:catalyst-hitl-approval-note"
+    },
+    "routing_decision": {
+      "decision_id": "route.catalyst.acme-telemetry.owner",
+      "status": "Routed",
+      "owner_user_id": "user.eva.account-owner",
+      "rationale_hash": "sha256:catalyst-routing-rationale"
+    },
+    "next_action": {
+      "action_id": "next.catalyst.acme-telemetry.meeting",
+      "kind": "meeting_request",
+      "status": "Queued",
+      "action_ref": "calendar://meeting/acme-telemetry/revops-discovery",
+      "customer_visible": true,
+      "receipt_hash": "sha256:catalyst-next-action-receipt"
+    },
+    "outcome_tracking": {
+      "tracking_id": "outcome.catalyst.acme-telemetry.qualification",
+      "status": "Registered",
+      "dashboard_ref": "catalyst://account/org_acme_telemetry/outcomes",
+      "metrics": ["qualification_latency", "meeting_conversion", "pipeline_value"]
+    },
+    "provider_facts": [
+      {
+        "provider_id": "mnemos.account-memory",
+        "fact_ref": "mnemos://account/acme-telemetry/profile",
+        "source_hash": "sha256:catalyst-provider-account-memory"
+      },
+      {
+        "provider_id": "embassy.crm",
+        "fact_ref": "embassy://crm/consent/acme-telemetry",
+        "source_hash": "sha256:catalyst-provider-crm-consent"
+      },
+      {
+        "provider_id": "prism.fit-model.v2",
+        "fact_ref": "prism://fit/acme-telemetry/2026-05-20",
+        "source_hash": "sha256:catalyst-provider-fit-score"
+      }
+    ],
+    "business_result": {
+      "status": "QualifiedAndRouted",
+      "honest_stop_reason": "",
+      "helm_authorized_business_action": false,
+      "result_ref": "catalyst://job-result/catalyst.qualify-inbound-lead.acme-telemetry.202605201330"
+    },
+    "promotion_authority": {
+      "gate_id": "converge.gate.catalyst-inbound-account",
+      "policy_version_hash": "sha256:catalyst-inbound-policy",
+      "approver_id": "arbiter.catalyst.inbound",
+      "approver_kind": "SystemPolicy"
+    }
+  }
+}

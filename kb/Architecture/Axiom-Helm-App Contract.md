@@ -150,11 +150,19 @@ again to five entries: adapter receipt, job readiness packet, operator
 decision receipt, client approval receipt, and maintenance plan receipt.
 `tests/inkling_notes_marquee.rs` adds a private-corpus variant: adapter
 receipt, job readiness packet, vault snapshot receipt, permission receipt, and
-vault index receipt. All entries are deterministic, carry payload hashes and
-backlinks, and explicitly record no authority effect. The serialized ledger
-entries do not contain raw signatures, custody refs, rule owner emails, rule
-citations, document ids, package names, affected services, ticket refs, note
-paths, import source paths, source commands, or local app paths.
+vault index receipt. `tests/plumb_execution_marquee.rs` adds a closed-loop
+execution variant: adapter receipt, job readiness packet, drift verdict
+receipt, revision proposal receipt, sponsor approval receipt, and strategy
+commit receipt. `tests/catalyst_biz_marquee.rs` adds an everyday business
+operation variant: adapter receipt, job readiness packet, HITL approval
+receipt, routing decision receipt, next action receipt, and outcome tracking
+receipt. All entries are deterministic, carry payload hashes and backlinks,
+and explicitly record no authority effect. The serialized ledger entries do
+not contain raw signatures, custody refs, rule owner emails, rule citations,
+document ids, package names, affected services, ticket refs, note paths,
+import source paths, strategy sponsor ids, source systems, rejected proposal
+text, business operator ids, owner ids, CRM consent refs, source commands, or
+local app paths.
 
 ## Tally As Boundary-Finding Loop
 
@@ -537,9 +545,9 @@ shared code at once.
 
 | Shape | Current status | Likely home if repeated |
 |---|---|---|
-| `ObservationAdapterReceipt` | Promoted to public Axiom truth-package API after Tally and Atlas both repeated the same app-neutral adapter audit envelope; Quorum, Scout, Warden, Triage, and Inkling repeated it again. | Axiom owns the schema; Helm mirrors/renders/journals it. |
-| `JobReadinessPacket` | Helm-owned read-model candidate after Tally, Atlas, Quorum, Scout, Warden, Triage, and Inkling repeated the same package/report/evidence/operator-action shape under different domain names. | Helm common module; Axiom should not own this public type. |
-| Operator/approval/publication/plan receipts | Warden introduced compliance approval and registry publication receipts; Triage repeated the family as operator decision, client approval, and maintenance plan receipts. These are not Axiom types; they look like Helm ledger payloads for decisions and long-running job milestones. | Helm Operator Control / ledger; continue probing Plumb and Catalyst before hardening names. |
+| `ObservationAdapterReceipt` | Promoted to public Axiom truth-package API after Tally and Atlas both repeated the same app-neutral adapter audit envelope; Quorum, Scout, Warden, Triage, Inkling, Plumb, and Catalyst repeated it again. | Axiom owns the schema; Helm mirrors/renders/journals it. |
+| `JobReadinessPacket` | Helm-owned read-model candidate after Tally, Atlas, Quorum, Scout, Warden, Triage, Inkling, Plumb, and Catalyst repeated the same package/report/evidence/operator-action shape under different domain names. | Helm common module; Axiom should not own this public type. |
+| Operator/approval/publication/plan/execution/action/outcome receipts | Warden introduced compliance approval and registry publication receipts; Triage repeated the family as operator decision, client approval, and maintenance plan receipts; Plumb repeated it as drift verdict, revision proposal, sponsor approval, and strategy commit receipts; Catalyst repeated it as HITL approval, routing decision, next action, and outcome tracking receipts. These are not Axiom types; they look like Helm ledger payloads for decisions and long-running job milestones. | Helm Operator Control / ledger; stable enough to prototype in Helm while keeping domain payload details app-local. |
 | Snapshot/permission/index receipts | Inkling introduced vault snapshot, permission, and index receipts for local-first private corpus enrichment. This looks like the creative/knowledge-work sibling of the operator receipt family. | Helm ledger and app-local corpus surfaces; probe Folio/Wykkid/Moosemen/Wolfgang before hardening names. |
 | `TransitionSigningEvidence` | Useful sub-shape, but still close to Tally's agreement/signing domain. | Wait for Atlas or another app to need signer/witness coverage. |
 | `CustodyReleaseEvidence` | Useful sub-shape, but tied to escrow/custody domains. | Keep app/platform-local unless Atlas has analogous external-action receipt evidence. |
@@ -605,14 +613,16 @@ Adapter rule:
 Current fixture proof: `tests/escrow_release_marquee.rs`,
 `tests/atlas_integration_marquee.rs`, `tests/quorum_sense_marquee.rs`,
 `tests/scout_sourcing_marquee.rs`, `tests/warden_compliance_marquee.rs`, and
-`tests/triage_keeper_marquee.rs`, and `tests/inkling_notes_marquee.rs` all use
-the public type while keeping app-specific transcript adapters local. Tally
-proves success and rejection receipts around escrow release. Atlas proves the
-same envelope around identity-consolidation candidates. Quorum proves it again
-around organizational sensemaking synthesis readiness. Scout repeats it for
-governed sourcing. Warden repeats it for compliance registry shadow-runs.
-Triage repeats it for weekly maintenance cycles. Inkling repeats it for
-local-first vault enrichment.
+`tests/triage_keeper_marquee.rs`, `tests/inkling_notes_marquee.rs`, and
+`tests/plumb_execution_marquee.rs`, and `tests/catalyst_biz_marquee.rs` all
+use the public type while keeping app-specific transcript adapters local.
+Tally proves success and rejection receipts around escrow release. Atlas
+proves the same envelope around identity-consolidation candidates. Quorum
+proves it again around organizational sensemaking synthesis readiness. Scout
+repeats it for governed sourcing. Warden repeats it for compliance registry
+shadow-runs. Triage repeats it for weekly maintenance cycles. Inkling repeats
+it for local-first vault enrichment. Plumb repeats it for closed-loop strategy
+execution. Catalyst repeats it for everyday business operations.
 
 Ownership:
 
@@ -950,6 +960,129 @@ harden the exact names yet; `plumb-execution` should pressure execution
 receipts, and `catalyst-biz` should pressure business-change approvals and
 outcome tracking.
 
+## Plumb As Eighth Probe
+
+Plumb Execution pressure-tests the contract against closed-loop strategy
+execution: anchor a strategy as a versioned artifact, watch operating signals,
+detect material drift, compare correction paths, reject unsafe paths, and
+commit a governed strategy revision only through sponsor approval and a
+promotion gate.
+
+The first probe uses the Plumb truth keys `strategy-anchor-versioned`,
+`source-signals-cited`, `drift-verdict-traced`,
+`materiality-threshold-applied`, `revision-proposals-named`,
+`rejected-path-preserved`, `feasibility-reviewed`,
+`adversarial-review-recorded`, `sponsor-approval-recorded`,
+`promotion-gate-recorded`, `anchor-revision-committed`, and
+`honest-stop-or-reconciliation`.
+
+| Layer | Boundary decision |
+|---|---|
+| Plumb app | Owns strategy anchors, objectives, assumptions, forbidden moves, operating signal transcripts, drift verdict semantics, revision proposal copy, and strategy commit records. |
+| Axiom | Owns the JTBD-to-Truth Package, strategy-execution evidence requirements, normalized `AxiomRunObservation`, verifier report, and clause-level coverage. It does not revise strategy or choose correction paths. |
+| Helm | Owns the operator review surface, missing-evidence actions, drift/revision/approval/commit receipt display, and append-only ledger entries. It does not become strategy authority. |
+| Organism/Mosaic | Own signal retrieval, anomaly and drift analysis, feasibility review, adversarial review, provider routing, and suggestor execution through public capability contracts. |
+| Converge | Promotes signals, drift verdicts, proposals, approvals, commit facts, stop reasons, integrity proofs, and promotion authority evidence. |
+
+Current fixture proof: `tests/plumb_execution_marquee.rs` builds a strategy
+revision JTBD, adapts a recorded Plumb transcript into
+`AxiomRunObservation`, emits the public `ObservationAdapterReceipt`, builds the
+same Helm-facing `JobReadinessPacket`, and journals six backlink-only Helm
+ledger entries: adapter receipt, readiness packet, drift verdict receipt,
+revision proposal receipt, sponsor approval receipt, and strategy commit
+receipt. One negative path removes source signals. Another keeps the commit
+receipt present but removes sponsor approval. In both cases the adapter still
+succeeds, but Axiom returns `Invalid` and Helm sees missing evidence without
+authorizing a strategy commit.
+
+What Plumb adds to the common shape:
+
+- The receipt family now covers execution progress, not only review or
+  publication milestones. Drift verdict, revision proposal, sponsor approval,
+  and strategy commit receipts form a deterministic chain.
+- Versioned anchors matter. Axiom can require evidence that a strategy moved
+  from one version to another without owning strategy mutation or allowing
+  in-place rewrites.
+- Rejected paths are evidence. A safe execution loop preserves why an option
+  was rejected instead of hiding it after a preferred path is accepted.
+
+What did not move:
+
+- Strategy semantics, objective definitions, assumption ownership, source
+  signal selection, and revision authoring remain Plumb-owned.
+- Helm journals the execution chain, but every ledger entry has
+  `authority_effect: none`.
+- Axiom verifies the reported job contract. It does not decide the new
+  strategy, choose the Formation, promote facts, or grant sponsor authority.
+
+Extraction signal after Plumb: the Helm ledger family is no longer just
+approval/publication/plan. It also needs execution receipts for stateful,
+long-running work. `catalyst-biz` should pressure whether the same family can
+cover business-change approvals, experiment outcomes, and post-change
+tracking.
+
+## Catalyst As Ninth Probe
+
+Catalyst Biz pressure-tests the contract against everyday business operations:
+an inbound account arrives messy, the system gathers account context, checks
+consent, scores fit, chooses an owner, pauses for HITL approval, queues a next
+business action, and registers outcome tracking. This is not one vertical
+state machine. It spans CRM, marketing, calendar, opportunity, approval, and
+analytics surfaces.
+
+The first probe uses the Catalyst truth keys `job-definition-bound`,
+`account-context-loaded`, `inbound-intent-captured`,
+`consent-policy-checked`, `fit-score-explained`,
+`owner-capacity-checked`, `hitl-approval-recorded`,
+`routing-decision-recorded`, `next-action-receipt-issued`,
+`outcome-tracking-registered`, `provider-facts-cited`, and
+`honest-stop-or-business-result`.
+
+| Layer | Boundary decision |
+|---|---|
+| Catalyst app | Owns job presentation, input forms, account canvas, product language, raw business transcripts, and how the resulting action is shown to the operator. |
+| Axiom | Owns the JTBD-to-Truth Package, business-operation evidence requirements, normalized `AxiomRunObservation`, verifier report, and clause-level coverage. It does not qualify the lead, choose the owner, or send the follow-up. |
+| Helm | Owns the operator review surface, HITL/approval display, missing-evidence actions, action/outcome receipt display, and append-only ledger entries. It does not become business authority. |
+| Organism/Mosaic | Own dynamic job topology, account memory, consent/policy checks, fit scoring, owner routing, scheduling, provider routing, and suggestor execution through public capability contracts. |
+| Converge | Promotes account facts, consent facts, fit assessments, approval facts, routing decisions, next-action receipts, outcome facts, stop reasons, integrity proofs, and promotion authority evidence. |
+
+Current fixture proof: `tests/catalyst_biz_marquee.rs` builds an inbound
+account JTBD, adapts a recorded Catalyst transcript into
+`AxiomRunObservation`, emits the public `ObservationAdapterReceipt`, builds the
+same Helm-facing `JobReadinessPacket`, and journals six backlink-only Helm
+ledger entries: adapter receipt, readiness packet, HITL approval receipt,
+routing decision receipt, next action receipt, and outcome tracking receipt.
+One negative path removes consent policy evidence. Another keeps routing
+present but removes HITL approval. In both cases the adapter still succeeds,
+but Axiom returns `Invalid` and Helm sees missing evidence without authorizing
+the customer-visible business action.
+
+What Catalyst adds to the common shape:
+
+- Outcome tracking is a ledger milestone. A job is not only "approved" or
+  "executed"; the result must be registered for later measurement.
+- Flow timelines are not truth. Catalyst can render progress through
+  `helm-flow`, but the verifier evidence comes from promoted facts, receipts,
+  and stop reasons.
+- Everyday business operations need the same boundary as high-stakes apps:
+  consent, owner responsibility, HITL approval, next-action receipt, and
+  provider fact provenance.
+
+What did not move:
+
+- Catalyst keeps product UX, job forms, account context, business language,
+  and customer-visible action presentation.
+- Helm journals approvals, routing, next actions, and outcome tracking, but
+  every ledger entry has `authority_effect: none`.
+- Axiom verifies the reported job contract. It does not route accounts,
+  select owners, approve outreach, promote facts, or run the Formation.
+
+Extraction signal after Catalyst: Helm Operator Control has enough repeated
+evidence to prototype a generic receipt family around long-running jobs:
+adapter, readiness, approval, decision, plan/execution, action, and outcome.
+The next materially different pressure should be Fathom's temporal evidence
+windows or the creative/knowledge-work cluster's human-owned content receipts.
+
 ## Creative And Knowledge-Work Cluster
 
 Folio Editor, Inkling Notes, Moosemen Writer, Wykkid Preso, and Wolfgang Chat
@@ -1037,7 +1170,7 @@ AI proposes structure. Folio, Wykkid, Moosemen, and Wolfgang are meaningful
 follow-ups if we want to harden claim/presentation/canon/research variants of
 the same provenance and proposal pattern.
 
-## Warden Versus Fathom As Next Probe
+## Control Plane Versus Temporal Probes
 
 Warden has now served as the control-plane probe. It confirmed:
 
@@ -1057,11 +1190,15 @@ evidence over time. It should pressure-test a different common shape:
 - disagreements between promoted facts across periods or cohorts.
 
 Triage has now confirmed that Warden's approval/publication receipt family
-does repeat outside compliance publication. The practical sequence is now:
-probe `plumb-execution` and `catalyst-biz` next to see whether execution
-receipts, business-change approvals, and outcome tracking fit the same Helm
-ledger family. Use Fathom after that to refine Axiom/Helm evidence windows and
-temporal replay.
+does repeat outside compliance publication. Plumb has now confirmed the same
+ledger family can carry execution receipts for a closed-loop strategy run:
+drift verdict, revision proposal, sponsor approval, and versioned commit.
+Catalyst has now confirmed the family also covers everyday business operations:
+HITL approval, routing decision, next action, and outcome tracking.
+
+The practical sequence is now: prototype the Helm Operator Control receipt
+family from these repeated shapes, or use Fathom next to refine Axiom/Helm
+evidence windows and temporal replay before that implementation hardens.
 
 ## Falsifiable Signals
 

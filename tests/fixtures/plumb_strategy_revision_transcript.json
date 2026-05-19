@@ -1,0 +1,189 @@
+{
+  "source": {
+    "run_id": "plumb-execution-run-2026-05-20-growth-drift",
+    "app_path": "/Users/kpernyer/dev/reflective/marquee-apps/plumb-execution",
+    "command": "PLUMB_OUTPUT=json cargo run --example strategy_revision",
+    "captured_at": "2026-05-20T11:20:00Z",
+    "domain_hint": "plumb-execution.strategy-revision"
+  },
+  "execution_run": {
+    "execution_run_id": "plumb.strategy-revision.growth-2026q2.202605201120",
+    "status": "Converged",
+    "truth_keys": [
+      "strategy-anchor-versioned",
+      "source-signals-cited",
+      "drift-verdict-traced",
+      "materiality-threshold-applied",
+      "revision-proposals-named",
+      "rejected-path-preserved",
+      "feasibility-reviewed",
+      "adversarial-review-recorded",
+      "sponsor-approval-recorded",
+      "promotion-gate-recorded",
+      "anchor-revision-committed",
+      "honest-stop-or-reconciliation"
+    ],
+    "strategy_anchor": {
+      "anchor_id": "strategy.growth.2026q2",
+      "current_version": "strategy.growth.2026q2.v3",
+      "proposed_version": "strategy.growth.2026q2.v4",
+      "source_hash": "sha256:plumb-growth-anchor-v3",
+      "owner": "strategy.sponsor.growth",
+      "objectives": [
+        {
+          "objective_id": "objective.pipeline-quality",
+          "target_id": "target.qualified-pipeline",
+          "target_metric": "qualified_pipeline_mrr",
+          "target_value": 1200000,
+          "period": "2026-Q2"
+        }
+      ],
+      "assumptions": [
+        {
+          "assumption_id": "assumption.enterprise-cycle-90d",
+          "statement": "enterprise opportunity cycle remains near 90 days",
+          "status": "Challenged"
+        }
+      ],
+      "forbidden_moves": [
+        "discount below floor without finance approval",
+        "move expansion quota into new-logo target"
+      ]
+    },
+    "signals": [
+      {
+        "signal_id": "signal.crm.enterprise-cycle",
+        "source_system": "crm",
+        "metric": "enterprise_cycle_days",
+        "observed_value": 126,
+        "anchored_target_id": "target.qualified-pipeline",
+        "period": "2026-W20",
+        "evidence_ref": "embassy://crm/report/enterprise-cycle-w20",
+        "source_hash": "sha256:plumb-crm-enterprise-cycle"
+      },
+      {
+        "signal_id": "signal.finance.pipeline-mrr",
+        "source_system": "finance",
+        "metric": "qualified_pipeline_mrr",
+        "observed_value": 820000,
+        "anchored_target_id": "target.qualified-pipeline",
+        "period": "2026-W20",
+        "evidence_ref": "embassy://finance/report/pipeline-mrr-w20",
+        "source_hash": "sha256:plumb-finance-pipeline-mrr"
+      }
+    ],
+    "materiality": {
+      "threshold_basis_points": 1500,
+      "observed_gap_basis_points": 3167,
+      "rule_ref": "arbiter://policy/plumb/material-drift.v1",
+      "status": "Exceeded"
+    },
+    "drift_verdict": {
+      "verdict_id": "drift.growth.2026q2.enterprise-cycle",
+      "status": "MaterialDrift",
+      "signal_ids": [
+        "signal.crm.enterprise-cycle",
+        "signal.finance.pipeline-mrr"
+      ],
+      "anchored_target_id": "target.qualified-pipeline",
+      "changed_assumption_id": "assumption.enterprise-cycle-90d",
+      "rationale": "enterprise cycle and qualified pipeline diverged beyond the materiality threshold",
+      "evidence_refs": [
+        "embassy://crm/report/enterprise-cycle-w20",
+        "embassy://finance/report/pipeline-mrr-w20"
+      ]
+    },
+    "revision_proposals": [
+      {
+        "proposal_id": "revision.growth.v4.focus-midmarket",
+        "status": "Accepted",
+        "changes_assumption_id": "assumption.enterprise-cycle-90d",
+        "changes_target_id": "target.qualified-pipeline",
+        "summary": "narrow enterprise target, add midmarket recovery motion, keep discount floor",
+        "forbidden_move_violated": false,
+        "evidence_refs": [
+          "plumb://evidence/feasibility/midmarket-capacity",
+          "plumb://evidence/review/growth-huddle"
+        ]
+      },
+      {
+        "proposal_id": "revision.growth.v4.discount-floor-exception",
+        "status": "Rejected",
+        "changes_assumption_id": "assumption.enterprise-cycle-90d",
+        "changes_target_id": "target.qualified-pipeline",
+        "summary": "recover pipeline by discounting below finance floor",
+        "forbidden_move_violated": true,
+        "evidence_refs": [
+          "plumb://evidence/policy/discount-floor"
+        ]
+      }
+    ],
+    "feasibility_review": {
+      "review_id": "feasibility.growth.v4.midmarket",
+      "accepted_proposal_id": "revision.growth.v4.focus-midmarket",
+      "status": "Feasible",
+      "resource_delta": "shift two outbound squads for four weeks",
+      "roadmap_impact": "no critical path slip",
+      "rejected_proposal_ids": [
+        "revision.growth.v4.discount-floor-exception"
+      ],
+      "evidence_refs": [
+        "ferrox://schedule/growth-midmarket-recovery",
+        "plumb://review/roadmap-impact"
+      ]
+    },
+    "adversarial_review": {
+      "review_id": "adversarial.growth.v4",
+      "status": "Recorded",
+      "counterarguments": [
+        "pipeline drop may reflect data quality rather than market motion",
+        "midmarket shift may reduce enterprise learning"
+      ],
+      "surviving_counterarguments": [
+        "midmarket shift may reduce enterprise learning"
+      ],
+      "reviewer_roles": [
+        "strategy sponsor",
+        "finance critic",
+        "sales operator",
+        "delivery feasibility critic"
+      ]
+    },
+    "approval": {
+      "approval_id": "helm.approval.plumb.growth-v4",
+      "approver_id": "strategy.sponsor.growth",
+      "status": "Approved",
+      "scope": "commit strategy.growth.2026q2.v4 from accepted midmarket recovery proposal",
+      "note_hash": "sha256:plumb-sponsor-approval-note"
+    },
+    "promotion_gate": {
+      "gate_id": "converge.gate.plumb-strategy-revision",
+      "policy_version_hash": "sha256:plumb-strategy-policy",
+      "status": "Promoted",
+      "approved_proposal_id": "revision.growth.v4.focus-midmarket",
+      "integrity_hash": "sha256:plumb-strategy-revision-integrity"
+    },
+    "commit_receipt": {
+      "receipt_id": "plumb.commit.strategy.growth.2026q2.v4",
+      "previous_version": "strategy.growth.2026q2.v3",
+      "committed_version": "strategy.growth.2026q2.v4",
+      "status": "Committed",
+      "committed_at": "2026-05-20T11:24:00Z",
+      "anchor_hash": "sha256:plumb-growth-anchor-v4",
+      "rollback_ref": "plumb://strategy/strategy.growth.2026q2.v3",
+      "mutation_mode": "new_version"
+    },
+    "reconciliation": {
+      "status": "Reconciled",
+      "honest_stop_reason": "",
+      "unreconciled_divergence_visible": true,
+      "silent_override_attempted": false
+    },
+    "promotion_authority": {
+      "gate_id": "converge.gate.plumb-strategy-revision",
+      "policy_version_hash": "sha256:plumb-strategy-policy",
+      "approver_id": "arbiter.plumb.strategy",
+      "approver_kind": "SystemPolicy"
+    }
+  }
+}
