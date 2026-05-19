@@ -29,6 +29,9 @@ source: llm
 - Started v0.12 implementation by emitting deterministic policy requirement artifacts from the Truth Package decoder and asserting the escrow release commitment envelope covers authority, required evidence, and forbidden failure modes.
 - Extended promoted fact report records with optional Converge promotion authority data (gate ID, policy hash, approver) so Axiom reports can show authority was observed at promotion without treating Axiom as the authority source.
 - Added the Axiom-side Tally release observation adapter recipe: a local wire-shaped release outcome maps transition truth keys, Organism signing witnesses, custody receipt, idempotency, and observed promotion authority into `AxiomRunObservation`; missing release truth key now produces an `Invalid` verifier result.
+- Completed v0.12 by replacing the fixture-only Tally proof with a recorded release transcript, proving the final report carries v0.13 learning feedstock fields, and recording the residual gap from irreversible strict-verdict proof to the v1.0 three-proof set.
+- Implemented the v0.13 decoder calibration loop: `LearningEpisode`, `CalibrationKey`, `CalibrationRecord`, `CalibrationTable`, accepted calibration suggestions, and package enrichment via `apply_decoder_calibration(...)`, with tests proving Tally release outcomes produce reviewable priors without pulling Formation selection, authority recompute, or specialist hosting into Axiom.
+- Updated `Architecture/Decoder Calibration.md`, `Concepts/Truth Package.md`, and `INDEX.md` to document calibration ownership, persistence shape, review statuses, lineage requirements, and the new public types.
 
 ## 2026-05-17
 

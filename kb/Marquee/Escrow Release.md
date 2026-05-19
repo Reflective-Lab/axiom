@@ -9,14 +9,13 @@ Escrow release is the v0.12 strict-verdict pressure test for Axiom. It is an
 irreversible commitment: once funds leave escrow, the system cannot treat a
 bad release as a harmless planning miss.
 
-This is currently a fixture proof plus an adapter recipe, not a live marquee
-proof. The concrete app target is
+This is a strict verifier proof plus a recorded Tally release transcript. The
+concrete app target is
 `/Users/kpernyer/dev/reflective/marquee-apps/tally-escrow`; it already has
 Tally domain types, release TruthSpecs, a real Converge suggestor, an
 attestation custody adapter, Organism signing flow, and bilateral Axiom
-transition records. The Axiom fixture should be replaced by a live Tally run
-once the app emits a stable release outcome that can be adapted into
-`AxiomRunObservation`.
+transition records. Axiom does not depend on the Tally crate. The test keeps a
+local wire transcript for the release outcome and proves the adapter contract.
 
 ## JTBD
 
@@ -50,7 +49,8 @@ Time budget: 15 minutes
 ## Tally Adapter Recipe
 
 `tests/escrow_release_marquee.rs` includes the Axiom-side recipe for adapting a
-Tally release outcome into `AxiomRunObservation`. The recipe deliberately uses a
+Tally release outcome into `AxiomRunObservation`. The recipe reads
+`tests/fixtures/tally_escrow_release_transcript.json` and deliberately uses a
 local wire shape instead of depending on the Tally crate:
 
 - transition record: `Verified -> Released`, reason `ConditionsMet`, and truth
@@ -72,6 +72,23 @@ The adapter maps those fields onto the escrow JTBD clauses:
 The verifier still decides the verdict. If the Tally release truth key is
 missing, the adapted observation lacks required evidence and the report becomes
 `Invalid`.
+
+## Calibration Feedstock
+
+The transcript-backed report also proves the data needed for the v0.13
+learning loop:
+
+- source run ID and domain hint;
+- verdict and observed stop reason;
+- package ID, truth version, source clause IDs, and clause fingerprints;
+- verifier required evidence and forbidden actions;
+- promoted fact IDs and evidence/failure coverage from `audit_fact_lineage`;
+- observed promotion policy hash from Converge authority evidence.
+
+v0.13 now turns this data into a `LearningEpisode`, proposes
+`CalibrationRecord` rows, and proves accepted records can enrich a regenerated
+Truth Package without making Axiom select Formations, recompute authority, or
+host Tally execution.
 
 ## Boundary Claims
 
@@ -103,20 +120,24 @@ The first useful implementation shape is intentionally narrow:
 - `audit_fact_lineage(...)` proves every promoted commitment fact traces back
   to source JTBD clauses and the package truth version.
 
-## Residual Gap
+## Residual Gap To v1.0
 
-The fixture does not yet prove the Tally runtime can produce the observations.
-The remaining v0.12 gap is replacing the local wire-shaped adapter fixture with
-a live `tally-escrow` release transition run and translating the policy
-requirement artifacts into a concrete Cedar envelope. Without that, this is
-still valuable as a strict verdict proof plus adapter recipe, but it should be
-labeled as fixture-backed.
+v0.12 proves the irreversible commitment verifier and the Tally observation
+contract, not the full three-proof vision. The remaining gaps are:
+
+- package the Tally app's release flow as a stable live runner or transcript
+  emitter instead of a recorded JSON fixture;
+- translate Axiom's policy requirement artifacts into the concrete Cedar
+  envelope used by the app/runtime;
+- add Quorum sensemaking as the ambiguous-satisfaction proof;
+- add Scout sourcing as the governed commercial-decision proof;
+- persist and review accepted verifier outcomes as calibration table records.
 
 ## Handoff To Calibration
 
-Escrow release is also the first intended feedstock for v0.13 decoder
-calibration. v0.12 should not apply learned priors, but its final report should
-contain enough typed outcome data to become a future learning episode:
+Escrow release is the first feedstock for v0.13 decoder calibration. v0.12 did
+not apply learned priors, but its final report contains enough typed outcome
+data to become a learning episode:
 
 - the source JTBD clause IDs and fingerprints;
 - the verifier spec;
@@ -124,7 +145,9 @@ contain enough typed outcome data to become a future learning episode:
 - the lineage audit result;
 - the observed stop reason and final verdict.
 
-Those hard labels are what make calibration worth trusting later.
+Those hard labels are what make calibration worth trusting. The next operating
+step is persistence and operator review of the calibration table, not expanding
+Axiom into runtime strategy.
 
 ## Marquee Sequence
 

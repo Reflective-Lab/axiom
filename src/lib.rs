@@ -88,14 +88,18 @@ pub use simulation::{
 };
 pub use truth_package::{
     ArtifactId, ArtifactKind, ArtifactLineage, AxiomRunObservation, AxiomRunReport,
-    AxiomRunStageRecord, AxiomRunVerdict, ClauseDisposition, ClauseFingerprint, ClauseId,
+    AxiomRunStageRecord, AxiomRunVerdict, CalibrationError, CalibrationKey,
+    CalibrationPersistenceError, CalibrationRecord, CalibrationReviewError, CalibrationStatus,
+    CalibrationTable, CalibrationValue, ClauseDisposition, ClauseFingerprint, ClauseId,
     ClauseInput, DecodeJtbdError, EvidenceRefRecord, ExpectedStopReason, FactLineageAudit,
     FactLineageAuditError, GeneratedArtifact, JtbdClause, JtbdClauseKind, JtbdDocument, JtbdInput,
-    LineageError, LineageMap, ObservedStopReason, PromotedFactRecord, PromotionAuthorityRecord,
-    ProofObligation, ProofObligationKind, ReplayProfile, RunIntegrityProof, TimeBudget,
-    TraceLinkRecord, TruthOverlayError, TruthPackage, TruthPackageArtifacts, TruthPackageError,
-    TruthPackageId, TruthProjectionOverlay, TruthProjectionSource, TruthProjectionVersion,
-    VerifierSpec, apply_truth_projection_overlay, canonicalize_clause_text, decode_jtbd,
+    LearningClauseSignal, LearningEpisode, LineageError, LineageMap, ObservedStopReason,
+    PromotedFactRecord, PromotionAuthorityRecord, ProofObligation, ProofObligationKind,
+    ReplayProfile, RunIntegrityProof, TimeBudget, TraceLinkRecord, TruthOverlayError, TruthPackage,
+    TruthPackageArtifacts, TruthPackageError, TruthPackageId, TruthProjectionOverlay,
+    TruthProjectionSource, TruthProjectionVersion, VerifierSpec, apply_decoder_calibration,
+    apply_truth_projection_overlay, calibration_records_from_learning_episode,
+    canonicalize_clause_text, decode_jtbd,
 };
 pub use truths::{
     AuthorityBlock, ConstraintBlock, EvidenceBlock, ExceptionBlock, IntentBlock, TruthDocument,

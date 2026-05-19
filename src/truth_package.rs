@@ -358,6 +358,7 @@ pub enum ArtifactKind {
     PolicyRequirement,
     InvariantArtifact,
     SimulationCase,
+    CalibrationSuggestion,
     ReplayProfile,
     IntentField,
     ProofObligation,
@@ -447,6 +448,8 @@ pub struct TruthPackageArtifacts {
     pub evidence_expectations: Vec<GeneratedArtifact>,
     pub simulation_cases: Vec<GeneratedArtifact>,
     pub invariant_expectations: Vec<GeneratedArtifact>,
+    #[serde(default)]
+    pub calibration_suggestions: Vec<GeneratedArtifact>,
 }
 
 /// Reviewable generated artifact summary.
@@ -1052,6 +1055,556 @@ pub enum FactLineageAuditError {
     ScopeOnlyFact { fact_id: String },
 }
 
+/// Audited verifier outcome that can seed decoder calibration.
+///
+/// This is decoder learning input only. It deliberately carries report,
+/// clause, verifier, and promotion-policy evidence; it carries no Formation
+/// choice, authority recomputation result, or specialist execution handle.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LearningEpisode {
+    pub episode_id: ArtifactId,
+    pub source_run_id: String,
+    pub domain_hint: String,
+    pub package_id: TruthPackageId,
+    pub truth_version: String,
+    pub verdict: AxiomRunVerdict,
+    pub observed_stop_reason: String,
+    pub source_clause_signals: Vec<LearningClauseSignal>,
+    /// Audit trail only: the run-time fact IDs that contributed to this
+    /// episode's clause coverage. Not consumed when generating calibration
+    /// records — priors are derived from `source_clause_signals`. Carried so
+    /// future operators can trace a calibration record back to the specific
+    /// promoted facts that justified it. Do not remove without replacing the
+    /// audit hook.
+    pub promoted_fact_ids: Vec<String>,
+    pub promotion_policy_hashes: Vec<String>,
+    pub verifier_required_evidence: Vec<String>,
+    pub verifier_forbidden_actions: Vec<String>,
+}
+
+impl LearningEpisode {
+    pub fn from_report(
+        source_run_id: impl Into<String>,
+        domain_hint: impl Into<String>,
+        package: &TruthPackage,
+        report: &AxiomRunReport,
+        audit: &FactLineageAudit,
+    ) -> Self {
+        let source_run_id = source_run_id.into();
+        let domain_hint = domain_hint.into();
+        let mut promotion_policy_hashes: Vec<String> = report
+            .promoted_facts
+            .iter()
+            .filter_map(|fact| fact.promotion_authority.as_ref())
+            .map(|authority| authority.policy_version_hash.clone())
+            .collect();
+        promotion_policy_hashes.sort();
+        promotion_policy_hashes.dedup();
+
+        let source_clause_signals = package
+            .source_jtbd
+            .clauses
+            .iter()
+            .map(|clause| LearningClauseSignal {
+                clause_id: clause.id.clone(),
+                clause_kind: clause.kind,
+                fingerprint: clause.fingerprint.clone(),
+                covered_as_evidence: audit.evidence_coverage.contains(&clause.id),
+                covered_as_failure_guard: audit.failure_coverage.contains(&clause.id),
+            })
+            .collect();
+
+        let episode_id = learning_episode_id(
+            &source_run_id,
+            &domain_hint,
+            &package.package_id,
+            &package.truth_version,
+            report.verdict,
+        );
+
+        Self {
+            episode_id,
+            source_run_id,
+            domain_hint,
+            package_id: package.package_id.clone(),
+            truth_version: package.truth_version.clone(),
+            verdict: report.verdict,
+            observed_stop_reason: format!("{:?}", report.observed_stop_reason),
+            source_clause_signals,
+            promoted_fact_ids: report
+                .promoted_facts
+                .iter()
+                .map(|fact| fact.fact_id.clone())
+                .collect(),
+            promotion_policy_hashes,
+            verifier_required_evidence: report.verifier_spec.required_evidence.clone(),
+            verifier_forbidden_actions: report
+                .verifier_spec
+                .forbidden_actions
+                .iter()
+                .map(|forbidden| forbidden.action.clone())
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LearningClauseSignal {
+    pub clause_id: ClauseId,
+    pub clause_kind: JtbdClauseKind,
+    pub fingerprint: ClauseFingerprint,
+    pub covered_as_evidence: bool,
+    pub covered_as_failure_guard: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct CalibrationKey {
+    pub clause_kind: JtbdClauseKind,
+    pub normalized_clause_shape: String,
+    pub domain_hint: String,
+    pub decoder_rule_id: String,
+    pub fingerprint_class: String,
+}
+
+impl CalibrationKey {
+    pub fn for_clause(
+        clause: &JtbdClause,
+        domain_hint: impl Into<String>,
+        decoder_rule_id: impl Into<String>,
+    ) -> Self {
+        Self {
+            clause_kind: clause.kind,
+            normalized_clause_shape: canonicalize_clause_text(&clause.canonical_text),
+            domain_hint: domain_hint.into(),
+            decoder_rule_id: decoder_rule_id.into(),
+            fingerprint_class: clause.fingerprint.short().to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CalibrationValue {
+    pub suggested_evidence_templates: Vec<String>,
+    pub suggested_failure_scenarios: Vec<String>,
+    pub suggested_policy_requirements: Vec<String>,
+    pub suggested_verifier_expectations: Vec<String>,
+    /// Absolute confidence in this prior, expressed in basis points (1 bp =
+    /// 0.01%, range 0–10_000). v0.13 derives the value from the source
+    /// episode's verdict via `confidence_for_verdict`: 9_000 (90%) for
+    /// `Satisfied`, 7_000 (70%) for `Blocked` or `Invalid`, 4_000 (40%) for
+    /// `Exhausted`. The scale is absolute, not relative or decaying — v0.14+
+    /// review workflows are expected to adjust it on accept/reject and may
+    /// introduce decay later. Operators reviewing a calibration record can
+    /// read this directly to gauge how much to trust the prior.
+    pub confidence_basis_points: u16,
+    pub rationale: String,
+    pub source_episode_ids: Vec<ArtifactId>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CalibrationStatus {
+    Proposed,
+    Accepted,
+    Rejected,
+    Reset,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CalibrationRecord {
+    pub record_id: ArtifactId,
+    pub key: CalibrationKey,
+    pub value: CalibrationValue,
+    pub status: CalibrationStatus,
+    pub review_note: Option<String>,
+}
+
+impl CalibrationRecord {
+    pub fn with_status(
+        mut self,
+        status: CalibrationStatus,
+        review_note: impl Into<String>,
+    ) -> Self {
+        self.status = status;
+        self.review_note = Some(review_note.into());
+        self
+    }
+
+    pub fn accepted(mut self, review_note: impl Into<String>) -> Self {
+        self.status = CalibrationStatus::Accepted;
+        self.review_note = Some(review_note.into());
+        self
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CalibrationTable {
+    pub records: Vec<CalibrationRecord>,
+}
+
+impl CalibrationTable {
+    pub fn new(mut records: Vec<CalibrationRecord>) -> Self {
+        records.sort_by(|left, right| left.record_id.as_str().cmp(right.record_id.as_str()));
+        Self { records }
+    }
+
+    pub fn accepted_for_clause<'a>(
+        &'a self,
+        clause: &JtbdClause,
+        domain_hint: &str,
+        decoder_rule_id: &str,
+    ) -> impl Iterator<Item = &'a CalibrationRecord> {
+        let key = CalibrationKey::for_clause(clause, domain_hint, decoder_rule_id);
+        self.records
+            .iter()
+            .filter(move |record| record.status == CalibrationStatus::Accepted && record.key == key)
+    }
+
+    /// Serialize the table as JSON Lines — one `CalibrationRecord` per line,
+    /// in record-id order. The output is byte-deterministic for any table
+    /// holding the same set of records: `to_jsonl` sorts borrowed references
+    /// at serialization time, so tables constructed without `new()` (raw
+    /// struct literal, direct `Deserialize`, or hand-mutated `records`)
+    /// still produce canonical output. Suitable for content-addressable
+    /// storage, append-only audit logs, or git-tracked operator review
+    /// workflows.
+    pub fn to_jsonl(&self) -> String {
+        let mut sorted: Vec<&CalibrationRecord> = self.records.iter().collect();
+        sorted.sort_by(|left, right| left.record_id.as_str().cmp(right.record_id.as_str()));
+        let mut out = String::new();
+        for record in sorted {
+            let line = serde_json::to_string(record)
+                .expect("calibration record serializes (every field is serde-derived)");
+            out.push_str(&line);
+            out.push('\n');
+        }
+        out
+    }
+
+    /// Accept a proposed (or previously reviewed) calibration record.
+    ///
+    /// The `note` is mandatory — empty or whitespace-only notes raise
+    /// `CalibrationReviewError::EmptyNote`. Accepting an already-accepted
+    /// record is allowed; the new note replaces the previous one. Records
+    /// not present in the table raise `RecordNotFound`.
+    pub fn accept(
+        &mut self,
+        record_id: &ArtifactId,
+        note: impl Into<String>,
+    ) -> Result<(), CalibrationReviewError> {
+        self.review(record_id, CalibrationStatus::Accepted, note.into())
+    }
+
+    /// Reject a calibration record. The decoder will never enrich a package
+    /// with a rejected record, regardless of the originating episode's verdict.
+    pub fn reject(
+        &mut self,
+        record_id: &ArtifactId,
+        note: impl Into<String>,
+    ) -> Result<(), CalibrationReviewError> {
+        self.review(record_id, CalibrationStatus::Rejected, note.into())
+    }
+
+    /// Reset a calibration record. Reset records do not enrich packages, but
+    /// the next matching learning episode may re-propose them — unlike
+    /// `Rejected`, which signals "this prior was wrong" rather than "this
+    /// prior is stale."
+    pub fn reset(
+        &mut self,
+        record_id: &ArtifactId,
+        note: impl Into<String>,
+    ) -> Result<(), CalibrationReviewError> {
+        self.review(record_id, CalibrationStatus::Reset, note.into())
+    }
+
+    fn review(
+        &mut self,
+        record_id: &ArtifactId,
+        status: CalibrationStatus,
+        note: String,
+    ) -> Result<(), CalibrationReviewError> {
+        if note.trim().is_empty() {
+            return Err(CalibrationReviewError::EmptyNote {
+                record_id: record_id.clone(),
+                status,
+            });
+        }
+        let record = self
+            .records
+            .iter_mut()
+            .find(|record| &record.record_id == record_id)
+            .ok_or_else(|| CalibrationReviewError::RecordNotFound {
+                record_id: record_id.clone(),
+            })?;
+        record.status = status;
+        record.review_note = Some(note);
+        Ok(())
+    }
+
+    /// Parse a JSON Lines calibration table. Blank lines are skipped; every
+    /// non-blank line must deserialize into a `CalibrationRecord`. Duplicate
+    /// `record_id` values are rejected. The returned table is re-sorted by
+    /// `CalibrationTable::new`, so JSONL round-trip is order-stable even if
+    /// the input was hand-edited out of order.
+    pub fn from_jsonl(input: &str) -> Result<Self, CalibrationPersistenceError> {
+        let mut records = Vec::new();
+        let mut seen_ids: BTreeSet<ArtifactId> = BTreeSet::new();
+        for (index, raw_line) in input.lines().enumerate() {
+            let line = raw_line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            let record: CalibrationRecord = serde_json::from_str(line).map_err(|err| {
+                CalibrationPersistenceError::InvalidLine {
+                    line_number: index + 1,
+                    message: err.to_string(),
+                }
+            })?;
+            if !seen_ids.insert(record.record_id.clone()) {
+                return Err(CalibrationPersistenceError::DuplicateRecord {
+                    record_id: record.record_id.clone(),
+                });
+            }
+            records.push(record);
+        }
+        Ok(Self::new(records))
+    }
+}
+
+const CALIBRATION_DECODER_RULE_ID: &str = "decoder_calibration.v0.13";
+
+pub fn calibration_records_from_learning_episode(
+    package: &TruthPackage,
+    episode: &LearningEpisode,
+) -> Result<Vec<CalibrationRecord>, CalibrationError> {
+    if package.package_id != episode.package_id {
+        return Err(CalibrationError::PackageMismatch {
+            package: package.package_id.clone(),
+            episode: episode.package_id.clone(),
+        });
+    }
+    if package.truth_version != episode.truth_version {
+        return Err(CalibrationError::TruthVersionMismatch {
+            package: package.truth_version.clone(),
+            episode: episode.truth_version.clone(),
+        });
+    }
+
+    let mut records = Vec::new();
+    for signal in &episode.source_clause_signals {
+        if !signal.covered_as_evidence && !signal.covered_as_failure_guard {
+            continue;
+        }
+        let clause = package
+            .source_jtbd
+            .clause(&signal.clause_id)
+            .ok_or_else(|| CalibrationError::UnknownClause {
+                clause_id: signal.clause_id.clone(),
+            })?;
+        records.push(calibration_record_for_clause(
+            package, episode, clause, signal,
+        ));
+    }
+    Ok(records)
+}
+
+fn calibration_record_for_clause(
+    package: &TruthPackage,
+    episode: &LearningEpisode,
+    clause: &JtbdClause,
+    signal: &LearningClauseSignal,
+) -> CalibrationRecord {
+    let key = CalibrationKey::for_clause(clause, &episode.domain_hint, CALIBRATION_DECODER_RULE_ID);
+    let mut value = CalibrationValue {
+        suggested_evidence_templates: Vec::new(),
+        suggested_failure_scenarios: Vec::new(),
+        suggested_policy_requirements: Vec::new(),
+        suggested_verifier_expectations: Vec::new(),
+        confidence_basis_points: confidence_for_verdict(episode.verdict),
+        rationale: format!(
+            "learned from {} verdict {:?} for package {}",
+            episode.source_run_id, episode.verdict, package.package_id
+        ),
+        source_episode_ids: vec![episode.episode_id.clone()],
+    };
+
+    if signal.covered_as_evidence {
+        value
+            .suggested_evidence_templates
+            .push(clause.canonical_text.clone());
+        value.suggested_policy_requirements.push(format!(
+            "require before promotion: {}",
+            clause.canonical_text
+        ));
+        value
+            .suggested_verifier_expectations
+            .push(clause.canonical_text.clone());
+    }
+    if signal.covered_as_failure_guard {
+        value
+            .suggested_failure_scenarios
+            .push(clause.canonical_text.clone());
+        value.suggested_policy_requirements.push(format!(
+            "forbid promotion when observed: {}",
+            clause.canonical_text
+        ));
+        value
+            .suggested_verifier_expectations
+            .push(format!("forbidden action: {}", clause.canonical_text));
+    }
+
+    let record_id = calibration_record_id(&key, &episode.episode_id);
+    CalibrationRecord {
+        record_id,
+        key,
+        value,
+        status: CalibrationStatus::Proposed,
+        review_note: None,
+    }
+}
+
+fn confidence_for_verdict(verdict: AxiomRunVerdict) -> u16 {
+    match verdict {
+        AxiomRunVerdict::Satisfied => 9_000,
+        AxiomRunVerdict::Blocked | AxiomRunVerdict::Invalid => 7_000,
+        AxiomRunVerdict::Exhausted => 4_000,
+    }
+}
+
+fn learning_episode_id(
+    source_run_id: &str,
+    domain_hint: &str,
+    package_id: &TruthPackageId,
+    truth_version: &str,
+    verdict: AxiomRunVerdict,
+) -> ArtifactId {
+    let mut hasher = Sha256::new();
+    hasher.update(source_run_id.as_bytes());
+    hasher.update(b"\0");
+    hasher.update(domain_hint.as_bytes());
+    hasher.update(b"\0");
+    hasher.update(package_id.as_str().as_bytes());
+    hasher.update(b"\0");
+    hasher.update(truth_version.as_bytes());
+    hasher.update(b"\0");
+    hasher.update(format!("{verdict:?}").as_bytes());
+    ArtifactId::new(format!(
+        "learning_episode.{}",
+        hex_lower(&hasher.finalize())
+    ))
+}
+
+fn calibration_record_id(key: &CalibrationKey, episode_id: &ArtifactId) -> ArtifactId {
+    let mut hasher = Sha256::new();
+    hasher.update(format!("{:?}", key.clause_kind).as_bytes());
+    hasher.update(b"\0");
+    hasher.update(key.normalized_clause_shape.as_bytes());
+    hasher.update(b"\0");
+    hasher.update(key.domain_hint.as_bytes());
+    hasher.update(b"\0");
+    hasher.update(key.decoder_rule_id.as_bytes());
+    hasher.update(b"\0");
+    hasher.update(key.fingerprint_class.as_bytes());
+    hasher.update(b"\0");
+    hasher.update(episode_id.as_str().as_bytes());
+    ArtifactId::new(format!(
+        "calibration_record.{}",
+        hex_lower(&hasher.finalize())
+    ))
+}
+
+fn calibration_summary(value: &CalibrationValue) -> String {
+    if let Some(first) = value.suggested_evidence_templates.first() {
+        return format!("evidence template: {first}");
+    }
+    if let Some(first) = value.suggested_failure_scenarios.first() {
+        return format!("failure scenario: {first}");
+    }
+    if let Some(first) = value.suggested_policy_requirements.first() {
+        return format!("policy requirement: {first}");
+    }
+    "reviewed decoder prior".to_string()
+}
+
+pub fn apply_decoder_calibration(
+    mut package: TruthPackage,
+    table: &CalibrationTable,
+    domain_hint: &str,
+) -> Result<TruthPackage, CalibrationError> {
+    let mut suggestions = Vec::new();
+    for clause in &package.source_jtbd.clauses {
+        for record in table.accepted_for_clause(clause, domain_hint, CALIBRATION_DECODER_RULE_ID) {
+            let artifact = GeneratedArtifact {
+                artifact_id: ArtifactId::new(format!(
+                    "calibration_suggestion.{}.{}",
+                    clause.key,
+                    record.record_id.as_str()
+                )),
+                artifact_kind: ArtifactKind::CalibrationSuggestion,
+                summary: format!(
+                    "calibration {} suggests {}",
+                    record.record_id.as_str(),
+                    calibration_summary(&record.value)
+                ),
+                source_clause_ids: vec![clause.id.clone()],
+            };
+            package.lineage.artifacts.push(ArtifactLineage::new(
+                artifact.artifact_id.clone(),
+                ArtifactKind::CalibrationSuggestion,
+                artifact.source_clause_ids.clone(),
+                format!("decoder_calibration.{}", record.record_id.as_str()),
+                DECODER_VERSION,
+                &package.source_jtbd,
+            ));
+            suggestions.push(artifact);
+        }
+    }
+
+    package
+        .artifacts
+        .calibration_suggestions
+        .extend(suggestions);
+    package.lineage.validate_closure(&package.source_jtbd)?;
+    Ok(package)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum CalibrationError {
+    #[error("calibration package_id {package:?} does not match episode package_id {episode:?}")]
+    PackageMismatch {
+        package: TruthPackageId,
+        episode: TruthPackageId,
+    },
+    #[error("calibration truth version {package} does not match episode truth version {episode}")]
+    TruthVersionMismatch { package: String, episode: String },
+    #[error("calibration episode references unknown clause {clause_id}")]
+    UnknownClause { clause_id: ClauseId },
+    #[error(transparent)]
+    Lineage(#[from] LineageError),
+}
+
+/// Errors raised while loading a persisted calibration table from JSONL.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum CalibrationPersistenceError {
+    #[error("calibration line {line_number} did not parse: {message}")]
+    InvalidLine { line_number: usize, message: String },
+    #[error("duplicate calibration record id {record_id}")]
+    DuplicateRecord { record_id: ArtifactId },
+}
+
+/// Errors raised when applying an operator review action to a calibration
+/// table.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum CalibrationReviewError {
+    #[error("calibration record {record_id} not found in table")]
+    RecordNotFound { record_id: ArtifactId },
+    #[error("review action {status:?} on {record_id} requires a non-empty note")]
+    EmptyNote {
+        record_id: ArtifactId,
+        status: CalibrationStatus,
+    },
+}
+
 fn compute_verdict(package: &TruthPackage, observation: &AxiomRunObservation) -> AxiomRunVerdict {
     let spec = &package.verifier_spec;
 
@@ -1572,6 +2125,7 @@ fn build_artifacts(document: &JtbdDocument) -> TruthPackageArtifacts {
         evidence_expectations,
         simulation_cases,
         invariant_expectations,
+        calibration_suggestions: Vec::new(),
     }
 }
 
@@ -1764,6 +2318,7 @@ fn generated_artifact_iter(
         .chain(artifacts.evidence_expectations.iter())
         .chain(artifacts.simulation_cases.iter())
         .chain(artifacts.invariant_expectations.iter())
+        .chain(artifacts.calibration_suggestions.iter())
 }
 
 fn verifier_source_clause_ids(

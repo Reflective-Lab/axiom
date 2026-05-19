@@ -19,7 +19,7 @@ source: llm
 | guidance | LLM + heuristic heading quality feedback | `src/guidance.rs` |
 | policy_lens | Cedar policy coverage analysis | `src/policy_lens.rs` |
 | jtbd | Jobs-to-be-Done metadata extraction | `src/jtbd.rs` |
-| truth_package | Deterministic JTBD clause identity, fingerprints, and lineage closure | `src/truth_package.rs` |
+| truth_package | Deterministic JTBD clause identity, fingerprints, lineage closure, verifier reports, and decoder calibration | `src/truth_package.rs` |
 | validation_view | UI-friendly validation result transformation | `src/validation_view.rs` |
 | mock_llm | Static chat backend for tests and offline use | `src/mock_llm.rs` |
 
@@ -81,13 +81,18 @@ source: llm
 | `AxiomTruth` | provenance | Zero-sized Axiom provenance marker implementing `converge_pack::ProvenanceSource` |
 | `AXIOM_PROVENANCE` | provenance | Canonical Axiom Truth Package provenance constant |
 | `TruthPackageSeedPayload` | provenance | Typed Converge payload for Truth-Package-seeded facts |
+| `LearningEpisode` | truth_package | Distilled verifier outcome used as decoder calibration input |
+| `LearningClauseSignal` | truth_package | Clause-level coverage signal inside a learning episode |
+| `CalibrationKey` | truth_package | Deterministic lookup key for a JTBD clause shape and domain hint |
+| `CalibrationRecord` | truth_package | Proposed/accepted/rejected/reset decoder prior with rationale and source episode |
+| `CalibrationTable` | truth_package | Accepted calibration records queried during package enrichment |
 
 ## Marquee Fixtures
 
 | Fixture | Location | Purpose |
 |---|---|---|
 | Round-driven Formation Design | `tests/round_driven_marquee.rs`; `kb/Marquee/Round-Driven Formation Design.md` | JTBD and staged `AxiomRunReport` fixture for a dynamic design huddle plus selected work Formation |
-| Escrow Release | `tests/escrow_release_marquee.rs`; `kb/Marquee/Escrow Release.md` | Strict-verdict fixture for irreversible commitments, including the Tally release observation adapter recipe |
+| Escrow Release | `tests/escrow_release_marquee.rs`; `tests/fixtures/tally_escrow_release_transcript.json`; `kb/Marquee/Escrow Release.md` | Strict-verdict fixture for irreversible commitments, recorded Tally transcript adapter, and v0.13 calibration proof |
 
 ## Scenario Tags
 

@@ -1,0 +1,40 @@
+{
+  "source": {
+    "run_id": "tally-release-2026-05-19-attestation-namecheap",
+    "app_path": "/Users/kpernyer/dev/reflective/marquee-apps/tally-escrow",
+    "command": "cargo test -p tally-app transition::tests::release_flow_applies_transition_records_custody_and_builds_axiom_fact --locked",
+    "captured_at": "2026-05-19T09:30:00Z",
+    "domain_hint": "tally-escrow.release"
+  },
+  "release": {
+    "record_id": "tally.axiom-transition::agreement-7::Verified->Released::202605190930000000",
+    "from_state": "Verified",
+    "to_state": "Released",
+    "reason": "ConditionsMet",
+    "truth_keys": [
+      "transition-requires-signature",
+      "release-requires-conditions-met"
+    ],
+    "signers": [
+      {
+        "role": "Transferor",
+        "signature_ref": "organism:sig:seller"
+      },
+      {
+        "role": "Acquirer",
+        "signature_ref": "organism:sig:buyer"
+      }
+    ],
+    "signing_policy_satisfied": true,
+    "release_receipt": {
+      "adapter": "attestation:namecheap",
+      "external_ref": "attestation-namecheap-release-agreement-7"
+    },
+    "promotion_authority": {
+      "gate_id": "converge.gate.tally-release",
+      "policy_version_hash": "sha256:tally-release-policy",
+      "approver_id": "arbiter.tally.release",
+      "approver_kind": "SystemPolicy"
+    }
+  }
+}

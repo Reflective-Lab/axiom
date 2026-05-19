@@ -126,9 +126,10 @@ Inverts the input boundary: the human writes a JTBD; `.truths` becomes an audita
 - [x] Keep formation selection in Organism, authority recompute in Converge, and specialist/plugin hosting outside Axiom (doctrine in `kb/Architecture/Axiom as Verifier.md`; no commit in this milestone moved any of these into Axiom)
 - [x] Track an irreversible commitment fixture as the next strict-verdict proof after round-driven lands
 
-## Planned: v0.12 — Irreversible Commitment Verifier
+## Completed: v0.12 — Irreversible Commitment Verifier
 **Epic:** E7 (Axiom translates human jobs into governed runtime contracts)
 **Target:** Prove Axiom's verifier semantics against the sharpest job class: an irreversible commitment whose success, block, and invalid states have concrete policy and evidence meanings.
+**Completed:** 2026-05-19 — strict escrow release fixture, recorded Tally release transcript adapter, and v0.13 learning feedstock proof landed.
 
 v0.11 proves Axiom can verify a dynamic multi-boundary Organism run without
 becoming a formation selector. v0.12 should prove the verdict engine is not
@@ -142,9 +143,10 @@ learn from.
 
 - Primary app: Tally escrow release at
   `/Users/kpernyer/dev/reflective/marquee-apps/tally-escrow`.
-- Current parallel slice: a strict `escrow_release` fixture, explicitly labeled
-  as a fixture proof, plus an Axiom-side adapter recipe for the Tally release
-  transition/custody shape.
+- Current slice: a strict `escrow_release` fixture plus a recorded
+  `tally-escrow` release transcript adapter for the Tally transition/custody
+  shape. The packaged live Tally runner remains app-owned; Axiom owns the
+  observation contract and verifier proof.
 - v1.0 expansion order: Quorum sensemaking at
   `/Users/kpernyer/dev/reflective/marquee-apps/quorum-sense`, then Scout
   sourcing at `/Users/kpernyer/dev/reflective/marquee-apps/scout-sourcing`.
@@ -158,15 +160,16 @@ learn from.
 - [x] Add concrete policy requirement artifacts for the commitment envelope
 - [x] Fixture at least three cases: satisfied release, blocked release, and invalid release attempt
 - [x] Add an Axiom-side adapter recipe from Tally release transition facts, custody receipt, signing witnesses, and observed promotion authority into `AxiomRunObservation`
-- [ ] Replace the fixture with a live `tally-escrow` run once release transition facts can be adapted into `AxiomRunObservation`
+- [x] Replace the fixture-only proof with a recorded `tally-escrow` release transcript that adapts into `AxiomRunObservation`
 - [x] Prove Axiom declares authority requirements while reports preserve Converge's observed promotion gate and policy hash
 - [x] Prove promoted commitment facts trace back to the source job clause, evidence requirement, failure mode, and truth version in the fixture
-- [ ] Ensure the final Tally report contains enough typed outcome data to become a v0.13 `LearningEpisode`
-- [ ] Record the residual gap from strict irreversible proof to the v1.0 three-proof set
+- [x] Ensure the final Tally report contains enough typed outcome data to become a v0.13 `LearningEpisode`
+- [x] Record the residual gap from strict irreversible proof to the v1.0 three-proof set
 
-## Planned: v0.13 — Decoder Calibration Learning Loop
+## Completed: v0.13 — Decoder Calibration Learning Loop
 **Epic:** E7 (Axiom translates human jobs into governed runtime contracts)
-**Target:** Persist verifier outcomes as decoder calibration so future JTBDs produce richer, better-covered Truth Packages without turning Axiom into a reasoner, authority source, or formation selector.
+**Target:** Capture verifier outcomes as typed decoder calibration so future JTBDs produce richer, better-covered Truth Packages without turning Axiom into a reasoner, authority source, or formation selector.
+**Completed:** 2026-05-19 — Tally release verifier outcomes now produce reviewable calibration records, accepted priors enrich regenerated Truth Packages, and boundary tests prove calibration remains decoder-only.
 
 v0.13 is the "the better we get, the tighter the loop gets" milestone. It
 should start after v0.12 gives Axiom hard labels from an irreversible job:
@@ -190,13 +193,32 @@ not as runtime strategy.
 
 ### Checklist
 
-- [ ] Define `LearningEpisode` / calibration record shape without changing runtime reasoning
-- [ ] Decide persistence location and ownership for calibration tables
-- [ ] Define deterministic lookup keys for JTBD clause shape and domain hints
-- [ ] Feed v0.12 Tally verifier outcomes into calibration records
-- [ ] Use calibration to enrich a regenerated Truth Package while preserving deterministic auditability
-- [ ] Prove calibration does not select Formations, recompute authority, or host specialist execution
-- [ ] Document how operators review, accept, reject, or reset learned priors
+- [x] Define `LearningEpisode` / calibration record shape without changing runtime reasoning
+- [x] Decide persistence location and ownership for calibration tables
+- [x] Define deterministic lookup keys for JTBD clause shape and domain hints
+- [x] Feed v0.12 Tally verifier outcomes into calibration records
+- [x] Use calibration to enrich a regenerated Truth Package while preserving deterministic auditability
+- [x] Prove calibration does not select Formations, recompute authority, or host specialist execution
+- [x] Document how operators review, accept, reject, or reset learned priors
+
+## Completed: v0.14 — Calibration Persistence And Review
+**Epic:** E7 (Axiom translates human jobs into governed runtime contracts)
+**Target:** Move calibration from in-memory test records to an operator-reviewable persisted store without changing the decoder-only boundary.
+**Completed:** 2026-05-19 — `CalibrationTable` gains canonical JSONL persistence (sort-on-serialize, dedup-on-load), typed review APIs (`accept` / `reject` / `reset` with mandatory notes), and a kb doctrine page separating distilled priors from raw run history.
+
+v0.13 proves the typed loop. v0.14 should make it operational: store proposed
+records, review them, accept/reject/reset them, and replay package enrichment
+from the accepted table.
+
+### Candidate checklist
+
+- [x] Define the serialized calibration table format and append-only record log — JSONL (one `CalibrationRecord` per line, sorted by record id; deterministic byte output).
+- [x] Add load/save helpers with deterministic ordering and schema validation — `CalibrationTable::to_jsonl` / `CalibrationTable::from_jsonl` with typed `CalibrationPersistenceError` (`InvalidLine` carries 1-based line number + serde message; `DuplicateRecord` rejects collisions).
+- [x] Add review APIs or CLI affordances for accept/reject/reset with required notes — `CalibrationTable::accept` / `reject` / `reset` mutate a record by id, with mandatory non-empty notes; `CalibrationReviewError` distinguishes `RecordNotFound` from `EmptyNote`. Six tests in `tests/calibration_persistence.rs` cover the three transitions, empty-note rejection across all three actions, unknown record ids, status-change-on-reviewed records, and JSONL round-trip with `review_note` preserved.
+- [x] Prove rejected/reset records do not influence package enrichment — `persisted_mixed_status_table_only_enriches_via_accepted_records` (the v0.13 invariant survives the JSONL boundary).
+- [x] Add a golden replay test: persisted accepted table regenerates identical calibration suggestions — `golden_replay_persisted_accepted_table_regenerates_identical_suggestions` asserts byte-identical `calibration_suggestions`, identical `lineage`, and serde-equal whole packages.
+- [x] Keep raw run history in downstream stores; Axiom persists only distilled decoder priors — doctrine in `kb/Architecture/Decoder Calibration.md` "Raw History Versus Distilled Priors" section; `CalibrationRecord` carries `source_episode_ids` backlinks only, not full report bodies.
+- [x] Update operator docs for calibration review workflow — `kb/Architecture/Decoder Calibration.md` "Operator Review Workflow" section walks the 6-step loop from propose → load → review → persist → reapply.
 
 ## Completed: v0.4.1 — Initial Release
 Completed: 2026-04-15

@@ -12,13 +12,18 @@
 //! without creating a second verifier path.
 
 use axiom_truth::{
-    AxiomRunObservation, AxiomRunReport, AxiomRunVerdict, ClauseId, ClauseInput, EvidenceRefRecord,
-    JtbdClauseKind, JtbdInput, ObservedStopReason, PromotedFactRecord, PromotionAuthorityRecord,
-    RunIntegrityProof, TimeBudget, TraceLinkRecord, TruthPackage, decode_jtbd,
+    ArtifactKind, AxiomRunObservation, AxiomRunReport, AxiomRunVerdict, CalibrationStatus,
+    CalibrationTable, ClauseId, ClauseInput, EvidenceRefRecord, JtbdClauseKind, JtbdInput,
+    LearningEpisode, ObservedStopReason, PromotedFactRecord, PromotionAuthorityRecord,
+    RunIntegrityProof, TimeBudget, TraceLinkRecord, TruthPackage, apply_decoder_calibration,
+    calibration_records_from_learning_episode, decode_jtbd,
 };
+use serde::Deserialize;
 
 const TALLY_TRANSITION_SIGNATURE_TRUTH_KEY: &str = "transition-requires-signature";
 const TALLY_RELEASE_CONDITIONS_TRUTH_KEY: &str = "release-requires-conditions-met";
+const TALLY_RELEASE_TRANSCRIPT: &str =
+    include_str!("fixtures/tally_escrow_release_transcript.json");
 
 fn escrow_release_jtbd() -> JtbdInput {
     JtbdInput {
@@ -278,10 +283,10 @@ fn escrow_release_invalid_when_forbidden_release_condition_is_promoted() {
 #[test]
 fn tally_release_outcome_adapts_to_satisfied_axiom_observation() {
     let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
-    let outcome = tally_release_outcome();
+    let transcript = tally_release_transcript();
 
     let observation =
-        adapt_tally_release_outcome(&package, &outcome).expect("Tally release adapts");
+        adapt_tally_release_transcript(&package, &transcript).expect("Tally release adapts");
     let report = AxiomRunReport::verify(&package, observation);
 
     assert_eq!(report.verdict, AxiomRunVerdict::Satisfied);
@@ -303,13 +308,14 @@ fn tally_release_outcome_adapts_to_satisfied_axiom_observation() {
 #[test]
 fn tally_release_outcome_missing_release_truth_key_is_invalid() {
     let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
-    let mut outcome = tally_release_outcome();
-    outcome
+    let mut transcript = tally_release_transcript();
+    transcript
+        .release
         .truth_keys
-        .retain(|truth_key| *truth_key != TALLY_RELEASE_CONDITIONS_TRUTH_KEY);
+        .retain(|truth_key| truth_key != TALLY_RELEASE_CONDITIONS_TRUTH_KEY);
 
     let observation =
-        adapt_tally_release_outcome(&package, &outcome).expect("Tally release adapts");
+        adapt_tally_release_transcript(&package, &transcript).expect("Tally release adapts");
     let report = AxiomRunReport::verify(&package, observation);
 
     assert_eq!(report.verdict, AxiomRunVerdict::Invalid);
@@ -319,13 +325,196 @@ fn tally_release_outcome_missing_release_truth_key_is_invalid() {
 #[test]
 fn tally_release_adapter_rejects_non_release_transition() {
     let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
-    let mut outcome = tally_release_outcome();
-    outcome.to_state = "Verified";
+    let mut transcript = tally_release_transcript();
+    transcript.release.to_state = "Verified".to_string();
 
-    let err = adapt_tally_release_outcome(&package, &outcome)
+    let err = adapt_tally_release_transcript(&package, &transcript)
         .expect_err("non-release transition is not an escrow release observation");
 
     assert_eq!(err, "expected Tally transition Verified -> Released");
+}
+
+#[test]
+fn tally_release_report_has_learning_episode_feedstock() {
+    let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
+    let transcript = tally_release_transcript();
+    let observation =
+        adapt_tally_release_transcript(&package, &transcript).expect("Tally release adapts");
+    let report = AxiomRunReport::verify(&package, observation);
+    let audit = report
+        .audit_fact_lineage(&package)
+        .expect("Tally release report audits");
+
+    let episode = LearningEpisode::from_report(
+        &transcript.source.run_id,
+        &transcript.source.domain_hint,
+        &package,
+        &report,
+        &audit,
+    );
+
+    assert_eq!(episode.source_run_id, transcript.source.run_id);
+    assert_eq!(episode.domain_hint, "tally-escrow.release");
+    assert_eq!(episode.verdict, AxiomRunVerdict::Satisfied);
+    assert_eq!(episode.source_clause_signals.len(), 13);
+    assert_eq!(
+        episode
+            .source_clause_signals
+            .iter()
+            .filter(|signal| signal.covered_as_evidence)
+            .count(),
+        5
+    );
+    assert_eq!(
+        episode
+            .source_clause_signals
+            .iter()
+            .filter(|signal| signal.covered_as_failure_guard)
+            .count(),
+        1
+    );
+    assert_eq!(episode.promoted_fact_ids.len(), 5);
+    assert_eq!(
+        episode.promotion_policy_hashes,
+        vec!["sha256:tally-release-policy".to_string()]
+    );
+    assert!(episode.observed_stop_reason.contains("Converged"));
+    assert_eq!(
+        episode.verifier_required_evidence.len(),
+        package.verifier_spec.required_evidence.len()
+    );
+    assert_eq!(
+        episode.verifier_forbidden_actions.len(),
+        package.verifier_spec.forbidden_actions.len()
+    );
+}
+
+#[test]
+fn tally_release_learning_episode_proposes_calibration_records() {
+    let (package, transcript, episode) = tally_release_learning_episode();
+
+    let records = calibration_records_from_learning_episode(&package, &episode)
+        .expect("learning episode produces calibration records");
+
+    assert_eq!(records.len(), 6);
+    assert!(records.iter().all(|record| {
+        record.status == CalibrationStatus::Proposed
+            && record.key.domain_hint == transcript.source.domain_hint
+            && record.key.decoder_rule_id == "decoder_calibration.v0.13"
+            && !record.key.normalized_clause_shape.is_empty()
+    }));
+    assert!(records.iter().any(|record| {
+        record.key.clause_kind == JtbdClauseKind::EvidenceRequired
+            && !record.value.suggested_evidence_templates.is_empty()
+    }));
+    assert!(records.iter().any(|record| {
+        record.key.clause_kind == JtbdClauseKind::FailureMode
+            && !record.value.suggested_failure_scenarios.is_empty()
+    }));
+}
+
+#[test]
+fn accepted_tally_calibration_enriches_regenerated_truth_package() {
+    let (package, transcript, episode) = tally_release_learning_episode();
+    let records = calibration_records_from_learning_episode(&package, &episode)
+        .expect("learning episode produces calibration records")
+        .into_iter()
+        .map(|record| record.accepted("operator accepted Tally release decoder prior"))
+        .collect();
+    let table = CalibrationTable::new(records);
+    let regenerated = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD regenerates");
+
+    let enriched = apply_decoder_calibration(regenerated, &table, &transcript.source.domain_hint)
+        .expect("accepted calibration enriches package");
+
+    assert_eq!(enriched.artifacts.calibration_suggestions.len(), 6);
+    assert!(
+        enriched
+            .artifacts
+            .calibration_suggestions
+            .iter()
+            .all(|artifact| {
+                artifact.artifact_kind == ArtifactKind::CalibrationSuggestion
+                    && artifact.summary.contains("calibration_record.")
+            })
+    );
+    assert!(
+        enriched
+            .lineage
+            .validate_closure(&enriched.source_jtbd)
+            .is_ok()
+    );
+    assert!(enriched.lineage.artifacts.iter().any(|lineage| {
+        lineage.artifact_kind == ArtifactKind::CalibrationSuggestion
+            && lineage.decoder_rule_id.starts_with("decoder_calibration.")
+    }));
+}
+
+#[test]
+fn unaccepted_tally_calibration_does_not_enrich_package() {
+    let (package, transcript, episode) = tally_release_learning_episode();
+    let records = calibration_records_from_learning_episode(&package, &episode)
+        .expect("learning episode produces calibration records");
+    let table = CalibrationTable::new(
+        records
+            .into_iter()
+            .enumerate()
+            .map(|(index, record)| {
+                if index % 2 == 0 {
+                    record.with_status(CalibrationStatus::Rejected, "operator rejected prior")
+                } else {
+                    record.with_status(CalibrationStatus::Reset, "operator reset stale prior")
+                }
+            })
+            .collect(),
+    );
+    let regenerated = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD regenerates");
+
+    let enriched = apply_decoder_calibration(regenerated, &table, &transcript.source.domain_hint)
+        .expect("unaccepted calibration remains a valid no-op");
+
+    assert!(enriched.artifacts.calibration_suggestions.is_empty());
+    assert!(
+        enriched
+            .lineage
+            .artifacts
+            .iter()
+            .all(|lineage| lineage.artifact_kind != ArtifactKind::CalibrationSuggestion)
+    );
+}
+
+#[test]
+fn tally_calibration_does_not_capture_runtime_ownership_boundaries() {
+    let (package, _, episode) = tally_release_learning_episode();
+    let records = calibration_records_from_learning_episode(&package, &episode)
+        .expect("learning episode produces calibration records");
+
+    let serialized_records =
+        serde_json::to_string(&records).expect("calibration records serialize");
+    assert!(!serialized_records.contains("formation"));
+    assert!(!serialized_records.contains("specialist"));
+    assert!(!serialized_records.contains("approver_id"));
+    assert!(!serialized_records.contains("gate_id"));
+}
+
+fn tally_release_learning_episode() -> (TruthPackage, TallyReleaseTranscript, LearningEpisode) {
+    let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
+    let transcript = tally_release_transcript();
+    let observation =
+        adapt_tally_release_transcript(&package, &transcript).expect("Tally release adapts");
+    let report = AxiomRunReport::verify(&package, observation);
+    let audit = report
+        .audit_fact_lineage(&package)
+        .expect("Tally release report audits");
+    let episode = LearningEpisode::from_report(
+        &transcript.source.run_id,
+        &transcript.source.domain_hint,
+        &package,
+        &report,
+        &audit,
+    );
+
+    (package, transcript, episode)
 }
 
 fn satisfied_release_facts(package: &TruthPackage) -> Vec<PromotedFactRecord> {
@@ -370,10 +559,11 @@ fn satisfied_release_facts(package: &TruthPackage) -> Vec<PromotedFactRecord> {
     ]
 }
 
-fn adapt_tally_release_outcome(
+fn adapt_tally_release_transcript(
     package: &TruthPackage,
-    outcome: &TallyReleaseOutcome<'_>,
+    transcript: &TallyReleaseTranscript,
 ) -> Result<AxiomRunObservation, String> {
+    let outcome = &transcript.release;
     if outcome.from_state != "Verified" || outcome.to_state != "Released" {
         return Err("expected Tally transition Verified -> Released".to_string());
     }
@@ -392,7 +582,8 @@ fn adapt_tally_release_outcome(
     if outcome.signing_policy_satisfied
         && outcome
             .truth_keys
-            .contains(&TALLY_TRANSITION_SIGNATURE_TRUTH_KEY)
+            .iter()
+            .any(|truth_key| truth_key == TALLY_TRANSITION_SIGNATURE_TRUTH_KEY)
         && outcome.has_principal_signer("Transferor")
         && outcome.has_principal_signer("Acquirer")
     {
@@ -407,7 +598,8 @@ fn adapt_tally_release_outcome(
 
     if outcome
         .truth_keys
-        .contains(&TALLY_RELEASE_CONDITIONS_TRUTH_KEY)
+        .iter()
+        .any(|truth_key| truth_key == TALLY_RELEASE_CONDITIONS_TRUTH_KEY)
     {
         promoted_facts.push(tally_fact(
             "Evidence",
@@ -447,10 +639,17 @@ fn adapt_tally_release_outcome(
         stop_reason: ObservedStopReason::Converged,
         promoted_facts,
         integrity: RunIntegrityProof::sha256_merkle("sha256:tally-release", 12, 5),
-        replay_notes: vec![format!(
-            "adapted Tally transition {} into AxiomRunObservation",
-            outcome.record_id
-        )],
+        replay_notes: vec![
+            format!(
+                "adapted Tally transition {} into AxiomRunObservation",
+                outcome.record_id
+            ),
+            format!(
+                "source run {} captured at {} via {}",
+                transcript.source.run_id, transcript.source.captured_at, transcript.source.command
+            ),
+            format!("source app path {}", transcript.source.app_path),
+        ],
         run_stages: Vec::new(),
     })
 }
@@ -477,20 +676,35 @@ fn failure_clause_id(package: &TruthPackage, key: &str) -> ClauseId {
         )
 }
 
-#[derive(Debug, Clone)]
-struct TallyReleaseOutcome<'a> {
-    record_id: &'a str,
-    from_state: &'a str,
-    to_state: &'a str,
-    reason: &'a str,
-    truth_keys: Vec<&'a str>,
-    signers: Vec<TallySigner<'a>>,
+#[derive(Debug, Clone, Deserialize)]
+struct TallyReleaseTranscript {
+    source: TallyRunSource,
+    release: TallyReleaseOutcome,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct TallyRunSource {
+    run_id: String,
+    app_path: String,
+    command: String,
+    captured_at: String,
+    domain_hint: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct TallyReleaseOutcome {
+    record_id: String,
+    from_state: String,
+    to_state: String,
+    reason: String,
+    truth_keys: Vec<String>,
+    signers: Vec<TallySigner>,
     signing_policy_satisfied: bool,
-    release_receipt: TallyReleaseReceipt<'a>,
+    release_receipt: TallyReleaseReceipt,
     promotion_authority: PromotionAuthorityRecord,
 }
 
-impl TallyReleaseOutcome<'_> {
+impl TallyReleaseOutcome {
     fn has_principal_signer(&self, role: &str) -> bool {
         self.signers
             .iter()
@@ -498,50 +712,20 @@ impl TallyReleaseOutcome<'_> {
     }
 }
 
-#[derive(Debug, Clone)]
-struct TallySigner<'a> {
-    role: &'a str,
-    signature_ref: &'a str,
+#[derive(Debug, Clone, Deserialize)]
+struct TallySigner {
+    role: String,
+    signature_ref: String,
 }
 
-#[derive(Debug, Clone)]
-struct TallyReleaseReceipt<'a> {
-    adapter: &'a str,
-    external_ref: &'a str,
+#[derive(Debug, Clone, Deserialize)]
+struct TallyReleaseReceipt {
+    adapter: String,
+    external_ref: String,
 }
 
-fn tally_release_outcome() -> TallyReleaseOutcome<'static> {
-    TallyReleaseOutcome {
-        record_id: "tally.axiom-transition::agreement-7::Verified->Released::202605190930000000",
-        from_state: "Verified",
-        to_state: "Released",
-        reason: "ConditionsMet",
-        truth_keys: vec![
-            TALLY_TRANSITION_SIGNATURE_TRUTH_KEY,
-            TALLY_RELEASE_CONDITIONS_TRUTH_KEY,
-        ],
-        signers: vec![
-            TallySigner {
-                role: "Transferor",
-                signature_ref: "organism:sig:seller",
-            },
-            TallySigner {
-                role: "Acquirer",
-                signature_ref: "organism:sig:buyer",
-            },
-        ],
-        signing_policy_satisfied: true,
-        release_receipt: TallyReleaseReceipt {
-            adapter: "attestation:namecheap",
-            external_ref: "attestation-namecheap-release-agreement-7",
-        },
-        promotion_authority: PromotionAuthorityRecord {
-            gate_id: "converge.gate.tally-release".to_string(),
-            policy_version_hash: "sha256:tally-release-policy".to_string(),
-            approver_id: "arbiter.tally.release".to_string(),
-            approver_kind: "SystemPolicy".to_string(),
-        },
-    }
+fn tally_release_transcript() -> TallyReleaseTranscript {
+    serde_json::from_str(TALLY_RELEASE_TRANSCRIPT).expect("Tally release transcript parses")
 }
 
 fn fact(
