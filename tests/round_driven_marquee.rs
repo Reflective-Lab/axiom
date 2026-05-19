@@ -119,7 +119,10 @@ fn round_driven_marquee_report_preserves_design_and_work_stage_boundaries() {
     let package = decode_jtbd(round_driven_jtbd()).expect("round-driven JTBD decodes");
     let round_signals = clause_id(&package, "round_signals");
     let proposer_evolution = clause_id(&package, "proposer_evolution");
+    let critic_verdicts = clause_id(&package, "critic_verdicts");
+    let adversarial_findings = clause_id(&package, "adversarial_findings");
     let scorecard = clause_id(&package, "scorecard");
+    let compile_handoff = clause_id(&package, "compile_handoff");
     let design_convergence = clause_id(&package, "design_convergence");
     let work_convergence = clause_id(&package, "work_convergence");
     let not_instantiable = clause_id(&package, "not_instantiable");
@@ -154,6 +157,24 @@ fn round_driven_marquee_report_preserves_design_and_work_stage_boundaries() {
             "design-convergence:2",
             "round 1->2: CONVERGED - stable policy/anomaly coverage and preferred executable roster",
             vec![design_convergence.clone(), scorecard.clone()],
+        ),
+        fact(
+            "Hypotheses",
+            "critic-verdicts-design-round-2",
+            "critic verdicts: roster-a APPROVED (0.82), roster-b rejected (0.74), roster-c rejected (0.66)",
+            vec![critic_verdicts.clone()],
+        ),
+        fact(
+            "Diagnostic",
+            "adversarial-findings-design-round-2",
+            "adversarial inspector flagged roster-c on missing anomaly hooks; rosters a and b clear",
+            vec![adversarial_findings.clone()],
+        ),
+        fact(
+            "Proposals",
+            "compile-handoff-design-round-2",
+            "compile handoff: candidate-0 instantiated against real catalog with factory-covered descriptors",
+            vec![compile_handoff.clone()],
         ),
         fact(
             "Diagnostic",
@@ -196,9 +217,9 @@ fn round_driven_marquee_report_preserves_design_and_work_stage_boundaries() {
         ],
     );
 
-    let report =
-        AxiomRunReport::from_observation(&package, AxiomRunVerdict::Satisfied, observation);
+    let report = AxiomRunReport::verify(&package, observation);
 
+    assert_eq!(report.verdict, AxiomRunVerdict::Satisfied);
     assert!(report.expected_stop_reason_matched());
     assert_eq!(report.run_stages.len(), 2);
     assert_eq!(

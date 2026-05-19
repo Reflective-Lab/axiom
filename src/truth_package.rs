@@ -335,6 +335,32 @@ impl TruthPackage {
     ) -> Result<TruthProjectionVersion, TruthOverlayError> {
         apply_truth_projection_overlay(self, overlay)
     }
+
+    /// Compute the post-run verdict for an `AxiomRunObservation` against this
+    /// package's verifier spec.
+    ///
+    /// The verdict reflects only what can be judged from the observation. Deep
+    /// authority recompute, invariant enforcement, and promotion gating remain
+    /// Converge's responsibility — this function reads what the run reported
+    /// and decides whether the contract was kept.
+    ///
+    /// Precedence:
+    /// 1. Promoted facts citing unknown clauses are a lineage violation →
+    ///    `Invalid`.
+    /// 2. Forbidden action text observed in promoted fact summaries or replay
+    ///    notes → `Invalid`. Sharper enforcement runs through typed invariant
+    ///    violations carried by the observed stop reason.
+    /// 3. Unexpected stop reason → categorize: invalid-class variants
+    ///    (`InvariantViolated`, `PromotionRejected`, `RuntimeError`,
+    ///    `AgentRefused`) → `Invalid`; budget exhaustion → `Exhausted`;
+    ///    HITL or human intervention → `Blocked`; everything else → `Invalid`.
+    /// 4. Expected stop reason: every `EvidenceRequired` clause must be cited
+    ///    by at least one promoted fact's `source_clause_ids`; otherwise the
+    ///    verdict is `Invalid` (the contract specified evidence the run did
+    ///    not produce). All conditions met → `Satisfied`.
+    pub fn verify(&self, observation: &AxiomRunObservation) -> AxiomRunVerdict {
+        compute_verdict(self, observation)
+    }
 }
 
 /// Artifact groups reserved by the Truth Package contract. v0.10 fills only the
@@ -789,6 +815,19 @@ impl AxiomRunReport {
         }
     }
 
+    /// Compute the verdict for `observation` against `package`'s verifier spec
+    /// and build the corresponding `AxiomRunReport`.
+    ///
+    /// This is the canonical v0.11 entry point: callers with a raw
+    /// `AxiomRunObservation` (hand-built, replayed, or adapted from a Converge
+    /// run record) should prefer `verify` to `from_observation`. The latter
+    /// remains available for adapters that have already computed the verdict
+    /// elsewhere.
+    pub fn verify(package: &TruthPackage, observation: AxiomRunObservation) -> Self {
+        let verdict = package.verify(&observation);
+        Self::from_observation(package, verdict, observation)
+    }
+
     pub fn expected_stop_reason_matched(&self) -> bool {
         self.observed_stop_reason
             .matches_expected(&self.verifier_spec.expected_stop_reasons)
@@ -799,6 +838,84 @@ impl AxiomRunReport {
             .iter()
             .find(|stage| stage.stage_id == stage_id)
     }
+}
+
+fn compute_verdict(package: &TruthPackage, observation: &AxiomRunObservation) -> AxiomRunVerdict {
+    let spec = &package.verifier_spec;
+
+    // 1. Lineage closure: every cited clause must belong to this package.
+    let known_clause_ids: BTreeSet<&ClauseId> = package
+        .source_jtbd
+        .clauses
+        .iter()
+        .map(|clause| &clause.id)
+        .collect();
+    let lineage_violation = observation
+        .promoted_facts
+        .iter()
+        .flat_map(|fact| fact.source_clause_ids.iter())
+        .any(|id| !known_clause_ids.contains(id));
+    if lineage_violation {
+        return AxiomRunVerdict::Invalid;
+    }
+
+    // 2. Forbidden action observed — best-effort substring match against
+    //    promoted fact summaries and replay notes. Typed invariant violations
+    //    on the stop reason are the stronger signal; this catches textual
+    //    reports that name a forbidden outcome without raising a typed one.
+    let forbidden_observed = spec.forbidden_actions.iter().any(|forbidden| {
+        let needle = forbidden.action.as_str();
+        observation
+            .promoted_facts
+            .iter()
+            .any(|fact| fact.summary.contains(needle))
+            || observation
+                .replay_notes
+                .iter()
+                .any(|note| note.contains(needle))
+            || observation
+                .run_stages
+                .iter()
+                .any(|stage| stage.replay_notes.iter().any(|note| note.contains(needle)))
+    });
+    if forbidden_observed {
+        return AxiomRunVerdict::Invalid;
+    }
+
+    // 3. Unexpected stop reason — categorize the deviation.
+    if !observation
+        .stop_reason
+        .matches_expected(&spec.expected_stop_reasons)
+    {
+        if observation.stop_reason.is_invalid() {
+            return AxiomRunVerdict::Invalid;
+        }
+        if observation.stop_reason.is_budget_exhausted() {
+            return AxiomRunVerdict::Exhausted;
+        }
+        if observation.stop_reason.is_blocked() {
+            return AxiomRunVerdict::Blocked;
+        }
+        return AxiomRunVerdict::Invalid;
+    }
+
+    // 4. Expected stop reason — every required-evidence clause must be cited
+    //    by at least one promoted fact.
+    let required_evidence_ids: BTreeSet<&ClauseId> = package
+        .source_jtbd
+        .clauses_by_kind(JtbdClauseKind::EvidenceRequired)
+        .map(|clause| &clause.id)
+        .collect();
+    let cited_clause_ids: BTreeSet<&ClauseId> = observation
+        .promoted_facts
+        .iter()
+        .flat_map(|fact| fact.source_clause_ids.iter())
+        .collect();
+    if !required_evidence_ids.is_subset(&cited_clause_ids) {
+        return AxiomRunVerdict::Invalid;
+    }
+
+    AxiomRunVerdict::Satisfied
 }
 
 /// One artifact-to-clause lineage statement.
@@ -1888,5 +2005,173 @@ mod tests {
             serde_json::to_value(&report).unwrap()["observed_stop_reason"]["kind"],
             "converged"
         );
+    }
+
+    fn evidence_clause_id(package: &TruthPackage, key: &str) -> ClauseId {
+        package
+            .source_jtbd
+            .clauses_by_kind(JtbdClauseKind::EvidenceRequired)
+            .find(|clause| clause.key == key)
+            .map_or_else(
+                || panic!("missing evidence clause {key}"),
+                |clause| clause.id.clone(),
+            )
+    }
+
+    fn promoted_fact(
+        context_key: &str,
+        fact_id: &str,
+        summary: &str,
+        source_clause_ids: Vec<ClauseId>,
+    ) -> PromotedFactRecord {
+        PromotedFactRecord {
+            context_key: context_key.to_string(),
+            fact_id: fact_id.to_string(),
+            summary: summary.to_string(),
+            source_clause_ids,
+            evidence_refs: vec![EvidenceRefRecord {
+                evidence_id: format!("evidence.{fact_id}"),
+                source: "test_fixture".to_string(),
+            }],
+            trace_link: Some(TraceLinkRecord {
+                trace_id: format!("trace.{fact_id}"),
+                location: Some("test://verifier".to_string()),
+                replayable: true,
+            }),
+        }
+    }
+
+    fn satisfying_observation(package: &TruthPackage) -> AxiomRunObservation {
+        let promoted_facts: Vec<PromotedFactRecord> = package
+            .source_jtbd
+            .clauses_by_kind(JtbdClauseKind::EvidenceRequired)
+            .map(|clause| {
+                promoted_fact(
+                    "Evidence",
+                    &format!("fact.{}", clause.key),
+                    &format!("{} observed", clause.canonical_text),
+                    vec![clause.id.clone()],
+                )
+            })
+            .collect();
+        AxiomRunObservation {
+            stop_reason: ObservedStopReason::Converged,
+            promoted_facts,
+            integrity: RunIntegrityProof::sha256_merkle("sha256:test", 1, 1),
+            replay_notes: vec!["deterministic".to_string()],
+            run_stages: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn verify_satisfied_when_evidence_complete_and_stop_expected() {
+        let package = decode_jtbd(vendor_input()).unwrap();
+        let observation = satisfying_observation(&package);
+
+        assert_eq!(package.verify(&observation), AxiomRunVerdict::Satisfied);
+
+        let report = AxiomRunReport::verify(&package, observation);
+        assert_eq!(report.verdict, AxiomRunVerdict::Satisfied);
+        assert!(report.expected_stop_reason_matched());
+    }
+
+    #[test]
+    fn verify_invalid_when_promoted_fact_cites_unknown_clause() {
+        let package = decode_jtbd(vendor_input()).unwrap();
+        let mut observation = satisfying_observation(&package);
+        observation.promoted_facts.push(promoted_fact(
+            "Evidence",
+            "fact.unknown",
+            "stray fact with no real clause",
+            vec![ClauseId::new("vendor_commitment", "evidence.missing")],
+        ));
+
+        assert_eq!(package.verify(&observation), AxiomRunVerdict::Invalid);
+    }
+
+    #[test]
+    fn verify_invalid_when_forbidden_action_text_appears_in_summary() {
+        let package = decode_jtbd(vendor_input()).unwrap();
+        let mut observation = satisfying_observation(&package);
+        observation.promoted_facts.push(promoted_fact(
+            "Diagnostic",
+            "fact.violation",
+            "bypassed approval detected on commitment ABC",
+            vec![evidence_clause_id(&package, "vendor_assessment")],
+        ));
+
+        assert_eq!(package.verify(&observation), AxiomRunVerdict::Invalid);
+    }
+
+    #[test]
+    fn verify_invalid_when_forbidden_action_text_appears_in_replay_note() {
+        let package = decode_jtbd(vendor_input()).unwrap();
+        let mut observation = satisfying_observation(&package);
+        observation
+            .replay_notes
+            .push("missing audit trail surfaced post-run".to_string());
+
+        assert_eq!(package.verify(&observation), AxiomRunVerdict::Invalid);
+    }
+
+    #[test]
+    fn verify_exhausted_when_unexpected_budget_exhaustion() {
+        let package = decode_jtbd(vendor_input()).unwrap();
+        let mut observation = satisfying_observation(&package);
+        observation.stop_reason = ObservedStopReason::TokenBudgetExhausted {
+            tokens_consumed: 1_000_000,
+            limit: 100_000,
+        };
+
+        assert_eq!(package.verify(&observation), AxiomRunVerdict::Exhausted);
+    }
+
+    #[test]
+    fn verify_blocked_when_unexpected_hitl_gate_pending() {
+        let package = decode_jtbd(vendor_input()).unwrap();
+        let mut observation = satisfying_observation(&package);
+        observation.stop_reason = ObservedStopReason::HitlGatePending {
+            gate_id: "gate-1".to_string(),
+            proposal_id: "proposal-1".to_string(),
+            summary: "approval required".to_string(),
+            agent_id: "policy-gate".to_string(),
+            cycle: 3,
+        };
+
+        assert_eq!(package.verify(&observation), AxiomRunVerdict::Blocked);
+    }
+
+    #[test]
+    fn verify_invalid_when_invariant_violated() {
+        let package = decode_jtbd(vendor_input()).unwrap();
+        let mut observation = satisfying_observation(&package);
+        observation.stop_reason = ObservedStopReason::InvariantViolated {
+            class: "structural".to_string(),
+            name: "spend_authority".to_string(),
+            reason: "ceiling exceeded".to_string(),
+        };
+
+        assert_eq!(package.verify(&observation), AxiomRunVerdict::Invalid);
+    }
+
+    #[test]
+    fn verify_invalid_when_expected_stop_but_evidence_missing() {
+        let package = decode_jtbd(vendor_input()).unwrap();
+        let evidence = evidence_clause_id(&package, "vendor_assessment");
+        // Cite only vendor_assessment but not the second `po` evidence clause.
+        let observation = AxiomRunObservation {
+            stop_reason: ObservedStopReason::Converged,
+            promoted_facts: vec![promoted_fact(
+                "Evidence",
+                "fact.vendor_assessment",
+                "vendor assessment captured",
+                vec![evidence],
+            )],
+            integrity: RunIntegrityProof::sha256_merkle("sha256:test", 1, 1),
+            replay_notes: vec![],
+            run_stages: Vec::new(),
+        };
+
+        assert_eq!(package.verify(&observation), AxiomRunVerdict::Invalid);
     }
 }
