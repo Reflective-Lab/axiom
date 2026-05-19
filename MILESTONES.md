@@ -220,6 +220,74 @@ from the accepted table.
 - [x] Keep raw run history in downstream stores; Axiom persists only distilled decoder priors — doctrine in `kb/Architecture/Decoder Calibration.md` "Raw History Versus Distilled Priors" section; `CalibrationRecord` carries `source_episode_ids` backlinks only, not full report bodies.
 - [x] Update operator docs for calibration review workflow — `kb/Architecture/Decoder Calibration.md` "Operator Review Workflow" section walks the 6-step loop from propose → load → review → persist → reapply.
 
+## Next: v0.15 — Uncovered-Clause Calibration
+**Epic:** E7 (Axiom translates human jobs into governed runtime contracts)
+**Target:** Extend decoder calibration so the loop also learns from clauses that recurrently go uncovered — so the decoder can soften requirements or surface defaults for clause shapes the runtime cannot satisfy, without changing the operational layer v0.14 just landed.
+
+v0.13 + v0.14 only learn from clauses the run *covered* — cited by a promoted
+fact as evidence or as a failure guard. The complementary signal — "this
+clause shape is repeatedly required but never cited" — is currently lost. An
+`Invalid` verdict caused by missing evidence produces no calibration record
+at all, so the decoder never learns which clause shapes are hard to satisfy.
+This was explicitly recorded as the v0.15+ extension path in the v0.13
+"Known Limitations" section of `kb/Architecture/Decoder Calibration.md`.
+
+v0.15 closes that gap as a decoder-only extension. Calibration still does
+not select Formations, recompute authority, or host specialists.
+
+### Design questions to settle
+
+- **Where does uncovered status live on `LearningClauseSignal`?** Options:
+  replace `covered_as_evidence` + `covered_as_failure_guard` with a typed
+  `coverage_status: ClauseCoverageStatus` enum, or add a third axis and
+  keep the booleans. The v0.13 doctrine page noted the persistence format
+  should leave room for a `coverage_status` axis — pick that path unless
+  there's a reason not to.
+- **Which verdicts trigger uncovered-clause records?** Almost certainly
+  `Invalid` (where missing evidence is the cause). Maybe `Blocked` (gate
+  hasn't opened yet; evidence might arrive). Probably not `Satisfied` —
+  if the run was satisfied, no required clause was truly missing. Not
+  obvious for `Exhausted` — budget ran out before evidence could arrive.
+- **What does a `CalibrationValue` look like for an uncovered clause?**
+  Reuse existing suggestion fields with negative rationale, introduce a
+  typed `signal_kind: SignalKind { Reinforcement, Concern }`, or add a
+  separate `suggested_decoder_softening` field. The signal must be
+  operator-distinguishable from a reinforcement record.
+- **Same review workflow or a separate "warnings" view?** Same workflow
+  most likely — `accept` / `reject` / `reset` semantics still apply; the
+  difference is only what the decoder does with an accepted concern.
+
+### Candidate checklist
+
+- [ ] Extend `LearningClauseSignal` so an uncovered `EvidenceRequired`
+      clause is representable; document any JSON schema bump.
+- [ ] Emit calibration records for uncovered `EvidenceRequired` clauses
+      when the verdict is `Invalid` (and optionally `Blocked`); decide
+      explicitly for `Exhausted`.
+- [ ] Differentiate uncovered-clause `CalibrationValue` from
+      covered-clause records via a typed signal_kind or equivalent.
+- [ ] Fixture: a verifier run with missing evidence produces an
+      uncovered-clause record; the operator accepts one and the next
+      decoded package reflects the softening (or whichever decoder
+      treatment v0.15 picks).
+- [ ] Persistence: uncovered records survive JSONL round-trip with no
+      schema regressions; the `golden_replay_*` test pattern still
+      passes; `to_jsonl` remains byte-deterministic across the new
+      signal shape.
+- [ ] Move the v0.13 "Known Limitations" entry on uncovered clauses out
+      of limitations and into the body of `kb/Architecture/Decoder
+      Calibration.md`.
+- [ ] Prove uncovered-clause learning does not select Formations,
+      recompute authority, or host specialists — extend the v0.13
+      serialized-records boundary test to cover the new signal kind.
+
+### Out of scope (deferred)
+
+- Confidence decay over time (a prior loses weight if never re-confirmed).
+- Domain-hint inheritance (a child domain inherits priors from a parent).
+- LLM-assisted enrichment of calibration suggestions; v0.15 stays
+  rule-based per the v0.10 decoder doctrine.
+
 ## Completed: v0.4.1 — Initial Release
 Completed: 2026-04-15
 
