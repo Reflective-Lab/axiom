@@ -68,6 +68,21 @@ a design huddle Formation converges before a selected work Formation runs. The
 top-level report carries the overall verdict; stages preserve each Formation's
 stop reason, promoted facts, trace links, and integrity proof.
 
+## Observation Adapter Receipts
+
+`ObservationAdapterReceipt` is the app-neutral audit envelope for adapters that
+map raw app or runtime transcripts into `AxiomRunObservation`.
+
+The app owns the raw transcript and mapping logic. Axiom owns the receipt
+schema: adapter id/version, success or rejection status, source transcript ref
+and hash, package id, truth version, domain hint, optional observation hash,
+mapped fact ids, mapped clause ids, warnings, errors, and replay notes. The
+receipt id is content-derived from the full receipt input.
+
+Receipts are backlink-oriented. They do not store raw app transcript bodies and
+they do not grant authority. Helm can render or journal them while Axiom still
+verifies the resulting observation against the package.
+
 ## Provenance Seed Facts
 
 Axiom declares `AxiomTruth` and `AXIOM_PROVENANCE` as its

@@ -94,11 +94,12 @@ pub use truth_package::{
     ClauseFingerprint, ClauseId, ClauseInput, DecodeJtbdError, EvidenceRefRecord,
     ExpectedStopReason, FactLineageAudit, FactLineageAuditError, GeneratedArtifact, JtbdClause,
     JtbdClauseKind, JtbdDocument, JtbdInput, LearningClauseSignal, LearningEpisode, LineageError,
-    LineageMap, ObservedStopReason, PromotedFactRecord, PromotionAuthorityRecord, ProofObligation,
-    ProofObligationKind, ReplayProfile, RunIntegrityProof, TimeBudget, TraceLinkRecord,
-    TruthOverlayError, TruthPackage, TruthPackageArtifacts, TruthPackageError, TruthPackageId,
-    TruthProjectionOverlay, TruthProjectionSource, TruthProjectionVersion, VerifierSpec,
-    apply_decoder_calibration, apply_truth_projection_overlay,
+    LineageMap, ObservationAdapterReceipt, ObservationAdapterReceiptInput,
+    ObservationAdapterStatus, ObservedStopReason, PromotedFactRecord, PromotionAuthorityRecord,
+    ProofObligation, ProofObligationKind, ReplayProfile, RunIntegrityProof, TimeBudget,
+    TraceLinkRecord, TruthOverlayError, TruthPackage, TruthPackageArtifacts, TruthPackageError,
+    TruthPackageId, TruthProjectionOverlay, TruthProjectionSource, TruthProjectionVersion,
+    VerifierSpec, apply_decoder_calibration, apply_truth_projection_overlay,
     calibration_records_from_learning_episode, canonicalize_clause_text, decode_jtbd,
 };
 pub use truths::{

@@ -1,0 +1,184 @@
+{
+  "source": {
+    "run_id": "warden-shadow-run-2026-05-20-registry-v18",
+    "app_path": "/Users/kpernyer/dev/reflective/marquee-apps/warden-compliance",
+    "command": "WARDEN_OUTPUT=json cargo run -- --json",
+    "captured_at": "2026-05-20T09:20:00Z",
+    "domain_hint": "warden-compliance.shadow-registry"
+  },
+  "shadow_run": {
+    "shadow_run_id": "warden.shadow.registry-v18.202605200920",
+    "status": "Converged",
+    "truth_keys": [
+      "registry-metadata-complete",
+      "immutable-registry-version",
+      "corpus-scope-named",
+      "shadow-diff-produced",
+      "verdicts-trace-to-rules",
+      "impact-breakdown-by-app",
+      "compliance-approval-recorded",
+      "publication-receipt-issued",
+      "warden-not-production-gate"
+    ],
+    "registry": {
+      "current_version": "registry.v17",
+      "proposed_version": "registry.v18",
+      "source_hash": "sha256:warden-registry-v18",
+      "rules": [
+        {
+          "id": "gdpr-data-residency",
+          "framework": "GDPR",
+          "field": "data_region",
+          "owner": "compliance@reflective.example",
+          "citation": "GDPR Article 44",
+          "effective": "2025-05-25",
+          "sunset": "2027-05-25",
+          "rationale": "Non-EU data residency must be blocked or remediated."
+        },
+        {
+          "id": "soc2-retention-max",
+          "framework": "SOC2",
+          "field": "retention_days",
+          "owner": "security@reflective.example",
+          "citation": "SOC 2 CC7.2",
+          "effective": "2025-01-01",
+          "sunset": "2026-12-31",
+          "rationale": "Retention beyond seven years requires documented review."
+        },
+        {
+          "id": "hipaa-phi-tag",
+          "framework": "HIPAA",
+          "field": "contains_phi",
+          "owner": "security@reflective.example",
+          "citation": "HIPAA 45 CFR 164.312",
+          "effective": "2025-01-01",
+          "sunset": "2027-12-31",
+          "rationale": "PHI must route through the dedicated handling path."
+        }
+      ]
+    },
+    "corpus": {
+      "corpus_ref": "warden://historical-corpus/2026-q1-regulated-records",
+      "time_window": "2026-01-01/2026-03-31",
+      "document_count": 6,
+      "source_apps": [
+        "atlas-integration",
+        "catalyst-biz",
+        "fathom-narrative",
+        "scout-sourcing",
+        "vouch-lending"
+      ],
+      "excluded_cases": [
+        "records after 2026-03-31",
+        "documents without normalized compliance payloads"
+      ]
+    },
+    "shadow_diff": {
+      "baseline_verdicts": 4,
+      "proposed_verdicts": 6,
+      "newly_blocked": 2,
+      "newly_paused": 1,
+      "newly_logged": 0,
+      "by_framework": {
+        "GDPR": 3,
+        "HIPAA": 2,
+        "SOC2": 1
+      },
+      "by_source_app": {
+        "atlas-integration": 1,
+        "catalyst-biz": 1,
+        "fathom-narrative": 2,
+        "scout-sourcing": 1,
+        "vouch-lending": 1
+      },
+      "by_rule": {
+        "gdpr-data-residency": 2,
+        "gdpr-cross-border": 1,
+        "hipaa-phi-tag": 2,
+        "soc2-retention-max": 1
+      }
+    },
+    "verdicts": [
+      {
+        "verdict_id": "warden.verdict.doc-gdpr-residency-us-east.gdpr-data-residency",
+        "framework": "GDPR",
+        "source_app": "catalyst-biz",
+        "doc_id": "doc-gdpr-residency-us-east",
+        "rule_id": "gdpr-data-residency",
+        "field": "data_region",
+        "action": "Block"
+      },
+      {
+        "verdict_id": "warden.verdict.doc-soc2-retention.soc2-retention-max",
+        "framework": "SOC2",
+        "source_app": "atlas-integration",
+        "doc_id": "doc-soc2-retention",
+        "rule_id": "soc2-retention-max",
+        "field": "retention_days",
+        "action": "Pause"
+      },
+      {
+        "verdict_id": "warden.verdict.doc-hipaa-phi.hipaa-phi-tag",
+        "framework": "HIPAA",
+        "source_app": "vouch-lending",
+        "doc_id": "doc-hipaa-phi",
+        "rule_id": "hipaa-phi-tag",
+        "field": "contains_phi",
+        "action": "Block"
+      },
+      {
+        "verdict_id": "warden.verdict.doc-gdpr-cross-border.gdpr-cross-border",
+        "framework": "GDPR",
+        "source_app": "scout-sourcing",
+        "doc_id": "doc-gdpr-cross-border",
+        "rule_id": "gdpr-cross-border",
+        "field": "cross_border_transfer",
+        "action": "Block"
+      },
+      {
+        "verdict_id": "warden.verdict.doc-triple-violation.gdpr-data-residency",
+        "framework": "GDPR",
+        "source_app": "fathom-narrative",
+        "doc_id": "doc-triple-violation",
+        "rule_id": "gdpr-data-residency",
+        "field": "data_region",
+        "action": "Block"
+      },
+      {
+        "verdict_id": "warden.verdict.doc-triple-violation.hipaa-phi-tag",
+        "framework": "HIPAA",
+        "source_app": "fathom-narrative",
+        "doc_id": "doc-triple-violation",
+        "rule_id": "hipaa-phi-tag",
+        "field": "contains_phi",
+        "action": "Block"
+      }
+    ],
+    "approval": {
+      "approval_id": "helm.approval.warden.registry-v18",
+      "approver_id": "compliance.officer.primary",
+      "status": "Approved",
+      "scope": "publish registry.v18 after shadow-run review",
+      "note_hash": "sha256:warden-approval-note"
+    },
+    "publication_receipt": {
+      "receipt_id": "warden.publication.registry-v18",
+      "registry_version": "registry.v18",
+      "status": "Published",
+      "published_at": "2026-05-20T09:25:00Z",
+      "rollback_ref": "warden://registry/registry.v17",
+      "subscriber_count": 5
+    },
+    "production_boundary": {
+      "warden_runs_production_gates": false,
+      "apps_reload_registry": true,
+      "last_known_good_registry": "registry.v17"
+    },
+    "promotion_authority": {
+      "gate_id": "converge.gate.warden-shadow-run",
+      "policy_version_hash": "sha256:warden-compliance-policy",
+      "approver_id": "arbiter.warden.compliance",
+      "approver_kind": "SystemPolicy"
+    }
+  }
+}

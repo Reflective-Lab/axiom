@@ -76,6 +76,8 @@ source: llm
 | `AxiomRunStageRecord` | truth_package | Stage-level stop reason, promoted facts, trace links, and integrity proof for multi-boundary jobs |
 | `AxiomRunVerdict` | truth_package | Report verdict: Satisfied, Blocked, Exhausted, Invalid |
 | `ObservedStopReason` | truth_package | Converge-compatible stop reason shape for report observations |
+| `ObservationAdapterReceipt` | truth_package | Deterministic audit receipt for app adapters that map raw transcripts to `AxiomRunObservation` |
+| `ObservationAdapterStatus` | truth_package | Adapter receipt status: succeeded or rejected |
 | `PromotedFactRecord` | truth_package | Promoted fact summary with source clause IDs, evidence refs, trace link, and observed promotion authority |
 | `PromotionAuthorityRecord` | truth_package | Converge promotion gate, policy hash, and approver observed when a fact became authoritative |
 | `RunIntegrityProof` | truth_package | Integrity proof summary captured at the Converge boundary |
@@ -95,6 +97,8 @@ source: llm
 | Round-driven Formation Design | `tests/round_driven_marquee.rs`; `kb/Marquee/Round-Driven Formation Design.md` | JTBD and staged `AxiomRunReport` fixture for a dynamic design huddle plus selected work Formation |
 | Escrow Release | `tests/escrow_release_marquee.rs`; `tests/fixtures/tally_escrow_release_transcript.json`; `kb/Marquee/Escrow Release.md` | Strict-verdict fixture for irreversible commitments, recorded Tally transcript adapter, and v0.13 calibration proof |
 | Atlas Integration | `/Users/kpernyer/dev/reflective/marquee-apps/atlas-integration` | Next app vertical after Tally boundary work clarifies the Axiom-Helm-App contract |
+| Quorum Sense | `tests/quorum_sense_marquee.rs`; `tests/fixtures/quorum_release_readiness_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/quorum-sense` | Third app probe for Axiom-Helm-App contract, organizational sensemaking readiness, and Helm-owned `JobReadinessPacket` shape |
+| Scout Sourcing | `tests/scout_sourcing_marquee.rs`; `tests/fixtures/scout_vendor_selection_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/scout-sourcing` | Fourth app probe for Axiom-Helm-App contract, vendor-selection readiness, HITL/policy evidence, and Helm-owned `JobReadinessPacket` shape |
 
 ## Scenario Tags
 

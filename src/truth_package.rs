@@ -848,6 +848,105 @@ pub struct AxiomRunStageRecord {
     pub replay_notes: Vec<String>,
 }
 
+/// Result status for an app-specific adapter that maps raw app/runtime output
+/// into an [`AxiomRunObservation`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ObservationAdapterStatus {
+    Succeeded,
+    Rejected,
+}
+
+impl ObservationAdapterStatus {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Succeeded => "succeeded",
+            Self::Rejected => "rejected",
+        }
+    }
+}
+
+/// App-neutral input used to construct an [`ObservationAdapterReceipt`].
+///
+/// Apps still own raw transcript schemas and mapping logic. This input names
+/// the deterministic audit envelope Axiom and Helm can share without importing
+/// app crates or storing raw transcript bodies.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ObservationAdapterReceiptInput {
+    pub adapter_id: String,
+    pub adapter_version: String,
+    pub status: ObservationAdapterStatus,
+    pub source_app: String,
+    pub source_run_id: String,
+    pub source_transcript_ref: String,
+    pub source_transcript_hash: String,
+    pub package_id: TruthPackageId,
+    pub truth_version: String,
+    pub domain_hint: String,
+    pub observation_hash: Option<String>,
+    pub mapped_fact_ids: Vec<String>,
+    pub mapped_clause_ids: Vec<ClauseId>,
+    pub dropped_source_fields: Vec<String>,
+    pub warnings: Vec<String>,
+    pub errors: Vec<String>,
+    pub replay_notes: Vec<String>,
+}
+
+/// Deterministic audit receipt for an app adapter execution.
+///
+/// A successful adapter should pair this receipt with the produced
+/// [`AxiomRunObservation`]. A rejected adapter should emit the receipt with
+/// `status: Rejected`, explicit errors, and no observation hash. The receipt is
+/// intentionally backlink-oriented: it stores ids, refs, hashes, mapped fact
+/// ids, and mapped clause ids, but not raw app transcript bodies.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ObservationAdapterReceipt {
+    pub receipt_id: ArtifactId,
+    pub adapter_id: String,
+    pub adapter_version: String,
+    pub status: ObservationAdapterStatus,
+    pub source_app: String,
+    pub source_run_id: String,
+    pub source_transcript_ref: String,
+    pub source_transcript_hash: String,
+    pub package_id: TruthPackageId,
+    pub truth_version: String,
+    pub domain_hint: String,
+    pub observation_hash: Option<String>,
+    pub mapped_fact_ids: Vec<String>,
+    pub mapped_clause_ids: Vec<ClauseId>,
+    pub dropped_source_fields: Vec<String>,
+    pub warnings: Vec<String>,
+    pub errors: Vec<String>,
+    pub replay_notes: Vec<String>,
+}
+
+impl ObservationAdapterReceipt {
+    pub fn new(input: ObservationAdapterReceiptInput) -> Self {
+        let receipt_id = observation_adapter_receipt_id(&input);
+        Self {
+            receipt_id,
+            adapter_id: input.adapter_id,
+            adapter_version: input.adapter_version,
+            status: input.status,
+            source_app: input.source_app,
+            source_run_id: input.source_run_id,
+            source_transcript_ref: input.source_transcript_ref,
+            source_transcript_hash: input.source_transcript_hash,
+            package_id: input.package_id,
+            truth_version: input.truth_version,
+            domain_hint: input.domain_hint,
+            observation_hash: input.observation_hash,
+            mapped_fact_ids: input.mapped_fact_ids,
+            mapped_clause_ids: input.mapped_clause_ids,
+            dropped_source_fields: input.dropped_source_fields,
+            warnings: input.warnings,
+            errors: input.errors,
+            replay_notes: input.replay_notes,
+        }
+    }
+}
+
 fn evidence_ref_record(evidence_ref: &FactEvidenceRef) -> EvidenceRefRecord {
     match evidence_ref {
         FactEvidenceRef::Observation(id) => EvidenceRefRecord {
@@ -1659,6 +1758,17 @@ fn learning_episode_id(
     hasher.update(format!("{verdict:?}").as_bytes());
     ArtifactId::new(format!(
         "learning_episode.{}",
+        hex_lower(&hasher.finalize())
+    ))
+}
+
+fn observation_adapter_receipt_id(input: &ObservationAdapterReceiptInput) -> ArtifactId {
+    let serialized = serde_json::to_vec(input)
+        .expect("ObservationAdapterReceiptInput has no fallible serialization fields");
+    let mut hasher = Sha256::new();
+    hasher.update(serialized);
+    ArtifactId::new(format!(
+        "observation_adapter_receipt.{}",
         hex_lower(&hasher.finalize())
     ))
 }

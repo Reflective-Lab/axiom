@@ -1,0 +1,114 @@
+{
+  "source": {
+    "run_id": "quorum-release-readiness-2026-05-19-northstar",
+    "app_path": "/Users/kpernyer/dev/reflective/marquee-apps/quorum-sense",
+    "command": "cargo test -p quorum-app transformation_inquiry_reaches_readiness --locked",
+    "captured_at": "2026-05-19T16:20:00Z",
+    "domain_hint": "quorum-sense.release-readiness"
+  },
+  "inquiry": {
+    "inquiry_id": "quorum.inquiry.northstar-20260519",
+    "core_question": "What is the organization actually experiencing around the Northstar operating-model change?",
+    "status": "QuorumReached",
+    "truth_keys": [
+      "signal-requires-content",
+      "signal-requires-consent",
+      "hypothesis-requires-signal",
+      "probe-cites-hypothesis",
+      "quorum-requires-explicit-threshold",
+      "minority-hypotheses-remain-visible",
+      "operator-approval-before-synthesis-action"
+    ],
+    "threshold": {
+      "minimum_signal_count": 4,
+      "minimum_role_count": 3,
+      "confidence_threshold_basis_points": 7000,
+      "dissent_threshold_basis_points": 2500
+    },
+    "signals": [
+      {
+        "signal_id": "quorum.signal.exec-001",
+        "participant_role": "Executive",
+        "consent_ref": "consent://quorum/northstar/exec-001",
+        "source_ref": "embassy://interview/northstar/exec-001",
+        "content": "Decision ownership keeps changing and teams are receiving mixed signals from leadership.",
+        "themes": ["governance-confusion", "alignment-gap"]
+      },
+      {
+        "signal_id": "quorum.signal.middle-014",
+        "participant_role": "MiddleManagement",
+        "consent_ref": "consent://quorum/northstar/middle-014",
+        "source_ref": "embassy://survey/northstar/middle-014",
+        "content": "Managers are aligned on the goal, but frontline teams have no clear process for resolving exceptions.",
+        "themes": ["alignment-gap", "cognitive-overload"]
+      },
+      {
+        "signal_id": "quorum.signal.frontline-227",
+        "participant_role": "Frontline",
+        "consent_ref": "consent://quorum/northstar/frontline-227",
+        "source_ref": "embassy://meeting/northstar/frontline-227",
+        "content": "We need permission for small customer-impacting decisions and escalation slows every branch.",
+        "themes": ["autonomy-deficit", "friction"]
+      },
+      {
+        "signal_id": "quorum.signal.customer-042",
+        "participant_role": "Customer",
+        "consent_ref": "consent://quorum/northstar/customer-042",
+        "source_ref": "embassy://support/northstar/customer-042",
+        "content": "The service feels inconsistent because support teams give different answers about the same change.",
+        "themes": ["alignment-gap", "trust-erosion"]
+      }
+    ],
+    "hypotheses": [
+      {
+        "hypothesis_id": "quorum.hypothesis.alignment-gap",
+        "statement": "Strategic priorities appear misaligned across teams and levels",
+        "confidence_basis_points": 7600,
+        "supporting_signal_ids": [
+          "quorum.signal.exec-001",
+          "quorum.signal.middle-014",
+          "quorum.signal.customer-042"
+        ],
+        "status": "majority",
+        "visible": true
+      },
+      {
+        "hypothesis_id": "quorum.hypothesis.autonomy-deficit",
+        "statement": "Participants may lack sufficient decision-making authority",
+        "confidence_basis_points": 4200,
+        "supporting_signal_ids": ["quorum.signal.frontline-227"],
+        "status": "minority",
+        "visible": true
+      }
+    ],
+    "probes": [
+      {
+        "probe_id": "quorum.probe.alignment-gap.001",
+        "targets_hypothesis_id": "quorum.hypothesis.alignment-gap",
+        "question": "Where do teams receive conflicting instructions, and which decision owner would resolve them?"
+      },
+      {
+        "probe_id": "quorum.probe.autonomy-deficit.001",
+        "targets_hypothesis_id": "quorum.hypothesis.autonomy-deficit",
+        "question": "Which customer-impacting decisions should frontline teams make without escalation?"
+      }
+    ],
+    "synthesis": {
+      "synthesis_id": "quorum.synthesis.northstar-readiness",
+      "statement": "The organization is ready for an operator-reviewed action plan focused on decision ownership, while preserving the autonomy-deficit minority hypothesis.",
+      "minority_hypothesis_ids": ["quorum.hypothesis.autonomy-deficit"],
+      "operator_approval": {
+        "approval_id": "helm.approval.quorum.northstar.20260519",
+        "approver_id": "operator.quorum.release-review",
+        "status": "Approved",
+        "scope": "synthesis_review_only"
+      }
+    },
+    "promotion_authority": {
+      "gate_id": "converge.gate.quorum-synthesis-readiness",
+      "policy_version_hash": "sha256:quorum-sense-policy",
+      "approver_id": "arbiter.quorum.synthesis",
+      "approver_kind": "SystemPolicy"
+    }
+  }
+}

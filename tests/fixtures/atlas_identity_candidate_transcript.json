@@ -1,0 +1,59 @@
+{
+  "source": {
+    "run_id": "atlas-identity-candidate-2026-05-19-omnistack",
+    "app_path": "/Users/kpernyer/dev/reflective/marquee-apps/atlas-integration",
+    "command": "cargo test -p atlas-app seeded_demo_contains_one_candidate --locked",
+    "captured_at": "2026-05-19T13:45:00Z",
+    "domain_hint": "atlas-integration.identity-consolidation"
+  },
+  "candidate": {
+    "candidate_id": "atlas.candidate.identity-jwt.shared-identity-core.202605191345",
+    "capability": "identity.jwt",
+    "repositories": [
+      "commercial-access-api",
+      "hospitality-suite-services"
+    ],
+    "proposed_shared_service": "shared-identity-core",
+    "similarity_basis_points": 8450,
+    "risk_band": "Medium",
+    "phase": "EvidenceOnly",
+    "truth_keys": [
+      "candidate-has-reviewable-evidence",
+      "owner-approval-before-writeback",
+      "bounded-proof-language"
+    ],
+    "evidence": [
+      {
+        "kind": "AstShape",
+        "source": "fixture://commercial-access/auth/jwt.py",
+        "summary": "Python service validates JWT issuer, expiry, and subject before route admission."
+      },
+      {
+        "kind": "ContractTest",
+        "source": "fixture://hospitality-suite/auth/oidc.test.ts",
+        "summary": "Node service accepts the same OIDC claims and failure cases."
+      },
+      {
+        "kind": "OwnerAttestation",
+        "source": "fixture://review/platform-owner.md",
+        "summary": "Platform owner agrees the claim is a candidate, not an approved extraction."
+      },
+      {
+        "kind": "SmtSearch",
+        "source": "fixture://soter/shared-identity-core.jwt.boundary",
+        "summary": "Bounded search covered issuer, expiry, subject, and missing-signature cases; token refresh and delegated access were excluded."
+      },
+      {
+        "kind": "MigrationPlan",
+        "source": "fixture://plans/shared-identity-core-shadow-traffic.md",
+        "summary": "Migration plan starts with adapter draft, shadow traffic, and rollback to both existing repository-local auth paths."
+      }
+    ],
+    "promotion_authority": {
+      "gate_id": "converge.gate.atlas-identity-candidate",
+      "policy_version_hash": "sha256:atlas-identity-policy",
+      "approver_id": "arbiter.atlas.integration",
+      "approver_kind": "SystemPolicy"
+    }
+  }
+}

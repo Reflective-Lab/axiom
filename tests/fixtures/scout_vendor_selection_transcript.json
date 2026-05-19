@@ -1,0 +1,144 @@
+{
+  "source": {
+    "run_id": "scout-vendor-selection-2026-05-19-ai-rollout",
+    "app_path": "/Users/kpernyer/dev/reflective/marquee-apps/scout-sourcing",
+    "command": "just demo-today -- --nohitl --no-pause",
+    "captured_at": "2026-05-19T17:10:00Z",
+    "domain_hint": "scout-sourcing.vendor-selection"
+  },
+  "selection": {
+    "selection_id": "scout.selection.enterprise-ai-rollout.20260519",
+    "truth_key": "vendor-selection",
+    "status": "Converged",
+    "truth_keys": [
+      "source-pack-cited",
+      "intent-admitted",
+      "formation-assembled",
+      "vendors-screened",
+      "shortlist-produced",
+      "policy-authorized",
+      "human-approval-recorded",
+      "decision-provenance-preserved"
+    ],
+    "source_pack": {
+      "document_ref": "examples/vendor-selection/buyer-brief.md",
+      "criteria_ref": "examples/vendor-selection/evaluation-model.md",
+      "static_fact_refs": [
+        "examples/vendor-selection/static-facts.json"
+      ],
+      "source_hash": "sha256:scout-source-pack-ai-rollout"
+    },
+    "intent": {
+      "intent_id": "truth:vendor-selection",
+      "principal": "user:procurement-lead",
+      "principal_authority": "supervisory",
+      "domain": "procurement"
+    },
+    "formation": {
+      "formation_id": "vendor-selection",
+      "roles": [
+        "planning",
+        "formation",
+        "compliance",
+        "cost",
+        "risk",
+        "optimization",
+        "synthesis",
+        "policy"
+      ],
+      "strategy": "dijkstra-shortest-governance-path"
+    },
+    "vendors": [
+      {
+        "name": "Anthropic",
+        "score": 92.0,
+        "risk_score": 12.0,
+        "compliance_status": "compliant",
+        "certifications": ["SOC2", "ISO27001", "GDPR"],
+        "monthly_cost_major": 48000
+      },
+      {
+        "name": "Google DeepMind",
+        "score": 88.0,
+        "risk_score": 15.0,
+        "compliance_status": "compliant",
+        "certifications": ["SOC2", "ISO27001", "GDPR", "FedRAMP"],
+        "monthly_cost_major": 45000
+      },
+      {
+        "name": "Mistral",
+        "score": 82.0,
+        "risk_score": 22.0,
+        "compliance_status": "compliant",
+        "certifications": ["SOC2", "GDPR"],
+        "monthly_cost_major": 22000
+      },
+      {
+        "name": "Qwen (Alibaba Cloud)",
+        "score": 79.0,
+        "risk_score": 35.0,
+        "compliance_status": "pending",
+        "certifications": ["ISO27001"],
+        "monthly_cost_major": 18000
+      }
+    ],
+    "screening": {
+      "screened_vendor_count": 4,
+      "evidence_channels": [
+        "declared vendor response",
+        "compliance screen",
+        "cost model",
+        "risk model",
+        "Cedar policy"
+      ],
+      "evidence_refs": [
+        "scout://evidence/compliance/anthropic",
+        "scout://evidence/compliance/google-deepmind",
+        "scout://evidence/compliance/mistral",
+        "scout://evidence/risk/qwen"
+      ]
+    },
+    "shortlist": {
+      "selected_vendor": "Mistral",
+      "selected_amount_major": 22000,
+      "entries": [
+        {
+          "rank": 1,
+          "vendor_name": "Mistral",
+          "composite_score": 79.2,
+          "rationale": "Best governed cost-risk-capability tradeoff under the hard gates."
+        },
+        {
+          "rank": 2,
+          "vendor_name": "Anthropic",
+          "composite_score": 76.6,
+          "rationale": "Highest capability with higher cost."
+        }
+      ],
+      "rejected": [
+        {
+          "vendor_name": "Qwen (Alibaba Cloud)",
+          "reasons": [
+            "non-compliant (pending)",
+            "risk 35 above maximum 30"
+          ]
+        }
+      ],
+      "objective": "0.35*capability + 0.25*risk_adjusted + 0.20*cost_efficiency + 0.20*certification_coverage"
+    },
+    "policy": {
+      "policy_id": "vendor-selection-policy.cedar",
+      "outcome": "Permit",
+      "reason": "supervisory authority, gates met, amount below HITL threshold",
+      "hitl_threshold_major": 50000,
+      "human_approval_status": "ApprovedByPolicy",
+      "gates_met": true
+    },
+    "promotion_authority": {
+      "gate_id": "converge.gate.scout-vendor-selection",
+      "policy_version_hash": "sha256:scout-vendor-selection-policy",
+      "approver_id": "arbiter.scout.procurement",
+      "approver_kind": "SystemPolicy"
+    }
+  }
+}

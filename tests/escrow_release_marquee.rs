@@ -14,14 +14,20 @@
 use axiom_truth::{
     ArtifactKind, AxiomRunObservation, AxiomRunReport, AxiomRunVerdict, CalibrationStatus,
     CalibrationTable, ClauseId, ClauseInput, EvidenceRefRecord, JtbdClauseKind, JtbdInput,
-    LearningEpisode, ObservedStopReason, PromotedFactRecord, PromotionAuthorityRecord,
+    LearningEpisode, ObservationAdapterReceipt, ObservationAdapterReceiptInput,
+    ObservationAdapterStatus, ObservedStopReason, PromotedFactRecord, PromotionAuthorityRecord,
     RunIntegrityProof, TimeBudget, TraceLinkRecord, TruthPackage, apply_decoder_calibration,
     calibration_records_from_learning_episode, decode_jtbd,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::collections::BTreeSet;
+use std::fmt::Write as _;
 
 const TALLY_TRANSITION_SIGNATURE_TRUTH_KEY: &str = "transition-requires-signature";
 const TALLY_RELEASE_CONDITIONS_TRUTH_KEY: &str = "release-requires-conditions-met";
+const TALLY_RELEASE_ADAPTER_ID: &str = "tally-escrow.release-transcript-to-axiom-observation";
+const TALLY_RELEASE_ADAPTER_VERSION: &str = "fixture.v0.1";
 const TALLY_RELEASE_TRANSCRIPT: &str =
     include_str!("fixtures/tally_escrow_release_transcript.json");
 
@@ -323,6 +329,208 @@ fn tally_release_outcome_missing_release_truth_key_is_invalid() {
 }
 
 #[test]
+fn tally_release_adapter_emits_success_receipt() {
+    let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
+    let transcript = tally_release_transcript();
+
+    let first = adapt_tally_release_transcript_with_receipt(&package, &transcript);
+    let second = adapt_tally_release_transcript_with_receipt(&package, &transcript);
+
+    assert!(first.observation.is_some());
+    assert_eq!(first.receipt, second.receipt);
+    assert_eq!(first.receipt.status, ObservationAdapterStatus::Succeeded);
+    assert_eq!(first.receipt.adapter_id, TALLY_RELEASE_ADAPTER_ID);
+    assert_eq!(first.receipt.adapter_version, TALLY_RELEASE_ADAPTER_VERSION);
+    assert_eq!(first.receipt.source_app, "tally-escrow");
+    assert_eq!(first.receipt.source_run_id, transcript.source.run_id);
+    assert_eq!(first.receipt.package_id, package.package_id);
+    assert_eq!(first.receipt.truth_version, package.truth_version);
+    assert_eq!(first.receipt.domain_hint, transcript.source.domain_hint);
+    assert!(first.receipt.source_transcript_hash.starts_with("sha256:"));
+    assert!(
+        first
+            .receipt
+            .observation_hash
+            .as_ref()
+            .is_some_and(|hash| hash.starts_with("sha256:"))
+    );
+    assert_eq!(
+        first.receipt.mapped_fact_ids,
+        vec![
+            "tally.release.principal-signatures",
+            "tally.release.conditions-met",
+            "tally.release.current-policy",
+            "tally.release.idempotency",
+            "tally.release.custody-receipt",
+        ]
+    );
+    assert_eq!(first.receipt.mapped_clause_ids.len(), 6);
+    assert!(first.receipt.dropped_source_fields.is_empty());
+    assert!(first.receipt.warnings.is_empty());
+    assert!(first.receipt.errors.is_empty());
+}
+
+#[test]
+fn tally_release_adapter_emits_rejection_receipt_without_observation() {
+    let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
+    let mut transcript = tally_release_transcript();
+    transcript.release.to_state = "Verified".to_string();
+
+    let result = adapt_tally_release_transcript_with_receipt(&package, &transcript);
+
+    assert!(result.observation.is_none());
+    assert_eq!(result.receipt.status, ObservationAdapterStatus::Rejected);
+    assert_eq!(result.receipt.observation_hash, None);
+    assert!(result.receipt.mapped_fact_ids.is_empty());
+    assert!(result.receipt.mapped_clause_ids.is_empty());
+    assert_eq!(
+        result.receipt.errors,
+        vec!["expected Tally transition Verified -> Released"]
+    );
+    assert!(
+        result
+            .receipt
+            .receipt_id
+            .as_str()
+            .starts_with("observation_adapter_receipt.")
+    );
+}
+
+#[test]
+fn helm_release_readiness_packet_marks_satisfied_release_ready_to_review() {
+    let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
+    let transcript = tally_release_transcript();
+    let adapter_outcome = adapt_tally_release_transcript_with_receipt(&package, &transcript);
+
+    let packet = release_readiness_packet(&package, &transcript, &adapter_outcome);
+
+    assert_eq!(packet.package_id, package.package_id.as_str());
+    assert_eq!(packet.truth_version, package.truth_version);
+    assert_eq!(packet.domain_hint, "tally-escrow.release");
+    assert_eq!(packet.target_transition, "Verified -> Released");
+    assert_eq!(
+        packet.adapter_receipt_id,
+        adapter_outcome.receipt.receipt_id.as_str()
+    );
+    assert_eq!(packet.adapter_status, ObservationAdapterStatus::Succeeded);
+    assert_eq!(packet.verdict, Some(AxiomRunVerdict::Satisfied));
+    assert!(!packet.authorizes_transition);
+    assert_eq!(packet.evidence_status.len(), 5);
+    assert!(
+        packet
+            .evidence_status
+            .iter()
+            .all(|status| status.status == EvidenceReadinessStatus::Present)
+    );
+    assert!(
+        packet
+            .operator_actions
+            .contains(&"inspect axiom report".to_string())
+    );
+    assert_eq!(
+        packet.verifier_forbidden_actions.len(),
+        package.verifier_spec.forbidden_actions.len()
+    );
+}
+
+#[test]
+fn helm_release_readiness_packet_marks_missing_condition_evidence() {
+    let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
+    let mut transcript = tally_release_transcript();
+    transcript
+        .release
+        .truth_keys
+        .retain(|truth_key| truth_key != TALLY_RELEASE_CONDITIONS_TRUTH_KEY);
+    let adapter_outcome = adapt_tally_release_transcript_with_receipt(&package, &transcript);
+
+    let packet = release_readiness_packet(&package, &transcript, &adapter_outcome);
+    let delivery_status = packet
+        .evidence_status
+        .iter()
+        .find(|status| status.clause_key == "delivery_confirmed")
+        .expect("delivery evidence is represented");
+
+    assert_eq!(packet.adapter_status, ObservationAdapterStatus::Succeeded);
+    assert_eq!(packet.verdict, Some(AxiomRunVerdict::Invalid));
+    assert!(!packet.authorizes_transition);
+    assert!(
+        delivery_status
+            .clause_id
+            .ends_with(".evidence.delivery_confirmed")
+    );
+    assert!(delivery_status.label.contains("vendor delivery confirmed"));
+    assert_eq!(delivery_status.status, EvidenceReadinessStatus::Missing);
+    assert!(delivery_status.fact_ids.is_empty());
+    assert!(
+        packet
+            .operator_actions
+            .contains(&"request missing evidence for delivery_confirmed".to_string())
+    );
+}
+
+#[test]
+fn helm_operator_ledger_entries_are_deterministic_and_backlink_only() {
+    let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
+    let transcript = tally_release_transcript();
+    let adapter_outcome = adapt_tally_release_transcript_with_receipt(&package, &transcript);
+    let packet = release_readiness_packet(&package, &transcript, &adapter_outcome);
+
+    let first = release_readiness_ledger_entries(&adapter_outcome.receipt, &packet);
+    let second = release_readiness_ledger_entries(&adapter_outcome.receipt, &packet);
+
+    assert_eq!(first, second);
+    assert_eq!(first.len(), 2);
+
+    let adapter_entry = &first[0];
+    assert_eq!(adapter_entry.sequence, 0);
+    assert_eq!(
+        adapter_entry.record_kind,
+        HelmLedgerRecordKind::ObservationAdapterReceipt
+    );
+    assert_eq!(
+        adapter_entry.source_ref,
+        adapter_outcome.receipt.receipt_id.as_str()
+    );
+    assert_eq!(adapter_entry.package_id, package.package_id.as_str());
+    assert_eq!(adapter_entry.truth_version, package.truth_version);
+    assert_eq!(adapter_entry.domain_hint, transcript.source.domain_hint);
+    assert!(adapter_entry.payload_hash.starts_with("sha256:"));
+    assert!(adapter_entry.backlink_ids.is_empty());
+    assert_eq!(
+        adapter_entry.authority_effect,
+        HelmLedgerAuthorityEffect::None
+    );
+    assert!(adapter_entry.summary.contains(TALLY_RELEASE_ADAPTER_ID));
+
+    let readiness_entry = &first[1];
+    assert_eq!(readiness_entry.sequence, 1);
+    assert_eq!(
+        readiness_entry.record_kind,
+        HelmLedgerRecordKind::ReleaseReadinessPacket
+    );
+    assert_eq!(
+        readiness_entry.source_ref,
+        format!("helm://release-readiness/{}", packet.adapter_receipt_id)
+    );
+    assert_eq!(
+        readiness_entry.backlink_ids,
+        vec![adapter_outcome.receipt.receipt_id.as_str().to_string()]
+    );
+    assert_eq!(
+        readiness_entry.authority_effect,
+        HelmLedgerAuthorityEffect::None
+    );
+    assert!(readiness_entry.payload_hash.starts_with("sha256:"));
+    assert!(readiness_entry.summary.contains("Verified -> Released"));
+
+    let serialized = serde_json::to_string(&first).expect("ledger entries serialize");
+    assert!(!serialized.contains("organism:sig"));
+    assert!(!serialized.contains("cargo test"));
+    assert!(!serialized.contains("attestation-namecheap-release-agreement-7"));
+    assert!(!serialized.contains("/Users/kpernyer/dev/reflective/marquee-apps/tally-escrow"));
+}
+
+#[test]
 fn tally_release_adapter_rejects_non_release_transition() {
     let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
     let mut transcript = tally_release_transcript();
@@ -559,6 +767,296 @@ fn satisfied_release_facts(package: &TruthPackage) -> Vec<PromotedFactRecord> {
     ]
 }
 
+fn adapt_tally_release_transcript_with_receipt(
+    package: &TruthPackage,
+    transcript: &TallyReleaseTranscript,
+) -> ObservationAdapterOutcome {
+    let source_transcript_hash = sha256_json(transcript);
+
+    match adapt_tally_release_transcript(package, transcript) {
+        Ok(observation) => {
+            let observation_hash = sha256_json(&observation);
+            let mapped_fact_ids = observation
+                .promoted_facts
+                .iter()
+                .map(|fact| fact.fact_id.clone())
+                .collect::<Vec<_>>();
+            let mapped_clause_ids = observation
+                .promoted_facts
+                .iter()
+                .flat_map(|fact| fact.source_clause_ids.iter().cloned())
+                .collect::<BTreeSet<_>>()
+                .into_iter()
+                .collect();
+
+            let receipt = observation_adapter_receipt(
+                package,
+                transcript,
+                ObservationAdapterStatus::Succeeded,
+                source_transcript_hash,
+                Some(observation_hash),
+                mapped_fact_ids,
+                mapped_clause_ids,
+                Vec::new(),
+            );
+
+            ObservationAdapterOutcome {
+                observation: Some(observation),
+                receipt,
+            }
+        }
+        Err(error) => {
+            let receipt = observation_adapter_receipt(
+                package,
+                transcript,
+                ObservationAdapterStatus::Rejected,
+                source_transcript_hash,
+                None,
+                Vec::new(),
+                Vec::new(),
+                vec![error],
+            );
+
+            ObservationAdapterOutcome {
+                observation: None,
+                receipt,
+            }
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn observation_adapter_receipt(
+    package: &TruthPackage,
+    transcript: &TallyReleaseTranscript,
+    status: ObservationAdapterStatus,
+    source_transcript_hash: String,
+    observation_hash: Option<String>,
+    mapped_fact_ids: Vec<String>,
+    mapped_clause_ids: Vec<ClauseId>,
+    errors: Vec<String>,
+) -> ObservationAdapterReceipt {
+    ObservationAdapterReceipt::new(ObservationAdapterReceiptInput {
+        adapter_id: TALLY_RELEASE_ADAPTER_ID.to_string(),
+        adapter_version: TALLY_RELEASE_ADAPTER_VERSION.to_string(),
+        status,
+        source_app: "tally-escrow".to_string(),
+        source_run_id: transcript.source.run_id.clone(),
+        source_transcript_ref: format!(
+            "tally://release/{}/{}",
+            transcript.source.run_id, transcript.release.record_id
+        ),
+        source_transcript_hash,
+        package_id: package.package_id.clone(),
+        truth_version: package.truth_version.clone(),
+        domain_hint: transcript.source.domain_hint.clone(),
+        observation_hash,
+        mapped_fact_ids,
+        mapped_clause_ids,
+        dropped_source_fields: Vec::new(),
+        warnings: Vec::new(),
+        errors,
+        replay_notes: vec![
+            format!("source command {}", transcript.source.command),
+            format!("captured at {}", transcript.source.captured_at),
+        ],
+    })
+}
+
+fn release_readiness_packet(
+    package: &TruthPackage,
+    transcript: &TallyReleaseTranscript,
+    adapter_outcome: &ObservationAdapterOutcome,
+) -> ReleaseReadinessPacket {
+    let report = adapter_outcome
+        .observation
+        .clone()
+        .map(|observation| AxiomRunReport::verify(package, observation));
+    let promoted_facts = report
+        .as_ref()
+        .map_or_else(Vec::new, |report| report.promoted_facts.clone());
+    let evidence_status = package
+        .source_jtbd
+        .clauses_by_kind(JtbdClauseKind::EvidenceRequired)
+        .map(|clause| {
+            let fact_ids = promoted_facts
+                .iter()
+                .filter(|fact| fact.source_clause_ids.contains(&clause.id))
+                .map(|fact| fact.fact_id.clone())
+                .collect::<Vec<_>>();
+            let status = if fact_ids.is_empty() {
+                EvidenceReadinessStatus::Missing
+            } else {
+                EvidenceReadinessStatus::Present
+            };
+
+            ReleaseEvidenceStatus {
+                clause_id: clause.id.to_string(),
+                clause_key: clause.key.clone(),
+                label: clause.text.clone(),
+                status,
+                fact_ids,
+            }
+        })
+        .collect::<Vec<_>>();
+    let operator_actions = release_readiness_operator_actions(
+        adapter_outcome.receipt.status,
+        &evidence_status,
+        report.as_ref(),
+    );
+
+    ReleaseReadinessPacket {
+        package_id: package.package_id.as_str().to_string(),
+        truth_version: package.truth_version.clone(),
+        domain_hint: transcript.source.domain_hint.clone(),
+        target_transition: format!(
+            "{} -> {}",
+            transcript.release.from_state, transcript.release.to_state
+        ),
+        adapter_receipt_id: adapter_outcome.receipt.receipt_id.as_str().to_string(),
+        adapter_status: adapter_outcome.receipt.status,
+        verdict: report.as_ref().map(|report| report.verdict),
+        authorizes_transition: false,
+        evidence_status,
+        verifier_forbidden_actions: package
+            .verifier_spec
+            .forbidden_actions
+            .iter()
+            .map(|action| action.action.clone())
+            .collect(),
+        operator_actions,
+    }
+}
+
+fn release_readiness_operator_actions(
+    adapter_status: ObservationAdapterStatus,
+    evidence_status: &[ReleaseEvidenceStatus],
+    report: Option<&AxiomRunReport>,
+) -> Vec<String> {
+    let mut actions = Vec::new();
+    if adapter_status == ObservationAdapterStatus::Rejected {
+        actions.push("inspect adapter receipt errors".to_string());
+        return actions;
+    }
+
+    actions.push("inspect axiom report".to_string());
+    actions.extend(
+        evidence_status
+            .iter()
+            .filter(|status| status.status == EvidenceReadinessStatus::Missing)
+            .map(|status| format!("request missing evidence for {}", status.clause_key)),
+    );
+    if report.is_some_and(|report| report.verdict != AxiomRunVerdict::Satisfied) {
+        actions.push("rerun verification after evidence changes".to_string());
+    }
+    actions
+}
+
+fn release_readiness_ledger_entries(
+    receipt: &ObservationAdapterReceipt,
+    packet: &ReleaseReadinessPacket,
+) -> Vec<HelmLedgerEntry> {
+    let receipt_payload_hash = sha256_json(receipt);
+    let packet_payload_hash = sha256_json(packet);
+
+    vec![
+        helm_ledger_entry(
+            0,
+            HelmLedgerRecordKind::ObservationAdapterReceipt,
+            receipt.receipt_id.as_str().to_string(),
+            receipt.package_id.as_str().to_string(),
+            receipt.truth_version.clone(),
+            receipt.domain_hint.clone(),
+            receipt_payload_hash,
+            Vec::new(),
+            format!("adapter {} {}", receipt.adapter_id, receipt.status.as_str()),
+        ),
+        helm_ledger_entry(
+            1,
+            HelmLedgerRecordKind::ReleaseReadinessPacket,
+            format!("helm://release-readiness/{}", packet.adapter_receipt_id),
+            packet.package_id.clone(),
+            packet.truth_version.clone(),
+            packet.domain_hint.clone(),
+            packet_payload_hash,
+            vec![receipt.receipt_id.as_str().to_string()],
+            format!(
+                "release readiness {:?} for {}",
+                packet.verdict, packet.target_transition
+            ),
+        ),
+    ]
+}
+
+#[allow(clippy::too_many_arguments)]
+fn helm_ledger_entry(
+    sequence: u64,
+    record_kind: HelmLedgerRecordKind,
+    source_ref: String,
+    package_id: String,
+    truth_version: String,
+    domain_hint: String,
+    payload_hash: String,
+    backlink_ids: Vec<String>,
+    summary: String,
+) -> HelmLedgerEntry {
+    let backlinks_for_id = backlink_ids.join("\n");
+    let sequence_for_id = sequence.to_string();
+    let entry_id = helm_ledger_entry_id(&[
+        record_kind.as_str(),
+        &sequence_for_id,
+        &source_ref,
+        &package_id,
+        &truth_version,
+        &domain_hint,
+        &payload_hash,
+        &backlinks_for_id,
+    ]);
+
+    HelmLedgerEntry {
+        entry_id,
+        sequence,
+        record_kind,
+        source_ref,
+        package_id,
+        truth_version,
+        domain_hint,
+        payload_hash,
+        backlink_ids,
+        authority_effect: HelmLedgerAuthorityEffect::None,
+        summary,
+    }
+}
+
+fn helm_ledger_entry_id(parts: &[&str]) -> String {
+    let digest = sha256_lines(parts);
+    let short_digest = &digest
+        .strip_prefix("sha256:")
+        .expect("local digest has sha256 prefix")[..12];
+    format!("helm_ledger_entry.{short_digest}")
+}
+
+fn sha256_json<T: Serialize>(value: &T) -> String {
+    let bytes = serde_json::to_vec(value).expect("fixture value serializes");
+    sha256_bytes(&bytes)
+}
+
+fn sha256_lines(parts: &[&str]) -> String {
+    sha256_bytes(parts.join("\n").as_bytes())
+}
+
+fn sha256_bytes(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    let digest = hasher.finalize();
+    let mut output = String::with_capacity("sha256:".len() + digest.len() * 2);
+    output.push_str("sha256:");
+    for byte in digest {
+        write!(&mut output, "{byte:02x}").expect("writing to String cannot fail");
+    }
+    output
+}
+
 fn adapt_tally_release_transcript(
     package: &TruthPackage,
     transcript: &TallyReleaseTranscript,
@@ -676,13 +1174,87 @@ fn failure_clause_id(package: &TruthPackage, key: &str) -> ClauseId {
         )
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone)]
+struct ObservationAdapterOutcome {
+    observation: Option<AxiomRunObservation>,
+    receipt: ObservationAdapterReceipt,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ReleaseReadinessPacket {
+    package_id: String,
+    truth_version: String,
+    domain_hint: String,
+    target_transition: String,
+    adapter_receipt_id: String,
+    adapter_status: ObservationAdapterStatus,
+    verdict: Option<AxiomRunVerdict>,
+    authorizes_transition: bool,
+    evidence_status: Vec<ReleaseEvidenceStatus>,
+    verifier_forbidden_actions: Vec<String>,
+    operator_actions: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ReleaseEvidenceStatus {
+    clause_id: String,
+    clause_key: String,
+    label: String,
+    status: EvidenceReadinessStatus,
+    fact_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum EvidenceReadinessStatus {
+    Present,
+    Missing,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct HelmLedgerEntry {
+    entry_id: String,
+    sequence: u64,
+    record_kind: HelmLedgerRecordKind,
+    source_ref: String,
+    package_id: String,
+    truth_version: String,
+    domain_hint: String,
+    payload_hash: String,
+    backlink_ids: Vec<String>,
+    authority_effect: HelmLedgerAuthorityEffect,
+    summary: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum HelmLedgerRecordKind {
+    ObservationAdapterReceipt,
+    ReleaseReadinessPacket,
+}
+
+impl HelmLedgerRecordKind {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::ObservationAdapterReceipt => "observation_adapter_receipt",
+            Self::ReleaseReadinessPacket => "release_readiness_packet",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum HelmLedgerAuthorityEffect {
+    None,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct TallyReleaseTranscript {
     source: TallyRunSource,
     release: TallyReleaseOutcome,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct TallyRunSource {
     run_id: String,
     app_path: String,
@@ -691,7 +1263,7 @@ struct TallyRunSource {
     domain_hint: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct TallyReleaseOutcome {
     record_id: String,
     from_state: String,
@@ -712,13 +1284,13 @@ impl TallyReleaseOutcome {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct TallySigner {
     role: String,
     signature_ref: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct TallyReleaseReceipt {
     adapter: String,
     external_ref: String,
