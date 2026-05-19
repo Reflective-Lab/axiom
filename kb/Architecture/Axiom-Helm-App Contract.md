@@ -28,7 +28,7 @@ App domain event or operator intent
   -> Converge reaches a fixed point or an honest stop reason
   -> App adapter emits an AxiomRunObservation
   -> Axiom verifies the run and emits an AxiomRunReport
-  -> Helm shows the verdict and reviews calibration priors
+  -> Helm shows the verdict and reviews calibration reinforcements/concerns
 ```
 
 Apps should keep domain ownership. Helm should absorb operator/control-plane
@@ -39,7 +39,7 @@ repetition.
 
 | Layer | Owns | Produces | Must not own |
 |---|---|---|---|
-| Axiom | JTBD decoding, Truth Package schema, generated `.truths`, verifier spec, proof obligations, lineage, reports, and decoder calibration priors. | `TruthPackage`, `IntentPacket`, WASM artifacts and manifests, `AxiomRunReport`, `LearningEpisode`, `CalibrationRecord`, `CalibrationTable`. | Operator UX, app domain state, formation selection, authority recompute, plugin hosting, specialist execution, raw run history. |
+| Axiom | JTBD decoding, Truth Package schema, generated `.truths`, verifier spec, proof obligations, lineage, reports, and decoder calibration priors. | `TruthPackage`, `IntentPacket`, WASM artifacts and manifests, `AxiomRunReport`, `LearningEpisode`, `CalibrationRecord`, `CalibrationTable`, `CalibrationSuggestion` and `CalibrationConcern` artifacts. | Operator UX, app domain state, formation selection, authority recompute, plugin hosting, specialist execution, raw run history. |
 | Helm | Operator surface, package review, truth projection review, calibration review, plugin sandbox lifecycle, run-history display, and app-facing orchestration screens. | Reviewed package versions, accepted/rejected/reset calibration decisions, sandbox execution events, operator audit trails. | Truth semantics, source JTBD mutation, Converge promotion authority, Organism formation strategy, app business state. |
 | App | Domain model, domain state transitions, user workflows, domain adapters, custody/payment/external integrations, and app-specific transcript shape. | Domain events, app transcripts, evidence handles, adapter output as `AxiomRunObservation`. | Generic truth review, generic calibration review, generic verifier logic, generic operator-control flows. |
 | Organism | Admission, problem classification, Formation selection, planning, runtime dynamics, and learning from Formation outcomes. | Formation plans, stage records, runtime traces, selected work formations. | Truth parsing, authority recompute, app domain persistence. |
@@ -84,11 +84,24 @@ AxiomRunReport + lineage audit
   -> CalibrationRecord(s)
   -> Helm operator review
   -> accepted CalibrationTable
-  -> future Truth Packages enriched by reviewed priors
+  -> future Truth Packages enriched by reviewed reinforcements and concerns
 ```
 
 Axiom persists distilled decoder priors. Raw transcripts and operational
 history remain downstream in Helm, the app, or ExperienceStore.
+
+v0.15 splits accepted calibration into two operator-visible signals:
+
+- `Reinforcement` records become `CalibrationSuggestion` artifacts: the
+  decoder should keep reaching for evidence, failure, policy, or verifier
+  templates that have worked before.
+- `Concern` records become `CalibrationConcern` artifacts: the decoder should
+  surface prompts, warnings, default evidence expectations, or alternate
+  scaffolding for clause shapes that repeatedly go uncovered.
+
+Both signals are decoder-only. Neither signal weakens the source JTBD,
+changes verifier requirements, selects a Formation, or grants promotion
+authority.
 
 ## Tally As Boundary-Finding Loop
 
@@ -100,7 +113,7 @@ Use each Tally iteration to classify repeated code:
 | Repeated shape | Destination |
 |---|---|
 | Evidence clauses, failure modes, verifier expectations, lineage, and verdict computation | Axiom |
-| Package display, operator acceptance/rejection/reset, calibration review, run verdict display | Helm |
+| Package display, operator acceptance/rejection/reset, calibration reinforcement/concern review, run verdict display | Helm |
 | Escrow agreement state, release transition, custody receipt, payment rail, app transcript | Tally |
 | Signing, capability-backed evidence retrieval, analytics, policy suggestors | Organism/Mosaic/Converge through their public contracts |
 
@@ -115,6 +128,8 @@ Tally's current adapter already maps a release transcript into
 4. Which runtime choices belong to Organism/Mosaic instead of Tally or Axiom?
 5. Which accepted calibration priors make future escrow packages more complete
    without weakening the source JTBD?
+6. Which uncovered evidence concerns should Helm show before an operator
+   attempts another release?
 
 ## Expression Boundary
 
@@ -170,7 +185,9 @@ The contract is working when:
 3. Axiom can verify app outcomes without importing app crates.
 4. Accepted calibration priors improve future packages without changing the
    source JTBD, generated `.truths`, or runtime `IntentPacket`.
-5. Raw app transcripts stay outside Axiom while Axiom keeps durable backlinks
+5. Accepted concerns produce operator-visible warnings or scaffolding without
+   removing required evidence from the verifier spec.
+6. Raw app transcripts stay outside Axiom while Axiom keeps durable backlinks
    to distilled learning episodes.
-6. Formation selection, authority recompute, and specialist hosting remain out
+7. Formation selection, authority recompute, and specialist hosting remain out
    of Axiom.
