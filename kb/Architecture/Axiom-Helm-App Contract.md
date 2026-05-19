@@ -142,10 +142,19 @@ or downstream stores.
 
 Current fixture proof: `tests/escrow_release_marquee.rs` journals two local
 Helm ledger entries for a release review, one for the
-`ObservationAdapterReceipt` and one for the `ReleaseReadinessPacket`. Both
-entries are deterministic, carry payload hashes and backlinks, and explicitly
-record no authority effect. The serialized ledger entries do not contain raw
-signature refs, custody external refs, source commands, or local app paths.
+`ObservationAdapterReceipt` and one for the `ReleaseReadinessPacket`.
+`tests/warden_compliance_marquee.rs` expands the pattern to four entries:
+adapter receipt, job readiness packet, compliance approval receipt, and
+registry publication receipt. `tests/triage_keeper_marquee.rs` expands it
+again to five entries: adapter receipt, job readiness packet, operator
+decision receipt, client approval receipt, and maintenance plan receipt.
+`tests/inkling_notes_marquee.rs` adds a private-corpus variant: adapter
+receipt, job readiness packet, vault snapshot receipt, permission receipt, and
+vault index receipt. All entries are deterministic, carry payload hashes and
+backlinks, and explicitly record no authority effect. The serialized ledger
+entries do not contain raw signatures, custody refs, rule owner emails, rule
+citations, document ids, package names, affected services, ticket refs, note
+paths, import source paths, source commands, or local app paths.
 
 ## Tally As Boundary-Finding Loop
 
@@ -528,8 +537,10 @@ shared code at once.
 
 | Shape | Current status | Likely home if repeated |
 |---|---|---|
-| `ObservationAdapterReceipt` | Promoted to public Axiom truth-package API after Tally and Atlas both repeated the same app-neutral adapter audit envelope; Quorum and Scout repeated it again. | Axiom owns the schema; Helm mirrors/renders/journals it. |
-| `JobReadinessPacket` | Helm-owned read-model candidate after Tally, Atlas, Quorum, and Scout repeated the same package/report/evidence/operator-action shape under different domain names. | Helm common module; Axiom should not own this public type. |
+| `ObservationAdapterReceipt` | Promoted to public Axiom truth-package API after Tally and Atlas both repeated the same app-neutral adapter audit envelope; Quorum, Scout, Warden, Triage, and Inkling repeated it again. | Axiom owns the schema; Helm mirrors/renders/journals it. |
+| `JobReadinessPacket` | Helm-owned read-model candidate after Tally, Atlas, Quorum, Scout, Warden, Triage, and Inkling repeated the same package/report/evidence/operator-action shape under different domain names. | Helm common module; Axiom should not own this public type. |
+| Operator/approval/publication/plan receipts | Warden introduced compliance approval and registry publication receipts; Triage repeated the family as operator decision, client approval, and maintenance plan receipts. These are not Axiom types; they look like Helm ledger payloads for decisions and long-running job milestones. | Helm Operator Control / ledger; continue probing Plumb and Catalyst before hardening names. |
+| Snapshot/permission/index receipts | Inkling introduced vault snapshot, permission, and index receipts for local-first private corpus enrichment. This looks like the creative/knowledge-work sibling of the operator receipt family. | Helm ledger and app-local corpus surfaces; probe Folio/Wykkid/Moosemen/Wolfgang before hardening names. |
 | `TransitionSigningEvidence` | Useful sub-shape, but still close to Tally's agreement/signing domain. | Wait for Atlas or another app to need signer/witness coverage. |
 | `CustodyReleaseEvidence` | Useful sub-shape, but tied to escrow/custody domains. | Keep app/platform-local unless Atlas has analogous external-action receipt evidence. |
 
@@ -592,11 +603,16 @@ Adapter rule:
   resulting observation against the package.
 
 Current fixture proof: `tests/escrow_release_marquee.rs`,
-`tests/atlas_integration_marquee.rs`, and `tests/quorum_sense_marquee.rs` all
-use the public type while keeping app-specific transcript adapters local.
-Tally proves success and rejection receipts around escrow release. Atlas proves
-the same envelope around identity-consolidation candidates. Quorum proves it
-again around organizational sensemaking synthesis readiness.
+`tests/atlas_integration_marquee.rs`, `tests/quorum_sense_marquee.rs`,
+`tests/scout_sourcing_marquee.rs`, `tests/warden_compliance_marquee.rs`, and
+`tests/triage_keeper_marquee.rs`, and `tests/inkling_notes_marquee.rs` all use
+the public type while keeping app-specific transcript adapters local. Tally
+proves success and rejection receipts around escrow release. Atlas proves the
+same envelope around identity-consolidation candidates. Quorum proves it again
+around organizational sensemaking synthesis readiness. Scout repeats it for
+governed sourcing. Warden repeats it for compliance registry shadow-runs.
+Triage repeats it for weekly maintenance cycles. Inkling repeats it for
+local-first vault enrichment.
 
 Ownership:
 
@@ -813,19 +829,224 @@ Extraction signal after Scout: `JobReadinessPacket` is stable enough for Helm
 implementation. Scout did not force new generic fields; it only supplied a new
 domain subject and stronger HITL/policy examples.
 
+## Warden As Fifth Probe
+
+Warden pressure-tests the same contract against compliance registry
+publication. This is closer to Helm's future Operator Control surface than the
+prior apps: Warden has shadow-runs, historical corpora, rule registries,
+impact diffs, compliance approval, publication receipts, rollback refs, and
+cross-app subscribers.
+
+The first probe uses the Warden truth keys `registry-metadata-complete`,
+`immutable-registry-version`, `corpus-scope-named`,
+`shadow-diff-produced`, `verdicts-trace-to-rules`,
+`impact-breakdown-by-app`, `compliance-approval-recorded`,
+`publication-receipt-issued`, and `warden-not-production-gate`.
+
+| Layer | Boundary decision |
+|---|---|
+| Warden app | Owns rule registry content, rule owners/citations, corpus selection, shadow-run verdicts, registry publication, rollback references, and raw compliance transcripts. |
+| Axiom | Owns the JTBD-to-Truth Package, registry publication evidence requirements, normalized `AxiomRunObservation`, verifier report, and clause-level coverage. It does not execute rules or approve registry publication. |
+| Helm | Owns the operator review surface, compliance approval record, publication receipt display, rollback navigation, and append-only ledger entries. It does not become the production compliance gate. |
+| Organism/Mosaic | Own rule analysis, historical corpus retrieval, impact summarization, diffing, policy suggestors, and long-running shadow-run workers through public capability contracts. |
+| Converge | Promotes shadow-run facts, policy decisions, stop reasons, integrity proofs, and promotion authority evidence. |
+
+Current fixture proof: `tests/warden_compliance_marquee.rs` builds a registry
+shadow-run JTBD, adapts a recorded Warden transcript into
+`AxiomRunObservation`, emits the public `ObservationAdapterReceipt`, builds the
+same Helm-facing `JobReadinessPacket`, and journals four backlink-only Helm
+ledger entries: adapter receipt, readiness packet, compliance approval
+receipt, and registry publication receipt. One negative path removes corpus
+scope. Another leaves publication present but removes approval. In both cases
+the adapter still succeeds, but Axiom returns `Invalid` and Helm sees missing
+evidence without authorizing registry publication.
+
+What Warden adds to the common shape:
+
+- `JobReadinessPacket` still does not need registry-specific fields. The
+  subject ref changes to `warden://shadow-run/...`, and clause-level evidence
+  carries the rest.
+- Helm's ledger likely needs an operator-decision payload family, not just a
+  generic readiness packet. Warden's local `ComplianceApprovalReceipt` and
+  `RegistryPublicationReceipt` prove that approval and publication milestones
+  can be deterministic, hash-backed, and backlink-only without storing raw
+  rule owners, citations, document ids, source commands, or local app paths.
+- The production boundary must stay explicit: Warden can publish a reviewed
+  registry that apps reload, but Warden does not become the runtime production
+  gate for those apps.
+
+What did not move:
+
+- Rule execution, registry authoring, corpus selection, and publication remain
+  Warden-owned.
+- Helm records review and publication receipts, but those ledger entries have
+  `authority_effect: none`; they do not promote facts or authorize app domain
+  actions.
+- Axiom verifies the job contract after adaptation. It does not compute
+  compliance verdicts, choose the corpus, or bless registry publication.
+
+Extraction signal after Warden: `JobReadinessPacket` is stable enough for Helm
+implementation, and Helm Operator Control should expect a small receipt family
+around long-running jobs: approval receipts, publication receipts, rollback
+refs, and deterministic ledger backlinks. Keep those in Helm unless a narrower
+Axiom verifier schema is needed.
+
+## Triage As Sixth Probe
+
+Triage Keeper pressure-tests the contract against sustaining-care operations:
+dependency alerts, recurring defects, SLA/risk ranking, patch plans, checks,
+client approval, emergency escalation policy, deferred risk, and the boundary
+that a maintenance desk recommends and schedules but does not become production
+deploy authority.
+
+The first probe uses the Triage truth keys `dependency-alert-cited`,
+`recurring-defect-linked`, `service-impact-cited`, `sla-risk-ranked`,
+`patch-plan-with-rollback`, `checks-recorded`,
+`client-approval-recorded`, `emergency-policy-named`,
+`deferred-risk-recorded`, and `triage-not-deploy-authority`.
+
+| Layer | Boundary decision |
+|---|---|
+| Triage app | Owns sustaining-care language, client support posture, dependency and incident fixtures, patch-plan copy, deferral wording, and raw maintenance-cycle transcripts. |
+| Axiom | Owns the JTBD-to-Truth Package, maintenance evidence requirements, normalized `AxiomRunObservation`, verifier report, and clause-level coverage. It does not scan dependencies, run tests, approve clients, or deploy. |
+| Helm | Owns the operator review surface, missing-evidence actions, client approval display, maintenance-plan ledger receipts, and long-running job navigation. It does not become production deploy authority. |
+| Organism/Mosaic | Own registry and issue-tracker connectors, risk scoring, memory of prior incidents, patch-window scheduling, policy evaluation, and provider/tool routing through public capability contracts. |
+| Converge | Promotes alert facts, defect facts, risk rankings, check results, approvals, deferrals, stop reasons, integrity proofs, and promotion authority evidence. |
+
+Current fixture proof: `tests/triage_keeper_marquee.rs` builds a weekly
+maintenance JTBD, adapts a recorded Triage transcript into
+`AxiomRunObservation`, emits the public `ObservationAdapterReceipt`, builds the
+same Helm-facing `JobReadinessPacket`, and journals five backlink-only Helm
+ledger entries: adapter receipt, readiness packet, operator decision receipt,
+client approval receipt, and maintenance plan receipt. One negative path
+removes check evidence. Another keeps the patch plan present but removes
+client approval. In both cases the adapter still succeeds, but Axiom returns
+`Invalid` and Helm sees missing evidence without authorizing deployment.
+
+What Triage adds to the common shape:
+
+- Warden's receipt family generalizes. Compliance approval/publication becomes
+  a broader Helm ledger family: operator decisions, client approvals, and
+  executable plan receipts.
+- Maintenance plans need evidence for both "what should happen now" and "what
+  is deliberately deferred." The same clause-level evidence list handles both
+  without adding app-specific fields to `JobReadinessPacket`.
+- Checks are not generic runtime noise; they are verifier evidence. Missing
+  checks produce `Invalid` readiness even when the patch plan and risk ranking
+  are otherwise present.
+
+What did not move:
+
+- Dependency scanning, incident correlation, risk scoring, scheduling, test
+  execution, and deploy mechanics remain outside Axiom.
+- Helm can journal decisions and approvals, but the ledger entries still have
+  `authority_effect: none`.
+- Triage can recommend, draft, schedule, and monitor. It does not deploy
+  production changes outside client authority.
+
+Extraction signal after Triage: Helm Operator Control should likely model a
+generic decision/approval/plan receipt family for long-running jobs. Do not
+harden the exact names yet; `plumb-execution` should pressure execution
+receipts, and `catalyst-biz` should pressure business-change approvals and
+outcome tracking.
+
+## Creative And Knowledge-Work Cluster
+
+Folio Editor, Inkling Notes, Moosemen Writer, Wykkid Preso, and Wolfgang Chat
+are meaningful because they pressure a different boundary than the operator
+apps. The prior probes are mostly about governed external action:
+release funds, write back to repositories, publish a registry, schedule a
+maintenance plan. This cluster is about private or public meaning-making:
+notes, claims, manuscripts, decks, and research memos.
+
+The shared risk is not "did a job run?" It is "did the system preserve human
+ownership while enriching, organizing, drafting, or publishing content?"
+
+Useful probe order:
+
+- Inkling first for private corpus safety: snapshots, permissions,
+  separable generated metadata, and non-destructive cleanup proposals.
+- Folio next when we want public-claim publishing pressure: source evidence,
+  standards review, layout/ad-safety, unresolved questions, and editor
+  approval.
+- Wykkid when presentation reliability matters: claim evidence, timing,
+  confidential material, demo readiness, and fallbacks.
+- Moosemen when creative canon protection matters: version history, canon
+  citations, voice preservation, contradiction evidence, and writer approval.
+- Wolfgang when adversarial research matters: cited claims, disagreement,
+  high-risk scope narrowing, evidence quality, and sourced memo receipts.
+
+These apps should not force Axiom to become a writing, research, or editor
+engine. They should pressure Axiom and Helm to make provenance, permission,
+approval, and proposal state legible.
+
+## Inkling As Seventh Probe
+
+Inkling pressure-tests the contract against local-first private vault
+enrichment. The product can index, infer, summarize, group duplicates, identify
+stale notes, and propose cleanup. The boundary is strict: original user notes
+are not silently rewritten, external fetching and OCR are permissioned, and
+generated metadata stays separable from the vault.
+
+The first probe uses the Inkling truth keys `vault-snapshot-captured`,
+`import-provenance-preserved`, `permissions-declared`,
+`derived-metadata-separable`, `duplicates-evidenced`,
+`freshness-analysis-evidenced`, `project-hubs-traced`,
+`cleanup-suggestions-proposed`, `destructive-change-approval-recorded`, and
+`local-first-boundary-preserved`.
+
+| Layer | Boundary decision |
+|---|---|
+| Inkling app | Owns the vault tree, note editing, imports, capture workflows, generated metadata storage paths, cleanup UX, and raw vault transcripts. |
+| Axiom | Owns the JTBD-to-Truth Package, vault-safety evidence requirements, normalized `AxiomRunObservation`, verifier report, and clause-level coverage. It does not read the vault directly or decide edits. |
+| Helm | Owns the operator/user review surface for snapshots, permissions, missing evidence, cleanup proposals, and ledger receipts. It does not mutate notes. |
+| Organism/Mosaic | Own OCR/PDF/link extraction, graph analysis, duplicate detection, freshness scoring, memory, scheduling, and policy through public capability contracts. |
+| Converge | Promotes snapshot facts, permission facts, duplicate candidates, hub candidates, cleanup proposals, stop reasons, integrity proofs, and promotion authority evidence. |
+
+Current fixture proof: `tests/inkling_notes_marquee.rs` builds a vault
+navigation JTBD, adapts a recorded Inkling transcript into
+`AxiomRunObservation`, emits the public `ObservationAdapterReceipt`, builds the
+same Helm-facing `JobReadinessPacket`, and journals five backlink-only Helm
+ledger entries: adapter receipt, readiness packet, vault snapshot receipt,
+permission receipt, and vault index receipt. One negative path removes
+permission evidence while external fetches appear. Another removes the
+snapshot and attempts destructive changes. In both cases the adapter still
+succeeds, but Axiom returns `Invalid` and Helm sees missing evidence without
+authorizing note mutation.
+
+What Inkling adds to the common shape:
+
+- `JobReadinessPacket` still holds for private corpus enrichment; the subject
+  ref changes to `inkling://vault-run/...`.
+- Helm's receipt family likely needs a sibling for content/corpus safety:
+  snapshot receipts, permission receipts, and generated index receipts.
+- Suggestions are first-class evidence. Duplicate groups, stale-note cleanup,
+  and project hubs are not domain mutations until the user accepts them.
+
+What did not move:
+
+- Vault storage, note editing, import adapters, OCR/PDF/link extraction, graph
+  indexing, and cleanup application remain outside Axiom.
+- Helm journals snapshot and permission state, but the ledger entries still
+  have `authority_effect: none`.
+- Inkling can enrich and organize. The user owns the notes.
+
+Extraction signal after Inkling: the creative/knowledge-work apps should be
+used when the platform needs to prove human-owned content is protected while
+AI proposes structure. Folio, Wykkid, Moosemen, and Wolfgang are meaningful
+follow-ups if we want to harden claim/presentation/canon/research variants of
+the same provenance and proposal pattern.
+
 ## Warden Versus Fathom As Next Probe
 
-Warden Compliance is the better next probe if the goal is to find common
-control-plane modules. Warden is itself an operator/compliance surface: rule
-registry authoring, verdict aggregation, shadow runs, approval, publication,
-audit packs, and cross-app evidence. It should pressure-test:
+Warden has now served as the control-plane probe. It confirmed:
 
-- whether `JobReadinessPacket` becomes a broader operator packet family;
-- whether Helm needs a first-class `ReviewDecision` or `ApprovalReceipt`;
-- whether the append-only ledger needs typed publication, rollback, and
-  shadow-run records;
-- whether Axiom needs stronger Truth Package obligations for versioned
-  registries and historical corpora without owning rule execution.
+- `JobReadinessPacket` holds across a fifth app family;
+- Helm likely needs first-class approval/publication receipt payloads;
+- the append-only ledger needs typed long-running job milestones and rollback
+  backlinks;
+- Axiom can express versioned registry and historical corpus obligations
+  without owning rule execution.
 
 Fathom Narrative is a better later probe for large data sets and comparing
 evidence over time. It should pressure-test a different common shape:
@@ -835,9 +1056,12 @@ evidence over time. It should pressure-test a different common shape:
 - time-series drift facts with provenance;
 - disagreements between promoted facts across periods or cohorts.
 
-So the practical sequence is: use Warden next to refine Helm Operator Control
-and ledger commonality; use Fathom after that to refine Axiom/Helm evidence
-windows and temporal replay.
+Triage has now confirmed that Warden's approval/publication receipt family
+does repeat outside compliance publication. The practical sequence is now:
+probe `plumb-execution` and `catalyst-biz` next to see whether execution
+receipts, business-change approvals, and outcome tracking fit the same Helm
+ledger family. Use Fathom after that to refine Axiom/Helm evidence windows and
+temporal replay.
 
 ## Falsifiable Signals
 

@@ -96,9 +96,12 @@ source: llm
 |---|---|---|
 | Round-driven Formation Design | `tests/round_driven_marquee.rs`; `kb/Marquee/Round-Driven Formation Design.md` | JTBD and staged `AxiomRunReport` fixture for a dynamic design huddle plus selected work Formation |
 | Escrow Release | `tests/escrow_release_marquee.rs`; `tests/fixtures/tally_escrow_release_transcript.json`; `kb/Marquee/Escrow Release.md` | Strict-verdict fixture for irreversible commitments, recorded Tally transcript adapter, and v0.13 calibration proof |
-| Atlas Integration | `/Users/kpernyer/dev/reflective/marquee-apps/atlas-integration` | Next app vertical after Tally boundary work clarifies the Axiom-Helm-App contract |
+| Atlas Integration | `tests/atlas_integration_marquee.rs`; `tests/fixtures/atlas_identity_candidate_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/atlas-integration` | Second app probe for Axiom-Helm-App contract, identity/auth consolidation readiness, and public `ObservationAdapterReceipt` promotion |
 | Quorum Sense | `tests/quorum_sense_marquee.rs`; `tests/fixtures/quorum_release_readiness_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/quorum-sense` | Third app probe for Axiom-Helm-App contract, organizational sensemaking readiness, and Helm-owned `JobReadinessPacket` shape |
 | Scout Sourcing | `tests/scout_sourcing_marquee.rs`; `tests/fixtures/scout_vendor_selection_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/scout-sourcing` | Fourth app probe for Axiom-Helm-App contract, vendor-selection readiness, HITL/policy evidence, and Helm-owned `JobReadinessPacket` shape |
+| Warden Compliance | `tests/warden_compliance_marquee.rs`; `tests/fixtures/warden_compliance_shadow_run_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/warden-compliance` | Fifth app probe for Axiom-Helm-App contract, compliance registry shadow-run readiness, and Helm ledger approval/publication receipt candidates |
+| Triage Keeper | `tests/triage_keeper_marquee.rs`; `tests/fixtures/triage_keeper_maintenance_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/triage-keeper` | Sixth app probe for Axiom-Helm-App contract, weekly maintenance readiness, and Helm ledger decision/approval/plan receipt candidates |
+| Inkling Notes | `tests/inkling_notes_marquee.rs`; `tests/fixtures/inkling_vault_navigation_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/inkling-notes` | Seventh app probe for Axiom-Helm-App contract, local-first vault enrichment, snapshot/permission/index receipt candidates, and non-destructive suggestion boundaries |
 
 ## Scenario Tags
 

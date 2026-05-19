@@ -1,0 +1,133 @@
+{
+  "source": {
+    "run_id": "triage-maintenance-cycle-2026-05-20-weekly-care",
+    "app_path": "/Users/kpernyer/dev/reflective/marquee-apps/triage-keeper",
+    "command": "TRIAGE_OUTPUT=json cargo run --example weekly_care",
+    "captured_at": "2026-05-20T10:05:00Z",
+    "domain_hint": "triage-keeper.weekly-maintenance"
+  },
+  "maintenance_run": {
+    "maintenance_run_id": "triage.weekly-care.client-ledger.20260520",
+    "status": "Converged",
+    "truth_keys": [
+      "dependency-alert-cited",
+      "recurring-defect-linked",
+      "service-impact-cited",
+      "sla-risk-ranked",
+      "patch-plan-with-rollback",
+      "checks-recorded",
+      "client-approval-recorded",
+      "emergency-policy-named",
+      "deferred-risk-recorded",
+      "triage-not-deploy-authority"
+    ],
+    "client": {
+      "client_id": "client-ledger",
+      "support_tier": "sustaining-care-pro",
+      "sla_hours": 24,
+      "production_change_policy": "client-ledger.production-change.v3",
+      "authority_mode": "client-approved"
+    },
+    "dependency_alert": {
+      "alert_id": "dep-alert.openssl.cve-2026-1842",
+      "package": "openssl",
+      "current_version": "3.2.0",
+      "patched_version": "3.2.4",
+      "severity": "critical",
+      "advisory_ref": "GHSA-2026-1842",
+      "affected_service": "checkout-api",
+      "exploit_evidence_ref": "embassy://registry/advisory/GHSA-2026-1842",
+      "source_hash": "sha256:triage-dependency-alert"
+    },
+    "recurring_defect": {
+      "defect_id": "defect.checkout-timeout-retry-loop",
+      "affected_service": "checkout-api",
+      "incident_refs": [
+        "ticket://client-ledger/TK-481",
+        "ticket://client-ledger/TK-489",
+        "ticket://client-ledger/TK-502"
+      ],
+      "recurrence_count": 3,
+      "failure_signature": "timeout retry loop after dependency TLS handshake failure",
+      "owner": "maintainer@reflective.example",
+      "source_hash": "sha256:triage-recurring-defect"
+    },
+    "risk_ranking": {
+      "top_item": "dependency-alert",
+      "basis": [
+        "critical vulnerability",
+        "public exploit evidence",
+        "checkout-api service impact",
+        "24-hour SLA"
+      ],
+      "severity_basis_points": 9400,
+      "regression_risk_basis_points": 2300,
+      "sla_due_at": "2026-05-21T10:05:00Z",
+      "ranked_items": [
+        "dependency-alert",
+        "recurring-defect",
+        "legacy-refactor"
+      ]
+    },
+    "patch_plan": {
+      "plan_id": "patch-plan.openssl-3-2-4.weekly-care",
+      "scope": "update openssl from 3.2.0 to 3.2.4 in checkout-api and monitor retry-loop defect",
+      "target_window": "2026-05-20T18:00:00Z/2026-05-20T19:00:00Z",
+      "rollback_ref": "deploy://client-ledger/checkout-api/releases/2026-05-19",
+      "tests_required": [
+        "unit",
+        "integration",
+        "smoke"
+      ],
+      "deploy_action": "patch-and-monitor"
+    },
+    "checks": {
+      "ci_run_id": "ci://client-ledger/checkout-api/9871",
+      "status": "Passed",
+      "test_refs": [
+        "ci://client-ledger/checkout-api/9871/unit",
+        "ci://client-ledger/checkout-api/9871/integration",
+        "ci://client-ledger/checkout-api/9871/smoke"
+      ],
+      "missing_test_gaps": [],
+      "relevant_to_services": [
+        "checkout-api"
+      ]
+    },
+    "approval": {
+      "approval_id": "helm.approval.triage.weekly-care.client-ledger",
+      "approver_id": "client-ledger.ops-owner",
+      "status": "Approved",
+      "scope": "deploy checkout-api openssl patch during approved maintenance window",
+      "note_hash": "sha256:triage-client-approval-note"
+    },
+    "emergency_policy": {
+      "policy_id": "client-ledger.emergency-security-patch.v2",
+      "used": true,
+      "status": "Permit",
+      "escalation_reason": "critical dependency vulnerability with public exploit evidence",
+      "authority_ref": "arbiter://policy/client-ledger/emergency-security-patch.v2"
+    },
+    "deferral": {
+      "deferred_items": [
+        "legacy checkout retry-loop refactor"
+      ],
+      "residual_risk": "recurring retry-loop may reappear if upstream TLS behavior changes again",
+      "next_review_date": "2026-05-27",
+      "accepted_by": "client-ledger.ops-owner",
+      "reason_hash": "sha256:triage-deferral-reason"
+    },
+    "production_boundary": {
+      "triage_keeper_deploys_production": false,
+      "client_authority_required": true,
+      "planned_deploy_requires_external_gate": true,
+      "last_safe_release_ref": "deploy://client-ledger/checkout-api/releases/2026-05-19"
+    },
+    "promotion_authority": {
+      "gate_id": "converge.gate.triage-maintenance-cycle",
+      "policy_version_hash": "sha256:triage-maintenance-policy",
+      "approver_id": "arbiter.triage.maintenance",
+      "approver_kind": "SystemPolicy"
+    }
+  }
+}

@@ -36,6 +36,16 @@
           "rationale": "Non-EU data residency must be blocked or remediated."
         },
         {
+          "id": "gdpr-cross-border",
+          "framework": "GDPR",
+          "field": "cross_border_transfer",
+          "owner": "compliance@reflective.example",
+          "citation": "GDPR Article 46",
+          "effective": "2025-05-25",
+          "sunset": "2027-05-25",
+          "rationale": "Cross-border transfer requires approved safeguards."
+        },
+        {
           "id": "soc2-retention-max",
           "framework": "SOC2",
           "field": "retention_days",

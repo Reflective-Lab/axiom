@@ -1,0 +1,136 @@
+{
+  "source": {
+    "run_id": "inkling-vault-run-2026-05-20-navigation-index",
+    "app_path": "/Users/kpernyer/dev/reflective/marquee-apps/inkling-notes",
+    "command": "INKLING_OUTPUT=json cargo run --example notes-capture",
+    "captured_at": "2026-05-20T10:45:00Z",
+    "domain_hint": "inkling-notes.local-vault"
+  },
+  "vault_run": {
+    "vault_run_id": "inkling.vault.navigation-index.202605201045",
+    "status": "Converged",
+    "truth_keys": [
+      "vault-snapshot-captured",
+      "import-provenance-preserved",
+      "permissions-declared",
+      "derived-metadata-separable",
+      "duplicates-evidenced",
+      "freshness-analysis-evidenced",
+      "project-hubs-traced",
+      "cleanup-suggestions-proposed",
+      "destructive-change-approval-recorded",
+      "local-first-boundary-preserved"
+    ],
+    "vault": {
+      "vault_id": "vault.local.kenneth.notes",
+      "root_path": "~/Notes",
+      "snapshot_id": "snapshot.inkling.202605201045",
+      "snapshot_hash": "sha256:inkling-vault-snapshot",
+      "visible_folders": ["Inbox", "Projects", "Areas", "Resources", "Archive"],
+      "hidden_storage": [".raw", ".enriched/navigation-index/202605201045"],
+      "note_count": 148
+    },
+    "import": {
+      "import_id": "apple-notes-import.20260520",
+      "source_kind": "AppleNotes",
+      "source_path": "~/Library/Group Containers/group.com.apple.notes",
+      "imported_note_count": 23,
+      "provenance_refs": [
+        "inkling://import/apple-notes/20260520/note-017",
+        "inkling://import/apple-notes/20260520/note-021"
+      ],
+      "source_hash": "sha256:inkling-apple-notes-import"
+    },
+    "permissions": {
+      "permission_receipt_id": "helm.permission.inkling.vault-index.20260520",
+      "pdf_extraction_enabled": true,
+      "image_ocr_enabled": false,
+      "external_link_fetch_enabled": false,
+      "destructive_edits_allowed": false,
+      "policy_ref": "arbiter://policy/inkling/local-first-vault.v1"
+    },
+    "navigation_index": {
+      "index_id": "navigation-index.202605201045",
+      "output_ref": ".enriched/navigation-index/202605201045/navigation-index.json",
+      "generated_metadata_ref": ".enriched/navigation-index/202605201045/generated-metadata.json",
+      "graph_link_count": 312,
+      "inferred_tag_count": 41,
+      "attachment_text_extractions": 8,
+      "external_fetch_count": 0
+    },
+    "duplicate_groups": [
+      {
+        "group_id": "duplicate-group.receipts-2025",
+        "note_ids": ["Projects/Taxes/receipt-import.md", "Inbox/receipt-import-copy.md"],
+        "evidence_refs": [
+          "inkling://evidence/duplicate/hash-similarity/receipt-import",
+          "inkling://evidence/duplicate/title-normalization/receipt-import"
+        ],
+        "status": "Proposed"
+      }
+    ],
+    "freshness": {
+      "stale_candidate_count": 12,
+      "review_date": "2026-05-27",
+      "evidence_refs": [
+        "inkling://evidence/freshness/projects-stale-90d",
+        "inkling://evidence/freshness/archive-candidates"
+      ],
+      "cleanup_hidden": false
+    },
+    "project_hubs": [
+      {
+        "hub_id": "project-hub.axiom-helm-contract",
+        "note_refs": [
+          "Projects/Axiom/contract.md",
+          "Projects/Helm/operator-control.md",
+          "Resources/formation-notes.md"
+        ],
+        "evidence_refs": [
+          "inkling://evidence/graph/hub-centrality/axiom-helm-contract",
+          "inkling://evidence/tag/cooccurrence/axiom-helm-contract"
+        ],
+        "confidence_basis_points": 8600
+      }
+    ],
+    "cleanup_suggestions": [
+      {
+        "suggestion_id": "cleanup.duplicate.receipts-2025",
+        "kind": "duplicate-merge",
+        "target_refs": ["Projects/Taxes/receipt-import.md", "Inbox/receipt-import-copy.md"],
+        "evidence_refs": [
+          "inkling://evidence/duplicate/hash-similarity/receipt-import"
+        ],
+        "status": "Proposed"
+      },
+      {
+        "suggestion_id": "cleanup.stale.project-archive",
+        "kind": "stale-note-review",
+        "target_refs": ["Projects/Old Launch Plan.md"],
+        "evidence_refs": [
+          "inkling://evidence/freshness/projects-stale-90d"
+        ],
+        "status": "Proposed"
+      }
+    ],
+    "destructive_change": {
+      "snapshot_required": true,
+      "user_approval_status": "NotRequested",
+      "applied_changes_count": 0,
+      "approval_ref": ""
+    },
+    "local_boundary": {
+      "original_notes_mutated": false,
+      "generated_metadata_separable": true,
+      "network_fetches_attempted": false,
+      "local_first_storage": true,
+      "platform_memory_authority_claimed": false
+    },
+    "promotion_authority": {
+      "gate_id": "converge.gate.inkling-vault-index",
+      "policy_version_hash": "sha256:inkling-local-first-policy",
+      "approver_id": "arbiter.inkling.local-first",
+      "approver_kind": "SystemPolicy"
+    }
+  }
+}

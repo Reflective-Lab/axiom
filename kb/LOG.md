@@ -5,6 +5,19 @@ source: llm
 
 # Axiom — Mutation Log
 
+## 2026-05-20
+
+- Added the Warden fifth-app probe with `tests/warden_compliance_marquee.rs`: compliance registry shadow-run publication now decodes from JTBD, adapts a recorded Warden transcript into `AxiomRunObservation`, emits the shared `ObservationAdapterReceipt`, builds the same Helm-facing `JobReadinessPacket`, and proves missing corpus scope or publication without approval yields `Invalid` readiness without authorizing registry publication.
+- Extended the Helm ledger fixture pressure with Warden-specific local receipts: deterministic backlink-only entries now cover adapter receipt, readiness packet, compliance approval receipt, and registry publication receipt, all with `authority_effect: none` and no raw rule owner/citation/document/source-path leakage.
+- Updated the Axiom-Helm-App contract conclusion after Warden: `JobReadinessPacket` is stable across five app families, and Helm Operator Control should expect a receipt family for long-running job milestones such as approval, publication, rollback refs, and deterministic ledger backlinks.
+- Recorded the next inline app-probe queue as `triage-keeper`, `plumb-execution`, and `catalyst-biz`, with Fathom Narrative deferred until temporal evidence windows and large-data comparison need direct pressure.
+- Added the Triage Keeper sixth-app probe with `tests/triage_keeper_marquee.rs`: weekly sustaining-care now decodes from JTBD, adapts a recorded maintenance-cycle transcript into `AxiomRunObservation`, emits the shared `ObservationAdapterReceipt`, builds the same Helm-facing `JobReadinessPacket`, and proves missing checks or patch planning without client approval yields `Invalid` readiness without authorizing production deploy.
+- Extended the Helm ledger receipt-family signal after Triage: deterministic backlink-only entries now cover adapter receipt, readiness packet, operator decision receipt, client approval receipt, and maintenance plan receipt, all with `authority_effect: none` and no raw package/service/ticket/source-path leakage.
+- Updated the Axiom-Helm-App contract conclusion after Triage: Warden's approval/publication receipts generalize into a likely Helm decision/approval/plan receipt family; `plumb-execution` and `catalyst-biz` remain next to pressure execution receipts, business-change approvals, and outcome tracking.
+- Classified Folio Editor, Inkling Notes, Moosemen Writer, Wykkid Preso, and Wolfgang Chat as a meaningful creative/knowledge-work probe cluster: these apps pressure human ownership of notes, claims, manuscripts, decks, and research memos rather than external operational action.
+- Added the Inkling Notes seventh-app probe with `tests/inkling_notes_marquee.rs`: local-first vault enrichment now decodes from JTBD, adapts a recorded navigation-index transcript into `AxiomRunObservation`, emits the shared `ObservationAdapterReceipt`, builds the same Helm-facing `JobReadinessPacket`, and proves missing permissions or destructive changes without snapshot evidence yields `Invalid` readiness without authorizing note mutation.
+- Extended the Helm ledger receipt-family signal after Inkling: deterministic backlink-only entries now cover adapter receipt, readiness packet, vault snapshot receipt, permission receipt, and vault index receipt, all with `authority_effect: none` and no raw note path/import/source-path leakage.
+
 ## 2026-05-19
 
 - Created `Architecture/Axiom as Verifier.md` as the E7 doctrine anchor: Axiom is the typed translator from JTBD to governed runtime contract, `.truths` is an auditable intermediate, `AxiomRunReport` is a verifier, and the explicit boundaries are no formation selection, no authority recompute, and no specialist hosting.
