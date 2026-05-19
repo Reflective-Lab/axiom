@@ -98,12 +98,16 @@ pub fn parse_truth_document(content: &str) -> Result<TruthDocument, ValidationEr
     let mut gherkin_lines = Vec::new();
     let mut idx = 0;
     let mut governance_window_open = true;
+    let mut seen_feature = false;
 
     while idx < lines.len() {
         let line = lines[idx];
         let trimmed = line.trim();
+        if trimmed.starts_with("Feature:") || trimmed.starts_with("Truth:") {
+            seen_feature = true;
+        }
 
-        if governance_window_open && is_governance_boundary_start(trimmed) {
+        if governance_window_open && is_governance_boundary_start(trimmed, seen_feature) {
             governance_window_open = false;
             gherkin_lines.push(line);
             idx += 1;
@@ -176,7 +180,8 @@ fn parse_block(
             continue;
         }
 
-        if BlockKind::from_header(trimmed).is_some() || is_governance_boundary_start(trimmed) {
+        if BlockKind::from_header(trimmed).is_some() || is_governance_boundary_start(trimmed, true)
+        {
             break;
         }
 
@@ -289,8 +294,8 @@ fn is_gherkin_section_start(trimmed: &str) -> bool {
         )
 }
 
-fn is_governance_boundary_start(trimmed: &str) -> bool {
-    trimmed.starts_with('@')
+fn is_governance_boundary_start(trimmed: &str, seen_feature: bool) -> bool {
+    (seen_feature && trimmed.starts_with('@'))
         || matches!(
             trimmed,
             t if t.starts_with("Background:")
@@ -349,6 +354,30 @@ mod tests {
         assert_eq!(
             doc.governance.authority.unwrap().requires_approval,
             vec!["security_owner".to_string()]
+        );
+    }
+
+    #[test]
+    fn parses_intent_after_feature_level_tags() {
+        let content = r"# Truth: Activate subscription
+@truth @job @commercial
+Feature: Activate subscription
+
+  Intent:
+    Outcome: activate subscription from a commercial commitment
+
+  Scenario: Activation
+    Given a valid commercial plan
+    Then the subscription becomes active
+";
+
+        let doc = parse_truth_document(content).unwrap();
+        assert!(doc.gherkin.contains("@truth @job @commercial"));
+        assert!(doc.gherkin.contains("Feature: Activate subscription"));
+        assert!(!doc.gherkin.contains("Intent:"));
+        assert_eq!(
+            doc.governance.intent.unwrap().outcome.as_deref(),
+            Some("activate subscription from a commercial commitment")
         );
     }
 
