@@ -27,6 +27,7 @@ source: llm
 
 | Page | Purpose |
 |---|---|
+| Axiom-Helm-App Contract | Ownership split and operating loops for thin Helm-operated applications backed by Axiom Truth Packages |
 | Decoder Calibration | v0.13 learning loop from audited verifier outcomes to richer future JTBD decoding |
 
 ## CLI Commands (cz)
@@ -93,6 +94,7 @@ source: llm
 |---|---|---|
 | Round-driven Formation Design | `tests/round_driven_marquee.rs`; `kb/Marquee/Round-Driven Formation Design.md` | JTBD and staged `AxiomRunReport` fixture for a dynamic design huddle plus selected work Formation |
 | Escrow Release | `tests/escrow_release_marquee.rs`; `tests/fixtures/tally_escrow_release_transcript.json`; `kb/Marquee/Escrow Release.md` | Strict-verdict fixture for irreversible commitments, recorded Tally transcript adapter, and v0.13 calibration proof |
+| Atlas Integration | `/Users/kpernyer/dev/reflective/marquee-apps/atlas-integration` | Next app vertical after Tally boundary work clarifies the Axiom-Helm-App contract |
 
 ## Scenario Tags
 

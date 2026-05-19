@@ -39,6 +39,7 @@ Axiom validates, simulates, and compiles business specifications into enforceabl
 - [[Architecture/System Overview]] — modules, pipeline, dependencies
 - [[Architecture/API Surfaces]] — public Rust and crate boundaries
 - [[Architecture/Axiom as Verifier]] — doctrine for JTBD-to-contract compilation, verifier reports, and layer boundaries
+- [[Architecture/Axiom-Helm-App Contract]] — ownership split for thin Helm-operated apps backed by Axiom truth packages
 - [[Architecture/Clause IDs and Decoder Spine]] — v0.10 decision for deterministic JTBD clause identity and decoder rules
 - [[Architecture/Decoder Calibration]] — v0.13 learning loop from verifier outcomes to richer future decoding
 - [[Architecture/Intent Compilation]] — TruthDocument to IntentPacket mapping

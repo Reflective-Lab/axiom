@@ -32,6 +32,7 @@ source: llm
 - Completed v0.12 by replacing the fixture-only Tally proof with a recorded release transcript, proving the final report carries v0.13 learning feedstock fields, and recording the residual gap from irreversible strict-verdict proof to the v1.0 three-proof set.
 - Implemented the v0.13 decoder calibration loop: `LearningEpisode`, `CalibrationKey`, `CalibrationRecord`, `CalibrationTable`, accepted calibration suggestions, and package enrichment via `apply_decoder_calibration(...)`, with tests proving Tally release outcomes produce reviewable priors without pulling Formation selection, authority recompute, or specialist hosting into Axiom.
 - Updated `Architecture/Decoder Calibration.md`, `Concepts/Truth Package.md`, and `INDEX.md` to document calibration ownership, persistence shape, review statuses, lineage requirements, and the new public types.
+- Added `Architecture/Axiom-Helm-App Contract.md` to make the app-thinning direction explicit: Axiom owns truth packages and verifier learning, Helm owns operator review and sandbox lifecycle, apps own domain state and adapters, and Tally remains the boundary-finding loop before Atlas Integration becomes the next app vertical.
 
 ## 2026-05-17
 
