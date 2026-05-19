@@ -12,21 +12,21 @@
 <img alt="gitleaks badge" src="https://img.shields.io/badge/protected%20by-gitleaks-blue">
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**The truth layer** — validation, simulation, guidance, and policy lens for [Converge](https://github.com/Reflective-Lab/converge).
+**The truth layer** — validation, simulation, guidance, intent compilation, and run-proof surface for [Converge](https://github.com/Reflective-Lab/converge).
 
-Axiom validates business specifications written in Gherkin-style `.truths` files using LLMs, generates Rust invariant code, and provides policy analysis tooling.
+Axiom validates business specifications written in Gherkin-style `.truths` files, generates Rust invariant code, compiles governed intent for Organism, and explains whether a truth can drive a real Converge run to a fixed point.
 
 ```
 ┌─────────────────────────────────────────────┐
 │  Helm          Decision frameworks          │
 ├─────────────────────────────────────────────┤
-│  Axiom         Truth validation & codegen   │  ← you are here
+│  Axiom         Truth, intent, run proof     │  ← you are here
 ├─────────────────────────────────────────────┤
-│  Organism      Reasoning, planning, debate  │
+│  Organism      Formations, planning, debate │
 ├─────────────────────────────────────────────┤
-│  Converge      Engine, governance, commit   │
+│  Converge      Fixed-point engine, commit   │
 ├─────────────────────────────────────────────┤
-│  Providers     LLMs, tools, storage         │
+│  Mosaic        Providers, tools, analytics  │
 └─────────────────────────────────────────────┘
 ```
 
@@ -36,18 +36,37 @@ The old world demanded that all ambiguity be drained *before* execution; the new
 
 **Why it matters.** Truth Documents, validated and codegenned into Rust + WASM invariants, are how upfront human intent becomes runtime-enforceable structure. Without Axiom, the rest of the stack has no fixed point worth converging on; with it, the new world keeps its rigor where the old world used to keep its workflow.
 
+## Direction: Truth to Formation to Fixed Point
+
+The next Axiom layer is the proof that a human-authored truth can drive the full stack:
+
+```text
+.truths
+  -> Axiom validates, simulates, and compiles IntentPacket
+  -> Organism admits intent, selects a Formation, and instantiates Suggestors
+  -> Mosaic supplies concrete providers, tools, analytics, and adapters
+  -> Converge runs the Formation to StopReason::Converged / CriteriaMet
+  -> Axiom returns the run proof
+```
+
+Axiom should not replace Organism or Converge. Its job is to make the stack legible: show the validated truth, the compiled intent, the selected formation, the provider assignments, the Converge stop reason, the promoted facts, and the integrity proof in one auditable report.
+
 ## What it does
 
 | Module | Purpose |
 |---|---|
 | `gherkin` | Validate `.truths` specs for business sense, compilability, and conventions |
+| `truths` | Parse governance blocks from `.truths` sources |
+| `intent` | Compile `TruthDocument` into `organism_pack::IntentPacket` |
 | `codegen` | Generate Rust invariant code from validated specs |
 | `compile` | Compile and verify generated invariants |
-| `simulation` | Simulate outcomes against specs |
+| `simulation` | Simulate convergence readiness before runtime |
 | `guidance` | Contextual guidance for spec authors |
 | `policy_lens` | Policy analysis and compliance checking |
 | `jtbd` | Jobs-to-be-done framework integration |
+| `truth_package` | Deterministic JTBD clause identity, fingerprints, and lineage closure |
 | `predicate` | Predicate logic for truth evaluation |
+| `validation_view` | UI-friendly validation and governance summaries |
 
 ## CLI
 
@@ -80,18 +99,27 @@ let validator = GherkinValidator::new(backend, ValidationConfig::default());
 let result = validator.validate_file("specs/money.truths").await?;
 ```
 
-## Converge Boundary
+Compile a `.truths` source into Organism's runtime intent contract:
 
-Axiom uses the narrow Converge provider surface for live validation help:
+```rust
+use axiom_truth::compile_intent_from_source;
+
+let intent = compile_intent_from_source(source)?;
+```
+
+## Stack Boundary
+
+Current Axiom uses the narrow public stack surfaces:
 
 - `converge-provider` for chat contracts, provider capability vocabulary, and selection types
 - `converge-manifold-adapters` for concrete backend selection helpers
+- `organism-pack` for `IntentPacket` and related runtime intent types
 
-Axiom does not depend on the Converge engine crate as part of its public integration contract.
+The v0.9 run-proof work should add an end-to-end integration path without moving ownership: Organism selects and instantiates Formations, Converge owns the engine and promotion gate, and Mosaic supplies concrete provider and suggestor capabilities.
 
 ## Architecture
 
-See [architecture/](architecture/) for ADRs and API surface documentation.
+See [architecture/](architecture/) and [kb/Architecture/Truth-to-Formation Run Proof.md](kb/Architecture/Truth-to-Formation%20Run%20Proof.md) for ADRs, API surface documentation, and the v0.9 proof target.
 
 ## License
 

@@ -5,6 +5,44 @@ source: llm
 
 # Axiom — Mutation Log
 
+## 2026-05-19
+
+- Created `Architecture/Axiom as Verifier.md` as the E7 doctrine anchor: Axiom is the typed translator from JTBD to governed runtime contract, `.truths` is an auditable intermediate, `AxiomRunReport` is a verifier, and the explicit boundaries are no formation selection, no authority recompute, and no specialist hosting.
+- Linked the new architecture page from `Home.md` so future Axiom work has a discoverable doctrine target before code follows.
+- Expanded the WASM responsibility boundary across `Architecture/WASM Compilation.md`, `Architecture/Converge Contract.md`, `Architecture/Validation Pipeline.md`, `Architecture/API Surfaces.md`, `Philosophy/Truth-Driven Development.md`, and `Architecture/Axiom as Verifier.md`: Axiom produces compiled artifacts and manifests, Helm owns sandbox hosting and plugin lifecycle, and Converge owns governed promotion, stop reasons, and integrity.
+- Added cross-references from `Architecture/Axiom as Verifier.md` to the Helm and Converge KB pages that now anchor the WASM sandbox boundary.
+- Added `Architecture/Clause IDs and Decoder Spine.md` and enriched the v0.10 milestone with the first-slice decisions: deterministic hierarchical clause IDs, separate text fingerprints, rule-based decoder spine, deferred crate split, overlay-based overrides, and set-valued verifier stop reasons.
+- Added the `truth_package` module with `JtbdInput`, `JtbdDocument`, `JtbdClause`, `ClauseId`, `ClauseFingerprint`, `ArtifactLineage`, and `LineageMap` closure checks; documented the public surface in README, API Surfaces, System Overview, INDEX, and JTBD concept docs.
+- Extended `truth_package` with `TruthPackage`, `TruthPackageId`, `TruthPackageArtifacts`, `ProofObligation`, `VerifierSpec`, `ReplayProfile`, and deterministic `decode_jtbd(JtbdInput) -> TruthPackage`; added `Concepts/Truth Package.md` as the schema reference and marked the completed v0.10 spine items in `MILESTONES.md`.
+- Added generated `.truths` override/version overlays: `TruthProjectionOverlay`, `TruthProjectionVersion`, `TruthProjectionSource`, package-level overlay application, parse/target/source-clause validation, and tests proving overlays do not mutate the deterministic generated package.
+- Added the v0.10 `AxiomRunReport` surface with `AxiomRunVerdict`, `ObservedStopReason`, promoted fact records, evidence refs, trace links, and run integrity proof summaries; updated the Truth Package concept doc, KB index, and milestone state.
+- Added Axiom's `converge_pack::ProvenanceSource` marker (`AxiomTruth` / `AXIOM_PROVENANCE`), typed `TruthPackageSeedPayload`, Truth Package seed proposal helpers, and an integration test proving Converge promotion preserves the typed Axiom payload while adding evidence refs, trace links, and integrity.
+- Closed v0.9/v0.10 milestone state in `MILESTONES.md` and sketched v0.11 around one marquee job run adapter plus computed `AxiomRunReport` verdict.
+- Added the round-driven Formation Design marquee fixture from `atelier-showcase`: a compact JTBD, a staged `AxiomRunReport` shape that preserves the design huddle and work Formation boundaries, `tests/round_driven_marquee.rs`, and `Marquee/Round-Driven Formation Design.md`. Noted that the live showcase currently fails to compile because `ConvergenceJudge` and `convergence_reached` are referenced but not defined.
+- Folded v0.10 review feedback into the docs and v0.11 plan: documented `JtbdInput::from_metadata(...)` as the legacy JTBD migration bridge, recorded the deterministic expiry sentinel as a v0.11 replacement item, and kept round-driven Formation design as the primary staged verifier proof while tracking an irreversible commitment fixture as the next strict-verdict proof.
+- Updated the v0.11 round-driven marquee note from the latest `atelier-showcase` run: origin/main now carries evidence-weighted LLM scoring, the LLM convergence judge, and the platform API migration; the live run converges at round 2, fires the halt marker, skips round 3, and runs the work Formation from the converged shortlist.
+- Aligned the round-driven Axiom fixture with the new platform-API markers (`proposer_exclusions_marker`, scorecard, convergence judgment, and halt marker) and added the first v0.11 promoted-fact/staged-observation adapter surface.
+
+## 2026-05-17
+
+- Documented the v0.9 direction: Axiom should become the truth-to-formation run-proof layer that validates `.truths`, compiles `IntentPacket`, calls Organism formation selection/compilation, and reports the Converge fixed-point result.
+- Added `Architecture/Truth-to-Formation Run Proof.md` with ownership boundaries, best-of-stack rules, the minimum proof, `AxiomRunReport` shape, and the 2026-05-17 plan.
+- Added the first v0.9 fixture proof test: a governed vendor `.truths` source compiles to `IntentPacket`, routes through Organism's `organism-diligence` formation selection, compiles and instantiates fixture Suggestors, and reaches Converge `StopReason::Converged`.
+- Published `axiom-truth` 0.8.1 to crates.io after `cargo publish --dry-run --allow-dirty` verified the release package.
+- Moved Axiom onto the published upstream release train after Mosaic, Converge, and Organism were advanced: `converge-provider` 3.9.1, `converge-manifold-adapters` 1.1.1, and `organism-pack` 1.9.0.
+- Confirmed crates.io search exposes `organism-pack` 1.9.0 and `converge-manifold-adapters` 1.1.1, replacing the previous missing-Organism blocker.
+- Reran release checks after the manifest bump: `cargo check --all-targets`, `cargo test`, `cargo package --allow-dirty`, and `cargo package --list --allow-dirty` all passed.
+- `cargo package --allow-dirty` packaged 66 files and verified `axiom-truth` 0.8.1 against the published registry path, including `converge-manifold-adapters` 1.1.1 and Organism 1.9.0 crates.
+- Ran release-readiness checks for `axiom-truth` 0.8.1: `cargo check --all-targets` passed; `cargo test` passed with 427 lib tests, 2 CLI tests, 4 Converge contract integration tests, and 7 doctests passing.
+- Tightened `Cargo.toml` package includes so the crates.io package does not ship local agent configs, CI metadata, or Obsidian workspace state.
+- Earlier in the session, adjusted the Manifold dependency to the then-published `converge-manifold-adapters` 1.1.0 requirement while keeping the `llm-all` feature.
+- Earlier in the session, confirmed the previous publish blocker: `cargo package --allow-dirty` resolved Manifold but stopped because `organism-pack` 1.8.1 and its 1.8.1 phase crates were not yet published on crates.io.
+
+## 2026-05-15
+
+- Aligned the runtime intent boundary with the Converge 3.9.1 release train: `converge-provider` 3.9.1, published `converge-manifold-adapters` 1.1.0 with `llm-all`, and `organism-pack` 1.8.1.
+- Updated the Converge contract note to make the Manifold chat helper feature requirement explicit.
+
 ## 2026-05-07
 
 - Added `intent` module — `compile_intent(&TruthDocument) -> IntentPacket` plus `compile_intent_from_source` convenience. Bridge logic moved here from `organism-intent::bridge` (deleted) to invert the dependency arrow: `axiom-truth → organism-pack` instead of `organism → axiom-truth`. 17 tests inline. Axiom now depends on `organism-pack` 1.5.1.

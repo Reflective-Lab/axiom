@@ -24,9 +24,11 @@
 
 use crate::gherkin::{ValidationError, extract_all_metas, preprocess_truths};
 use crate::truths::{TruthDocument, TruthGovernance};
+use sha2::{Digest, Sha256};
+use std::collections::BTreeSet;
 
 /// Configuration for simulation strictness.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SimulationConfig {
     /// Require Intent block with at least Outcome.
     pub require_intent: bool,
@@ -62,6 +64,7 @@ impl SimulationConfig {
         if !self.domain_profiles.contains(&profile) {
             self.domain_profiles.push(profile);
         }
+        self.domain_profiles = normalized_domain_profiles(&self.domain_profiles);
         self
     }
 }
@@ -70,7 +73,7 @@ impl SimulationConfig {
 ///
 /// Core Axiom checks remain domain-neutral. Profiles let downstream layers add
 /// richer readiness checks without baking their semantics into every run.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DomainProfile {
     /// Vendor/procurement evaluation coverage checks.
     VendorSelection,
@@ -116,7 +119,7 @@ impl std::fmt::Display for FindingSeverity {
 }
 
 /// A single simulation finding.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SimulationFinding {
     pub severity: FindingSeverity,
     pub category: &'static str,
@@ -125,7 +128,7 @@ pub struct SimulationFinding {
 }
 
 /// Vendor-selection-specific pre-flight coverage.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct VendorSelectionCoverage {
     /// Whether the spec appears to describe vendor/procurement evaluation.
     pub detected: bool,
@@ -140,13 +143,13 @@ pub struct VendorSelectionCoverage {
 }
 
 /// Domain-specific profile coverage.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DomainProfileCoverage {
     VendorSelection(VendorSelectionCoverage),
 }
 
 /// Result produced by one enabled domain profile.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DomainProfileReport {
     pub profile: DomainProfile,
     pub findings: Vec<SimulationFinding>,
@@ -154,13 +157,14 @@ pub struct DomainProfileReport {
 }
 
 /// The result of simulating a Truth spec.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SimulationReport {
     pub verdict: Verdict,
     pub findings: Vec<SimulationFinding>,
     pub governance_coverage: GovernanceCoverage,
     pub scenario_count: usize,
     pub resource_summary: ResourceSummary,
+    pub deterministic_trace: DeterministicTrace,
     pub domain_profiles: Vec<DomainProfileReport>,
 }
 
@@ -183,7 +187,7 @@ impl SimulationReport {
 }
 
 /// Which governance blocks are present and how complete they are.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct GovernanceCoverage {
     pub has_intent: bool,
     pub has_outcome: bool,
@@ -198,7 +202,7 @@ pub struct GovernanceCoverage {
 }
 
 /// Summary of resources required vs available.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ResourceSummary {
     /// Resources declared in Evidence.Requires.
     pub declared_evidence: Vec<String>,
@@ -208,6 +212,28 @@ pub struct ResourceSummary {
     pub missing: Vec<String>,
 }
 
+/// Canonical replay trace for deterministic simulation.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DeterministicTrace {
+    /// Stable SHA-256 hash of the normalized governance, config, and scenario trace.
+    pub trace_hash: String,
+    /// Number of Gherkin steps included in the trace.
+    pub step_count: usize,
+    /// Whether the trace is eligible for deterministic replay.
+    pub replayable: bool,
+    /// Steps that reference non-replayable state.
+    pub non_replayable_steps: Vec<TraceStep>,
+}
+
+/// One normalized Gherkin step in the deterministic trace.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TraceStep {
+    pub scenario_index: usize,
+    pub step_index: usize,
+    pub keyword: String,
+    pub text: String,
+}
+
 /// Run a pre-flight simulation on a parsed Truth document.
 pub fn simulate(doc: &TruthDocument, config: &SimulationConfig) -> SimulationReport {
     let mut findings = Vec::new();
@@ -215,6 +241,8 @@ pub fn simulate(doc: &TruthDocument, config: &SimulationConfig) -> SimulationRep
     let governance_coverage = check_governance(&doc.governance, config, &mut findings);
     let scenario_count = check_scenarios(&doc.gherkin, config, &mut findings);
     let resource_summary = check_resources(&doc.governance, &doc.gherkin, config, &mut findings);
+    let deterministic_trace =
+        check_determinism(&doc.governance, &doc.gherkin, config, &mut findings);
     let domain_profiles =
         check_domain_profiles(&doc.governance, &doc.gherkin, &config.domain_profiles);
     for profile_report in &domain_profiles {
@@ -236,14 +264,17 @@ pub fn simulate(doc: &TruthDocument, config: &SimulationConfig) -> SimulationRep
         Verdict::Ready
     };
 
-    SimulationReport {
+    let mut report = SimulationReport {
         verdict,
         findings,
         governance_coverage,
         scenario_count,
         resource_summary,
+        deterministic_trace,
         domain_profiles,
-    }
+    };
+    canonicalize_report(&mut report);
+    report
 }
 
 /// Parse and simulate in one step.
@@ -457,6 +488,7 @@ fn check_resources(
 
     // Extract resource references from scenario steps
     let resource_pattern = regex::Regex::new(r"[a-z][a-z0-9_]*(?:_[a-z0-9]+)+").ok();
+    let mut referenced = BTreeSet::new();
 
     if let Some(pattern) = &resource_pattern {
         for line in gherkin.lines() {
@@ -467,14 +499,12 @@ fn check_resources(
                 || trimmed.starts_with("And ")
             {
                 for m in pattern.find_iter(trimmed) {
-                    let resource = m.as_str().to_string();
-                    if !summary.referenced_in_scenarios.contains(&resource) {
-                        summary.referenced_in_scenarios.push(resource);
-                    }
+                    referenced.insert(m.as_str().to_string());
                 }
             }
         }
     }
+    summary.referenced_in_scenarios = referenced.into_iter().collect();
 
     // Find references that match evidence naming patterns but aren't declared
     if config.check_resource_availability && !summary.declared_evidence.is_empty() {
@@ -529,14 +559,140 @@ fn check_resources(
     summary
 }
 
+fn check_determinism(
+    gov: &TruthGovernance,
+    gherkin: &str,
+    config: &SimulationConfig,
+    findings: &mut Vec<SimulationFinding>,
+) -> DeterministicTrace {
+    let steps = extract_trace_steps(gherkin);
+    let non_replayable_steps: Vec<TraceStep> = steps
+        .iter()
+        .filter(|step| contains_non_replayable_reference(&step.text))
+        .cloned()
+        .collect();
+
+    if !non_replayable_steps.is_empty() {
+        let labels = non_replayable_steps
+            .iter()
+            .map(|step| format!("scenario {} step {}", step.scenario_index, step.step_index))
+            .collect::<Vec<_>>()
+            .join(", ");
+        findings.push(SimulationFinding {
+            severity: FindingSeverity::Warning,
+            category: "determinism",
+            message: format!("Scenario language references non-replayable runtime state: {labels}."),
+            suggestion: Some(
+                "Use declared Evidence fields for snapshots, or rewrite the step to avoid current time, randomness, latest external state, or live network calls.".into(),
+            ),
+        });
+    }
+
+    let mut canonical = String::new();
+    canonical.push_str("simulation-trace-v1\n");
+    canonical.push_str(&canonical_config(config));
+    canonical.push('\n');
+    canonical.push_str(&canonical_governance(gov));
+    canonical.push('\n');
+    for step in &steps {
+        canonical.push_str(&format!(
+            "{}:{}:{}:{}\n",
+            step.scenario_index, step.step_index, step.keyword, step.text
+        ));
+    }
+
+    DeterministicTrace {
+        trace_hash: deterministic_hash(canonical.as_bytes()),
+        step_count: steps.len(),
+        replayable: non_replayable_steps.is_empty(),
+        non_replayable_steps,
+    }
+}
+
+fn extract_trace_steps(gherkin: &str) -> Vec<TraceStep> {
+    let mut steps = Vec::new();
+    let mut scenario_index = 0;
+    let mut step_index = 0;
+
+    for line in gherkin.lines() {
+        let trimmed = line.trim();
+        if starts_scenario(trimmed) {
+            scenario_index += 1;
+            step_index = 0;
+            continue;
+        }
+
+        let Some((keyword, text)) = parse_step_line(trimmed) else {
+            continue;
+        };
+
+        if scenario_index == 0 {
+            scenario_index = 1;
+        }
+        step_index += 1;
+        steps.push(TraceStep {
+            scenario_index,
+            step_index,
+            keyword: keyword.to_string(),
+            text: normalize_whitespace(text),
+        });
+    }
+
+    steps
+}
+
+fn starts_scenario(trimmed: &str) -> bool {
+    trimmed.starts_with("Scenario:")
+        || trimmed.starts_with("Scenario Outline:")
+        || trimmed.starts_with("Example:")
+}
+
+fn parse_step_line(trimmed: &str) -> Option<(&'static str, &str)> {
+    for keyword in ["Given", "When", "Then", "And", "But"] {
+        if let Some(text) = trimmed
+            .strip_prefix(keyword)
+            .and_then(|rest| rest.strip_prefix(' '))
+        {
+            return Some((keyword, text));
+        }
+    }
+    None
+}
+
+fn normalize_whitespace(value: &str) -> String {
+    value.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn contains_non_replayable_reference(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    lower.contains("current time")
+        || lower.contains("current date")
+        || lower.contains("external api")
+        || lower.contains("remote api")
+        || lower.contains("live api")
+        || lower.contains("live service")
+        || lower.contains("network call")
+        || lower.contains("webhook")
+        || lower.contains("real-time")
+        || lower.contains("realtime")
+        || contains_word(&lower, "today")
+        || contains_word(&lower, "now")
+        || contains_word(&lower, "latest")
+        || contains_word(&lower, "random")
+}
+
+fn contains_word(text: &str, word: &str) -> bool {
+    text.split(|ch: char| !ch.is_ascii_alphanumeric())
+        .any(|part| part == word)
+}
+
 fn check_domain_profiles(
     gov: &TruthGovernance,
     gherkin: &str,
     profiles: &[DomainProfile],
 ) -> Vec<DomainProfileReport> {
-    profiles
-        .iter()
-        .copied()
+    normalized_domain_profiles(profiles)
+        .into_iter()
         .map(|profile| match profile {
             DomainProfile::VendorSelection => {
                 let mut findings = Vec::new();
@@ -549,6 +705,175 @@ fn check_domain_profiles(
             }
         })
         .collect()
+}
+
+fn normalized_domain_profiles(profiles: &[DomainProfile]) -> Vec<DomainProfile> {
+    let mut profiles = profiles.to_vec();
+    profiles.sort_unstable();
+    profiles.dedup();
+    profiles
+}
+
+fn canonical_config(config: &SimulationConfig) -> String {
+    let profiles = normalized_domain_profiles(&config.domain_profiles)
+        .iter()
+        .map(|profile| match profile {
+            DomainProfile::VendorSelection => "vendor-selection",
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+
+    format!(
+        "require_intent={};require_authority={};require_evidence={};require_assertions={};check_resource_availability={};domain_profiles={profiles}",
+        config.require_intent,
+        config.require_authority,
+        config.require_evidence,
+        config.require_assertions,
+        config.check_resource_availability
+    )
+}
+
+fn canonical_governance(gov: &TruthGovernance) -> String {
+    let mut lines = Vec::new();
+
+    if let Some(intent) = &gov.intent {
+        push_optional(&mut lines, "intent.outcome", intent.outcome.as_deref());
+        push_optional(&mut lines, "intent.goal", intent.goal.as_deref());
+    }
+    if let Some(authority) = &gov.authority {
+        push_optional(&mut lines, "authority.actor", authority.actor.as_deref());
+        push_values(&mut lines, "authority.may", &authority.may);
+        push_values(&mut lines, "authority.must_not", &authority.must_not);
+        push_values(
+            &mut lines,
+            "authority.requires_approval",
+            &authority.requires_approval,
+        );
+        push_optional(
+            &mut lines,
+            "authority.expires",
+            authority.expires.as_deref(),
+        );
+    }
+    if let Some(constraint) = &gov.constraint {
+        push_values(&mut lines, "constraint.budget", &constraint.budget);
+        push_values(&mut lines, "constraint.cost_limit", &constraint.cost_limit);
+        push_values(&mut lines, "constraint.must_not", &constraint.must_not);
+    }
+    if let Some(evidence) = &gov.evidence {
+        push_values(&mut lines, "evidence.requires", &evidence.requires);
+        push_values(&mut lines, "evidence.provenance", &evidence.provenance);
+        push_values(&mut lines, "evidence.audit", &evidence.audit);
+    }
+    if let Some(exception) = &gov.exception {
+        push_values(
+            &mut lines,
+            "exception.escalates_to",
+            &exception.escalates_to,
+        );
+        push_values(&mut lines, "exception.requires", &exception.requires);
+    }
+
+    lines.sort();
+    lines.join("\n")
+}
+
+fn push_optional(lines: &mut Vec<String>, key: &str, value: Option<&str>) {
+    if let Some(value) = value {
+        lines.push(format!("{key}={}", normalize_whitespace(value)));
+    }
+}
+
+fn push_values(lines: &mut Vec<String>, key: &str, values: &[String]) {
+    for value in sorted_unique(values) {
+        lines.push(format!("{key}={}", normalize_whitespace(&value)));
+    }
+}
+
+fn sorted_unique(values: &[String]) -> Vec<String> {
+    values
+        .iter()
+        .map(|value| normalize_whitespace(value))
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+fn deterministic_hash(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+
+    let hash = Sha256::digest(bytes);
+    let hash_bytes: &[u8] = hash.as_ref();
+    let mut encoded = String::with_capacity("sha256:".len() + (hash_bytes.len() * 2));
+    encoded.push_str("sha256:");
+
+    for &byte in hash_bytes {
+        encoded.push(char::from(HEX[usize::from(byte >> 4)]));
+        encoded.push(char::from(HEX[usize::from(byte & 0x0f)]));
+    }
+
+    encoded
+}
+
+fn canonicalize_report(report: &mut SimulationReport) {
+    canonicalize_findings(&mut report.findings);
+    canonicalize_strings(&mut report.resource_summary.declared_evidence);
+    canonicalize_strings(&mut report.resource_summary.referenced_in_scenarios);
+    canonicalize_strings(&mut report.resource_summary.missing);
+    report.domain_profiles.sort_by_key(|domain| domain.profile);
+
+    for domain in &mut report.domain_profiles {
+        canonicalize_findings(&mut domain.findings);
+        match &mut domain.coverage {
+            DomainProfileCoverage::VendorSelection(coverage) => {
+                canonicalize_strings(&mut coverage.vendor_references);
+            }
+        }
+    }
+
+    report
+        .deterministic_trace
+        .non_replayable_steps
+        .sort_by(|left, right| {
+            left.scenario_index
+                .cmp(&right.scenario_index)
+                .then_with(|| left.step_index.cmp(&right.step_index))
+                .then_with(|| left.keyword.cmp(&right.keyword))
+                .then_with(|| left.text.cmp(&right.text))
+        });
+}
+
+fn canonicalize_strings(values: &mut Vec<String>) {
+    *values = values
+        .iter()
+        .map(|value| normalize_whitespace(value))
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
+}
+
+fn canonicalize_findings(findings: &mut Vec<SimulationFinding>) {
+    findings.sort_by(|left, right| {
+        severity_rank(left.severity)
+            .cmp(&severity_rank(right.severity))
+            .then_with(|| left.category.cmp(right.category))
+            .then_with(|| left.message.cmp(&right.message))
+            .then_with(|| left.suggestion.cmp(&right.suggestion))
+    });
+    findings.dedup_by(|left, right| {
+        left.severity == right.severity
+            && left.category == right.category
+            && left.message == right.message
+            && left.suggestion == right.suggestion
+    });
+}
+
+fn severity_rank(severity: FindingSeverity) -> u8 {
+    match severity {
+        FindingSeverity::Error => 0,
+        FindingSeverity::Warning => 1,
+        FindingSeverity::Info => 2,
+    }
 }
 
 const VENDOR_KEYWORDS: &[&str] = &[
@@ -798,6 +1123,7 @@ Scenario: It works
             governance_coverage: GovernanceCoverage::default(),
             scenario_count: 1,
             resource_summary: ResourceSummary::default(),
+            deterministic_trace: DeterministicTrace::default(),
             domain_profiles: vec![],
         };
         assert!(report.can_converge());
@@ -811,6 +1137,7 @@ Scenario: It works
             governance_coverage: GovernanceCoverage::default(),
             scenario_count: 1,
             resource_summary: ResourceSummary::default(),
+            deterministic_trace: DeterministicTrace::default(),
             domain_profiles: vec![],
         };
         assert!(report.can_converge());
@@ -824,6 +1151,7 @@ Scenario: It works
             governance_coverage: GovernanceCoverage::default(),
             scenario_count: 0,
             resource_summary: ResourceSummary::default(),
+            deterministic_trace: DeterministicTrace::default(),
             domain_profiles: vec![],
         };
         assert!(!report.can_converge());
@@ -1417,6 +1745,97 @@ Scenario: Nobody calls the actor
             f.severity == FindingSeverity::Info
                 && f.message.contains("mysterious_committee")
                 && f.message.contains("not referenced")
+        }));
+    }
+
+    #[test]
+    fn simulation_report_is_reproducible_across_runs() {
+        let doc = parse_truth_document(full_spec()).unwrap();
+        let config = SimulationConfig {
+            domain_profiles: vec![
+                DomainProfile::VendorSelection,
+                DomainProfile::VendorSelection,
+            ],
+            ..SimulationConfig::default()
+        };
+
+        let first = simulate(&doc, &config);
+        let second = simulate(&doc, &config);
+
+        assert_eq!(first, second);
+        assert!(first.deterministic_trace.trace_hash.starts_with("sha256:"));
+        assert_eq!(first.deterministic_trace.step_count, 5);
+        assert!(first.deterministic_trace.replayable);
+    }
+
+    #[test]
+    fn resource_summary_is_canonicalized() {
+        let content = r"Truth: Resource order
+
+Intent:
+  Outcome: Check resources.
+
+Authority:
+  Actor: admin
+
+Evidence:
+  Requires: zeta_report
+  Requires: alpha_report
+  Requires: alpha_report
+  Audit: decision_log
+
+Scenario: Uses resources
+  Given zeta_report exists
+  And alpha_report exists
+  When admin reviews beta_assessment
+  Then alpha_report passes
+";
+        let doc = parse_truth_document(content).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+
+        assert_eq!(
+            report.resource_summary.declared_evidence,
+            vec!["alpha_report".to_string(), "zeta_report".to_string()]
+        );
+        assert_eq!(
+            report.resource_summary.referenced_in_scenarios,
+            vec![
+                "alpha_report".to_string(),
+                "beta_assessment".to_string(),
+                "zeta_report".to_string()
+            ]
+        );
+        assert_eq!(
+            report.resource_summary.missing,
+            vec!["beta_assessment".to_string()]
+        );
+    }
+
+    #[test]
+    fn non_replayable_language_warns_and_marks_trace() {
+        let content = r"Truth: Live data
+
+Intent:
+  Outcome: Check latest state.
+
+Authority:
+  Actor: admin
+
+Evidence:
+  Requires: snapshot_report
+
+Scenario: Uses live data
+  Given snapshot_report exists
+  When admin calls the remote API for the latest value
+  Then the value is accepted
+";
+        let doc = parse_truth_document(content).unwrap();
+        let report = simulate(&doc, &SimulationConfig::default());
+
+        assert!(!report.deterministic_trace.replayable);
+        assert_eq!(report.deterministic_trace.non_replayable_steps.len(), 1);
+        assert!(report.findings.iter().any(|finding| {
+            finding.category == "determinism" && finding.message.contains("non-replayable")
         }));
     }
 

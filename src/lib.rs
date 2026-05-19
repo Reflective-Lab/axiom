@@ -51,6 +51,7 @@
 
 pub mod codegen;
 pub mod compile;
+pub mod editor;
 pub mod gherkin;
 pub mod guidance;
 pub mod intent;
@@ -58,7 +59,9 @@ pub mod jtbd;
 pub mod mock_llm;
 pub mod policy_lens;
 pub mod predicate;
+pub mod provenance;
 pub mod simulation;
+pub mod truth_package;
 pub mod truths;
 pub mod validation_view;
 
@@ -74,9 +77,25 @@ pub use mock_llm::StaticChatBackend;
 pub use policy_lens::{
     PolicyCoverageReport, PolicyRequirements, PolicyRule, SpendingThreshold, check_coverage,
 };
+pub use provenance::{
+    AXIOM_PROVENANCE, AxiomTruth, TruthPackageSeedPayload, truth_package_seed_fact,
+    truth_package_seed_facts,
+};
 pub use simulation::{
-    DomainProfile, DomainProfileCoverage, DomainProfileReport, SimulationConfig, SimulationReport,
-    VendorSelectionCoverage, Verdict, simulate, simulate_spec,
+    DeterministicTrace, DomainProfile, DomainProfileCoverage, DomainProfileReport,
+    SimulationConfig, SimulationReport, TraceStep, VendorSelectionCoverage, Verdict, simulate,
+    simulate_spec,
+};
+pub use truth_package::{
+    ArtifactId, ArtifactKind, ArtifactLineage, AxiomRunObservation, AxiomRunReport,
+    AxiomRunStageRecord, AxiomRunVerdict, ClauseDisposition, ClauseFingerprint, ClauseId,
+    ClauseInput, DecodeJtbdError, EvidenceRefRecord, ExpectedStopReason, GeneratedArtifact,
+    JtbdClause, JtbdClauseKind, JtbdDocument, JtbdInput, LineageError, LineageMap,
+    ObservedStopReason, PromotedFactRecord, ProofObligation, ProofObligationKind, ReplayProfile,
+    RunIntegrityProof, TraceLinkRecord, TruthOverlayError, TruthPackage, TruthPackageArtifacts,
+    TruthPackageError, TruthPackageId, TruthProjectionOverlay, TruthProjectionSource,
+    TruthProjectionVersion, VerifierSpec, apply_truth_projection_overlay, canonicalize_clause_text,
+    decode_jtbd,
 };
 pub use truths::{
     AuthorityBlock, ConstraintBlock, EvidenceBlock, ExceptionBlock, IntentBlock, TruthDocument,

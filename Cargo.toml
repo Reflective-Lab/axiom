@@ -9,6 +9,25 @@ description = "Axiom — the truth layer: validation, simulation, guidance, and 
 documentation = "https://docs.rs/axiom-truth"
 keywords = ["gherkin", "testing", "governance", "axiom", "truth"]
 categories = ["development-tools", "development-tools::testing"]
+include = [
+  "/Cargo.toml",
+  "/Cargo.lock",
+  "/LICENSE",
+  "/README.md",
+  "/CHANGELOG.md",
+  "/src/**",
+  "/tests/**",
+  "/architecture/**",
+  "/kb/Architecture/**",
+  "/kb/Building/**",
+  "/kb/Concepts/**",
+  "/kb/Experiments/**",
+  "/kb/Philosophy/**",
+  "/kb/Workflow/**",
+  "/kb/Home.md",
+  "/kb/INDEX.md",
+  "/kb/LOG.md",
+]
 
 [lib]
 name = "axiom_truth"
@@ -19,9 +38,10 @@ name = "cz"
 path = "src/bin/cz/main.rs"
 
 [dependencies]
-converge-provider = "3.8.1"
-converge-manifold-adapters = "1"
-organism-pack = { path = "../organism/crates/pack", version = "1.5.1" }
+converge-provider = "3.9.1"
+converge-pack = "3.9.1"
+converge-manifold-adapters = { version = "1.1.1", features = ["llm-all"] }
+organism-pack = { path = "../organism/crates/pack", version = "1.9.0" }
 futures = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
@@ -37,8 +57,15 @@ colored = "3.1.1"
 chrono = { version = ">=0.4.20, <0.5", features = ["serde"] }
 serde_yaml = "0.9"
 async-trait = "0.1"
+uuid = "1"
+
+# Editor infrastructure
+ropey = "2.0.0-beta.1"
+tree-sitter = "0.26"
 
 [dev-dependencies]
+converge-kernel = "3.9.1"
+organism-runtime = { path = "../organism/crates/runtime", version = "1.9.0" }
 proptest = "1.5"
 syn = { version = "2", features = ["full", "parsing"] }
 
@@ -74,3 +101,15 @@ missing_fields_in_debug = "allow"
 [profile.release]
 codegen-units = 1
 lto = true
+
+[patch.crates-io]
+converge-core = { path = "../converge/crates/core" }
+converge-experience = { path = "../converge/crates/experience" }
+converge-kernel = { path = "../converge/crates/kernel" }
+converge-model = { path = "../converge/crates/model" }
+converge-optimization = { path = "../converge/crates/optimization" }
+converge-pack = { path = "../converge/crates/pack" }
+converge-provider = { path = "../converge/crates/provider" }
+converge-storage = { path = "../converge/crates/storage" }
+converge-manifold-adapters = { path = "../../mosaic-extensions/manifold-adapters/crates/manifold" }
+converge-prism-analytics = { path = "../../mosaic-extensions/prism-analytics/crates/prism" }

@@ -5,7 +5,21 @@ source: llm
 
 # Jobs-to-be-Done (JTBD)
 
-The `jtbd` module extracts Jobs-to-be-Done metadata from comments in truth files, connecting specifications to user outcomes.
+The v0.10 direction is: JTBD becomes the source input for a Truth Package, not
+only metadata embedded inside a `.truths` file. The existing `jtbd` module still
+extracts legacy comment metadata. The new `truth_package` module starts the
+source-first path with `JtbdInput`, deterministic `ClauseId`s, text
+fingerprints, and lineage closure.
+
+The `jtbd` module extracts Jobs-to-be-Done metadata from comments in truth
+files, connecting specifications to user outcomes. That legacy comment format
+is now a migration source, not the destination format for new package work.
+`JtbdInput::from_metadata(...)` lifts parsed `JTBDMetadata` into structured
+`JtbdInput`; from there the package spine owns clause IDs, fingerprints,
+lineage, generated `.truths`, and verifier expectations.
+
+See [[Architecture/Clause IDs and Decoder Spine]] for the clause identity
+decision.
 
 ## Format
 
@@ -45,3 +59,13 @@ Plain text:
 ## Purpose
 
 JTBD metadata connects technical invariants back to human outcomes. It flows into manifests and can inform prioritization and impact analysis.
+
+For new package work, use the source-first spine:
+
+```text
+JtbdInput
+  -> JtbdDocument
+  -> ClauseId + ClauseFingerprint
+  -> LineageMap
+  -> Truth Package artifacts
+```

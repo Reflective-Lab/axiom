@@ -81,6 +81,8 @@ Every generated artifact must point back to the JTBD clause it serves. Every
 JTBD clause must be used, explicitly deferred, or explicitly rejected. Orphan
 artifacts and unused clauses are verifier failures, not cosmetic lint.
 
+The v0.10 schema reference lives in [[../Concepts/Truth Package]].
+
 ## AxiomRunReport
 
 `AxiomRunReport` is a verifier, not a dashboard summary.

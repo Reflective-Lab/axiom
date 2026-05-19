@@ -5,19 +5,20 @@ source: llm
 
 # Truth-Driven Development
 
-Truth-Driven Development (TDD — intentionally overloaded) is the methodology behind Axiom. Business invariants are expressed as `.truths` files, validated, compiled to WASM, and deployed to the Converge engine.
+Truth-Driven Development (TDD — intentionally overloaded) is the methodology behind Axiom. Business invariants are expressed as `.truths` files, validated, compiled to WASM, hosted by Helm when executable plugins are needed, and enforced at Converge's governed promotion boundary.
 
 ## The Flow
 
 ```
-Business intent → .truths file → Axiom validation → WASM invariant → Converge engine
+Business intent → .truths file → Axiom validation → WASM artifact → Helm sandbox → Converge promotion boundary
 ```
 
 1. A domain expert writes a `.truths` file expressing a business invariant
 2. Axiom validates the spec (business sense, compilability, conventions)
 3. Axiom simulates convergence readiness
 4. Axiom compiles the spec to a WASM module
-5. The WASM module is deployed to Converge as an invariant or suggestor
+5. Helm hosts executable WASM artifacts in its sandbox when runtime execution is needed
+6. Converge decides whether resulting proposals or invariant verdicts may affect governed context
 
 ## What Makes a Good Truth
 
