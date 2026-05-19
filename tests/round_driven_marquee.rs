@@ -1,7 +1,8 @@
 use axiom_truth::{
     AxiomRunObservation, AxiomRunReport, AxiomRunStageRecord, AxiomRunVerdict, ClauseId,
-    ClauseInput, EvidenceRefRecord, JtbdClauseKind, JtbdInput, ObservedStopReason,
-    PromotedFactRecord, RunIntegrityProof, TimeBudget, TraceLinkRecord, TruthPackage, decode_jtbd,
+    ClauseInput, EvidenceRefRecord, FactLineageAuditError, JtbdClauseKind, JtbdInput,
+    ObservedStopReason, PromotedFactRecord, RunIntegrityProof, TimeBudget, TraceLinkRecord,
+    TruthPackage, decode_jtbd,
 };
 
 fn round_driven_jtbd() -> JtbdInput {
@@ -289,6 +290,55 @@ fn round_driven_marquee_report_preserves_design_and_work_stage_boundaries() {
             .iter()
             .any(|note| note.contains("round 3 skipped"))
     );
+}
+
+#[test]
+fn round_driven_marquee_lineage_violation_yields_invalid_verdict() {
+    let package = decode_jtbd(round_driven_jtbd()).expect("round-driven JTBD decodes");
+    let unknown_clause = ClauseId::new(&package.source_jtbd.key, "evidence.unknown_key");
+    let observation = AxiomRunObservation {
+        stop_reason: ObservedStopReason::Converged,
+        promoted_facts: vec![fact(
+            "Diagnostic",
+            "stray-fact",
+            "fact citing a clause that does not belong to the package",
+            vec![unknown_clause],
+        )],
+        integrity: RunIntegrityProof::sha256_merkle("sha256:lineage-violation", 1, 1),
+        replay_notes: vec![],
+        run_stages: Vec::new(),
+    };
+
+    let report = AxiomRunReport::verify(&package, observation);
+    assert_eq!(report.verdict, AxiomRunVerdict::Invalid);
+
+    match report.audit_fact_lineage(&package) {
+        Err(FactLineageAuditError::UnknownClause { fact_id, .. }) => {
+            assert_eq!(fact_id, "stray-fact");
+        }
+        other => panic!("expected UnknownClause from audit, got {other:?}"),
+    }
+}
+
+#[test]
+fn round_driven_marquee_forbidden_action_in_summary_yields_invalid_verdict() {
+    let package = decode_jtbd(round_driven_jtbd()).expect("round-driven JTBD decodes");
+    let scorecard = clause_id(&package, "scorecard");
+    let observation = AxiomRunObservation {
+        stop_reason: ObservedStopReason::Converged,
+        promoted_facts: vec![fact(
+            "Diagnostic",
+            "premature-shortlist-leak",
+            "shortlist is emitted before critic and scorer sentinels — guard failed at round 1",
+            vec![scorecard],
+        )],
+        integrity: RunIntegrityProof::sha256_merkle("sha256:forbidden-action", 1, 1),
+        replay_notes: vec![],
+        run_stages: Vec::new(),
+    };
+
+    let report = AxiomRunReport::verify(&package, observation);
+    assert_eq!(report.verdict, AxiomRunVerdict::Invalid);
 }
 
 fn clause_id(package: &TruthPackage, key: &str) -> ClauseId {
