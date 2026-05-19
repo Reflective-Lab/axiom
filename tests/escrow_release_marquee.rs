@@ -361,7 +361,7 @@ fn tally_release_report_has_learning_episode_feedstock() {
         episode
             .source_clause_signals
             .iter()
-            .filter(|signal| signal.covered_as_evidence)
+            .filter(|signal| signal.coverage_status.was_covered_as_evidence())
             .count(),
         5
     );
@@ -369,7 +369,7 @@ fn tally_release_report_has_learning_episode_feedstock() {
         episode
             .source_clause_signals
             .iter()
-            .filter(|signal| signal.covered_as_failure_guard)
+            .filter(|signal| signal.coverage_status.was_covered_as_failure_guard())
             .count(),
         1
     );

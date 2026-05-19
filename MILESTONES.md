@@ -220,9 +220,10 @@ from the accepted table.
 - [x] Keep raw run history in downstream stores; Axiom persists only distilled decoder priors — doctrine in `kb/Architecture/Decoder Calibration.md` "Raw History Versus Distilled Priors" section; `CalibrationRecord` carries `source_episode_ids` backlinks only, not full report bodies.
 - [x] Update operator docs for calibration review workflow — `kb/Architecture/Decoder Calibration.md` "Operator Review Workflow" section walks the 6-step loop from propose → load → review → persist → reapply.
 
-## Next: v0.15 — Uncovered-Clause Calibration
+## Completed: v0.15 — Uncovered-Clause Calibration
 **Epic:** E7 (Axiom translates human jobs into governed runtime contracts)
 **Target:** Extend decoder calibration so the loop also learns from clauses that recurrently go uncovered. An uncovered evidence clause becomes a reviewed decoder *concern* — a typed signal that future packages may want better prompts, alternate evidence scaffolding, default expectations, or operator-facing warnings. The source JTBD remains authoritative; Axiom never silently weakens a stated requirement.
+**Completed:** 2026-05-19 — `ClauseCoverageStatus` + `CalibrationSignalKind` enums, `Concern` records for uncovered `EvidenceRequired` clauses on `Invalid` / `Blocked` verdicts, separate `CalibrationConcern` artifact channel, non-weakening invariant proven, JSONL persistence preserves the new signal shape.
 
 v0.13 + v0.14 only learn from clauses the run *covered* — cited by a
 promoted fact as evidence or as a failure guard. The complementary signal
@@ -290,40 +291,47 @@ JTBD's evidence requirements.
   clause was truly missing. Open for `Exhausted` — budget ran out
   before evidence could arrive; the signal is real but noisier.
 
-### Candidate checklist
+### Checklist
 
-- [ ] Add `ClauseCoverageStatus` enum and replace the two booleans on
+- [x] Add `ClauseCoverageStatus` enum and replace the two booleans on
       `LearningClauseSignal` with `coverage_status`. Existing covered
       clauses migrate to `CoveredAsEvidence` / `CoveredAsFailureGuard`
       / `CoveredAsEvidenceAndFailureGuard`.
-- [ ] Add `CalibrationSignalKind` enum (`Reinforcement` | `Concern`)
-      and thread it through the calibration record. Existing v0.13
-      covered-clause records carry `Reinforcement` so v0.13 / v0.14
-      tests pass unchanged.
-- [ ] Emit `Concern` calibration records for uncovered
-      `EvidenceRequired` clauses on `Invalid` (decide `Blocked` /
-      `Exhausted` explicitly during implementation).
-- [ ] Fixture: a verifier run with missing evidence produces an
-      uncovered-clause `Concern` record; the operator accepts it and
-      the next decoded package reflects the decoder concern (prompt,
-      default, warning, or alternate scaffolding — pick one in
-      implementation).
-- [ ] **Non-weakening invariant** — prove the source JTBD's evidence
-      requirements and forbidden actions are unchanged by `Concern`
-      record acceptance. A regenerated package's
-      `verifier_spec.required_evidence` and `forbidden_actions` must
-      be byte-identical to the pre-calibration version.
-- [ ] Persistence: uncovered records survive JSONL round-trip with no
-      schema regressions; the `golden_replay_*` test pattern still
-      passes; `to_jsonl` remains byte-deterministic across the new
-      signal shape.
-- [ ] Move the v0.13 "Known Limitations" entry on uncovered clauses
-      out of limitations and into the body of `kb/Architecture/Decoder
-      Calibration.md`; add a "Concerns vs Reinforcements" section.
-- [ ] Prove uncovered-clause learning does not select Formations,
+- [x] Add `CalibrationSignalKind` enum (`Reinforcement` | `Concern`)
+      and thread it through `CalibrationValue` with
+      `#[serde(default)]` so v0.13/v0.14 persisted JSONL still parses
+      cleanly. v0.13 covered-clause records explicitly carry
+      `Reinforcement`; v0.13 + v0.14 test suites pass unchanged.
+- [x] Emit `Concern` calibration records for uncovered
+      `EvidenceRequired` clauses on `Invalid` and `Blocked` verdicts.
+      `Satisfied` does not fire (no missing required evidence by
+      definition); `Exhausted` is deferred (noisier signal than the
+      other two — open question recorded in kb).
+- [x] Fixture: an `Invalid` verifier run with missing evidence
+      produces typed `Concern` records; the operator accepts them;
+      `apply_decoder_calibration` adds them to the new
+      `TruthPackageArtifacts.calibration_concerns` channel as
+      `ArtifactKind::CalibrationConcern` artifacts (distinct from
+      reinforcement `CalibrationSuggestion` artifacts).
+- [x] **Non-weakening invariant** — `apply_decoder_calibration`
+      captures the package's `verifier_spec.required_evidence` and
+      `forbidden_actions` before enrichment and asserts byte-identical
+      results after, regardless of which concerns are accepted. A
+      dedicated test (`accepted_concerns_do_not_weaken_verifier_spec`)
+      proves this against a real Concern-bearing fixture.
+- [x] Persistence: `Concern` records survive JSONL round-trip; the
+      v0.14 byte-determinism + golden-replay tests still pass with the
+      new signal shape; the wire format carries
+      `"signal_kind":"concern"` / `"signal_kind":"reinforcement"`.
+- [x] Move the v0.13 "Known Limitations" entry on uncovered clauses
+      out of limitations; add a "Concerns Versus Reinforcements"
+      section to `kb/Architecture/Decoder Calibration.md` documenting
+      the typed signal, verdict-trigger logic, scope-clause exclusion,
+      and the non-weakening invariant.
+- [x] Prove uncovered-clause learning does not select Formations,
       recompute authority, host specialists, or modify the source JTBD
-      — extend the v0.13 serialized-records boundary test with the new
-      signal kind.
+      — extended boundary test on serialized records covers both
+      Reinforcement and Concern signal kinds.
 
 ### Out of scope (deferred)
 
@@ -336,6 +344,18 @@ JTBD's evidence requirements.
 - Helm-side operator UI for "this job keeps missing this class of
   evidence" — Helm owns that surface; v0.15 only produces the typed
   signal Helm consumes.
+
+### Near-term product sequence
+
+- Continue Tally for a few more iterations as the boundary-finding loop:
+  identify which release controls belong in Axiom truth packages, which
+  belong in Helm operator surfaces, and which must stay in the Tally app.
+- Keep `kb/Architecture/Axiom-Helm-App Contract.md` updated during that
+  loop so the architecture follows real pressure from the app rather than
+  abstract layering.
+- After Tally clarifies the contract, use
+  `/Users/kpernyer/dev/reflective/marquee-apps/atlas-integration` as the
+  next app vertical and start from the clarified Axiom-Helm-App split.
 
 ## Completed: v0.4.1 — Initial Release
 Completed: 2026-04-15

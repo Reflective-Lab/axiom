@@ -359,6 +359,7 @@ pub enum ArtifactKind {
     InvariantArtifact,
     SimulationCase,
     CalibrationSuggestion,
+    CalibrationConcern,
     ReplayProfile,
     IntentField,
     ProofObligation,
@@ -450,6 +451,13 @@ pub struct TruthPackageArtifacts {
     pub invariant_expectations: Vec<GeneratedArtifact>,
     #[serde(default)]
     pub calibration_suggestions: Vec<GeneratedArtifact>,
+    /// Reviewed decoder *concerns* — clauses the runtime was required to
+    /// satisfy but did not. v0.15 introduces this as a typed signal: future
+    /// decoded packages may add prompts, defaults, warnings, or alternate
+    /// scaffolding for these clause shapes. The source JTBD's evidence
+    /// requirements are never weakened by accepting a concern.
+    #[serde(default)]
+    pub calibration_concerns: Vec<GeneratedArtifact>,
 }
 
 /// Reviewable generated artifact summary.
@@ -1105,12 +1113,21 @@ impl LearningEpisode {
             .source_jtbd
             .clauses
             .iter()
-            .map(|clause| LearningClauseSignal {
-                clause_id: clause.id.clone(),
-                clause_kind: clause.kind,
-                fingerprint: clause.fingerprint.clone(),
-                covered_as_evidence: audit.evidence_coverage.contains(&clause.id),
-                covered_as_failure_guard: audit.failure_coverage.contains(&clause.id),
+            .map(|clause| {
+                let evidence = audit.evidence_coverage.contains(&clause.id);
+                let failure_guard = audit.failure_coverage.contains(&clause.id);
+                let coverage_status = match (evidence, failure_guard) {
+                    (true, true) => ClauseCoverageStatus::CoveredAsEvidenceAndFailureGuard,
+                    (true, false) => ClauseCoverageStatus::CoveredAsEvidence,
+                    (false, true) => ClauseCoverageStatus::CoveredAsFailureGuard,
+                    (false, false) => ClauseCoverageStatus::Uncovered,
+                };
+                LearningClauseSignal {
+                    clause_id: clause.id.clone(),
+                    clause_kind: clause.kind,
+                    fingerprint: clause.fingerprint.clone(),
+                    coverage_status,
+                }
             })
             .collect();
 
@@ -1153,8 +1170,56 @@ pub struct LearningClauseSignal {
     pub clause_id: ClauseId,
     pub clause_kind: JtbdClauseKind,
     pub fingerprint: ClauseFingerprint,
-    pub covered_as_evidence: bool,
-    pub covered_as_failure_guard: bool,
+    pub coverage_status: ClauseCoverageStatus,
+}
+
+/// Whether a clause was cited by promoted facts during the run that produced
+/// the surrounding `LearningEpisode`.
+///
+/// v0.15 replaces the v0.13 pair of booleans (`covered_as_evidence` plus
+/// `covered_as_failure_guard`) with this enum so an `Uncovered`
+/// `EvidenceRequired` clause can be expressed as a typed signal — the input
+/// to v0.15's calibration *concern* records.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ClauseCoverageStatus {
+    /// No promoted fact cited this clause. For `EvidenceRequired` clauses
+    /// this is the "missing evidence" signal v0.15 learns from. For scope
+    /// clauses (`Actor`, `FunctionalJob`, `SoThat`) this is the normal
+    /// resting state and is ignored by calibration.
+    #[default]
+    Uncovered,
+    /// At least one promoted fact cited this clause as evidence and none as
+    /// a failure guard.
+    CoveredAsEvidence,
+    /// At least one promoted fact cited this clause as a failure guard and
+    /// none as evidence.
+    CoveredAsFailureGuard,
+    /// At least one promoted fact cited this clause in both roles.
+    CoveredAsEvidenceAndFailureGuard,
+}
+
+impl ClauseCoverageStatus {
+    /// True when the clause appeared as evidence in any promoted fact.
+    pub fn was_covered_as_evidence(self) -> bool {
+        matches!(
+            self,
+            Self::CoveredAsEvidence | Self::CoveredAsEvidenceAndFailureGuard
+        )
+    }
+
+    /// True when the clause appeared as a failure guard in any promoted fact.
+    pub fn was_covered_as_failure_guard(self) -> bool {
+        matches!(
+            self,
+            Self::CoveredAsFailureGuard | Self::CoveredAsEvidenceAndFailureGuard
+        )
+    }
+
+    /// True when no promoted fact cited this clause.
+    pub fn is_uncovered(self) -> bool {
+        matches!(self, Self::Uncovered)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -1199,6 +1264,37 @@ pub struct CalibrationValue {
     pub confidence_basis_points: u16,
     pub rationale: String,
     pub source_episode_ids: Vec<ArtifactId>,
+    /// Whether this prior reinforces a working pattern or raises a concern
+    /// about an unsatisfied evidence requirement.
+    ///
+    /// v0.15 introduces this field. `#[serde(default)]` preserves the
+    /// v0.13/v0.14 wire format: persisted records without this field
+    /// deserialize as `Reinforcement`, which matches their semantics. Accepted
+    /// `Reinforcement` records add `CalibrationSuggestion` artifacts to a
+    /// regenerated package; accepted `Concern` records add
+    /// `CalibrationConcern` artifacts. Neither path modifies the source
+    /// JTBD's evidence requirements or forbidden actions.
+    #[serde(default)]
+    pub signal_kind: CalibrationSignalKind,
+}
+
+/// Whether a calibration record reinforces a covered clause or raises a
+/// concern about an uncovered one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CalibrationSignalKind {
+    /// The decoder should keep reaching for this prior — a clause shape that
+    /// was covered by a promoted fact and contributed to a successful (or
+    /// otherwise informative) run. Default to preserve v0.13/v0.14
+    /// semantics for records persisted before v0.15.
+    #[default]
+    Reinforcement,
+    /// The clause shape was required (or forbidden) and the run did not
+    /// produce a satisfying citation. The decoder should treat this as a
+    /// warning, prompt, default-expectation candidate, or alternate
+    /// scaffolding hook on the next package generation. The source JTBD
+    /// remains authoritative.
+    Concern,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1392,23 +1488,47 @@ pub fn calibration_records_from_learning_episode(
 
     let mut records = Vec::new();
     for signal in &episode.source_clause_signals {
-        if !signal.covered_as_evidence && !signal.covered_as_failure_guard {
-            continue;
-        }
         let clause = package
             .source_jtbd
             .clause(&signal.clause_id)
             .ok_or_else(|| CalibrationError::UnknownClause {
                 clause_id: signal.clause_id.clone(),
             })?;
-        records.push(calibration_record_for_clause(
-            package, episode, clause, signal,
-        ));
+
+        if !signal.coverage_status.is_uncovered() {
+            records.push(reinforcement_record_for_clause(
+                package, episode, clause, signal,
+            ));
+        } else if should_emit_concern(clause.kind, episode.verdict) {
+            records.push(concern_record_for_clause(package, episode, clause));
+        }
     }
     Ok(records)
 }
 
-fn calibration_record_for_clause(
+/// v0.15 — should `calibration_records_from_learning_episode` emit a `Concern`
+/// record for an uncovered clause given the run's verdict?
+///
+/// Concerns only fire for `EvidenceRequired` clauses (uncovered failure modes
+/// are normal: most failure modes don't get explicitly cited by promoted
+/// facts; only the ones a fact actively guards against do). Verdicts that
+/// trigger concerns:
+///
+/// - `Invalid` — missing evidence is one root cause of an invalid verdict;
+///   strongest signal.
+/// - `Blocked` — a gate stopped the run before evidence could arrive; still
+///   useful signal about which clause shapes recurrently delay promotion.
+/// - `Satisfied` — no required clause was truly missing (a Satisfied run
+///   means all evidence was cited), so no concern.
+/// - `Exhausted` — budget ran out before evidence could arrive; the signal
+///   is real but noisier than `Invalid` / `Blocked`. Deferred to a future
+///   milestone if the noise turns out to be tolerable.
+fn should_emit_concern(clause_kind: JtbdClauseKind, verdict: AxiomRunVerdict) -> bool {
+    clause_kind == JtbdClauseKind::EvidenceRequired
+        && matches!(verdict, AxiomRunVerdict::Invalid | AxiomRunVerdict::Blocked)
+}
+
+fn reinforcement_record_for_clause(
     package: &TruthPackage,
     episode: &LearningEpisode,
     clause: &JtbdClause,
@@ -1426,9 +1546,10 @@ fn calibration_record_for_clause(
             episode.source_run_id, episode.verdict, package.package_id
         ),
         source_episode_ids: vec![episode.episode_id.clone()],
+        signal_kind: CalibrationSignalKind::Reinforcement,
     };
 
-    if signal.covered_as_evidence {
+    if signal.coverage_status.was_covered_as_evidence() {
         value
             .suggested_evidence_templates
             .push(clause.canonical_text.clone());
@@ -1440,7 +1561,7 @@ fn calibration_record_for_clause(
             .suggested_verifier_expectations
             .push(clause.canonical_text.clone());
     }
-    if signal.covered_as_failure_guard {
+    if signal.coverage_status.was_covered_as_failure_guard() {
         value
             .suggested_failure_scenarios
             .push(clause.canonical_text.clone());
@@ -1460,6 +1581,54 @@ fn calibration_record_for_clause(
         value,
         status: CalibrationStatus::Proposed,
         review_note: None,
+    }
+}
+
+fn concern_record_for_clause(
+    package: &TruthPackage,
+    episode: &LearningEpisode,
+    clause: &JtbdClause,
+) -> CalibrationRecord {
+    let key = CalibrationKey::for_clause(clause, &episode.domain_hint, CALIBRATION_DECODER_RULE_ID);
+    let value = CalibrationValue {
+        // Concern records do not suggest templates/scenarios/policy/verifier
+        // entries — they raise a typed warning about an uncovered clause.
+        // The decoder consults `signal_kind` and produces a different
+        // artifact kind on apply.
+        suggested_evidence_templates: Vec::new(),
+        suggested_failure_scenarios: Vec::new(),
+        suggested_policy_requirements: Vec::new(),
+        suggested_verifier_expectations: Vec::new(),
+        confidence_basis_points: confidence_for_concern(episode.verdict),
+        rationale: format!(
+            "concern from {} verdict {:?} for package {}: evidence requirement \"{}\" was not cited by any promoted fact",
+            episode.source_run_id, episode.verdict, package.package_id, clause.canonical_text
+        ),
+        source_episode_ids: vec![episode.episode_id.clone()],
+        signal_kind: CalibrationSignalKind::Concern,
+    };
+
+    let record_id = calibration_record_id(&key, &episode.episode_id);
+    CalibrationRecord {
+        record_id,
+        key,
+        value,
+        status: CalibrationStatus::Proposed,
+        review_note: None,
+    }
+}
+
+fn confidence_for_concern(verdict: AxiomRunVerdict) -> u16 {
+    match verdict {
+        // Invalid runs give the strongest concern signal: a contract was
+        // declared and demonstrably not met.
+        AxiomRunVerdict::Invalid => 8_000,
+        // Blocked runs are weaker: the evidence might still arrive after
+        // the HITL gate opens.
+        AxiomRunVerdict::Blocked => 5_500,
+        // The other verdicts do not emit concern records today; fall through
+        // to a low default so any future caller sees a conservative weight.
+        AxiomRunVerdict::Satisfied | AxiomRunVerdict::Exhausted => 3_000,
     }
 }
 
@@ -1514,16 +1683,23 @@ fn calibration_record_id(key: &CalibrationKey, episode_id: &ArtifactId) -> Artif
 }
 
 fn calibration_summary(value: &CalibrationValue) -> String {
-    if let Some(first) = value.suggested_evidence_templates.first() {
-        return format!("evidence template: {first}");
+    match value.signal_kind {
+        CalibrationSignalKind::Reinforcement => {
+            if let Some(first) = value.suggested_evidence_templates.first() {
+                return format!("suggests evidence template: {first}");
+            }
+            if let Some(first) = value.suggested_failure_scenarios.first() {
+                return format!("suggests failure scenario: {first}");
+            }
+            if let Some(first) = value.suggested_policy_requirements.first() {
+                return format!("suggests policy requirement: {first}");
+            }
+            "reinforces reviewed decoder prior".to_string()
+        }
+        CalibrationSignalKind::Concern => {
+            format!("raises decoder concern: {}", value.rationale)
+        }
     }
-    if let Some(first) = value.suggested_failure_scenarios.first() {
-        return format!("failure scenario: {first}");
-    }
-    if let Some(first) = value.suggested_policy_requirements.first() {
-        return format!("policy requirement: {first}");
-    }
-    "reviewed decoder prior".to_string()
 }
 
 pub fn apply_decoder_calibration(
@@ -1531,18 +1707,34 @@ pub fn apply_decoder_calibration(
     table: &CalibrationTable,
     domain_hint: &str,
 ) -> Result<TruthPackage, CalibrationError> {
+    let baseline_required_evidence = package.verifier_spec.required_evidence.clone();
+    // ForbiddenAction (from organism_pack) does not derive PartialEq, so the
+    // non-weakening invariant compares serialized JSON values instead.
+    let baseline_forbidden_actions = serde_json::to_value(&package.verifier_spec.forbidden_actions)
+        .expect("forbidden actions serialize for invariant baseline");
+
     let mut suggestions = Vec::new();
+    let mut concerns = Vec::new();
     for clause in &package.source_jtbd.clauses {
         for record in table.accepted_for_clause(clause, domain_hint, CALIBRATION_DECODER_RULE_ID) {
+            let (artifact_kind, id_prefix) = match record.value.signal_kind {
+                CalibrationSignalKind::Reinforcement => (
+                    ArtifactKind::CalibrationSuggestion,
+                    "calibration_suggestion",
+                ),
+                CalibrationSignalKind::Concern => {
+                    (ArtifactKind::CalibrationConcern, "calibration_concern")
+                }
+            };
             let artifact = GeneratedArtifact {
                 artifact_id: ArtifactId::new(format!(
-                    "calibration_suggestion.{}.{}",
+                    "{id_prefix}.{}.{}",
                     clause.key,
                     record.record_id.as_str()
                 )),
-                artifact_kind: ArtifactKind::CalibrationSuggestion,
+                artifact_kind,
                 summary: format!(
-                    "calibration {} suggests {}",
+                    "calibration {} {}",
                     record.record_id.as_str(),
                     calibration_summary(&record.value)
                 ),
@@ -1550,13 +1742,16 @@ pub fn apply_decoder_calibration(
             };
             package.lineage.artifacts.push(ArtifactLineage::new(
                 artifact.artifact_id.clone(),
-                ArtifactKind::CalibrationSuggestion,
+                artifact_kind,
                 artifact.source_clause_ids.clone(),
                 format!("decoder_calibration.{}", record.record_id.as_str()),
                 DECODER_VERSION,
                 &package.source_jtbd,
             ));
-            suggestions.push(artifact);
+            match record.value.signal_kind {
+                CalibrationSignalKind::Reinforcement => suggestions.push(artifact),
+                CalibrationSignalKind::Concern => concerns.push(artifact),
+            }
         }
     }
 
@@ -1564,7 +1759,24 @@ pub fn apply_decoder_calibration(
         .artifacts
         .calibration_suggestions
         .extend(suggestions);
+    package.artifacts.calibration_concerns.extend(concerns);
     package.lineage.validate_closure(&package.source_jtbd)?;
+
+    // Non-weakening invariant — accepting calibration records must never
+    // change the source JTBD's declared evidence requirements or forbidden
+    // actions. Concern records propose decoder-side affordances, not
+    // contract relaxation.
+    debug_assert_eq!(
+        package.verifier_spec.required_evidence, baseline_required_evidence,
+        "calibration must not modify verifier_spec.required_evidence",
+    );
+    debug_assert_eq!(
+        serde_json::to_value(&package.verifier_spec.forbidden_actions)
+            .expect("forbidden actions serialize for invariant check"),
+        baseline_forbidden_actions,
+        "calibration must not modify verifier_spec.forbidden_actions",
+    );
+
     Ok(package)
 }
 
@@ -2126,6 +2338,7 @@ fn build_artifacts(document: &JtbdDocument) -> TruthPackageArtifacts {
         simulation_cases,
         invariant_expectations,
         calibration_suggestions: Vec::new(),
+        calibration_concerns: Vec::new(),
     }
 }
 
@@ -2319,6 +2532,7 @@ fn generated_artifact_iter(
         .chain(artifacts.simulation_cases.iter())
         .chain(artifacts.invariant_expectations.iter())
         .chain(artifacts.calibration_suggestions.iter())
+        .chain(artifacts.calibration_concerns.iter())
 }
 
 fn verifier_source_clause_ids(

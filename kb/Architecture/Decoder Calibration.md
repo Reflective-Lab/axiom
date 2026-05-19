@@ -213,22 +213,51 @@ verdict as new information arrives. The review boundary is decoder-only:
 accepting a prior changes what the decoder suggests, not what Organism
 selects, Converge promotes, or any specialist executes.
 
+## Concerns Versus Reinforcements
+
+v0.15 closed the missing-evidence gap. Calibration records now carry a typed
+`CalibrationSignalKind`:
+
+- **`Reinforcement`** — the v0.13/v0.14 default. The decoder should keep
+  reaching for the prior because a covered clause contributed to a useful
+  run. Accepted reinforcements add `CalibrationSuggestion` artifacts to
+  the next regenerated package (templates, scenarios, policy hints,
+  verifier expectations).
+- **`Concern`** — the v0.15 addition. The clause was required but no
+  promoted fact cited it; the run cannot demonstrate the contract was
+  honored. Accepted concerns add `CalibrationConcern` artifacts to the
+  next regenerated package. The decoder is free to surface prompts,
+  default evidence expectations, warnings, or alternate scaffolding for
+  that clause shape on future packages.
+
+`LearningClauseSignal` carries a `coverage_status: ClauseCoverageStatus`
+enum with four variants — `Uncovered`, `CoveredAsEvidence`,
+`CoveredAsFailureGuard`, `CoveredAsEvidenceAndFailureGuard`. Concern
+records only fire for `EvidenceRequired` clauses on `Invalid` and `Blocked`
+verdicts. `Satisfied` runs cannot have missing required evidence; `Exhausted`
+runs do not yet emit concerns (deferred — noisier signal than `Invalid`).
+Uncovered `FailureMode` clauses do not emit concerns either: failure modes
+are forbidden actions, not things every run is expected to cite.
+
+### Non-weakening invariant
+
+**Calibration never modifies the source JTBD.** Accepting any record —
+`Reinforcement` or `Concern` — adds decoder artifacts; it does not change
+`verifier_spec.required_evidence` or `verifier_spec.forbidden_actions`.
+`apply_decoder_calibration` asserts this with `debug_assert_eq!` checks
+after enrichment, and the v0.15 test suite proves it for an accepted-
+concern fixture. Concerns propose decoder affordances; the contract
+stays the operator-authored truth.
+
 ## Known Limitations
 
-v0.13 only learns from clauses the run *covered* — either as evidence (cited
-by a promoted fact) or as a failure guard. The signal "this clause shape
-often goes uncovered" is currently lost:
-
-- An `Invalid` verdict caused by missing required evidence does not produce
-  a calibration record for the uncovered evidence clauses. The decoder learns
-  nothing about which clause shapes tend to be hard to satisfy.
-- A `Blocked` verdict where a HITL gate pauses promotion likewise does not
-  generate priors for clauses whose evidence has not yet arrived.
-
-This is intentional for v0.13 — the milestone scope is "learn from verdicts,"
-not "learn from missing evidence." A v0.15+ extension can add a third signal
-class for uncovered clauses ("this clause shape often goes uncovered →
-adjust decoder default") without changing the v0.13 record shape. Track
-separately when v0.14 (persistence) lands; the persistence format should
-leave room for a `coverage_status` axis on `LearningClauseSignal` or a
-parallel signal type.
+- `Exhausted` verdicts do not yet emit `Concern` records. The signal is
+  real ("evidence might have been gathered with more budget") but noisier
+  than `Invalid` / `Blocked`. Deferred to a future milestone if accumulated
+  evidence shows the noise is tolerable.
+- Confidence does not decay over time — a prior accepted once retains
+  its weight indefinitely unless an operator resets or rejects it.
+- Domain-hint inheritance is not modeled — a child domain (e.g.
+  `tally-escrow.dispute-resolution`) does not inherit priors from its
+  parent (`tally-escrow.release`); they are independent calibration
+  spaces.
