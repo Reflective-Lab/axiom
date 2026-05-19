@@ -131,6 +131,48 @@ Tally's current adapter already maps a release transcript into
 6. Which uncovered evidence concerns should Helm show before an operator
    attempts another release?
 
+### Boundary Probe: Release Conditions Met
+
+First pressure-tested control:
+`release-requires-conditions-met`.
+
+This control currently appears in Tally as:
+
+- a `TruthSpec` constant in `tally-truths`;
+- a `TransitionReason::ConditionsMet { satisfied }` domain payload;
+- a `tally-kernel::Kernel::apply_transition` guard that rejects release when
+  agreement conditions are not fully satisfied;
+- a release transcript truth key adapted into Axiom's escrow-release
+  observation;
+- an Axiom evidence requirement and verifier expectation in the escrow-release
+  Truth Package.
+
+The contract split is:
+
+| Layer | Boundary decision |
+|---|---|
+| Tally app/kernel | Owns the agreement state machine, condition indices, `ConditionsMet` payload, and hard rejection of `Released` when conditions are not satisfied. This is domain law and must stay close to the agreement aggregate. |
+| Axiom | Owns the truth expression: release requires satisfied conditions before the job can be judged `Satisfied`; missing condition evidence yields `Invalid` or `Blocked`, can produce uncovered-clause `Concern` records, and must never weaken the source JTBD. |
+| Helm | Should show the operator which release-condition evidence is present, missing, disputed, or accepted as a calibration concern. Helm owns the review/decision surface, not the transition law. |
+| Organism/Mosaic | May assemble readiness Formations and suggestors to gather condition evidence, counterexamples, policy proofs, anomaly scores, or custody facts before the release attempt. They do not authorize release by themselves. |
+| Converge | Promotes readiness facts, evidence refs, stop reasons, and integrity. It remains the authority boundary for promoted facts and policy gates. |
+
+Immediate implication: do not move the release transition guard out of Tally's
+kernel. Move repeated *explanation* and *review* work outward:
+
+- Axiom should continue turning this control into verifier obligations,
+  lineage, `AxiomRunReport` verdicts, and calibration concerns.
+- Helm should eventually render the release-readiness packet: required
+  condition evidence, missing evidence, accepted concerns, and the last
+  verifier verdict.
+- Tally should emit a clean release observation/transcript and keep the
+  transition guard strict.
+
+This is the template for future probes: if the logic mutates domain state, it
+stays in the app/kernel; if it explains whether a job contract was satisfied,
+it moves toward Axiom; if it lets an operator inspect or review the contract,
+it moves toward Helm.
+
 ## Expression Boundary
 
 Axiom should be able to express:

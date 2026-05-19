@@ -33,6 +33,7 @@ source: llm
 - Implemented the v0.13 decoder calibration loop: `LearningEpisode`, `CalibrationKey`, `CalibrationRecord`, `CalibrationTable`, accepted calibration suggestions, and package enrichment via `apply_decoder_calibration(...)`, with tests proving Tally release outcomes produce reviewable priors without pulling Formation selection, authority recompute, or specialist hosting into Axiom.
 - Updated `Architecture/Decoder Calibration.md`, `Concepts/Truth Package.md`, and `INDEX.md` to document calibration ownership, persistence shape, review statuses, lineage requirements, and the new public types.
 - Added `Architecture/Axiom-Helm-App Contract.md` to make the app-thinning direction explicit: Axiom owns truth packages and verifier learning, Helm owns operator review and sandbox lifecycle, apps own domain state and adapters, and Tally remains the boundary-finding loop before Atlas Integration becomes the next app vertical.
+- Ran the first Tally boundary probe against `release-requires-conditions-met`: Tally keeps the strict agreement transition guard, Axiom owns the truth/verifier/calibration expression of release-condition evidence, Helm should own the operator surface for missing evidence and accepted concerns, and Organism/Mosaic/Converge remain runtime capability and promotion boundaries.
 
 ## 2026-05-17
 
