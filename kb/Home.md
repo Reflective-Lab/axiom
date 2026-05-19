@@ -32,6 +32,7 @@ Axiom validates, simulates, and compiles business specifications into enforceabl
 ## Marquee
 
 - [[Marquee/Round-Driven Formation Design]] — v0.11 candidate JTBD and staged `AxiomRunReport` shape for dynamic Formations
+- [[Marquee/Escrow Release]] — v0.12 strict-verdict fixture for irreversible commitments
 
 ## Architecture
 
@@ -39,6 +40,7 @@ Axiom validates, simulates, and compiles business specifications into enforceabl
 - [[Architecture/API Surfaces]] — public Rust and crate boundaries
 - [[Architecture/Axiom as Verifier]] — doctrine for JTBD-to-contract compilation, verifier reports, and layer boundaries
 - [[Architecture/Clause IDs and Decoder Spine]] — v0.10 decision for deterministic JTBD clause identity and decoder rules
+- [[Architecture/Decoder Calibration]] — v0.13 learning loop from verifier outcomes to richer future decoding
 - [[Architecture/Intent Compilation]] — TruthDocument to IntentPacket mapping
 - [[Architecture/Truth-to-Formation Run Proof]] — v0.9 path from truth to Organism Formation to Converge fixed point
 - [[Architecture/Converge Contract]] — how Axiom relates to Converge

@@ -22,6 +22,12 @@ source: llm
 - Folded v0.10 review feedback into the docs and v0.11 plan: documented `JtbdInput::from_metadata(...)` as the legacy JTBD migration bridge, recorded the deterministic expiry sentinel as a v0.11 replacement item, and kept round-driven Formation design as the primary staged verifier proof while tracking an irreversible commitment fixture as the next strict-verdict proof.
 - Updated the v0.11 round-driven marquee note from the latest `atelier-showcase` run: origin/main now carries evidence-weighted LLM scoring, the LLM convergence judge, and the platform API migration; the live run converges at round 2, fires the halt marker, skips round 3, and runs the work Formation from the converged shortlist.
 - Aligned the round-driven Axiom fixture with the new platform-API markers (`proposer_exclusions_marker`, scorecard, convergence judgment, and halt marker) and added the first v0.11 promoted-fact/staged-observation adapter surface.
+- Added the v0.12 milestone direction: an irreversible commitment strict-verdict verifier proof comes before decoder calibration, with ambiguous sensemaking and governed commercial decisioning deferred to the v1.0 proof set.
+- Started the v0.12 escrow release fixture proof: documented the irreversible JTBD, added Satisfied/Blocked/Invalid verdict cases, and recorded that the current slice is fixture-backed until a real Tally-style escrow runtime exists.
+- Replaced the vague Tally placeholder with the concrete marquee-app sequence: `tally-escrow` for v0.12, followed by `quorum-sense` and `scout-sourcing` for the broader v1.0 proof set.
+- Locked the sequence: v0.12 is Tally escrow release; v0.13 is decoder calibration. Added `Architecture/Decoder Calibration.md` and documented the v0.12 report data needed to become future calibration feedstock.
+- Started v0.12 implementation by emitting deterministic policy requirement artifacts from the Truth Package decoder and asserting the escrow release commitment envelope covers authority, required evidence, and forbidden failure modes.
+- Extended promoted fact report records with optional Converge promotion authority data (gate ID, policy hash, approver) so Axiom reports can show authority was observed at promotion without treating Axiom as the authority source.
 
 ## 2026-05-17
 

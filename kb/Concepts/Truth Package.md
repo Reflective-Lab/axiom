@@ -54,8 +54,8 @@ Organism/Converge report adapters remain deferred.
 - an `AxiomRunVerdict`: `Satisfied`, `Blocked`, `Exhausted`, or `Invalid`;
 - the observed stop reason, using a Converge-compatible shape without importing
   Converge internals;
-- promoted fact summaries with source clause IDs, evidence refs, and trace
-  links;
+- promoted fact summaries with source clause IDs, evidence refs, trace links,
+  and optional observed promotion authority records from Converge;
 - the run integrity proof summary and replay notes.
 - optional `AxiomRunStageRecord` entries for jobs with more than one Converge
   boundary.

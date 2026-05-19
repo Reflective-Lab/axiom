@@ -704,6 +704,8 @@ pub struct PromotedFactRecord {
     pub source_clause_ids: Vec<ClauseId>,
     pub evidence_refs: Vec<EvidenceRefRecord>,
     pub trace_link: Option<TraceLinkRecord>,
+    #[serde(default)]
+    pub promotion_authority: Option<PromotionAuthorityRecord>,
 }
 
 impl PromotedFactRecord {
@@ -723,6 +725,12 @@ impl PromotedFactRecord {
                 .map(evidence_ref_record)
                 .collect(),
             trace_link: Some(trace_link_record(promotion.trace_link())),
+            promotion_authority: Some(PromotionAuthorityRecord {
+                gate_id: promotion.gate_id().as_str().to_string(),
+                policy_version_hash: promotion.policy_version_hash().to_hex(),
+                approver_id: promotion.approver().id().as_str().to_string(),
+                approver_kind: format!("{:?}", promotion.approver().kind()),
+            }),
         }
     }
 }
@@ -740,6 +748,19 @@ pub struct TraceLinkRecord {
     pub trace_id: String,
     pub location: Option<String>,
     pub replayable: bool,
+}
+
+/// Promotion authority Converge observed when a fact became authoritative.
+///
+/// This is report evidence, not delegated authority. Axiom declares
+/// requirements in the Truth Package; Converge still recomputes authority at
+/// promotion and records the gate/policy identity here.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PromotionAuthorityRecord {
+    pub gate_id: String,
+    pub policy_version_hash: String,
+    pub approver_id: String,
+    pub approver_kind: String,
 }
 
 /// Integrity proof summary captured from the Converge run boundary.
@@ -1510,12 +1531,15 @@ fn generate_truth_projection(document: &JtbdDocument) -> String {
 
 fn build_artifacts(document: &JtbdDocument) -> TruthPackageArtifacts {
     let all_clause_ids: Vec<ClauseId> = document.clause_ids().cloned().collect();
+    let actor = required_clause(document, JtbdClauseKind::Actor);
+    let functional_job = required_clause(document, JtbdClauseKind::FunctionalJob);
     let scenarios = vec![GeneratedArtifact {
         artifact_id: ArtifactId::new(format!("scenario.{}.satisfaction", document.key)),
         artifact_kind: ArtifactKind::Scenario,
         summary: "Job is satisfied by required evidence".to_string(),
         source_clause_ids: all_clause_ids.clone(),
     }];
+    let policy_requirements = build_policy_requirement_artifacts(document, actor, functional_job);
     let evidence_expectations = document
         .clauses_by_kind(JtbdClauseKind::EvidenceRequired)
         .map(|clause| GeneratedArtifact {
@@ -1544,11 +1568,57 @@ fn build_artifacts(document: &JtbdDocument) -> TruthPackageArtifacts {
     TruthPackageArtifacts {
         scenarios,
         predicates: Vec::new(),
-        policy_requirements: Vec::new(),
+        policy_requirements,
         evidence_expectations,
         simulation_cases,
         invariant_expectations,
     }
+}
+
+fn build_policy_requirement_artifacts(
+    document: &JtbdDocument,
+    actor: &JtbdClause,
+    functional_job: &JtbdClause,
+) -> Vec<GeneratedArtifact> {
+    let mut artifacts = vec![GeneratedArtifact {
+        artifact_id: ArtifactId::new(format!("policy_requirement.{}.authority", document.key)),
+        artifact_kind: ArtifactKind::PolicyRequirement,
+        summary: format!(
+            "authority envelope: {} may attempt {} only through current Converge promotion policy",
+            actor.canonical_text, functional_job.canonical_text
+        ),
+        source_clause_ids: vec![actor.id.clone(), functional_job.id.clone()],
+    }];
+
+    artifacts.extend(
+        document
+            .clauses_by_kind(JtbdClauseKind::EvidenceRequired)
+            .map(|clause| GeneratedArtifact {
+                artifact_id: ArtifactId::new(format!(
+                    "policy_requirement.{}.evidence.{}",
+                    document.key, clause.key
+                )),
+                artifact_kind: ArtifactKind::PolicyRequirement,
+                summary: format!("require before promotion: {}", clause.canonical_text),
+                source_clause_ids: vec![clause.id.clone()],
+            }),
+    );
+
+    artifacts.extend(
+        document
+            .clauses_by_kind(JtbdClauseKind::FailureMode)
+            .map(|clause| GeneratedArtifact {
+                artifact_id: ArtifactId::new(format!(
+                    "policy_requirement.{}.failure.{}",
+                    document.key, clause.key
+                )),
+                artifact_kind: ArtifactKind::PolicyRequirement,
+                summary: format!("forbid promotion when observed: {}", clause.canonical_text),
+                source_clause_ids: vec![clause.id.clone()],
+            }),
+    );
+
+    artifacts
 }
 
 fn build_proof_obligations(document: &JtbdDocument) -> Vec<ProofObligation> {
@@ -2181,6 +2251,7 @@ mod tests {
                     location: Some("fixture://vendor_commitment".to_string()),
                     replayable: true,
                 }),
+                promotion_authority: None,
             }],
             integrity: RunIntegrityProof::sha256_merkle("sha256:abc123", 7, 5),
             replay_notes: vec!["deterministic replay profile matched".to_string()],
@@ -2244,6 +2315,7 @@ mod tests {
                 location: Some("test://verifier".to_string()),
                 replayable: true,
             }),
+            promotion_authority: None,
         }
     }
 

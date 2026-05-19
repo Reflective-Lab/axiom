@@ -373,5 +373,6 @@ fn fact(
             location: Some("atelier-showcase:just show-round-driven".to_string()),
             replayable: true,
         }),
+        promotion_authority: None,
     }
 }

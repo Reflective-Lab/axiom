@@ -107,7 +107,8 @@ Inverts the input boundary: the human writes a JTBD; `.truths` becomes an audita
 ### Out of scope (deferred)
 
 - One marquee job end-to-end with verdict computation — v0.11
-- Decoder calibration / clause-shape priors (the learning loop) — v0.12
+- Irreversible commitment strict-verdict proof — v0.12
+- Decoder calibration / clause-shape priors (the learning loop) — v0.13
 - Three marquee proofs (irreversible / ambiguous / governed) — v1.0
 
 ## Next: v0.11 — Marquee Job Run Verifier
@@ -116,14 +117,85 @@ Inverts the input boundary: the human writes a JTBD; `.truths` becomes an audita
 
 - [x] Select one marquee JTBD fixture and keep it narrow enough to verify end to end
 - [x] Preserve multi-boundary runs with staged `AxiomRunReport` records
-- [ ] Replace the v0.10 deterministic expiry sentinel with JTBD-declared time budget / expiry semantics
+- [x] Replace the v0.10 deterministic expiry sentinel with JTBD-declared time budget / expiry semantics (`0cd2709`)
 - [x] Restore `atelier-showcase` `just show-round-driven` so the round-driven fixture can be backed by a live run
 - [x] Update the Axiom fixture to reflect the platform-API run: LLM convergence judge halts at round 2 and round 3 is skipped by halt marker
-- [ ] Adapt an Organism/Converge run record into `AxiomRunObservation`
-- [ ] Compute `AxiomRunVerdict` from `VerifierSpec` plus observed stop reason, required evidence, forbidden actions, promoted facts, and integrity
-- [ ] Prove every promoted fact in the report traces to the source job clause, evidence requirement, failure mode, and truth version it served
-- [ ] Keep formation selection in Organism, authority recompute in Converge, and specialist/plugin hosting outside Axiom
-- [ ] Track an irreversible commitment fixture as the next strict-verdict proof after round-driven lands
+- [x] Adapt an Organism/Converge run record into `AxiomRunObservation` (`21e0d99`) — recipe-form adapter in `tests/converge_observation_adapter.rs`; lib-level dep on `converge-kernel` is precluded by AGENTS.md, so the canonical pattern lives caller-side. Live-Engine adapter test (running a real Converge engine end-to-end) remains a follow-up.
+- [x] Compute `AxiomRunVerdict` from `VerifierSpec` plus observed stop reason, required evidence, forbidden actions, promoted facts, and integrity (`a991cdb`)
+- [x] Prove every promoted fact in the report traces to the source job clause, evidence requirement, failure mode, and truth version it served (`6aef7ec`, plus negative-path proof in `69030d6`)
+- [x] Keep formation selection in Organism, authority recompute in Converge, and specialist/plugin hosting outside Axiom (doctrine in `kb/Architecture/Axiom as Verifier.md`; no commit in this milestone moved any of these into Axiom)
+- [x] Track an irreversible commitment fixture as the next strict-verdict proof after round-driven lands
+
+## Planned: v0.12 — Irreversible Commitment Verifier
+**Epic:** E7 (Axiom translates human jobs into governed runtime contracts)
+**Target:** Prove Axiom's verifier semantics against the sharpest job class: an irreversible commitment whose success, block, and invalid states have concrete policy and evidence meanings.
+
+v0.11 proves Axiom can verify a dynamic multi-boundary Organism run without
+becoming a formation selector. v0.12 should prove the verdict engine is not
+soft: `Satisfied`, `Blocked`, and `Invalid` must be distinguishable on an
+irreversible job with real authority requirements, concrete satisfaction
+conditions, and explicit forbidden actions. Decoder calibration is intentionally
+not part of v0.12; Tally should produce hard verifier labels that v0.13 can
+learn from.
+
+### Candidate family
+
+- Primary app: Tally escrow release at
+  `/Users/kpernyer/dev/reflective/marquee-apps/tally-escrow`.
+- Current parallel slice: a strict `escrow_release` fixture, explicitly labeled
+  as a fixture proof until it is wired to the Tally app's real transition and
+  custody facts.
+- v1.0 expansion order: Quorum sensemaking at
+  `/Users/kpernyer/dev/reflective/marquee-apps/quorum-sense`, then Scout
+  sourcing at `/Users/kpernyer/dev/reflective/marquee-apps/scout-sourcing`.
+  They are useful, but less crisp than Tally for first verdict semantics.
+
+### Checklist
+
+- [x] Select the irreversible commitment candidate and document whether it is a real marquee proof or a fixture proof
+- [x] Define the compact JTBD with evidence requirements and failure modes that make irreversibility explicit
+- [x] Decode the JTBD into a Truth Package whose verifier spec has required evidence and forbidden actions
+- [x] Add concrete policy requirement artifacts for the commitment envelope
+- [x] Fixture at least three cases: satisfied release, blocked release, and invalid release attempt
+- [ ] Replace the fixture with a live `tally-escrow` run once release transition facts can be adapted into `AxiomRunObservation`
+- [x] Prove Axiom declares authority requirements while reports preserve Converge's observed promotion gate and policy hash
+- [x] Prove promoted commitment facts trace back to the source job clause, evidence requirement, failure mode, and truth version in the fixture
+- [ ] Ensure the final Tally report contains enough typed outcome data to become a v0.13 `LearningEpisode`
+- [ ] Record the residual gap from strict irreversible proof to the v1.0 three-proof set
+
+## Planned: v0.13 — Decoder Calibration Learning Loop
+**Epic:** E7 (Axiom translates human jobs into governed runtime contracts)
+**Target:** Persist verifier outcomes as decoder calibration so future JTBDs produce richer, better-covered Truth Packages without turning Axiom into a reasoner, authority source, or formation selector.
+
+v0.13 is the "the better we get, the tighter the loop gets" milestone. It
+should start after v0.12 gives Axiom hard labels from an irreversible job:
+`Satisfied`, `Blocked`, and `Invalid` with clause-level evidence and
+failure-mode lineage. Calibration learns from those labels as a decoder aid,
+not as runtime strategy.
+
+### Shape
+
+- Input signal: `AxiomRunReport` plus lineage audit, verifier spec, package ID,
+  truth version, JTBD clause IDs, clause fingerprints, and verdict.
+- Calibration key: normalized clause shape plus clause kind, domain hints,
+  decoder rule ID, and source clause fingerprint class. Do not key on raw
+  natural language alone.
+- Calibration value: likely evidence requirements, forbidden-action templates,
+  scenario scaffolds, verifier expectations, and confidence/rationale.
+- Query point: during JTBD-to-Truth Package decoding, before generated
+  artifacts are finalized.
+- Audit rule: every calibration-influenced artifact must name the calibration
+  entry and still trace back to a JTBD clause.
+
+### Checklist
+
+- [ ] Define `LearningEpisode` / calibration record shape without changing runtime reasoning
+- [ ] Decide persistence location and ownership for calibration tables
+- [ ] Define deterministic lookup keys for JTBD clause shape and domain hints
+- [ ] Feed v0.12 Tally verifier outcomes into calibration records
+- [ ] Use calibration to enrich a regenerated Truth Package while preserving deterministic auditability
+- [ ] Prove calibration does not select Formations, recompute authority, or host specialist execution
+- [ ] Document how operators review, accept, reject, or reset learned priors
 
 ## Completed: v0.4.1 — Initial Release
 Completed: 2026-04-15

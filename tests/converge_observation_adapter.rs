@@ -268,5 +268,6 @@ fn promoted_fact(
             location: Some("fixture://converge-adapter".to_string()),
             replayable: true,
         }),
+        promotion_authority: None,
     }
 }

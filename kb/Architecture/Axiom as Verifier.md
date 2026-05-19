@@ -192,6 +192,12 @@ Axiom must not learn which Formation should win. That loop belongs to
 Organism. Axiom's learning should make future Truth Packages more complete,
 better traced, and easier to verify, not more operationally clever.
 
+This is a v0.13 milestone, not the v0.12 starting point. v0.12 should first
+make verdict labels sharp with Tally escrow release. Once Axiom can distinguish
+`Satisfied`, `Blocked`, and `Invalid` on an irreversible job with clause-level
+lineage, those reports become useful calibration input. See
+[[Architecture/Decoder Calibration]].
+
 ## Falsifiable Signals
 
 This doctrine is real only if it produces testable signals:

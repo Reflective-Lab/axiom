@@ -59,10 +59,10 @@ Organism still owns formation selection and execution dynamics, Converge still
 owns promotion and integrity, and Axiom verifies that each promoted fact can be
 traced back to the job clause it served.
 
-An irreversible commitment fixture should follow as the next strict-verdict
+An irreversible commitment fixture should follow as v0.12's strict-verdict
 proof. It will sharpen `Satisfied` / `Blocked` / `Invalid` semantics, but it
-does not replace this staged Formation proof: this fixture proves Axiom can
-verify dynamic Organism behavior without becoming a formation selector.
+does not replace this staged Formation proof: v0.11 proves Axiom can verify
+dynamic Organism behavior without becoming a formation selector.
 
 ## Live Run Shape
 

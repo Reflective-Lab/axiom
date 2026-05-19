@@ -90,5 +90,14 @@ async fn truth_package_seed_fact_preserves_axiom_provenance_through_converge_pro
     assert_eq!(record.summary, "axiom.truth_package_seed v1");
     assert_eq!(record.source_clause_ids, vec![clause.id.clone()]);
     assert_eq!(record.evidence_refs[0].source, "observation");
+    let authority = record
+        .promotion_authority
+        .as_ref()
+        .expect("promotion authority captured");
+    assert_eq!(authority.gate_id, promotion.gate_id().as_str());
+    assert_eq!(
+        authority.policy_version_hash,
+        promotion.policy_version_hash().to_hex()
+    );
     assert!(record.trace_link.expect("trace link").replayable);
 }

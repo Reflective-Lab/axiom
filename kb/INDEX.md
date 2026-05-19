@@ -23,6 +23,12 @@ source: llm
 | validation_view | UI-friendly validation result transformation | `src/validation_view.rs` |
 | mock_llm | Static chat backend for tests and offline use | `src/mock_llm.rs` |
 
+## Architecture Pages
+
+| Page | Purpose |
+|---|---|
+| Decoder Calibration | v0.13 learning loop from audited verifier outcomes to richer future JTBD decoding |
+
 ## CLI Commands (cz)
 
 | Command | Purpose |
@@ -69,7 +75,8 @@ source: llm
 | `AxiomRunStageRecord` | truth_package | Stage-level stop reason, promoted facts, trace links, and integrity proof for multi-boundary jobs |
 | `AxiomRunVerdict` | truth_package | Report verdict: Satisfied, Blocked, Exhausted, Invalid |
 | `ObservedStopReason` | truth_package | Converge-compatible stop reason shape for report observations |
-| `PromotedFactRecord` | truth_package | Promoted fact summary with source clause IDs, evidence refs, and trace link |
+| `PromotedFactRecord` | truth_package | Promoted fact summary with source clause IDs, evidence refs, trace link, and observed promotion authority |
+| `PromotionAuthorityRecord` | truth_package | Converge promotion gate, policy hash, and approver observed when a fact became authoritative |
 | `RunIntegrityProof` | truth_package | Integrity proof summary captured at the Converge boundary |
 | `AxiomTruth` | provenance | Zero-sized Axiom provenance marker implementing `converge_pack::ProvenanceSource` |
 | `AXIOM_PROVENANCE` | provenance | Canonical Axiom Truth Package provenance constant |
@@ -80,6 +87,7 @@ source: llm
 | Fixture | Location | Purpose |
 |---|---|---|
 | Round-driven Formation Design | `tests/round_driven_marquee.rs`; `kb/Marquee/Round-Driven Formation Design.md` | JTBD and staged `AxiomRunReport` fixture for a dynamic design huddle plus selected work Formation |
+| Escrow Release | `tests/escrow_release_marquee.rs`; `kb/Marquee/Escrow Release.md` | Strict-verdict fixture for irreversible commitments: Satisfied, Blocked, and Invalid |
 
 ## Scenario Tags
 

@@ -6,8 +6,10 @@
 //! The JTBD encodes the strict evidence and failure-mode obligations that the
 //! verifier must enforce for a Satisfied verdict.
 //!
-//! v0.11 scope: prove the decoder, verifier, and audit hold for a synthetic
-//! Satisfied observation. Wiring to a live escrow runtime is v1.0 work.
+//! v0.12 scope: prove the strict-verdict shape with a fixture before wiring
+//! `/Users/kpernyer/dev/reflective/marquee-apps/tally-escrow` as the live
+//! runtime. The fixture must distinguish Satisfied, Blocked, and Invalid
+//! without creating a second verifier path.
 
 use axiom_truth::{
     AxiomRunObservation, AxiomRunReport, AxiomRunVerdict, ClauseId, ClauseInput, EvidenceRefRecord,
@@ -110,6 +112,30 @@ fn escrow_release_jtbd_decodes_to_truth_package() {
             .iter()
             .any(|action| action.action.contains("sanctions screening"))
     );
+    assert_eq!(package.artifacts.policy_requirements.len(), 11);
+    assert!(
+        package
+            .artifacts
+            .policy_requirements
+            .iter()
+            .any(|artifact| artifact
+                .summary
+                .contains("current Converge promotion policy"))
+    );
+    assert!(
+        package
+            .artifacts
+            .policy_requirements
+            .iter()
+            .any(|artifact| artifact.summary.contains("buyer authorization signed"))
+    );
+    assert!(
+        package
+            .artifacts
+            .policy_requirements
+            .iter()
+            .any(|artifact| artifact.summary.contains("sanctions screening flagging"))
+    );
     assert_eq!(
         package.source_jtbd.time_budget,
         Some(TimeBudget::from_minutes(15))
@@ -134,14 +160,127 @@ fn escrow_release_jtbd_decodes_to_truth_package() {
 #[test]
 fn escrow_release_satisfied_run_verifies_and_audits() {
     let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
-    let buyer_approval = evidence_clause_id(&package, "buyer_approval");
+    let observation = AxiomRunObservation {
+        stop_reason: ObservedStopReason::Converged,
+        promoted_facts: satisfied_release_facts(&package),
+        integrity: RunIntegrityProof::sha256_merkle("sha256:escrow-release", 14, 5),
+        replay_notes: vec![
+            "buyer authorization validated against signing key registered 2026-05-12".to_string(),
+            "idempotency check against last 10 minutes of disbursements found no match".to_string(),
+        ],
+        run_stages: Vec::new(),
+    };
+
+    let report = AxiomRunReport::verify(&package, observation);
+    assert_eq!(report.verdict, AxiomRunVerdict::Satisfied);
+    assert!(report.expected_stop_reason_matched());
+
+    let audit = report
+        .audit_fact_lineage(&package)
+        .expect("every promoted fact must trace through the JTBD chain");
+    assert_eq!(audit.evidence_coverage.len(), 5);
+    assert_eq!(audit.failure_coverage.len(), 1);
+    assert_eq!(audit.facts_audited, 5);
+}
+
+#[test]
+fn escrow_release_blocked_when_human_gate_is_pending() {
+    let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
     let delivery_confirmed = evidence_clause_id(&package, "delivery_confirmed");
     let compliance_cleared = evidence_clause_id(&package, "compliance_cleared");
     let idempotency_key = evidence_clause_id(&package, "idempotency_key");
-    let disbursement_recorded = evidence_clause_id(&package, "disbursement_recorded");
     let double_release = failure_clause_id(&package, "double_release");
 
-    let promoted_facts = vec![
+    let observation = AxiomRunObservation {
+        stop_reason: ObservedStopReason::HitlGatePending {
+            gate_id: "buyer-authorization".to_string(),
+            proposal_id: "release-request-9f3a".to_string(),
+            summary: "buyer authorization must be confirmed before funds leave escrow".to_string(),
+            agent_id: "escrow-policy-gate".to_string(),
+            cycle: 2,
+        },
+        promoted_facts: vec![
+            fact(
+                "Evidence",
+                "delivery-attestation-vendor-7",
+                "delivery attested by buyer; tracking number matches purchase order",
+                vec![delivery_confirmed],
+            ),
+            fact(
+                "PolicyDecision",
+                "policy-gate-pass-2026-05-19",
+                "policy gate cleared: sanctions screening current and KYC valid",
+                vec![compliance_cleared],
+            ),
+            fact(
+                "Diagnostic",
+                "idempotency-check-pass-key-9f3a",
+                "idempotency key 9f3a confirmed unique against prior promotions; double-release guard satisfied",
+                vec![idempotency_key, double_release],
+            ),
+        ],
+        integrity: RunIntegrityProof::sha256_merkle("sha256:escrow-blocked", 8, 3),
+        replay_notes: vec![
+            "release was not promoted while buyer authorization was pending".to_string(),
+        ],
+        run_stages: Vec::new(),
+    };
+
+    let report = AxiomRunReport::verify(&package, observation);
+    assert_eq!(report.verdict, AxiomRunVerdict::Blocked);
+    assert!(!report.expected_stop_reason_matched());
+
+    let audit = report
+        .audit_fact_lineage(&package)
+        .expect("blocked runs still audit the facts they promoted");
+    assert_eq!(audit.evidence_coverage.len(), 3);
+    assert_eq!(audit.failure_coverage.len(), 1);
+    assert_eq!(audit.facts_audited, 3);
+}
+
+#[test]
+fn escrow_release_invalid_when_forbidden_release_condition_is_promoted() {
+    let package = decode_jtbd(escrow_release_jtbd()).expect("escrow release JTBD decodes");
+    let sanctioned_recipient = failure_clause_id(&package, "sanctioned_recipient");
+    let mut promoted_facts = satisfied_release_facts(&package);
+    promoted_facts.push(fact(
+        "PolicyDecision",
+        "sanctions-screening-flag-vendor-7",
+        "release proceeds despite sanctions screening flagging the recipient",
+        vec![sanctioned_recipient],
+    ));
+
+    let observation = AxiomRunObservation {
+        stop_reason: ObservedStopReason::Converged,
+        promoted_facts,
+        integrity: RunIntegrityProof::sha256_merkle("sha256:escrow-invalid", 15, 6),
+        replay_notes: vec![
+            "release attempt crossed the forbidden sanctioned-recipient condition".to_string(),
+        ],
+        run_stages: Vec::new(),
+    };
+
+    let report = AxiomRunReport::verify(&package, observation);
+    assert_eq!(report.verdict, AxiomRunVerdict::Invalid);
+    assert!(report.expected_stop_reason_matched());
+
+    let audit = report
+        .audit_fact_lineage(&package)
+        .expect("invalid runs still preserve clause-level custody");
+    assert_eq!(audit.evidence_coverage.len(), 5);
+    assert_eq!(audit.failure_coverage.len(), 2);
+    assert_eq!(audit.facts_audited, 6);
+}
+
+fn satisfied_release_facts(package: &TruthPackage) -> Vec<PromotedFactRecord> {
+    let buyer_approval = evidence_clause_id(package, "buyer_approval");
+    let delivery_confirmed = evidence_clause_id(package, "delivery_confirmed");
+    let compliance_cleared = evidence_clause_id(package, "compliance_cleared");
+    let idempotency_key = evidence_clause_id(package, "idempotency_key");
+    let disbursement_recorded = evidence_clause_id(package, "disbursement_recorded");
+    let double_release = failure_clause_id(package, "double_release");
+
+    vec![
         fact(
             "HumanApproval",
             "buyer-approval-signed-2026-05-19",
@@ -172,29 +311,7 @@ fn escrow_release_satisfied_run_verifies_and_audits() {
             "payment rail confirmed disbursement; transaction recorded and reconciled",
             vec![disbursement_recorded],
         ),
-    ];
-
-    let observation = AxiomRunObservation {
-        stop_reason: ObservedStopReason::Converged,
-        promoted_facts,
-        integrity: RunIntegrityProof::sha256_merkle("sha256:escrow-release", 14, 5),
-        replay_notes: vec![
-            "buyer authorization validated against signing key registered 2026-05-12".to_string(),
-            "idempotency check against last 10 minutes of disbursements found no match".to_string(),
-        ],
-        run_stages: Vec::new(),
-    };
-
-    let report = AxiomRunReport::verify(&package, observation);
-    assert_eq!(report.verdict, AxiomRunVerdict::Satisfied);
-    assert!(report.expected_stop_reason_matched());
-
-    let audit = report
-        .audit_fact_lineage(&package)
-        .expect("every promoted fact must trace through the JTBD chain");
-    assert_eq!(audit.evidence_coverage.len(), 5);
-    assert_eq!(audit.failure_coverage.len(), 1);
-    assert_eq!(audit.facts_audited, 5);
+    ]
 }
 
 fn evidence_clause_id(package: &TruthPackage, key: &str) -> ClauseId {
@@ -239,5 +356,6 @@ fn fact(
             location: Some("fixture://escrow-release".to_string()),
             replayable: true,
         }),
+        promotion_authority: None,
     }
 }
