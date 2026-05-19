@@ -93,6 +93,7 @@ mod tests {
             so_that: "spend is traceable and policy-compliant".to_string(),
             evidence_required: vec![ClauseInput::new("vendor assessment")],
             failure_modes: vec![ClauseInput::new("bypassed approval")],
+            time_budget: None,
         })
         .unwrap()
     }

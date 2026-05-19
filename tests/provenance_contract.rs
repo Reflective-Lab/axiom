@@ -43,6 +43,7 @@ async fn truth_package_seed_fact_preserves_axiom_provenance_through_converge_pro
         so_that: "spend is traceable and policy-compliant".to_string(),
         evidence_required: vec![ClauseInput::new("vendor assessment")],
         failure_modes: vec![ClauseInput::new("bypassed approval")],
+        time_budget: None,
     })
     .expect("JTBD decodes to a Truth Package");
     let clause = package

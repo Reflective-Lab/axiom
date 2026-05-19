@@ -1,7 +1,7 @@
 use axiom_truth::{
     AxiomRunObservation, AxiomRunReport, AxiomRunStageRecord, AxiomRunVerdict, ClauseId,
     ClauseInput, EvidenceRefRecord, JtbdClauseKind, JtbdInput, ObservedStopReason,
-    PromotedFactRecord, RunIntegrityProof, TraceLinkRecord, TruthPackage, decode_jtbd,
+    PromotedFactRecord, RunIntegrityProof, TimeBudget, TraceLinkRecord, TruthPackage, decode_jtbd,
 };
 
 fn round_driven_jtbd() -> JtbdInput {
@@ -65,6 +65,7 @@ fn round_driven_jtbd() -> JtbdInput {
                 "promoted facts lack package clause lineage",
             ),
         ],
+        time_budget: Some(TimeBudget::from_minutes(30)),
     }
 }
 
@@ -111,6 +112,19 @@ fn round_driven_marquee_jtbd_decodes_to_truth_package() {
             .lineage
             .validate_closure(&package.source_jtbd)
             .is_ok()
+    );
+    assert_eq!(
+        package.source_jtbd.time_budget,
+        Some(TimeBudget::from_minutes(30))
+    );
+    assert!(
+        package
+            .generated_truths
+            .contains("Expires: 2099-01-01T00:30:00Z")
+    );
+    assert_eq!(
+        package.intent_packet.context["time_budget_seconds"],
+        serde_json::json!(1800)
     );
 }
 

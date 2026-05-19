@@ -92,10 +92,10 @@ pub use truth_package::{
     ClauseInput, DecodeJtbdError, EvidenceRefRecord, ExpectedStopReason, GeneratedArtifact,
     JtbdClause, JtbdClauseKind, JtbdDocument, JtbdInput, LineageError, LineageMap,
     ObservedStopReason, PromotedFactRecord, ProofObligation, ProofObligationKind, ReplayProfile,
-    RunIntegrityProof, TraceLinkRecord, TruthOverlayError, TruthPackage, TruthPackageArtifacts,
-    TruthPackageError, TruthPackageId, TruthProjectionOverlay, TruthProjectionSource,
-    TruthProjectionVersion, VerifierSpec, apply_truth_projection_overlay, canonicalize_clause_text,
-    decode_jtbd,
+    RunIntegrityProof, TimeBudget, TraceLinkRecord, TruthOverlayError, TruthPackage,
+    TruthPackageArtifacts, TruthPackageError, TruthPackageId, TruthProjectionOverlay,
+    TruthProjectionSource, TruthProjectionVersion, VerifierSpec, apply_truth_projection_overlay,
+    canonicalize_clause_text, decode_jtbd,
 };
 pub use truths::{
     AuthorityBlock, ConstraintBlock, EvidenceBlock, ExceptionBlock, IntentBlock, TruthDocument,

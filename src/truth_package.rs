@@ -11,6 +11,7 @@
 
 use crate::jtbd::JTBDMetadata;
 use crate::{CompileError, compile_intent, parse_truth_document};
+use chrono::{DateTime, Duration, Utc};
 use converge_pack::{ContextFact, FactEvidenceRef, FactTraceLink};
 use organism_pack::{ForbiddenAction, IntentPacket};
 use serde::{Deserialize, Serialize};
@@ -21,7 +22,54 @@ use uuid::Uuid;
 
 const DECODER_VERSION: &str = "0.10.0";
 const TRUTH_VERSION: &str = "v1";
-const DETERMINISTIC_EXPIRES: &str = "2099-01-01T00:00:00Z";
+/// Deterministic epoch used as the anchor for generated `.truths` `Expires:`
+/// values. The IntentPacket's `expires` timestamp is `EPOCH + time_budget`
+/// when the JTBD declares a budget, and `EPOCH` otherwise. The runtime carries
+/// the budget separately via `IntentPacket.context["time_budget_seconds"]`.
+const DETERMINISTIC_EXPIRES_EPOCH: &str = "2099-01-01T00:00:00Z";
+
+/// JTBD-declared time budget the runtime must enforce for a job.
+///
+/// v0.11 carries only a duration in seconds. Richer expiry semantics
+/// (deadline-relative-to-event, business-day windows, etc.) are deferred until
+/// a marquee job demonstrates they are needed. Presence makes the
+/// `TimeBudgetExhausted` stop reason reachable on a real run, which in turn
+/// makes the `Exhausted` verdict reachable in `AxiomRunReport`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct TimeBudget(u64);
+
+impl TimeBudget {
+    pub const fn from_seconds(seconds: u64) -> Self {
+        Self(seconds)
+    }
+
+    pub const fn from_minutes(minutes: u64) -> Self {
+        Self(minutes * 60)
+    }
+
+    pub const fn from_hours(hours: u64) -> Self {
+        Self(hours * 3600)
+    }
+
+    pub const fn as_seconds(self) -> u64 {
+        self.0
+    }
+}
+
+fn deterministic_expires_line(budget: Option<TimeBudget>) -> String {
+    let epoch: DateTime<Utc> = DateTime::parse_from_rfc3339(DETERMINISTIC_EXPIRES_EPOCH)
+        .expect("DETERMINISTIC_EXPIRES_EPOCH is a valid RFC-3339 timestamp")
+        .with_timezone(&Utc);
+    let expires = match budget {
+        Some(b) => {
+            let seconds = i64::try_from(b.as_seconds()).unwrap_or(i64::MAX);
+            epoch + Duration::seconds(seconds)
+        }
+        None => epoch,
+    };
+    expires.format("%Y-%m-%dT%H:%M:%SZ").to_string()
+}
 
 /// Structured JTBD input supplied by a human or a higher-level authoring UI.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -40,6 +88,13 @@ pub struct JtbdInput {
     /// Failure modes the package must guard against.
     #[serde(default)]
     pub failure_modes: Vec<ClauseInput>,
+    /// Optional time budget the runtime must enforce. When present, the
+    /// generated `.truths` `Expires:` is anchored at `EPOCH + time_budget` and
+    /// the IntentPacket context carries `time_budget_seconds` so a runtime can
+    /// produce `TimeBudgetExhausted` honestly. Absent budgets fall back to the
+    /// unbounded epoch sentinel.
+    #[serde(default)]
+    pub time_budget: Option<TimeBudget>,
 }
 
 impl JtbdInput {
@@ -56,7 +111,15 @@ impl JtbdInput {
             so_that: so_that.into(),
             evidence_required: Vec::new(),
             failure_modes: Vec::new(),
+            time_budget: None,
         }
+    }
+
+    /// Builder helper: attach a time budget to a JTBD input.
+    #[must_use]
+    pub fn with_time_budget(mut self, budget: TimeBudget) -> Self {
+        self.time_budget = Some(budget);
+        self
     }
 
     /// Convert legacy `.truths` JTBD metadata into the new structured source
@@ -79,6 +142,7 @@ impl JtbdInput {
                 .cloned()
                 .map(ClauseInput::new)
                 .collect(),
+            time_budget: None,
         }
     }
 }
@@ -113,6 +177,12 @@ impl ClauseInput {
 pub struct JtbdDocument {
     pub key: String,
     pub clauses: Vec<JtbdClause>,
+    /// JTBD-declared time budget the runtime must enforce. Not a clause —
+    /// budgets are policy, not job content — but participates in deterministic
+    /// package regeneration through the `.truths` `Expires:` value and the
+    /// IntentPacket context.
+    #[serde(default)]
+    pub time_budget: Option<TimeBudget>,
 }
 
 impl JtbdDocument {
@@ -144,7 +214,11 @@ impl JtbdDocument {
 
         ensure_unique_clause_ids(&clauses)?;
 
-        Ok(Self { key, clauses })
+        Ok(Self {
+            key,
+            clauses,
+            time_budget: input.time_budget,
+        })
     }
 
     pub fn clause_ids(&self) -> impl Iterator<Item = &ClauseId> {
@@ -1104,6 +1178,14 @@ pub fn decode_jtbd(input: JtbdInput) -> Result<TruthPackage, DecodeJtbdError> {
             .map(ClauseId::as_str)
             .collect::<Vec<_>>(),
     });
+    if let Some(budget) = document.time_budget
+        && let Some(ctx) = intent_packet.context.as_object_mut()
+    {
+        ctx.insert(
+            "time_budget_seconds".to_string(),
+            json!(budget.as_seconds()),
+        );
+    }
 
     let artifacts = build_artifacts(&document);
     let proof_obligations = build_proof_obligations(&document);
@@ -1270,7 +1352,13 @@ fn generate_truth_projection(document: &JtbdDocument) -> String {
         &mut out,
         &format!("    May: attempt {}", functional_job.canonical_text),
     );
-    push_line(&mut out, &format!("    Expires: {DETERMINISTIC_EXPIRES}"));
+    push_line(
+        &mut out,
+        &format!(
+            "    Expires: {}",
+            deterministic_expires_line(document.time_budget)
+        ),
+    );
     if !failures.is_empty() {
         push_line(&mut out, "");
         push_line(&mut out, "  Constraint:");
@@ -1693,6 +1781,7 @@ mod tests {
                 ClauseInput::new("bypassed approval"),
                 ClauseInput::new("missing audit trail"),
             ],
+            time_budget: None,
         }
     }
 
@@ -2173,5 +2262,60 @@ mod tests {
         };
 
         assert_eq!(package.verify(&observation), AxiomRunVerdict::Invalid);
+    }
+
+    #[test]
+    fn time_budget_absent_uses_epoch_sentinel_and_omits_context_field() {
+        let package = decode_jtbd(vendor_input()).unwrap();
+
+        assert!(
+            package
+                .generated_truths
+                .contains("Expires: 2099-01-01T00:00:00Z")
+        );
+        assert_eq!(package.source_jtbd.time_budget, None);
+        assert!(
+            package
+                .intent_packet
+                .context
+                .get("time_budget_seconds")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn time_budget_shifts_expires_and_populates_intent_context() {
+        let input = vendor_input().with_time_budget(TimeBudget::from_minutes(45));
+        let package = decode_jtbd(input).unwrap();
+
+        assert!(
+            package
+                .generated_truths
+                .contains("Expires: 2099-01-01T00:45:00Z")
+        );
+        assert_eq!(
+            package.source_jtbd.time_budget,
+            Some(TimeBudget::from_minutes(45))
+        );
+        assert_eq!(
+            package.intent_packet.context["time_budget_seconds"],
+            serde_json::json!(45 * 60)
+        );
+    }
+
+    #[test]
+    fn time_budget_preserves_decode_determinism() {
+        let first =
+            decode_jtbd(vendor_input().with_time_budget(TimeBudget::from_hours(2))).unwrap();
+        let second =
+            decode_jtbd(vendor_input().with_time_budget(TimeBudget::from_hours(2))).unwrap();
+
+        assert_eq!(first.package_id, second.package_id);
+        assert_eq!(first.intent_packet.id, second.intent_packet.id);
+        assert_eq!(first.generated_truths, second.generated_truths);
+        assert_eq!(
+            serde_json::to_value(&first).unwrap(),
+            serde_json::to_value(&second).unwrap()
+        );
     }
 }
