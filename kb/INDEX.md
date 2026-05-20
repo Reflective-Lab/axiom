@@ -30,6 +30,14 @@ source: llm
 | Axiom-Helm-App Contract | Ownership split and operating loops for thin Helm-operated applications backed by Axiom Truth Packages |
 | Decoder Calibration | v0.13 learning loop from audited verifier outcomes to richer future JTBD decoding |
 
+## Philosophy Pages
+
+| Page | Purpose |
+|---|---|
+| Why Axiom | Problem framing for Axiom as the truth layer between intent and governed runtime execution |
+| Truth-Driven Development | Methodology for turning business rules into validated, simulated, compiled specifications |
+| Composed Vertical AI | Strategic framing for vertical products as JTBD narratives over composed LLM, solver, graph, workflow, and human-accountability systems |
+
 ## CLI Commands (cz)
 
 | Command | Purpose |
@@ -104,6 +112,7 @@ source: llm
 | Inkling Notes | `tests/inkling_notes_marquee.rs`; `tests/fixtures/inkling_vault_navigation_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/inkling-notes` | Seventh app probe for Axiom-Helm-App contract, local-first vault enrichment, snapshot/permission/index receipt candidates, and non-destructive suggestion boundaries |
 | Plumb Execution | `tests/plumb_execution_marquee.rs`; `tests/fixtures/plumb_strategy_revision_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/plumb-execution` | Eighth app probe for Axiom-Helm-App contract, closed-loop strategy execution readiness, and Helm ledger drift/revision/approval/commit receipt candidates |
 | Catalyst Biz | `tests/catalyst_biz_marquee.rs`; `tests/fixtures/catalyst_inbound_account_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/catalyst-biz` | Ninth app probe for Axiom-Helm-App contract, inbound business-operation readiness, and Helm ledger approval/routing/action/outcome receipt candidates |
+| Fathom Narrative | `tests/fathom_narrative_marquee.rs`; `tests/fixtures/fathom_temporal_evidence_transcript.json`; `/Users/kpernyer/dev/reflective/marquee-apps/fathom-narrative` | Tenth app probe for Axiom-Helm-App contract, temporal evidence windows, corpus snapshot receipts, disagreement preservation, and cited claim boundaries |
 
 ## Scenario Tags
 

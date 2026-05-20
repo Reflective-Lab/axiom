@@ -156,13 +156,17 @@ receipt, revision proposal receipt, sponsor approval receipt, and strategy
 commit receipt. `tests/catalyst_biz_marquee.rs` adds an everyday business
 operation variant: adapter receipt, job readiness packet, HITL approval
 receipt, routing decision receipt, next action receipt, and outcome tracking
-receipt. All entries are deterministic, carry payload hashes and backlinks,
-and explicitly record no authority effect. The serialized ledger entries do
-not contain raw signatures, custody refs, rule owner emails, rule citations,
-document ids, package names, affected services, ticket refs, note paths,
-import source paths, strategy sponsor ids, source systems, rejected proposal
-text, business operator ids, owner ids, CRM consent refs, source commands, or
-local app paths.
+receipt. `tests/fathom_narrative_marquee.rs` adds a temporal-evidence
+variant: adapter receipt, job readiness packet, corpus snapshot receipt,
+evidence window receipt, disagreement receipt, analyst review receipt, and
+narrative claim receipt. All entries are deterministic, carry payload hashes
+and backlinks, and explicitly record no authority effect. The serialized
+ledger entries do not contain raw signatures, custody refs, rule owner emails,
+rule citations, document ids, package names, affected services, ticket refs,
+note paths, import source paths, strategy sponsor ids, source systems,
+rejected proposal text, business operator ids, owner ids, CRM consent refs,
+filing ids, company names, source section refs, source commands, or local app
+paths.
 
 ## Tally As Boundary-Finding Loop
 
@@ -545,9 +549,10 @@ shared code at once.
 
 | Shape | Current status | Likely home if repeated |
 |---|---|---|
-| `ObservationAdapterReceipt` | Promoted to public Axiom truth-package API after Tally and Atlas both repeated the same app-neutral adapter audit envelope; Quorum, Scout, Warden, Triage, Inkling, Plumb, and Catalyst repeated it again. | Axiom owns the schema; Helm mirrors/renders/journals it. |
-| `JobReadinessPacket` | Helm-owned read-model candidate after Tally, Atlas, Quorum, Scout, Warden, Triage, Inkling, Plumb, and Catalyst repeated the same package/report/evidence/operator-action shape under different domain names. | Helm common module; Axiom should not own this public type. |
+| `ObservationAdapterReceipt` | Promoted to public Axiom truth-package API after Tally and Atlas both repeated the same app-neutral adapter audit envelope; Quorum, Scout, Warden, Triage, Inkling, Plumb, Catalyst, and Fathom repeated it again. | Axiom owns the schema; Helm mirrors/renders/journals it. |
+| `JobReadinessPacket` | Helm-owned read-model candidate after Tally, Atlas, Quorum, Scout, Warden, Triage, Inkling, Plumb, Catalyst, and Fathom repeated the same package/report/evidence/operator-action shape under different domain names. | Helm common module; Axiom should not own this public type. |
 | Operator/approval/publication/plan/execution/action/outcome receipts | Warden introduced compliance approval and registry publication receipts; Triage repeated the family as operator decision, client approval, and maintenance plan receipts; Plumb repeated it as drift verdict, revision proposal, sponsor approval, and strategy commit receipts; Catalyst repeated it as HITL approval, routing decision, next action, and outcome tracking receipts. These are not Axiom types; they look like Helm ledger payloads for decisions and long-running job milestones. | Helm Operator Control / ledger; stable enough to prototype in Helm while keeping domain payload details app-local. |
+| Corpus/window/disagreement/claim receipts | Fathom introduced corpus snapshot, evidence window, disagreement, analyst review, and narrative claim receipts for temporal analytical artifacts. This is not a generic operator-action family; it is the evidence-window sibling Helm needs when claims compare data over time. | Helm temporal-evidence/read-model module; Axiom verifies required evidence and keeps app-neutral report surfaces. |
 | Snapshot/permission/index receipts | Inkling introduced vault snapshot, permission, and index receipts for local-first private corpus enrichment. This looks like the creative/knowledge-work sibling of the operator receipt family. | Helm ledger and app-local corpus surfaces; probe Folio/Wykkid/Moosemen/Wolfgang before hardening names. |
 | `TransitionSigningEvidence` | Useful sub-shape, but still close to Tally's agreement/signing domain. | Wait for Atlas or another app to need signer/witness coverage. |
 | `CustodyReleaseEvidence` | Useful sub-shape, but tied to escrow/custody domains. | Keep app/platform-local unless Atlas has analogous external-action receipt evidence. |
@@ -614,15 +619,17 @@ Current fixture proof: `tests/escrow_release_marquee.rs`,
 `tests/atlas_integration_marquee.rs`, `tests/quorum_sense_marquee.rs`,
 `tests/scout_sourcing_marquee.rs`, `tests/warden_compliance_marquee.rs`, and
 `tests/triage_keeper_marquee.rs`, `tests/inkling_notes_marquee.rs`, and
-`tests/plumb_execution_marquee.rs`, and `tests/catalyst_biz_marquee.rs` all
-use the public type while keeping app-specific transcript adapters local.
-Tally proves success and rejection receipts around escrow release. Atlas
-proves the same envelope around identity-consolidation candidates. Quorum
-proves it again around organizational sensemaking synthesis readiness. Scout
-repeats it for governed sourcing. Warden repeats it for compliance registry
-shadow-runs. Triage repeats it for weekly maintenance cycles. Inkling repeats
-it for local-first vault enrichment. Plumb repeats it for closed-loop strategy
-execution. Catalyst repeats it for everyday business operations.
+`tests/plumb_execution_marquee.rs`, `tests/catalyst_biz_marquee.rs`, and
+`tests/fathom_narrative_marquee.rs` all use the public type while keeping
+app-specific transcript adapters local. Tally proves success and rejection
+receipts around escrow release. Atlas proves the same envelope around
+identity-consolidation candidates. Quorum proves it again around
+organizational sensemaking synthesis readiness. Scout repeats it for governed
+sourcing. Warden repeats it for compliance registry shadow-runs. Triage
+repeats it for weekly maintenance cycles. Inkling repeats it for local-first
+vault enrichment. Plumb repeats it for closed-loop strategy execution.
+Catalyst repeats it for everyday business operations. Fathom repeats it for
+temporal narrative analysis.
 
 Ownership:
 
@@ -1083,6 +1090,67 @@ adapter, readiness, approval, decision, plan/execution, action, and outcome.
 The next materially different pressure should be Fathom's temporal evidence
 windows or the creative/knowledge-work cluster's human-owned content receipts.
 
+## Fathom As Tenth Probe
+
+Fathom Narrative pressure-tests the contract against temporal analytical
+claims: a portfolio screen over time-indexed disclosure filings must bind to a
+fixed corpus snapshot, name comparable periods, cite filing sections, preserve
+disagreements, escalate low-confidence signals, and avoid presenting analyst
+attention artifacts as investment recommendations.
+
+The first probe uses the Fathom truth keys `corpus-snapshot-bound`,
+`comparison-window-named`, `filing-sections-cited`,
+`query-plan-recorded`, `risk-count-delta-computed`,
+`language-drift-computed`, `peer-cohort-boundary-named`,
+`disagreement-preserved`, `hitl-escalation-recorded`,
+`portfolio-selection-recorded`, `narrative-claims-cited`, and
+`recommendation-boundary-declared`.
+
+| Layer | Boundary decision |
+|---|---|
+| Fathom app | Owns filing corpus language, risk-factor fixtures, narrative-analysis product UX, raw analytical transcripts, and how claims are presented to analysts. |
+| Axiom | Owns the JTBD-to-Truth Package, temporal-evidence requirements, normalized `AxiomRunObservation`, verifier report, and clause-level coverage. It does not score securities, write claims, or make recommendations. |
+| Helm | Owns the operator/analyst review surface, missing temporal-evidence actions, snapshot/window/disagreement/claim receipt display, and append-only ledger entries. It does not become investment authority. |
+| Organism/Mosaic | Own formation selection, SEC/corpus connectors, memory of prior runs, drift/language/ranking analytics, policy checks, analyst-capacity optimization, and suggestor execution through public capability contracts. |
+| Converge | Promotes corpus facts, drift facts, disagreement facts, HITL requests, portfolio selections, claim citations, stop reasons, integrity proofs, and promotion authority evidence. |
+
+Current fixture proof: `tests/fathom_narrative_marquee.rs` builds a temporal
+evidence JTBD, adapts a recorded Fathom transcript into
+`AxiomRunObservation`, emits the public `ObservationAdapterReceipt`, builds the
+same Helm-facing `JobReadinessPacket`, and journals seven backlink-only Helm
+ledger entries: adapter receipt, readiness packet, corpus snapshot receipt,
+evidence window receipt, disagreement receipt, analyst review receipt, and
+narrative claim receipt. One negative path removes the comparison window.
+Another keeps cited narrative claims present but removes the recommendation
+boundary. In both cases the adapter still succeeds, but Axiom returns
+`Invalid` and Helm sees missing evidence without authorizing an analytical
+recommendation.
+
+What Fathom adds to the common shape:
+
+- Temporal evidence windows are first-class. "As of which corpus snapshot?"
+  and "which comparable periods?" are verifier evidence, not UI labels.
+- Disagreement is a durable artifact. Count drift and language drift can
+  conflict; the system must preserve that contradiction for analyst review
+  instead of collapsing it into one score.
+- Narrative claims require citations and boundaries. A claim can be admissible
+  for analyst attention while still explicitly not being investment authority.
+
+What did not move:
+
+- Corpus ingestion, filing parsing, risk-language analytics, portfolio
+  screening, claim language, and analyst workflow remain outside Axiom.
+- Helm journals snapshot, window, disagreement, review, and claim receipts,
+  but every ledger entry has `authority_effect: none`.
+- Axiom verifies the reported analytical contract. It does not run the
+  suggestors, promote facts, select the portfolio, or make capital decisions.
+
+Extraction signal after Fathom: before implementing Helm Operator Control,
+Helm should account for two sibling receipt families: long-running job
+receipts and temporal-evidence receipts. They share deterministic ledger
+backlinks and no authority effect, but temporal receipts need explicit
+snapshot/window/as-of semantics.
+
 ## Creative And Knowledge-Work Cluster
 
 Folio Editor, Inkling Notes, Moosemen Writer, Wykkid Preso, and Wolfgang Chat
@@ -1195,10 +1263,14 @@ ledger family can carry execution receipts for a closed-loop strategy run:
 drift verdict, revision proposal, sponsor approval, and versioned commit.
 Catalyst has now confirmed the family also covers everyday business operations:
 HITL approval, routing decision, next action, and outcome tracking.
+Fathom has now confirmed that temporal analytical artifacts need a sibling
+receipt family for corpus snapshots, evidence windows, disagreements, analyst
+review, and cited narrative claims.
 
-The practical sequence is now: prototype the Helm Operator Control receipt
-family from these repeated shapes, or use Fathom next to refine Axiom/Helm
-evidence windows and temporal replay before that implementation hardens.
+The practical sequence is now: prototype Helm Operator Control with a split
+between long-running job receipts and temporal-evidence receipts. Keep the
+common mechanics deterministic, backlink-only, and non-authoritative; keep the
+domain payloads app-local until Helm has a real ledger module to host them.
 
 ## Falsifiable Signals
 

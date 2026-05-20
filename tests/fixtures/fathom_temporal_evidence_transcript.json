@@ -1,0 +1,216 @@
+{
+  "source": {
+    "run_id": "fathom-narrative-run-2026-05-20-portfolio-risk-window",
+    "app_path": "/Users/kpernyer/dev/reflective/marquee-apps/fathom-narrative",
+    "command": "FATHOM_OUTPUT=json fathom-narrative portfolio --budget 50",
+    "captured_at": "2026-05-20T14:25:00Z",
+    "domain_hint": "fathom-narrative.temporal-evidence"
+  },
+  "execution_run": {
+    "analysis_run_id": "fathom.portfolio-risk-window.202605201425",
+    "status": "Converged",
+    "truth_keys": [
+      "corpus-snapshot-bound",
+      "comparison-window-named",
+      "filing-sections-cited",
+      "query-plan-recorded",
+      "risk-count-delta-computed",
+      "language-drift-computed",
+      "peer-cohort-boundary-named",
+      "disagreement-preserved",
+      "hitl-escalation-recorded",
+      "portfolio-selection-recorded",
+      "narrative-claims-cited",
+      "recommendation-boundary-declared"
+    ],
+    "corpus_snapshot": {
+      "snapshot_id": "iceberg.snapshot.fathom.sec-risk.2026-05-20T14:00Z",
+      "as_of": "2026-05-20T14:00:00Z",
+      "corpus_version": "sec-risk-factors.fixture.v1",
+      "table_ref": "iceberg://fathom/risk_factor_sections",
+      "fixture_refs": [
+        "fixtures/apple-fy2024-risk-factors.json",
+        "fixtures/apple-fy2025-risk-factors.json",
+        "fixtures/cik-0000789019-fy2024-risk-factors.json",
+        "fixtures/cik-0000789019-fy2025-risk-factors.json",
+        "fixtures/cik-0001045810-fy2025-risk-factors.json",
+        "fixtures/cik-0001045810-fy2026-risk-factors.json"
+      ],
+      "snapshot_hash": "sha256:fathom-risk-snapshot-20260520"
+    },
+    "comparison_window": {
+      "current_period": "FY2025",
+      "prior_period": "FY2024",
+      "comparison_kind": "year_over_year",
+      "consecutive": true,
+      "missing_data_notes": []
+    },
+    "filing_sections": [
+      {
+        "cik": "0000320193",
+        "company_name": "Apple Inc.",
+        "current_fiscal_year": 2025,
+        "prior_fiscal_year": 2024,
+        "form": "10-K",
+        "section": "Item 1A",
+        "current_section_ref": "sec://edgar/0000320193/2025/10-k/item-1a",
+        "prior_section_ref": "sec://edgar/0000320193/2024/10-k/item-1a",
+        "source_hash": "sha256:fathom-apple-risk-window"
+      },
+      {
+        "cik": "0000789019",
+        "company_name": "Microsoft Corporation",
+        "current_fiscal_year": 2025,
+        "prior_fiscal_year": 2024,
+        "form": "10-K",
+        "section": "Item 1A",
+        "current_section_ref": "sec://edgar/0000789019/2025/10-k/item-1a",
+        "prior_section_ref": "sec://edgar/0000789019/2024/10-k/item-1a",
+        "source_hash": "sha256:fathom-msft-risk-window"
+      },
+      {
+        "cik": "0001045810",
+        "company_name": "NVIDIA Corporation",
+        "current_fiscal_year": 2026,
+        "prior_fiscal_year": 2025,
+        "form": "10-K",
+        "section": "Item 1A",
+        "current_section_ref": "sec://edgar/0001045810/2026/10-k/item-1a",
+        "prior_section_ref": "sec://edgar/0001045810/2025/10-k/item-1a",
+        "source_hash": "sha256:fathom-nvidia-risk-window"
+      }
+    ],
+    "query_plan": {
+      "plan_id": "query.fathom.risk-window.20260520",
+      "engine": "datafusion",
+      "sql_hash": "sha256:fathom-risk-window-sql",
+      "parameters_hash": "sha256:fathom-risk-window-params",
+      "replayable": true
+    },
+    "risk_count_deltas": [
+      {
+        "cik": "0000320193",
+        "current_fiscal_year": 2025,
+        "prior_fiscal_year": 2024,
+        "current_count": 27,
+        "prior_count": 28,
+        "delta": -1
+      },
+      {
+        "cik": "0000789019",
+        "current_fiscal_year": 2025,
+        "prior_fiscal_year": 2024,
+        "current_count": 20,
+        "prior_count": 25,
+        "delta": -5
+      },
+      {
+        "cik": "0001045810",
+        "current_fiscal_year": 2026,
+        "prior_fiscal_year": 2025,
+        "current_count": 23,
+        "prior_count": 22,
+        "delta": 1
+      }
+    ],
+    "language_drifts": [
+      {
+        "cik": "0000320193",
+        "current_fiscal_year": 2025,
+        "prior_fiscal_year": 2024,
+        "jaccard_similarity": 0.62,
+        "added_count": 6,
+        "removed_count": 7,
+        "confidence_basis_points": 6200
+      },
+      {
+        "cik": "0000789019",
+        "current_fiscal_year": 2025,
+        "prior_fiscal_year": 2024,
+        "jaccard_similarity": 0.55,
+        "added_count": 1,
+        "removed_count": 6,
+        "confidence_basis_points": 5500
+      },
+      {
+        "cik": "0001045810",
+        "current_fiscal_year": 2026,
+        "prior_fiscal_year": 2025,
+        "jaccard_similarity": 0.8,
+        "added_count": 2,
+        "removed_count": 1,
+        "confidence_basis_points": 8000
+      }
+    ],
+    "peer_cohort": {
+      "cohort_id": "cohort.us-megacap-platforms",
+      "boundary": "US mega-cap platform companies with comparable 10-K risk sections",
+      "as_of": "2026-05-20",
+      "ciks": ["0000320193", "0000789019", "0001045810"],
+      "rationale_hash": "sha256:fathom-peer-cohort-boundary"
+    },
+    "disagreements": [
+      {
+        "disagreement_id": "disagreement.fathom.apple.language-softening-count-flat",
+        "cik": "0000320193",
+        "kind": "count_delta_vs_language_churn",
+        "status": "PreservedForReview",
+        "hitl_required": true,
+        "evidence_refs": [
+          "fact://risk-count-delta/0000320193/FY2025",
+          "fact://language-drift/0000320193/FY2025"
+        ],
+        "summary_hash": "sha256:fathom-apple-disagreement-summary"
+      }
+    ],
+    "hitl_review": {
+      "gate_id": "hitl.fathom.disclosure-drift.apple.2025",
+      "status": "ApprovedForAnalystAttention",
+      "reviewer_role": "portfolio_analyst",
+      "note_hash": "sha256:fathom-hitl-review-note"
+    },
+    "portfolio_selection": {
+      "selection_id": "portfolio.fathom.risk-coverage.20260520",
+      "solver": "portfolio-dp",
+      "budget_risk_factors": 50,
+      "selected_ciks": ["0000320193", "0000789019"],
+      "selected_weight": 47,
+      "selection_value": 83,
+      "rationale_hash": "sha256:fathom-portfolio-selection-rationale"
+    },
+    "narrative_claims": [
+      {
+        "claim_id": "claim.fathom.apple-softening-risk-language",
+        "claim_hash": "sha256:fathom-claim-apple-language-softening",
+        "citation_refs": [
+          "fact://risk-count-delta/0000320193/FY2025",
+          "fact://language-drift/0000320193/FY2025",
+          "sec://edgar/0000320193/2025/10-k/item-1a"
+        ],
+        "status": "Cited"
+      },
+      {
+        "claim_id": "claim.fathom.msft-high-churn-review",
+        "claim_hash": "sha256:fathom-claim-msft-high-churn",
+        "citation_refs": [
+          "fact://risk-count-delta/0000789019/FY2025",
+          "fact://language-drift/0000789019/FY2025",
+          "sec://edgar/0000789019/2025/10-k/item-1a"
+        ],
+        "status": "Cited"
+      }
+    ],
+    "recommendation_boundary": {
+      "output_kind": "analyst_attention_queue",
+      "investment_recommendation_presented": false,
+      "capital_decision_authority": "analyst_owned",
+      "legal_review_required_before_publication": true
+    },
+    "promotion_authority": {
+      "gate_id": "converge.gate.fathom-temporal-evidence",
+      "policy_version_hash": "sha256:fathom-temporal-evidence-policy",
+      "approver_id": "arbiter.fathom.disclosure-risk",
+      "approver_kind": "SystemPolicy"
+    }
+  }
+}
