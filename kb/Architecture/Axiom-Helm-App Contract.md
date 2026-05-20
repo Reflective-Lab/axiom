@@ -159,14 +159,17 @@ receipt, routing decision receipt, next action receipt, and outcome tracking
 receipt. `tests/fathom_narrative_marquee.rs` adds a temporal-evidence
 variant: adapter receipt, job readiness packet, corpus snapshot receipt,
 evidence window receipt, disagreement receipt, analyst review receipt, and
-narrative claim receipt. All entries are deterministic, carry payload hashes
-and backlinks, and explicitly record no authority effect. The serialized
-ledger entries do not contain raw signatures, custody refs, rule owner emails,
-rule citations, document ids, package names, affected services, ticket refs,
-note paths, import source paths, strategy sponsor ids, source systems,
-rejected proposal text, business operator ids, owner ids, CRM consent refs,
-filing ids, company names, source section refs, source commands, or local app
-paths.
+narrative claim receipt. `tests/folio_editor_marquee.rs` adds a public-content
+variant: adapter receipt, job readiness packet, canonical story receipt, claim
+review receipt, editorial approval receipt, and publication boundary receipt.
+All entries are deterministic, carry payload hashes and backlinks, and
+explicitly record no authority effect. The serialized ledger entries do not
+contain raw signatures, custody refs, rule owner emails, rule citations,
+document ids, package names, affected services, ticket refs, note paths, import
+source paths, strategy sponsor ids, source systems, rejected proposal text,
+business operator ids, owner ids, CRM consent refs, filing ids, company names,
+source section refs, story ids, claim ids, citation locators, source commands,
+or local app paths.
 
 ## Tally As Boundary-Finding Loop
 
@@ -549,11 +552,12 @@ shared code at once.
 
 | Shape | Current status | Likely home if repeated |
 |---|---|---|
-| `ObservationAdapterReceipt` | Promoted to public Axiom truth-package API after Tally and Atlas both repeated the same app-neutral adapter audit envelope; Quorum, Scout, Warden, Triage, Inkling, Plumb, Catalyst, and Fathom repeated it again. | Axiom owns the schema; Helm mirrors/renders/journals it. |
-| `JobReadinessPacket` | Helm-owned read-model candidate after Tally, Atlas, Quorum, Scout, Warden, Triage, Inkling, Plumb, Catalyst, and Fathom repeated the same package/report/evidence/operator-action shape under different domain names. | Helm common module; Axiom should not own this public type. |
+| `ObservationAdapterReceipt` | Promoted to public Axiom truth-package API after Tally and Atlas both repeated the same app-neutral adapter audit envelope; Quorum, Scout, Warden, Triage, Inkling, Plumb, Catalyst, Fathom, and Folio repeated it again. | Axiom owns the schema; Helm mirrors/renders/journals it. |
+| `JobReadinessPacket` | Helm-owned read-model candidate after Tally, Atlas, Quorum, Scout, Warden, Triage, Inkling, Plumb, Catalyst, Fathom, and Folio repeated the same package/report/evidence/operator-action shape under different domain names. | Helm common module; Axiom should not own this public type. |
 | Operator/approval/publication/plan/execution/action/outcome receipts | Warden introduced compliance approval and registry publication receipts; Triage repeated the family as operator decision, client approval, and maintenance plan receipts; Plumb repeated it as drift verdict, revision proposal, sponsor approval, and strategy commit receipts; Catalyst repeated it as HITL approval, routing decision, next action, and outcome tracking receipts. These are not Axiom types; they look like Helm ledger payloads for decisions and long-running job milestones. | Helm Operator Control / ledger; stable enough to prototype in Helm while keeping domain payload details app-local. |
 | Corpus/window/disagreement/claim receipts | Fathom introduced corpus snapshot, evidence window, disagreement, analyst review, and narrative claim receipts for temporal analytical artifacts. This is not a generic operator-action family; it is the evidence-window sibling Helm needs when claims compare data over time. | Helm temporal-evidence/read-model module; Axiom verifies required evidence and keeps app-neutral report surfaces. |
-| Snapshot/permission/index receipts | Inkling introduced vault snapshot, permission, and index receipts for local-first private corpus enrichment. This looks like the creative/knowledge-work sibling of the operator receipt family. | Helm ledger and app-local corpus surfaces; probe Folio/Wykkid/Moosemen/Wolfgang before hardening names. |
+| Content/citation/publication receipts | Folio introduced canonical story, claim review, editorial approval, and publication boundary receipts. This is the public-content sibling of Inkling's private-corpus receipts and Fathom's temporal claim receipts. | Helm content/readiness module; Axiom verifies claim, citation, unresolved-question, approval, and publication-boundary evidence. |
+| Snapshot/permission/index receipts | Inkling introduced vault snapshot, permission, and index receipts for local-first private corpus enrichment. This is the private-corpus sibling of the public-content receipt family. | Helm ledger and app-local corpus surfaces; preserve user ownership and non-destructive proposal boundaries. |
 | `TransitionSigningEvidence` | Useful sub-shape, but still close to Tally's agreement/signing domain. | Wait for Atlas or another app to need signer/witness coverage. |
 | `CustodyReleaseEvidence` | Useful sub-shape, but tied to escrow/custody domains. | Keep app/platform-local unless Atlas has analogous external-action receipt evidence. |
 
@@ -620,16 +624,17 @@ Current fixture proof: `tests/escrow_release_marquee.rs`,
 `tests/scout_sourcing_marquee.rs`, `tests/warden_compliance_marquee.rs`, and
 `tests/triage_keeper_marquee.rs`, `tests/inkling_notes_marquee.rs`, and
 `tests/plumb_execution_marquee.rs`, `tests/catalyst_biz_marquee.rs`, and
-`tests/fathom_narrative_marquee.rs` all use the public type while keeping
-app-specific transcript adapters local. Tally proves success and rejection
-receipts around escrow release. Atlas proves the same envelope around
-identity-consolidation candidates. Quorum proves it again around
-organizational sensemaking synthesis readiness. Scout repeats it for governed
-sourcing. Warden repeats it for compliance registry shadow-runs. Triage
-repeats it for weekly maintenance cycles. Inkling repeats it for local-first
-vault enrichment. Plumb repeats it for closed-loop strategy execution.
-Catalyst repeats it for everyday business operations. Fathom repeats it for
-temporal narrative analysis.
+`tests/fathom_narrative_marquee.rs`, and `tests/folio_editor_marquee.rs` all
+use the public type while keeping app-specific transcript adapters local.
+Tally proves success and rejection receipts around escrow release. Atlas
+proves the same envelope around identity-consolidation candidates. Quorum
+proves it again around organizational sensemaking synthesis readiness. Scout
+repeats it for governed sourcing. Warden repeats it for compliance registry
+shadow-runs. Triage repeats it for weekly maintenance cycles. Inkling repeats
+it for local-first vault enrichment. Plumb repeats it for closed-loop strategy
+execution. Catalyst repeats it for everyday business operations. Fathom
+repeats it for temporal narrative analysis. Folio repeats it for public
+editorial package preparation.
 
 Ownership:
 
@@ -1167,9 +1172,9 @@ Useful probe order:
 
 - Inkling first for private corpus safety: snapshots, permissions,
   separable generated metadata, and non-destructive cleanup proposals.
-- Folio next when we want public-claim publishing pressure: source evidence,
-  standards review, layout/ad-safety, unresolved questions, and editor
-  approval.
+- Folio next for public-claim publishing pressure: source evidence,
+  citations, standards review, unresolved questions, editor approval, and
+  publication boundary.
 - Wykkid when presentation reliability matters: claim evidence, timing,
   confidential material, demo readiness, and fallbacks.
 - Moosemen when creative canon protection matters: version history, canon
@@ -1180,6 +1185,65 @@ Useful probe order:
 These apps should not force Axiom to become a writing, research, or editor
 engine. They should pressure Axiom and Helm to make provenance, permission,
 approval, and proposal state legible.
+
+## Folio As Eleventh Probe
+
+Folio Editor pressure-tests the contract against public editorial content:
+canonical story objects, promoted claims, citation trails, unresolved
+questions, standards review, editorial approval, package export, and the
+boundary between preview/export and live publication.
+
+The first probe uses the Folio truth keys
+`canonical-story-snapshot-bound`, `story-brief-approved`,
+`source-map-cited`, `public-claims-bounded`,
+`claim-citations-attached`, `unresolved-questions-visible`,
+`standards-risk-review-recorded`, `editorial-approval-recorded`,
+`publication-boundary-declared`, and `package-export-recorded`.
+
+| Layer | Boundary decision |
+|---|---|
+| Folio app | Owns canonical story objects, editorial voice, source maps, claim records, citation locators, unresolved-question copy, layout/export details, and raw publication transcripts. |
+| Axiom | Owns the JTBD-to-Truth Package, public-claim and publication-boundary evidence requirements, normalized `AxiomRunObservation`, verifier report, and clause-level coverage. It does not write the story, decide the headline, approve publication, or export to the CMS. |
+| Helm | Owns the editor/operator review surface, missing-citation and missing-approval actions, content receipt display, and append-only ledger entries. It does not become editorial authority. |
+| Organism/Mosaic | Own source retrieval, claim extraction, contradiction search, copy/style suggestions, layout candidate generation, risk review assistance, and provider routing through public capability contracts. |
+| Converge | Promotes canonical story, claim, citation, review, approval, package, stop-reason, integrity, and promotion-authority facts. |
+
+Current fixture proof: `tests/folio_editor_marquee.rs` builds a public
+editorial package JTBD, adapts a recorded Folio transcript into
+`AxiomRunObservation`, emits the public `ObservationAdapterReceipt`, builds the
+same Helm-facing `JobReadinessPacket`, and journals six backlink-only Helm
+ledger entries: adapter receipt, readiness packet, canonical story receipt,
+claim review receipt, editorial approval receipt, and publication boundary
+receipt. One negative path removes citation evidence. Another keeps the
+publication boundary present but removes editorial approval. In both cases the
+adapter still succeeds, but Axiom returns `Invalid` and Helm sees missing
+evidence without authorizing public publication.
+
+What Folio adds to the common shape:
+
+- Public content needs a claim/citation/readiness family, not only generic job
+  approval. Canonical story snapshot, claim review, editorial approval, and
+  publication boundary receipts form a deterministic content chain.
+- Unresolved questions are evidence. A publishable package may still carry
+  open questions, but hiding them is a verifier failure.
+- Preview/export is not publication authority. Helm can show the package and
+  journal approval receipts, but the app and editorial gate still own whether
+  anything goes live.
+
+What did not move:
+
+- Story voice, source locators, claim language, layout choices, and CMS export
+  mechanics remain Folio-owned.
+- Helm journals content receipts, but every ledger entry has
+  `authority_effect: none`.
+- Axiom verifies the reported editorial contract. It does not become a CMS,
+  newsroom, copy desk, legal reviewer, or publication gate.
+
+Extraction signal after Folio: stop probing and implement the Helm common
+module. The repeated foundation is now strong enough: public
+`ObservationAdapterReceipt`, Helm-owned `JobReadinessPacket`, deterministic
+ledger entries, and three receipt families for long-running jobs,
+temporal-evidence claims, and content/publication readiness.
 
 ## Inkling As Seventh Probe
 
@@ -1234,9 +1298,9 @@ What did not move:
 
 Extraction signal after Inkling: the creative/knowledge-work apps should be
 used when the platform needs to prove human-owned content is protected while
-AI proposes structure. Folio, Wykkid, Moosemen, and Wolfgang are meaningful
-follow-ups if we want to harden claim/presentation/canon/research variants of
-the same provenance and proposal pattern.
+AI proposes structure. Folio has now hardened the public-claim and publication
+variant enough for Helm implementation; Wykkid, Moosemen, and Wolfgang can
+wait until the common module is in use.
 
 ## Control Plane Versus Temporal Probes
 
@@ -1266,11 +1330,18 @@ HITL approval, routing decision, next action, and outcome tracking.
 Fathom has now confirmed that temporal analytical artifacts need a sibling
 receipt family for corpus snapshots, evidence windows, disagreements, analyst
 review, and cited narrative claims.
+Folio has now confirmed that public content needs a content/publication sibling
+for canonical story snapshots, claim review, editorial approval, unresolved
+questions, and publication boundaries.
 
-The practical sequence is now: prototype Helm Operator Control with a split
-between long-running job receipts and temporal-evidence receipts. Keep the
-common mechanics deterministic, backlink-only, and non-authoritative; keep the
-domain payloads app-local until Helm has a real ledger module to host them.
+The practical sequence is now: stop probing and implement the Helm common
+module. Start with shared mechanics rather than every receipt payload:
+`JobReadinessPacket`, deterministic ledger entry creation, receipt backlinks,
+payload hashes, authority-effect markers, and operator actions. Then host the
+three proven payload families as Helm-owned modules: long-running job
+receipts, temporal-evidence receipts, and content/publication receipts. Keep
+domain payload details app-local until Helm has a real ledger module to host
+them.
 
 ## Falsifiable Signals
 

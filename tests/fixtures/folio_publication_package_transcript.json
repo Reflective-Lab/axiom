@@ -1,0 +1,159 @@
+{
+  "source": {
+    "run_id": "folio-editor-run-2026-05-20-publication-package",
+    "app_path": "/Users/kpernyer/dev/reflective/marquee-apps/folio-editor",
+    "command": "LEDE_OUTPUT=json newspaper-server package --story story-hellevik-pier --edition sydostran-2026-05-20",
+    "captured_at": "2026-05-20T10:15:00Z",
+    "domain_hint": "folio-editor.publication-boundary"
+  },
+  "execution_run": {
+    "edition_run_id": "edition-run-solvesborg-2026-05-20-hellevik-pier",
+    "status": "Converged",
+    "truth_keys": [
+      "canonical-story-snapshot-bound",
+      "story-brief-approved",
+      "source-map-cited",
+      "public-claims-bounded",
+      "claim-citations-attached",
+      "unresolved-questions-visible",
+      "standards-risk-review-recorded",
+      "editorial-approval-recorded",
+      "publication-boundary-declared",
+      "package-export-recorded"
+    ],
+    "canonical_story": {
+      "story_id": "story-hellevik-pier",
+      "thread_id": "thread-solvesborg-harbor-plan",
+      "schema_version": "canonical-story.v0.2",
+      "snapshot_id": "canonical-story-snapshot-2026-05-20T10-10Z",
+      "story_object_hash": "sha256:34e4d4232e9b2f7c8d4a7b8d8b2f2f7e4dd8b2c39f9f1d5e4921aa8a0f3a10cc",
+      "freeze_hash": "sha256:05b0cd93c898fa47dc568e8f3642a78d0622a4c3553ff655e7be83a2b10df521",
+      "revision": 3
+    },
+    "brief": {
+      "brief_id": "brief-local-harbor-001",
+      "desk": "local",
+      "angle_hash": "sha256:8b7d0d8cc1ef65d2e6ed89075a243d0d4df67f917a6a9e6f3ad19bf97706df2a",
+      "approved_by_role": "assignment_editor",
+      "approved_at": "2026-05-20T08:45:00Z"
+    },
+    "source_map": {
+      "source_map_id": "source-map-harbor-001",
+      "qualified_source_ids": [
+        "solvesborg-kommun",
+        "trafikverket",
+        "local-fisher-association",
+        "sydostran-archive"
+      ],
+      "permissions_recorded": true,
+      "anonymity_policy": "not_used",
+      "source_map_hash": "sha256:e191ac58a1b9e6f236b9aa33d05b3a9f95fb7c9f0c6c3fbe775b91f2b82d51a8"
+    },
+    "claim_set": [
+      {
+        "claim_id": "claim-001-pier-application-filed",
+        "status": "promoted",
+        "statement_hash": "sha256:4a67b9acfd097ff1229ec48a7e2e3c548ed4e291d71ae3f33d8c9ef19f2ed224",
+        "citation_refs": [
+          "citation-municipal-protocol-001"
+        ],
+        "contradiction_refs": [],
+        "loose_ends": []
+      },
+      {
+        "claim_id": "claim-002-fishermen-request-delay",
+        "status": "promoted",
+        "statement_hash": "sha256:7bf84063a2b90cdcb9890c8f5d1b4898db3861db82d1b76428e8cd73b0fe62a1",
+        "citation_refs": [
+          "citation-fisher-association-001",
+          "citation-municipal-protocol-001"
+        ],
+        "contradiction_refs": [
+          "contradiction-municipal-timeline-001"
+        ],
+        "loose_ends": [
+          "question-impact-on-summer-berths"
+        ]
+      },
+      {
+        "claim_id": "claim-003-state-road-consulted",
+        "status": "promoted",
+        "statement_hash": "sha256:65ae933cc0fe42ade8ffbe5eb4f0789b38f01b9d875b7f6124f42dc2057f3181",
+        "citation_refs": [
+          "citation-trafikverket-letter-001"
+        ],
+        "contradiction_refs": [],
+        "loose_ends": []
+      }
+    ],
+    "citations": [
+      {
+        "citation_id": "citation-municipal-protocol-001",
+        "source_id": "solvesborg-kommun",
+        "locator": "kb://notes/sources/solvesborg/kommun-protocol-2026-05-18",
+        "source_hash": "sha256:cf34a5b7987e4775d7d27e0dc45d38d4cfb4088ec7d71f5c3d795c284c8a58f2",
+        "quote_permission": "public_record"
+      },
+      {
+        "citation_id": "citation-fisher-association-001",
+        "source_id": "local-fisher-association",
+        "locator": "kb://notes/sources/solvesborg/fisher-interview-2026-05-19",
+        "source_hash": "sha256:f5d0bd1f876239de9f1c2950cc1d8d83a5a5a3396aa4d9f09be212f6fb63c885",
+        "quote_permission": "on_record"
+      },
+      {
+        "citation_id": "citation-trafikverket-letter-001",
+        "source_id": "trafikverket",
+        "locator": "kb://notes/sources/solvesborg/trafikverket-letter-2026-05-12",
+        "source_hash": "sha256:e29f5c842abf1bda1a0b673f8d4e7fe892eb4d6fcb65524f264eb21bc9f74b18",
+        "quote_permission": "public_record"
+      }
+    ],
+    "unresolved_questions": [
+      {
+        "question_id": "question-impact-on-summer-berths",
+        "status": "visible_next_update",
+        "owner_role": "reporter",
+        "evidence_ref": "claim-002-fishermen-request-delay"
+      }
+    ],
+    "standards_review": {
+      "gate_id": "helm.gate.folio-standards-review",
+      "status": "approved_with_questions",
+      "reviewer_role": "standards_editor",
+      "legal_risk": "low",
+      "right_of_response_status": "not_required",
+      "note_hash": "sha256:6013337d870b167c0b1f030adfd7568d04f0ad56525b0618ebec68ff5760d0bf"
+    },
+    "editorial_approval": {
+      "gate_id": "helm.gate.folio-edition-approval",
+      "status": "approved",
+      "approver_role": "edition_editor",
+      "approval_hash": "sha256:a7d86cd4ea859f25e94700e3211d97e3e8e14932a7ccae0d7fb2c6dc66756dd1",
+      "publish_window": "2026-05-20T11:00:00Z/2026-05-20T13:00:00Z"
+    },
+    "publication_boundary": {
+      "output_kind": "editorial_package_preview",
+      "cms_export_prepared": true,
+      "public_publish_invoked": false,
+      "reader_visible_ai_label": true,
+      "live_url": null,
+      "boundary_hash": "sha256:8b2ff66a973c9c97fd785f6d4878159145443aa80573776075dd0d8fe0ba4fe9"
+    },
+    "package_export": {
+      "export_id": "export-preview-hellevik-pier-001",
+      "channel_targets": [
+        "web_preview",
+        "print_slot"
+      ],
+      "package_hash": "sha256:0f75e3ef86b0ff679137c31d78208f75b10a54027ac2d5eb9329e7ef5e4d18f7",
+      "layout_candidate_hash": "sha256:c603637c2d6bdaf9ff9e2ab0d0f8e02ef6a3f8c2fd35f8a1cf96e672e1b65a5a"
+    },
+    "promotion_authority": {
+      "gate_id": "converge.gate.folio-publication-package",
+      "policy_version_hash": "sha256:5e27fe58f47f2de19c1d1e8cb44ac5f50e34bf3ed8ddf0248ab1ac9cd60e8553",
+      "approver_id": "converge.operator.editorial-control",
+      "approver_kind": "HumanOperator"
+    }
+  }
+}
