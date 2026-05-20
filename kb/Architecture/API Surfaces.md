@@ -8,6 +8,25 @@ source: llm
 This page is the authoritative API reference for Axiom's public boundaries.
 When it conflicts with older root-level docs, this page wins.
 
+## Release Surface v0.15
+
+The v0.15 release surface is the Axiom layer, not the whole app/Helm stack:
+
+| Surface | Public API |
+|---|---|
+| JTBD decoding | `JtbdInput`, `ClauseInput`, `decode_jtbd` |
+| Truth package | `TruthPackage`, `TruthPackageId`, `TruthPackageArtifacts`, `VerifierSpec`, `ProofObligation`, `ReplayProfile`, `LineageMap` |
+| Intent compilation | `compile_intent`, `compile_intent_from_source` |
+| Run verification | `AxiomRunObservation`, `AxiomRunStageRecord`, `AxiomRunReport::verify`, `AxiomRunVerdict`, `ObservedStopReason`, `PromotedFactRecord`, `RunIntegrityProof` |
+| Adapter audit | `ObservationAdapterReceipt`, `ObservationAdapterReceiptInput`, `ObservationAdapterStatus` |
+| Decoder learning | `LearningEpisode`, `CalibrationRecord`, `CalibrationTable`, `CalibrationSignalKind`, `CalibrationStatus`, `apply_decoder_calibration` |
+| Provenance | `AXIOM_PROVENANCE`, `TruthPackageSeedPayload`, `truth_package_seed_fact`, `truth_package_seed_facts` |
+
+Axiom owns these schemas and verifier semantics. Helm owns operator displays,
+package review, calibration review, ledger policy, and plugin hosting. Apps own
+raw transcripts and app-specific adapters. Organism owns Formation selection.
+Converge owns promotion authority and integrity.
+
 ## Runtime intent
 
 Axiom owns Truth-shaped input. Organism owns runtime mechanism. The public flow
@@ -79,25 +98,34 @@ custody is held in `ClauseFingerprint`; artifact custody is checked by
 `TruthProjectionOverlay` and return a separate `TruthProjectionVersion` rather
 than mutating the package.
 
-## Truth-to-formation run proof (v0.9 target)
+## Run Verification
 
-The next public surface should be a proof/reporting layer over the existing
-stack, not a new execution model. The intended shape is:
+Axiom verifies normalized run observations over the existing stack. It is not a
+new execution model.
 
 ```text
-Truth source
-  -> SpecValidation
-  -> SimulationReport
-  -> IntentPacket
-  -> organism_runtime::SelectionTrace
-  -> organism_runtime::CompiledFormationPlan
-  -> converge_kernel::ConvergeResult
-  -> AxiomRunReport
+TruthPackage
+  -> Organism / Mosaic / Converge / app execution
+  -> app-specific or runtime adapter
+  -> AxiomRunObservation
+  -> AxiomRunReport::verify(&package, observation)
 ```
 
-`AxiomRunReport` is not implemented yet. It should collect evidence from
-Axiom, Organism, and Converge so Helms or another app can show why a truth did
-or did not reach a fixed point.
+The report compares the package's `VerifierSpec` to the observed stop reason,
+promoted facts, evidence refs, trace links, promotion-authority records, and
+integrity proof. The output verdict is one of:
+
+| Verdict | Meaning |
+|---|---|
+| `Satisfied` | Required evidence appeared, forbidden actions did not occur, and the observed stop reason matched the verifier spec. |
+| `Blocked` | The run stopped honestly before satisfaction because approval, evidence, policy, or human intervention is still missing. |
+| `Exhausted` | The run consumed a declared budget without satisfying the job. |
+| `Invalid` | The run violated the package or could not be verified. |
+
+Adapters must be deterministic for the same source transcript, package ID, and
+truth version. A successful adapter returns an `AxiomRunObservation` plus an
+`ObservationAdapterReceipt`; a rejected adapter returns only the receipt with
+explicit errors.
 
 ## External crates
 
@@ -106,7 +134,8 @@ or did not reach a fixed point.
 | `converge-provider` | Chat backend traits, request/response types, and provider selection vocabulary used by validation and guidance. |
 | `converge-manifold-adapters` | Concrete backend selection helper (`manifold::select_healthy_chat_backend`). |
 | `organism-pack` | Defines `IntentPacket` and related runtime contract types consumed by organism. |
-| `organism-runtime` | Planned v0.9 integration surface for formation selection, compilation, instantiation, and execution. |
+| `converge-pack` | Public provenance and fact payload contracts used for Axiom seed proposals and report extraction. |
+| `organism-runtime` | Dev/test fixture dependency for proof recipes; Axiom's library release surface does not require callers to use it. |
 
 No Axiom public API depends on Converge internal crates such as
 `converge-core`, `converge-runtime`, or `converge-analytics`.

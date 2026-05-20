@@ -149,7 +149,7 @@ fn check_rust_version() -> Check {
     let result = run_cmd_output("rustc", &["--version"]);
     match result {
         Ok(version) => {
-            // Parse version like "rustc 1.85.0 (..."
+            // Parse version like "rustc 1.94.0 (..."
             let version_str = version.trim();
             let meets_minimum = version_str
                 .split_whitespace()
@@ -159,7 +159,7 @@ fn check_rust_version() -> Check {
                     if parts.len() >= 2 {
                         let major: u32 = parts[0].parse().ok()?;
                         let minor: u32 = parts[1].parse().ok()?;
-                        Some(major > 1 || (major == 1 && minor >= 85))
+                        Some(major > 1 || (major == 1 && minor >= 94))
                     } else {
                         None
                     }
@@ -170,7 +170,7 @@ fn check_rust_version() -> Check {
                 Check {
                     name: "rust version".to_string(),
                     status: CheckStatus::Pass,
-                    version: Some(format!("{version_str} (>= 1.85 required)")),
+                    version: Some(format!("{version_str} (>= 1.94 required)")),
                     fix_hint: None,
                 }
             } else {

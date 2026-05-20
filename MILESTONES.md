@@ -2,6 +2,34 @@
 
 > See `~/dev/reflective/stack/bedrock-platform/EPIC.md` for the coarse-grained outcomes these milestones advance.
 
+## Release Candidate: v0.15.0 — Axiom Layer
+**Date:** 2026-05-20 | **Epic:** E7 (Axiom translates human jobs into governed runtime contracts)
+**Goal:** Ship the current Axiom layer as a real stack boundary now, without turning the Helm/app contract probes into Axiom release scope.
+
+This release draws the line after v0.15:
+
+- Axiom owns the truth layer: JTBD decoding, Truth Packages, generated `.truths`, intent compilation, verifier specs, run observations, run reports, lineage, provenance, and decoder calibration.
+- Axiom does not own Helm operator UX, app domain state, app-specific adapters, Formation selection, Mosaic specialists, plugin hosting, raw run history, or Converge promotion authority.
+- The Axiom-Helm-App contract work is boundary guidance for future stack thinning. For this release, only the app-neutral adapter receipt shape is public Axiom API; Helm-owned readiness packets and app-domain receipts stay outside Axiom.
+
+### Release checklist
+
+- [x] Public crate surface exposes the release spine: `decode_jtbd`, `TruthPackage`, `VerifierSpec`, `AxiomRunObservation`, `AxiomRunReport::verify`, `ObservationAdapterReceipt`, `LearningEpisode`, `CalibrationRecord`, and `CalibrationTable`.
+- [x] Milestone history proves the spine with deterministic package generation, live-observation report adaptation, irreversible commitment verdicts, decoder calibration, persisted review, uncovered-clause concerns, and repeated marquee adapter receipts.
+- [x] README, changelog, and API docs describe the v0.15 Axiom release boundary rather than the older v0.8.1-only intent boundary.
+- [x] MSRV metadata is aligned on Rust 1.94 for the crate, `cz doctor`, and generated WASM crates.
+- [x] `just test` — passed 2026-05-20 with 455 lib tests, 2 CLI tests, and all integration/marquee suites passing; 3 WASM-target tests ignored as expected.
+- [x] `just lint` — passed 2026-05-20.
+- [x] `cargo package --allow-dirty` — passed 2026-05-20 after updating yanked transitive `enumset` 1.1.12 to 1.1.13; packaged 102 files and verified `axiom-truth` 0.15.0.
+- [x] `cargo publish --dry-run --allow-dirty` — passed 2026-05-20 after updating yanked transitive `enumset` 1.1.12 to 1.1.13; upload aborted because this was a dry run.
+- [ ] Publish `axiom-truth` 0.15.0 to crates.io after the dry run passes and upstream published dependencies are available.
+
+### After release
+
+- Continue the Helm operator-control work in Helm, especially a Helm-owned `JobReadinessPacket`.
+- Keep app-specific transcript adapters in apps or Helm execution surfaces; only promote app-neutral audit envelopes into Axiom.
+- Use Atlas as the next vertical only after the v0.15 Axiom release boundary is shipped.
+
 ## Completed: v0.8.1 — Runtime Intent Boundary
 **Deadline:** 2026-05-15 | **Epic:** Foundation (Axiom is well-structured and reliable)
 **Completed:** 2026-05-17 — published `axiom-truth` 0.8.1 to crates.io after package verification passed

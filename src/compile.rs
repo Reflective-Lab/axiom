@@ -377,7 +377,7 @@ fn generate_cargo_toml(config: &CompileConfig) -> String {
 name = "converge-wasm-module"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.94"
 
 [lib]
 crate-type = ["cdylib"]

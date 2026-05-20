@@ -4,10 +4,11 @@
 
 //! Truth Package spine types.
 //!
-//! This module starts the v0.10 JTBD-as-source path. It does not generate the
-//! full Truth Package yet; it defines deterministic clause identity,
-//! fingerprints, and lineage closure checks that later package artifacts can
-//! rely on.
+//! This module is the v0.15 Axiom release surface for JTBD-as-source package
+//! generation, verifier reports, observation adapter receipts, lineage checks,
+//! and decoder calibration. It intentionally stays app-neutral: apps own raw
+//! transcripts and adapters, Helm owns operator surfaces, Organism owns
+//! Formation selection, and Converge owns promotion authority.
 
 use crate::jtbd::JTBDMetadata;
 use crate::{CompileError, compile_intent, parse_truth_document};
@@ -366,7 +367,7 @@ pub enum ArtifactKind {
     VerifierExpectation,
 }
 
-/// Minimal Truth Package manifest produced by the v0.10 deterministic decoder.
+/// Deterministic Truth Package manifest produced by the Axiom decoder.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TruthPackage {
     pub package_id: TruthPackageId,
@@ -439,8 +440,12 @@ impl TruthPackage {
     }
 }
 
-/// Artifact groups reserved by the Truth Package contract. v0.10 fills only the
-/// deterministic spine; later decoders can populate richer generated artifacts.
+/// Artifact groups reserved by the Truth Package contract.
+///
+/// The release decoder fills the deterministic spine plus reviewed calibration
+/// suggestion and concern artifacts. Later decoders can populate richer
+/// scenario, predicate, policy, simulation, and invariant artifacts without
+/// changing package identity rules.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TruthPackageArtifacts {
     pub scenarios: Vec<GeneratedArtifact>,
@@ -979,8 +984,12 @@ fn trace_link_record(trace_link: &FactTraceLink) -> TraceLinkRecord {
     }
 }
 
-/// Auditable post-run report. v0.10 defines the shape; live Organism/Converge
-/// adapters are deferred to v0.11.
+/// Auditable post-run report over an app-neutral observation.
+///
+/// Callers adapt app or runtime output into [`AxiomRunObservation`], then use
+/// [`AxiomRunReport::verify`] to compute the verdict against a
+/// [`TruthPackage`]. Axiom owns the normalized verifier semantics; callers own
+/// raw transcripts and adapter execution.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AxiomRunReport {
     pub package_id: TruthPackageId,

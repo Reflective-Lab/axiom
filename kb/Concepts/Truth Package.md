@@ -6,13 +6,12 @@ source: codex
 # Truth Package
 
 A Truth Package is the typed, reproducible bundle Axiom produces from a
-structured JTBD. It is the center of the v0.10 spine: `.truths` becomes one
-auditable projection inside the package, not the primary human input.
+structured JTBD. `.truths` is one auditable projection inside the package, not
+the primary human input.
 
-## v0.10 Scope
+## Release Scope Through v0.15
 
-The first package implementation is deliberately narrow. It proves the package
-spine before broad generation:
+The release package spine is deliberately narrow:
 
 ```text
 JtbdInput
@@ -23,12 +22,15 @@ JtbdInput
   -> VerifierSpec
   -> ReplayProfile
   -> LineageMap
+  -> AxiomRunObservation
+  -> AxiomRunReport
+  -> LearningEpisode
+  -> CalibrationRecord candidates
 ```
 
-Policy synthesis, full predicate generation, and live `AxiomRunReport` verdict
-computation are still separate milestone items. The v0.10 code defines the
-report shape and Axiom-stamped Truth Package seed facts, but live
-Organism/Converge report adapters remain deferred.
+Policy synthesis and broad domain generation remain future work. The release
+surface is the deterministic package, the app-neutral observation/report
+contract, adapter receipts, lineage audit, and reviewed decoder calibration.
 
 ## Manifest Fields
 
@@ -47,7 +49,7 @@ Organism/Converge report adapters remain deferred.
 
 ## Run Report Shape
 
-`AxiomRunReport` is the wiring-free verifier record for v0.10. It carries:
+`AxiomRunReport` is the app-neutral verifier record. It carries:
 
 - package ID, truth version, intent packet ID, and source clause IDs;
 - the `VerifierSpec` used for judgment;
@@ -60,8 +62,10 @@ Organism/Converge report adapters remain deferred.
 - optional `AxiomRunStageRecord` entries for jobs with more than one Converge
   boundary.
 
-The report type is stable enough for adapters and renderers. Computing verdicts
-from live Organism/Converge traces is v0.11 work.
+Callers normalize run output into `AxiomRunObservation` and call
+`AxiomRunReport::verify(&package, observation)`. App-specific and runtime
+adapters remain caller-owned; Axiom owns the normalized observation, report, and
+verdict semantics.
 
 The first staged fixture is [[Marquee/Round-Driven Formation Design]], where
 a design huddle Formation converges before a selected work Formation runs. The
@@ -134,10 +138,9 @@ selection.
 - The same semantic JTBD input must regenerate the same package.
 - Reordering evidence or failure-mode clauses must not change package identity.
 - Generated `IntentPacket` IDs are deterministic inside a Truth Package.
-- v0.10 uses a deterministic expiry sentinel in the generated `.truths`
-  projection so fixture package regeneration is stable. v0.11 must replace
-  that sentinel with a JTBD-declared time budget or expiry before time
-  exhaustion can be a legitimate verifier outcome.
+- Generated `.truths` projections use a deterministic expiry anchor. When a
+  JTBD declares a `TimeBudget`, Axiom carries that budget in package/runtime
+  metadata so time exhaustion can be an honest verifier outcome.
 - Every generated artifact names its source clause IDs, decoder rule, decoder
   version, and input fingerprints.
 - Every calibration-influenced artifact names the accepted calibration record

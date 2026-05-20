@@ -9,6 +9,24 @@ This page defines how Axiom, Helm, and applications should play together when
 apps become thinner Helm-operated experiences rather than bespoke workflow
 islands.
 
+## Release Status
+
+This page is boundary guidance, not extra Axiom release scope.
+
+For the v0.15 Axiom layer release, the public Axiom surface stops at
+app-neutral truth and verifier artifacts:
+
+- `TruthPackage`, `VerifierSpec`, `AxiomRunObservation`, `AxiomRunReport`,
+  `ObservationAdapterReceipt`, and decoder calibration records.
+- Deterministic ids, hashes, lineage, provenance, replay notes, and verdicts.
+
+Everything that composes those artifacts into an operator experience remains
+outside Axiom for this release. Helm owns readiness packets, review screens,
+ledger presentation, and plugin hosting. Apps own domain state, raw
+transcripts, and app-specific adapters. The contract probes below explain where
+future repeated shapes should live; they are not a reason to delay the Axiom
+release.
+
 The goal is not to make Axiom run the app. The goal is to make the app's
 important jobs expressible as Truth Packages that Helm can show, operate,
 review, and replay while Organism, Mosaic, and Converge keep their runtime

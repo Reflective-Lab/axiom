@@ -13,6 +13,18 @@ against a real run.
 This page is the doctrine anchor for E7: Axiom translates human jobs into
 governed runtime contracts.
 
+## Release Stance
+
+For the v0.15 release, this doctrine is the product boundary: Axiom is the
+truth, lineage, verifier, and decoder-calibration layer. The release is valid
+when callers can decode a JTBD, inspect the Truth Package, compile intent,
+normalize an observed run, verify the report, and feed reviewed calibration
+back into future packages.
+
+The release is not blocked on Helm building the final operator surface or on
+apps thinning every domain workflow. Those are downstream consumers of this
+boundary.
+
 ## Doctrine
 
 Axiom is not "spec validation" as an end in itself. Validation is one of the

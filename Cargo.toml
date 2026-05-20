@@ -1,11 +1,11 @@
 [package]
 name = "axiom-truth"
-version = "0.8.1"
+version = "0.15.0"
 edition = "2024"
 rust-version = "1.94.0"
 license = "MIT"
 repository = "https://github.com/Reflective-Lab/axiom"
-description = "Axiom — the truth layer: validation, simulation, guidance, and policy lens"
+description = "Axiom — the truth layer: JTBD decoding, truth packages, validation, verifier reports, and calibration"
 documentation = "https://docs.rs/axiom-truth"
 keywords = ["gherkin", "testing", "governance", "axiom", "truth"]
 categories = ["development-tools", "development-tools::testing"]

@@ -76,7 +76,7 @@ source: llm
 | `ClauseId` | truth_package | Deterministic package-local JTBD clause address |
 | `ClauseFingerprint` | truth_package | SHA-256 hash of canonicalized clause text |
 | `LineageMap` | truth_package | Artifact-to-clause closure check for generated package artifacts |
-| `TruthPackage` | truth_package | Deterministic v0.10 package manifest from JTBD to runtime contract |
+| `TruthPackage` | truth_package | Deterministic package manifest from JTBD to runtime contract, verifier spec, lineage, report, and calibration |
 | `TruthProjectionOverlay` | truth_package | Human-authored overlay for generated `.truths` projection versions |
 | `TruthProjectionVersion` | truth_package | Base or overlay-applied `.truths` projection view |
 | `VerifierSpec` | truth_package | Post-run expectations: stop reasons, evidence, forbidden actions, satisfaction conditions |

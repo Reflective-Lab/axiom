@@ -5,22 +5,22 @@ source: llm
 
 # Truth-to-Formation Run Proof
 
-Axiom v0.9 should prove the stack path from a human-authored `.truths` file to
-a real Converge fixed point. It should not become a second runtime. It should
-make the existing runtime legible.
+This page records the v0.9 proof target. That target has been absorbed into the
+v0.15 Axiom layer release: Axiom now exposes app-neutral Truth Package,
+observation, report, receipt, lineage, and calibration surfaces. It still must
+not become a second runtime.
 
-## Target Flow
+## Release Flow
 
 ```text
-.truths source
-  -> Axiom parses TruthDocument
-  -> Axiom validates, simulates, and checks policy coverage
-  -> Axiom compiles organism_pack::IntentPacket
-  -> Organism Runtime admits the intent
-  -> Organism selects a Formation template from available capabilities
-  -> Organism compiles and instantiates concrete Suggestors
-  -> Converge Engine runs the Formation
-  -> Axiom returns an auditable run proof
+JtbdInput
+  -> Axiom decodes TruthPackage
+  -> Axiom validates, simulates, checks policy coverage, and compiles intent/invariants
+  -> Organism admits the IntentPacket and selects/runs Formations
+  -> Mosaic supplies concrete capabilities and suggestors
+  -> Converge promotes facts or stops honestly
+  -> app/runtime adapter emits AxiomRunObservation
+  -> AxiomRunReport::verify returns the auditable run proof
 ```
 
 The fixed point is Converge's stop contract: `StopReason::Converged` or a
@@ -48,9 +48,9 @@ Axiom shines when it forces every layer to do its own job:
 - Provider choice should come from `converge-provider` vocabulary and Mosaic/Manifold adapters, not hardcoded model names.
 - The run proof must include the Converge stop reason and integrity proof, not just an application-level success flag.
 
-## Minimum Proof
+## Historical Minimum Proof
 
-The first v0.9 proof should be deliberately small:
+The first v0.9 proof was deliberately small:
 
 1. Start with one governed `.truths` fixture.
 2. Validate and simulate it in Axiom.
@@ -60,34 +60,24 @@ The first v0.9 proof should be deliberately small:
 6. Assert the returned `ConvergeResult` has a successful fixed-point stop reason.
 7. Return an `AxiomRunReport`-shaped record containing the evidence.
 
-Fixture suggestors are acceptable for the first proof because the architectural
-question is whether the stack path is honest. The next pass should replace one
-fixture role at a time with Mosaic-backed capabilities: Manifold LLM selection,
-Prism analytics suggestors, policy gates, and knowledge/search providers.
+Fixture suggestors were acceptable for the first proof because the
+architectural question was whether the stack path is honest. Later v0.11-v0.15
+work generalized the report/observation boundary and repeated it across
+marquee adapters while preserving ownership boundaries.
 
 ## AxiomRunReport Shape
 
-The report should be stable enough for Helms and other apps to render:
+The release report is stable enough for Helms and apps to render:
 
 | Field | Source |
 |---|---|
-| validation | `SpecValidation` |
-| simulation | `SimulationReport` |
-| intent | `IntentPacket` |
-| selection_trace | `organism_runtime::SelectionTrace` |
-| formation_plan | `organism_runtime::CompiledFormationPlan` |
-| provider_assignments | Organism compiler/provider descriptors |
-| stop_reason | `converge_kernel::StopReason` |
-| promoted_facts | `ConvergeResult.context` |
-| integrity | `ConvergeResult.integrity` |
-| replay_notes | Axiom simulation + Converge replay metadata |
-
-## Today Plan
-
-For 2026-05-17:
-
-1. Publish `axiom-truth` 0.8.1, since package verification is already green.
-2. Land this v0.9 architecture story in README and KB.
-3. Add the first fixture-based proof test: Truth -> IntentPacket -> Organism formation -> Converge fixed point.
-4. Keep real Mosaic-backed providers out of the first test; add them after the fixed-point path is proven.
-5. Stop before broad feature work if the proof reveals a missing public surface in Organism or Converge.
+| package identity | `TruthPackage` |
+| verifier spec | `TruthPackage::verifier_spec` |
+| observed stop reason | `AxiomRunObservation` |
+| promoted facts | `PromotedFactRecord` |
+| evidence refs and trace links | adapter-normalized public runtime evidence |
+| promotion authority | Converge-observed authority records |
+| integrity | `RunIntegrityProof` |
+| run stages | optional `AxiomRunStageRecord` entries |
+| replay notes | adapter/runtime replay metadata |
+| verdict | `AxiomRunReport::verify` |

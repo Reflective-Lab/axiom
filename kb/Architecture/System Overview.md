@@ -21,7 +21,7 @@ axiom-truth
 ├── guidance       Heading quality feedback
 ├── policy_lens    Cedar policy coverage
 ├── jtbd           Jobs-to-be-Done metadata
-├── truth_package  JTBD clause identity, fingerprints, lineage closure
+├── truth_package  JTBD decoding, Truth Packages, verifier reports, calibration
 ├── validation_view  UI-friendly result views
 └── mock_llm       Test backend
 ```
@@ -53,28 +53,30 @@ and the conversion. Organism owns mechanism (admission gate + Converge kernel
 staging) and consumes only the typed `IntentPacket`. See `Architecture/Intent
 Compilation.md` for field mapping details.
 
-### Truth-to-formation run proof (v0.9 target)
+### Truth Package and verifier
 ```
-.truths file
-  → Axiom validation + simulation
-  → IntentPacket
-  → organism_runtime::Runtime::select_formation
-  → organism_runtime::Runtime::compile_and_run_formation
-  → ConvergeResult
-  → AxiomRunReport
+JtbdInput
+  → truth_package::decode_jtbd → TruthPackage
+  → generated .truths + IntentPacket + verifier spec + lineage
+  → Organism / Mosaic / Converge / app execution
+  → AxiomRunObservation
+  → AxiomRunReport::verify
+  → LearningEpisode / CalibrationRecord candidates
 ```
 
-This path is the proof layer, not a new runtime. Axiom should call through
-Organism's public runtime surface so Organism owns formation selection and
-Converge owns the fixed-point engine. See `Architecture/Truth-to-Formation Run
-Proof.md`.
+This path is the release Axiom layer. It is a proof and calibration layer, not
+a runtime. Organism owns formation selection, Mosaic owns concrete
+capabilities, Converge owns the fixed-point engine and promotion authority,
+Helm owns operator surfaces, and apps own domain state and raw transcripts.
+See `Architecture/Axiom as Verifier.md` and `Architecture/API Surfaces.md`.
 
 ## Dependencies
 
 - **converge-provider** — chat contracts, provider capability vocabulary, and selection types
+- **converge-pack** — public provenance and fact payload contracts
 - **converge-manifold-adapters** — manifold backend selection helpers
 - **organism-pack** — runtime contract types (`IntentPacket`, `Reversibility`, `ForbiddenAction`, `ExpiryAction`). Required by the `intent` module to produce runtime intents.
-- **organism-runtime** — planned v0.9 integration surface for selecting, compiling, and running formations without reimplementing Organism.
+- **organism-runtime** — dev/test fixture surface for proof recipes; not required by the library release surface.
 - **gherkin** 0.15 — Gherkin parser
 - **clap** 4.5 — CLI framework
 - **tokio** — async runtime
@@ -99,4 +101,5 @@ Truth-shaped types out of organism entirely.
 | Escalations | `.converge/escalations/` |
 | Assignments | `.converge/assignments/` |
 | Compiled WASM | build output directory |
-| Run proof report | planned v0.9 integration output |
+| Run proof report | serialized `AxiomRunReport` from caller-owned storage |
+| Calibration table | caller-owned JSONL using `CalibrationTable` helpers |

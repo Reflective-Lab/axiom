@@ -5,11 +5,12 @@ source: llm
 
 # Jobs-to-be-Done (JTBD)
 
-The v0.10 direction is: JTBD becomes the source input for a Truth Package, not
+The release direction is: JTBD is the source input for a Truth Package, not
 only metadata embedded inside a `.truths` file. The existing `jtbd` module still
-extracts legacy comment metadata. The new `truth_package` module starts the
+extracts legacy comment metadata. The `truth_package` module owns the
 source-first path with `JtbdInput`, deterministic `ClauseId`s, text
-fingerprints, and lineage closure.
+fingerprints, lineage closure, verifier specs, run reports, and calibration
+feedstock.
 
 The `jtbd` module extracts Jobs-to-be-Done metadata from comments in truth
 files, connecting specifications to user outcomes. That legacy comment format
@@ -68,4 +69,5 @@ JtbdInput
   -> ClauseId + ClauseFingerprint
   -> LineageMap
   -> Truth Package artifacts
+  -> AxiomRunReport + calibration records after execution
 ```

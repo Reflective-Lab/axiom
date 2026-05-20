@@ -1,12 +1,22 @@
 // Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 // See LICENSE file in the project root for full license information.
-//! Development tools for Converge — the truth layer.
+//! The Axiom truth layer for the Reflective stack.
 //!
-//! This crate provides tooling for developing Converge applications:
+//! This crate turns human jobs and `.truths` specifications into typed,
+//! reviewable contracts that downstream runtime layers can execute and Axiom
+//! can verify afterward.
 //!
-//! - [`gherkin`]: Converge Truths validation (business sense, compilability, conventions)
-//! - [`intent`]: compile a parsed Truth into the runtime contract organism consumes
+//! Release-surface modules:
+//!
+//! - [`truth_package`]: deterministic JTBD decoding, Truth Packages, verifier
+//!   specs, run observations, run reports, observation adapter receipts, and
+//!   decoder calibration.
+//! - [`intent`]: compile a parsed Truth into the runtime contract Organism
+//!   consumes.
+//! - [`gherkin`], [`truths`], [`simulation`], [`policy_lens`], [`predicate`],
+//!   [`codegen`], and [`compile`]: validate, simulate, analyze, generate, and
+//!   compile `.truths` projections and WASM invariant artifacts.
 //!
 //! # Converge Truths Validation
 //!
@@ -48,6 +58,20 @@
 //!
 //! See [`intent`] for the full field mapping (Authority, Constraint, Exception,
 //! reversibility overrides, expiry parsing, etc.).
+//!
+//! # Truth Packages and run verification
+//!
+//! `JtbdInput` is the preferred human-intent entrypoint for the release
+//! surface. [`truth_package::decode_jtbd`] produces a deterministic
+//! [`truth_package::TruthPackage`] with stable clause IDs, generated `.truths`,
+//! proof obligations, a verifier spec, an `IntentPacket`, replay metadata, and
+//! lineage.
+//!
+//! After Organism, Mosaic, Converge, Helm, or an app produces run output, callers
+//! normalize it into [`truth_package::AxiomRunObservation`] and call
+//! [`truth_package::AxiomRunReport::verify`]. Axiom judges whether the package
+//! was satisfied, blocked, exhausted, or invalid without selecting formations,
+//! recomputing authority, hosting specialists, or mutating app state.
 
 pub mod codegen;
 pub mod compile;

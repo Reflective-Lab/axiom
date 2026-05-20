@@ -7,11 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-05-20
+
+### Added
+- Release-surface Truth Package spine: deterministic `JtbdInput` decoding, stable clause IDs, clause fingerprints, generated `.truths` projections, proof obligations, verifier specs, replay profiles, and lineage closure.
+- `AxiomRunObservation` and `AxiomRunReport::verify(...)` for app-neutral post-run verification with `Satisfied`, `Blocked`, `Exhausted`, and `Invalid` verdicts.
+- `ObservationAdapterReceipt` as the deterministic audit envelope for app-specific transcript adapters.
+- Decoder calibration records, persisted `CalibrationTable` JSONL round trips, review APIs, accepted `CalibrationSuggestion` artifacts, and typed `CalibrationConcern` artifacts for uncovered evidence clauses.
+- Axiom provenance seed facts through `AXIOM_PROVENANCE` and typed `TruthPackageSeedPayload` custody.
+- Marquee proof fixtures across Tally, Atlas, Quorum, Scout, Warden, Triage, Inkling, Plumb, Catalyst, Fathom, and Folio showing the same Axiom observation/report/receipt boundary without moving app or Helm responsibilities into Axiom.
+
+### Changed
+- Recentered the public release story on Axiom as the truth, lineage, verifier, and decoder-learning layer.
+- Documented Helm/app contract probes as downstream boundary guidance, not additional Axiom release scope.
+- Updated crate metadata for the v0.15 release surface and the current `organism-pack` 1.9.0 runtime intent dependency.
+
+### Fixed
+- Aligned `cz doctor` and generated temporary WASM crates with the repo MSRV, Rust 1.94.
+
+### Verified
+- `just status`, `just test`, `just lint`, `cargo package --allow-dirty`, and `cargo publish --dry-run --allow-dirty` passed on 2026-05-20.
+- Updated yanked transitive `enumset` 1.1.12 to 1.1.13; package and publish dry-run no longer report the yanked dependency warning.
+
 ## [0.8.1] - 2026-05-07
 
 ### Added
 - `intent` module: `compile_intent(&TruthDocument) -> IntentPacket` and `compile_intent_from_source(&str)`. Axiom now owns the bridge from Truth-shaped governance to organism's runtime contract.
-- `organism-pack` dependency (path `../organism/crates/pack`, version `1.5.1`) — needed to produce `IntentPacket`. When publishing 0.8.1, a compatible `organism-pack` release must be on crates.io first.
+- `organism-pack` dependency — needed to produce `IntentPacket`. When publishing 0.8.1, a compatible `organism-pack` release must be on crates.io first.
 
 ### Changed
 - Architectural inversion: `axiom-truth → organism-pack` replaces the prior `organism → axiom-truth` arrow. organism's runtime no longer parses, mentions, or knows about Truth in any form. Callers compile via axiom, then hand the resulting `IntentPacket` to `organism_runtime::Runtime::admit_intent`.
@@ -40,7 +62,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standalone single-crate repo (no longer part of converge workspace)
 - Depends on Converge provider surfaces rather than the engine crate
 
-[Unreleased]: https://github.com/Reflective-Lab/axiom/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/Reflective-Lab/axiom/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/Reflective-Lab/axiom/compare/v0.8.1...v0.15.0
 [0.8.1]: https://github.com/Reflective-Lab/axiom/compare/v0.5.1...v0.8.1
 [0.5.1]: https://github.com/Reflective-Lab/axiom/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/Reflective-Lab/axiom/compare/v0.4.1...v0.5.0

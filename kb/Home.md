@@ -27,7 +27,7 @@ Axiom validates, simulates, and compiles business specifications into enforceabl
 - [[Concepts/Policy Lens]] — Cedar policy coverage analysis
 - [[Concepts/Guidance]] — LLM-powered heading and spec quality feedback
 - [[Concepts/JTBD]] — Jobs-to-Be-Done as source input and legacy truth metadata
-- [[Concepts/Truth Package]] — v0.10 manifest spine from JTBD to auditable runtime contract
+- [[Concepts/Truth Package]] — release package spine from JTBD to auditable runtime contract, report, and calibration
 
 ## Marquee
 
@@ -40,10 +40,10 @@ Axiom validates, simulates, and compiles business specifications into enforceabl
 - [[Architecture/API Surfaces]] — public Rust and crate boundaries
 - [[Architecture/Axiom as Verifier]] — doctrine for JTBD-to-contract compilation, verifier reports, and layer boundaries
 - [[Architecture/Axiom-Helm-App Contract]] — ownership split for thin Helm-operated apps backed by Axiom truth packages
-- [[Architecture/Clause IDs and Decoder Spine]] — v0.10 decision for deterministic JTBD clause identity and decoder rules
+- [[Architecture/Clause IDs and Decoder Spine]] — deterministic JTBD clause identity and decoder rules
 - [[Architecture/Decoder Calibration]] — v0.13 learning loop from verifier outcomes to richer future decoding
 - [[Architecture/Intent Compilation]] — TruthDocument to IntentPacket mapping
-- [[Architecture/Truth-to-Formation Run Proof]] — v0.9 path from truth to Organism Formation to Converge fixed point
+- [[Architecture/Truth-to-Formation Run Proof]] — historical proof path now folded into the v0.15 verifier surface
 - [[Architecture/Converge Contract]] — how Axiom relates to Converge
 - [[Architecture/WASM Compilation]] — Rust → WASM build details and the Axiom/Helm/Converge responsibility boundary
 
