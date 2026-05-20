@@ -2,8 +2,9 @@
 
 > See `~/dev/reflective/stack/bedrock-platform/EPIC.md` for the coarse-grained outcomes these milestones advance.
 
-## Release Candidate: v0.15.0 — Axiom Layer
+## Completed: v0.15.0 — Axiom Layer
 **Date:** 2026-05-20 | **Epic:** E7 (Axiom translates human jobs into governed runtime contracts)
+**Completed:** 2026-05-20 — published `axiom-truth` 0.15.0 to crates.io after package verification passed.
 **Goal:** Ship the current Axiom layer as a real stack boundary now, without turning the Helm/app contract probes into Axiom release scope.
 
 This release draws the line after v0.15:
@@ -22,7 +23,7 @@ This release draws the line after v0.15:
 - [x] `just lint` — passed 2026-05-20.
 - [x] `cargo package --allow-dirty` — passed 2026-05-20 after updating yanked transitive `enumset` 1.1.12 to 1.1.13; packaged 102 files and verified `axiom-truth` 0.15.0.
 - [x] `cargo publish --dry-run --allow-dirty` — passed 2026-05-20 after updating yanked transitive `enumset` 1.1.12 to 1.1.13; upload aborted because this was a dry run.
-- [ ] Publish `axiom-truth` 0.15.0 to crates.io after the dry run passes and upstream published dependencies are available.
+- [x] Publish `axiom-truth` 0.15.0 to crates.io after the dry run passes and upstream published dependencies are available — published 2026-05-20.
 
 ### After release
 

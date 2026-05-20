@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Verified
 - `just status`, `just test`, `just lint`, `cargo package --allow-dirty`, and `cargo publish --dry-run --allow-dirty` passed on 2026-05-20.
 - Updated yanked transitive `enumset` 1.1.12 to 1.1.13; package and publish dry-run no longer report the yanked dependency warning.
+- Published `axiom-truth` 0.15.0 to crates.io on 2026-05-20.
 
 ## [0.8.1] - 2026-05-07
 
