@@ -41,9 +41,9 @@ lint:
 
 # Check that Cargo.lock has no pending compatible dependency updates
 deps-fresh:
-    @output="$(cargo update --workspace --dry-run 2>&1)"; \
+    @output="$(CARGO_TERM_COLOR=never cargo update --workspace --dry-run 2>&1)"; \
     printf '%s\n' "$output"; \
-    if ! printf '%s\n' "$output" | grep -q "Locking 0 packages"; then \
+    if ! printf '%s\n' "$output" | grep -Fq "Locking 0 packages"; then \
         echo ""; \
         echo "Dependency lockfile is stale. Run 'cargo update --workspace' and commit Cargo.lock."; \
         exit 1; \
