@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Dependency freshness gate: CI and local pre-push now run `cargo update --workspace --dry-run` and fail when compatible lockfile updates are pending.
+
+### Changed
+- Dependency analysis no longer scrapes the deps.rs HTML page; deps.rs badge status is recorded as non-blocking context while Cargo owns the blocking freshness check.
+
 ## [0.15.0] - 2026-05-20
 
 ### Added

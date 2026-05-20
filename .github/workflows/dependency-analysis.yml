@@ -21,6 +21,25 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
+      - name: Check compatible dependency freshness
+        run: |
+          set -euo pipefail
+          output="$(cargo update --workspace --dry-run 2>&1)"
+          printf '%s\n' "$output"
+          if ! printf '%s\n' "$output" | grep -q "Locking 0 packages"; then
+            {
+              echo "### Dependency Freshness"
+              echo
+              echo "Cargo found pending compatible dependency updates."
+              echo "Run \`cargo update --workspace\`, validate, and commit the updated lockfile."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          {
+            echo "### Dependency Freshness"
+            echo
+            echo "No pending Rust ${{ env.RUST_VERSION }} compatible lockfile updates."
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-deny
@@ -28,41 +47,23 @@ jobs:
         run: rm -rf "${CARGO_HOME:-$HOME/.cargo}/advisory-dbs"
       - name: Run cargo-deny
         run: cargo deny check licenses bans sources
-      - name: Fetch latest versions from deps.rs
+      - name: Record deps.rs badge status
+        continue-on-error: true
         run: |
-          curl --fail --silent --show-error --retry 3 \
-            --output deps-rs.html \
-            https://deps.rs/repo/github/Reflective-Lab/axiom
+          curl --fail --silent --show-error --location --retry 3 \
+            --output deps-rs.svg \
+            https://deps.rs/repo/github/Reflective-Lab/axiom/status.svg
           python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import html
           import re
 
-          page = open("deps-rs.html", encoding="utf-8").read()
-          rows = re.findall(
-              r'<tr><td>.*?<a href="/crate/([^/]+)/[^"]+">([^<]+)</a>.*?</td>'
-              r'<td class="has-text-right"><code>([^<]+)</code></td>'
-              r'<td class="has-text-right"><code>([^<]+)</code></td>'
-              r'<td class="has-text-right"><span class="tag [^"]+">([^<]+)</span></td>',
-              page,
-              flags=re.S,
-          )
-
-          if not rows:
-              raise SystemExit("could not parse deps.rs dependency table")
-
-          print("### deps.rs Latest Versions")
+          svg = open("deps-rs.svg", encoding="utf-8").read()
+          labels = [html.unescape(value) for value in re.findall(r">([^<]+)<", svg)]
+          status = labels[-1] if labels else "unknown"
+          print("### deps.rs Badge")
           print()
-          print("| Crate | Required | Latest | Status |")
-          print("|---|---:|---:|---|")
-          for _, crate, required, latest, status in rows:
-              print(
-                  "| "
-                  + " | ".join(
-                      html.unescape(value).replace("|", "\\|")
-                      for value in [crate, required, latest, status]
-                  )
-                  + " |"
-              )
+          print(f"- Status: `{status}`")
+          print("- The blocking gate is `cargo update --workspace --dry-run` above.")
           PY
       - name: Summarize dependency graph
         run: |

@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "pre-push: checking dependency freshness..."
+output="$(cargo update --workspace --dry-run 2>&1)"
+printf '%s\n' "$output"
+if ! printf '%s\n' "$output" | grep -q "Locking 0 packages"; then
+    echo ""
+    echo "Dependency lockfile is stale. Run 'cargo update --workspace' and commit Cargo.lock."
+    exit 1
+fi
+
+echo "pre-push: dependencies fresh"

@@ -39,6 +39,16 @@ lint:
     cargo fmt --check
     cargo clippy --all-targets -- -D warnings
 
+# Check that Cargo.lock has no pending compatible dependency updates
+deps-fresh:
+    @output="$(cargo update --workspace --dry-run 2>&1)"; \
+    printf '%s\n' "$output"; \
+    if ! printf '%s\n' "$output" | grep -q "Locking 0 packages"; then \
+        echo ""; \
+        echo "Dependency lockfile is stale. Run 'cargo update --workspace' and commit Cargo.lock."; \
+        exit 1; \
+    fi
+
 # Auto-fix lint issues
 fix-lint:
     cargo clippy --fix --allow-staged --allow-dirty --allow-no-vcs
@@ -80,10 +90,10 @@ clean:
 
 # ── Git ────────────────────────────────────────────────────────────────
 
-# Install git pre-commit hooks (fmt + clippy)
+# Install git hooks (pre-commit fmt/clippy + pre-push dependency freshness)
 git-hooks:
     git config core.hooksPath .githooks
-    @echo "Git hooks installed — .githooks/pre-commit will run on each commit"
+    @echo "Git hooks installed — .githooks/pre-commit and .githooks/pre-push are active"
 
 # Repo state and recent commits
 sync:
