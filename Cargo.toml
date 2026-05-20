@@ -41,7 +41,7 @@ path = "src/bin/cz/main.rs"
 converge-provider = "3.9.1"
 converge-pack = "3.9.1"
 converge-manifold-adapters = { version = "1.1.1", features = ["llm-all"] }
-organism-pack = { path = "../organism/crates/pack", version = "1.9.0" }
+organism-pack = "1.9.1"
 futures = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
@@ -65,7 +65,7 @@ tree-sitter = "0.26"
 
 [dev-dependencies]
 converge-kernel = "3.9.1"
-organism-runtime = { path = "../organism/crates/runtime", version = "1.9.0" }
+organism-runtime = "1.9.1"
 proptest = "1.5"
 syn = { version = "2", features = ["full", "parsing"] }
 
@@ -101,15 +101,3 @@ missing_fields_in_debug = "allow"
 [profile.release]
 codegen-units = 1
 lto = true
-
-[patch.crates-io]
-converge-core = { path = "../converge/crates/core" }
-converge-experience = { path = "../converge/crates/experience" }
-converge-kernel = { path = "../converge/crates/kernel" }
-converge-model = { path = "../converge/crates/model" }
-converge-optimization = { path = "../converge/crates/optimization" }
-converge-pack = { path = "../converge/crates/pack" }
-converge-provider = { path = "../converge/crates/provider" }
-converge-storage = { path = "../converge/crates/storage" }
-converge-manifold-adapters = { path = "../../mosaic-extensions/manifold-adapters/crates/manifold" }
-converge-prism-analytics = { path = "../../mosaic-extensions/prism-analytics/crates/prism" }

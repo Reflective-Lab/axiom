@@ -1490,6 +1490,8 @@ checksum = "136d3e02915a2cea4d74caa8681e2d44b1c3254bdbf17d11d41d587ff858832c"
 [[package]]
 name = "converge-core"
 version = "3.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "090b97037362a6e0dd96970de379483e8b770b519be8bb3aa25905f487fa8e3a"
 dependencies = [
  "async-trait",
  "converge-pack",
@@ -1507,14 +1509,19 @@ dependencies = [
 [[package]]
 name = "converge-experience"
 version = "3.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61cf28d30a0cc06d69723d8315187218a70c0df47d5cd653a7ecb0dfcb31d484"
 dependencies = [
  "converge-core",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
 name = "converge-kernel"
 version = "3.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1dfb119da8a6481c1304be3ff32927807f1a3e0692e2c2d7bfffd543e2e2204c"
 dependencies = [
  "async-trait",
  "converge-core",
@@ -1528,6 +1535,8 @@ dependencies = [
 [[package]]
 name = "converge-manifold-adapters"
 version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f33b3cddeb6aa7f8f32b23b11ac382022a2c63318ca8d284df40b3dfc1f1592"
 dependencies = [
  "base64",
  "converge-core",
@@ -1554,6 +1563,8 @@ dependencies = [
 [[package]]
 name = "converge-model"
 version = "3.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b63b3e65902cb2a1b8c4e6928ec2937959b6f7a11d09e5f0f03ec1b261b538a"
 dependencies = [
  "converge-core",
  "converge-pack",
@@ -1564,6 +1575,8 @@ dependencies = [
 [[package]]
 name = "converge-optimization"
 version = "3.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8223cf9e43f885dd4f024e8ef620affbb65d9fc89157add483a9e8a3919adb62"
 dependencies = [
  "async-trait",
  "bitvec",
@@ -1585,12 +1598,13 @@ dependencies = [
 [[package]]
 name = "converge-pack"
 version = "3.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "497b800b3e4d9e744fabdc2663b28b3af6c87f0fb23d0045f18333bdcc233444"
 dependencies = [
  "async-trait",
  "hex",
  "serde",
  "serde_json",
- "sha2 0.11.0",
  "strum 0.28.0",
  "thiserror 2.0.18",
 ]
@@ -1598,6 +1612,8 @@ dependencies = [
 [[package]]
 name = "converge-prism-analytics"
 version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e4837690752e3748c230a247d8a37edca2f344fa0ca467da0e5cd5bcc82fe3f"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1616,6 +1632,8 @@ dependencies = [
 [[package]]
 name = "converge-provider"
 version = "3.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "721f145273c0d7f41788632cf0081214c4f2b820dd63480ca61b0e3d8d105023"
 dependencies = [
  "serde",
  "serde_json",
@@ -1625,6 +1643,8 @@ dependencies = [
 [[package]]
 name = "converge-storage"
 version = "3.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "abfbee8e4a6e39104542e1bdb90bd582b16500189623c5c45b09a9d937ce3881"
 dependencies = [
  "object_store 0.13.2",
  "serde",
@@ -4712,6 +4732,8 @@ dependencies = [
 [[package]]
 name = "organism-adversarial"
 version = "1.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "49976aad7292a1d7239b5e13cd7eb195b9b6980a84395bb9fee9a4802d496bca"
 dependencies = [
  "async-trait",
  "converge-pack",
@@ -4726,6 +4748,8 @@ dependencies = [
 [[package]]
 name = "organism-catalog"
 version = "1.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d99af5e6273b89f28ffaeb5368eaa63307ef6140ea6a87144be6e8b805a6fea3"
 dependencies = [
  "async-trait",
  "converge-kernel",
@@ -4739,6 +4763,8 @@ dependencies = [
 [[package]]
 name = "organism-intent"
 version = "1.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9451e7fa77bdc9794283c7254502e1993d1fc7b65341e86070ac5c3d8bcf6b2"
 dependencies = [
  "async-trait",
  "chrono",
@@ -4753,6 +4779,8 @@ dependencies = [
 [[package]]
 name = "organism-learning"
 version = "1.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b8bccbf3f5e6aad8d5c6757d0dc1f0acbe79577e1e4c8e03d79a025c03a2286"
 dependencies = [
  "async-trait",
  "chrono",
@@ -4767,6 +4795,8 @@ dependencies = [
 [[package]]
 name = "organism-pack"
 version = "1.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "898defdd216df7d5451544aa364bb23be30cce807ea2c046f6871f95449eeef0"
 dependencies = [
  "converge-pack",
  "organism-adversarial",
@@ -4780,6 +4810,8 @@ dependencies = [
 [[package]]
 name = "organism-planning"
 version = "1.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9441a9330b49f16f5db07eb56f2425c97628d1adc46096d2b8f43a69eca9554"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4798,6 +4830,8 @@ dependencies = [
 [[package]]
 name = "organism-runtime"
 version = "1.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a2bb2ef4cea0407803809261f25e4d1f8de0cd0673a7a267580ae84b3cb8d8e"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4821,6 +4855,8 @@ dependencies = [
 [[package]]
 name = "organism-simulation"
 version = "1.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba5eb32512d07f9b89394d40d4f61c765c19967e8c3b949d31cea8df5aa0183c"
 dependencies = [
  "async-trait",
  "converge-pack",
