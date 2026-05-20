@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Dependency analysis no longer scrapes the deps.rs HTML page; deps.rs badge status is recorded as non-blocking context while Cargo owns the blocking freshness check.
 - CI now resolves published stack crates from crates.io instead of local sibling path overrides.
+- Dependency license policy now explicitly allows the published stack graph's permissive `NCSA`, `Unlicense`, and `CDLA-Permissive-2.0` licenses.
 
 ## [0.15.0] - 2026-05-20
 
