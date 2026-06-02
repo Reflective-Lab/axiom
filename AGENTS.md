@@ -103,4 +103,4 @@ Anytime:    /help
 
 ## Milestones
 
-Read `MILESTONES.md` at the start of every session. Scope all work to the current milestone. See `~/dev/reflective/stack/bedrock-platform/EPIC.md` for the strategic context (no dedicated Axiom epic yet) and `~/dev/reflective/stack/bedrock-platform/MILESTONES.md` for the cross-project rollup.
+Read `MILESTONES.md` at the start of every session. Scope all work to the current milestone. See `~/dev/reflective/bedrock-platform/EPIC.md` for the strategic context (no dedicated Axiom epic yet) and `~/dev/reflective/bedrock-platform/MILESTONES.md` for the cross-project rollup.

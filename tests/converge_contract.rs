@@ -8,7 +8,7 @@ use converge_kernel::formation::{
     FormationTemplateQuery, ProfileSnapshot, SuggestorCapability, SuggestorRole,
 };
 use converge_kernel::{
-    AgentEffect, Context, ContextKey, ProposedFact, StopReason, Suggestor, TextPayload,
+    AgentEffect, Context, ContextKey, ProposedFact, Provenance, StopReason, Suggestor, TextPayload,
 };
 use converge_provider::DynChatBackend;
 use converge_provider::{BackendRequirements, CostClass, LatencyClass};
@@ -198,7 +198,7 @@ async fn truth_drives_organism_formation_to_converge_fixed_point() {
         key: ContextKey::Seeds,
         id: format!("intent:{}", intent.id).into(),
         content: serde_json::to_string(&intent).expect("intent serializes"),
-        provenance: "axiom-truth".to_string(),
+        provenance: "axiom-truth".into(),
     };
 
     let record = runtime
@@ -398,8 +398,8 @@ impl Suggestor for ProofSuggestor {
         self.dependencies.iter().all(|key| ctx.has(*key)) && !ctx.has(self.output)
     }
 
-    fn provenance(&self) -> &'static str {
-        "axiom-truth"
+    fn provenance(&self) -> Provenance {
+        "axiom-truth".into()
     }
 
     async fn execute(&self, _ctx: &dyn Context) -> AgentEffect {

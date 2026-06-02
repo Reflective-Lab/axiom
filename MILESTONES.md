@@ -1,6 +1,6 @@
 # Milestones
 
-> See `~/dev/reflective/stack/bedrock-platform/EPIC.md` for the coarse-grained outcomes these milestones advance.
+> See `~/dev/reflective/bedrock-platform/EPIC.md` for the coarse-grained outcomes these milestones advance.
 
 ## Completed: v0.15.0 — Axiom Layer
 **Date:** 2026-05-20 | **Epic:** E7 (Axiom translates human jobs into governed runtime contracts)

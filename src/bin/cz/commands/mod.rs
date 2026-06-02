@@ -83,8 +83,7 @@ pub fn command_exists(cmd: &str) -> bool {
     Command::new("which")
         .arg(cmd)
         .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+        .is_ok_and(|o| o.status.success())
 }
 
 /// Find workspace root by looking for justfile.

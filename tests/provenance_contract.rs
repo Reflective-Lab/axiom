@@ -5,7 +5,7 @@ use axiom_truth::{
 use converge_kernel::{
     AgentEffect, Context, ContextKey, ContextState, Engine, ProposedFact, StopReason, Suggestor,
 };
-use converge_pack::{FactEvidenceRef, ProvenanceSource};
+use converge_pack::{FactEvidenceRef, Provenance, ProvenanceSource};
 
 struct AxiomSeedSuggestor {
     proposal: ProposedFact,
@@ -29,8 +29,8 @@ impl Suggestor for AxiomSeedSuggestor {
         AgentEffect::with_proposal(self.proposal.clone())
     }
 
-    fn provenance(&self) -> &'static str {
-        AXIOM_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        AXIOM_PROVENANCE.as_str().into()
     }
 }
 

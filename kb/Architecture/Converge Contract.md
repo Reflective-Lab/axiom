@@ -5,7 +5,7 @@ source: mixed
 
 # Converge Contract
 
-Shared stack guidance: `~/dev/reflective/stack/bedrock-platform/converge/kb/Architecture/Golden Path Matrix.md`.
+Shared stack guidance: `~/dev/reflective/bedrock-platform/converge/kb/Architecture/Golden Path Matrix.md`.
 
 Axiom is a **client of Converge**. It depends on the public provider surface
 for live LLM-backed validation and on manifold for backend selection:

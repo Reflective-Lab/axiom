@@ -649,14 +649,12 @@ fn count_files(dir: &Path, extension: &str) -> usize {
         return 0;
     }
 
-    fs::read_dir(dir)
-        .map(|entries| {
-            entries
-                .flatten()
-                .filter(|e| e.path().extension().is_some_and(|ext| ext == extension))
-                .count()
-        })
-        .unwrap_or(0)
+    fs::read_dir(dir).map_or(0, |entries| {
+        entries
+            .flatten()
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == extension))
+            .count()
+    })
 }
 
 fn get_current_user() -> String {

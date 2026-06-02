@@ -169,12 +169,10 @@ pub fn parse_steps(
                 let pred = parse_then_step(text, table, current_key.as_ref())?;
                 predicates.push(pred);
             }
-            "And" => {
+            "And" if text.contains("must include") || text.contains("must contain") => {
                 // "And" continues the previous step type's context
-                if text.contains("must include") || text.contains("must contain") {
-                    let pred = parse_then_step(text, table, current_key.as_ref())?;
-                    predicates.push(pred);
-                }
+                let pred = parse_then_step(text, table, current_key.as_ref())?;
+                predicates.push(pred);
             }
             _ => {} // When, But, etc. — not typically used in invariants
         }
