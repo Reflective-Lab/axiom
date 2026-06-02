@@ -79,11 +79,76 @@ pub fn extract_title(spec: &str) -> Option<String> {
     })
 }
 
-/// Full guidance flow: try LLM first, fall back to local heuristics.
-pub async fn guide_heading(spec: &str, config: &GuidanceConfig) -> Option<GuidanceResponse> {
+/// Resolves a live chat backend for guidance, or signals fallback via Err.
+///
+/// Implementors decide whether to read process env, hit a remote registry,
+/// or hand back a stub. Production wires [`EnvBackendSelector`], which
+/// reads `CONVERGE_LLM_*` vars and probes a live backend. Tests wire
+/// [`NoBackendSelector`] to force the local-heuristic path deterministically,
+/// with no env reads and no network traffic.
+///
+/// Err is the contract for "fall back to local": [`guide_heading_with`]
+/// will format the error into the response note.
+pub trait BackendSelector {
+    fn select(
+        &self,
+        config: &GuidanceConfig,
+    ) -> impl std::future::Future<Output = Result<SelectedBackend, String>>;
+}
+
+/// Production selector — reads `ChatBackendSelectionConfig::from_env()`,
+/// applies any `provider_override`, then calls
+/// `manifold::select_healthy_chat_backend` which probes a live backend.
+///
+/// Network-bound. Do not use in unit tests.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct EnvBackendSelector;
+
+impl BackendSelector for EnvBackendSelector {
+    async fn select(&self, config: &GuidanceConfig) -> Result<SelectedBackend, String> {
+        let mut selection = ChatBackendSelectionConfig::from_env()
+            .map_err(|error| format!("ChatBackend selection configuration failed: {error}"))?;
+        if let Some(provider) = &config.provider_override {
+            selection = selection.with_provider_override(provider.clone());
+        }
+        let selected = select_healthy_chat_backend(&selection)
+            .await
+            .map_err(|error| format!("No live chat backend is available: {error}"))?;
+        let provider = selected.provider().to_string();
+        let model = selected.model().to_string();
+        Ok(SelectedBackend {
+            backend: selected.backend,
+            provider,
+            model,
+        })
+    }
+}
+
+/// Test selector — always errors. Forces deterministic local fallback
+/// without reading env or making network calls.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct NoBackendSelector;
+
+impl BackendSelector for NoBackendSelector {
+    async fn select(&self, _config: &GuidanceConfig) -> Result<SelectedBackend, String> {
+        Err("backend selection disabled by NoBackendSelector".into())
+    }
+}
+
+/// Full guidance flow with explicit backend selector (preferred / testable).
+///
+/// Tries the live LLM path via the supplied selector; if that errors (no
+/// backend, probe failure, request failure, or parse failure), falls back
+/// to a local heuristic rewrite. The error message is surfaced in the
+/// response note so callers can see why the live path didn't run.
+pub async fn guide_heading_with<S: BackendSelector>(
+    spec: &str,
+    config: &GuidanceConfig,
+    selector: &S,
+) -> Option<GuidanceResponse> {
     let current_title = extract_title(spec)?;
 
-    let response = match request_live_guidance(spec, &current_title, config).await {
+    let response = match request_live_guidance(spec, &current_title, config, selector).await {
         Ok(response) => response,
         Err(error) => local_heading_guidance(
             spec,
@@ -95,14 +160,25 @@ pub async fn guide_heading(spec: &str, config: &GuidanceConfig) -> Option<Guidan
     Some(response)
 }
 
-/// LLM-powered heading guidance using the configured chat backend.
-async fn request_live_guidance(
+/// Full guidance flow using the production env-driven backend selector.
+///
+/// Convenience wrapper around [`guide_heading_with`] that reads
+/// `CONVERGE_LLM_*` from process env and probes a live backend. Real
+/// network traffic. Not safe for unit tests — use
+/// `guide_heading_with(spec, config, &NoBackendSelector)` or a custom stub.
+pub async fn guide_heading(spec: &str, config: &GuidanceConfig) -> Option<GuidanceResponse> {
+    guide_heading_with(spec, config, &EnvBackendSelector).await
+}
+
+/// LLM-powered heading guidance using the supplied backend selector.
+async fn request_live_guidance<S: BackendSelector>(
     spec: &str,
     current_title: &str,
     config: &GuidanceConfig,
+    selector: &S,
 ) -> Result<GuidanceResponse, String> {
     let ctx = draft_context(spec, current_title);
-    let selected = select_backend(config).await?;
+    let selected = selector.select(config).await?;
     let prompt = build_prompt(current_title, &ctx, spec)?;
 
     let response = selected
@@ -149,28 +225,14 @@ async fn request_live_guidance(
     })
 }
 
-struct SelectedBackend {
+/// A resolved chat backend ready for a live guidance request.
+///
+/// Produced by [`BackendSelector::select`]. Fields stay private — consumers
+/// outside this crate compose selectors but don't need to read these.
+pub struct SelectedBackend {
     backend: Arc<dyn DynChatBackend>,
     provider: String,
     model: String,
-}
-
-async fn select_backend(config: &GuidanceConfig) -> Result<SelectedBackend, String> {
-    let mut selection = ChatBackendSelectionConfig::from_env()
-        .map_err(|error| format!("ChatBackend selection configuration failed: {error}"))?;
-    if let Some(provider) = &config.provider_override {
-        selection = selection.with_provider_override(provider.clone());
-    }
-    let selected = select_healthy_chat_backend(&selection)
-        .await
-        .map_err(|error| format!("No live chat backend is available: {error}"))?;
-    let provider = selected.provider().to_string();
-    let model = selected.model().to_string();
-    Ok(SelectedBackend {
-        backend: selected.backend,
-        provider,
-        model,
-    })
 }
 
 fn build_prompt(current_title: &str, ctx: &DraftContext, spec: &str) -> Result<String, String> {
@@ -1232,19 +1294,28 @@ Scenario: test
         assert!(hints.len() <= 2);
     }
 
-    // ─── guide_heading (async, no backend) ───
+    // ─── guide_heading_with (async, deterministic via NoBackendSelector) ───
+    //
+    // All tests here wire NoBackendSelector explicitly. The bare
+    // `guide_heading()` convenience wrapper reads process env and probes
+    // a live backend — using it from a unit test would issue real
+    // outbound API requests whenever the developer happens to have
+    // OPENAI_API_KEY / ANTHROPIC_API_KEY / etc. exported, and the
+    // assertions would fail or pass non-deterministically depending on
+    // dev-machine state. The selector parameter is exactly the injection
+    // seam that closes that hole.
 
     #[tokio::test]
     async fn guide_heading_returns_none_for_no_title() {
         let config = GuidanceConfig::default();
-        let result = guide_heading("no heading here", &config).await;
+        let result = guide_heading_with("no heading here", &config, &NoBackendSelector).await;
         assert!(result.is_none());
     }
 
     #[tokio::test]
     async fn guide_heading_returns_none_for_empty_spec() {
         let config = GuidanceConfig::default();
-        let result = guide_heading("", &config).await;
+        let result = guide_heading_with("", &config, &NoBackendSelector).await;
         assert!(result.is_none());
     }
 
@@ -1252,11 +1323,16 @@ Scenario: test
     async fn guide_heading_falls_back_to_local_on_no_backend() {
         let config = GuidanceConfig::default();
         let spec = "Truth: Vendor selection for AI rollout\n\nScenario: test\n  Given x";
-        let result = guide_heading(spec, &config).await;
+        let result = guide_heading_with(spec, &config, &NoBackendSelector).await;
         assert!(result.is_some());
         let resp = result.unwrap();
         assert_eq!(resp.source, "local-heuristic");
         assert!(resp.note.contains("Live guidance failed"));
+        assert!(
+            resp.note.contains("NoBackendSelector"),
+            "note should surface the selector's error so callers can diagnose: {}",
+            resp.note
+        );
     }
 
     // ─── build_prompt ───
