@@ -1,0 +1,336 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reflective.dev/schemas/intent-codec-applet.v1.schema.json",
+  "title": "Intent Codec Applet Manifest",
+  "description": "Shared JTBD applet manifest contract owned by Axiom and consumed by Helm, apps, Arena, and Atelier.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "job_name",
+    "primary_job_key",
+    "status",
+    "trigger",
+    "current_workaround",
+    "functional_need",
+    "emotional_need",
+    "relational_need",
+    "failure_modes",
+    "authority",
+    "evidence_contract",
+    "runtime_needs",
+    "commercial_needs",
+    "projection",
+    "non_goals",
+    "layer_mapping"
+  ],
+  "properties": {
+    "manifest_version": {
+      "const": "intent-codec-applet.v1"
+    },
+    "job_name": {
+      "$ref": "#/$defs/non_blank_string"
+    },
+    "primary_job_key": {
+      "$ref": "#/$defs/non_blank_string"
+    },
+    "status": {
+      "enum": [
+        "proposed",
+        "code-backed",
+        "executable",
+        "retired"
+      ]
+    },
+    "source_schema": {
+      "$ref": "#/$defs/optional_non_blank_string"
+    },
+    "human_readable": {
+      "$ref": "#/$defs/optional_non_blank_string"
+    },
+    "trigger": {
+      "$ref": "#/$defs/non_blank_string"
+    },
+    "current_workaround": {
+      "$ref": "#/$defs/non_blank_string"
+    },
+    "source_evidence": {
+      "$ref": "#/$defs/optional_string_map"
+    },
+    "functional_need": {
+      "$ref": "#/$defs/functional_need"
+    },
+    "emotional_need": {
+      "$ref": "#/$defs/emotional_need"
+    },
+    "relational_need": {
+      "$ref": "#/$defs/relational_need"
+    },
+    "failure_modes": {
+      "$ref": "#/$defs/non_empty_string_array"
+    },
+    "authority": {
+      "$ref": "#/$defs/authority"
+    },
+    "evidence_contract": {
+      "$ref": "#/$defs/evidence_contract"
+    },
+    "runtime_needs": {
+      "$ref": "#/$defs/non_empty_string_array"
+    },
+    "commercial_needs": {
+      "$ref": "#/$defs/non_empty_string_array"
+    },
+    "projection": {
+      "$ref": "#/$defs/projection"
+    },
+    "non_goals": {
+      "$ref": "#/$defs/non_empty_string_array"
+    },
+    "layer_mapping": {
+      "$ref": "#/$defs/string_map"
+    }
+  },
+  "$defs": {
+    "non_blank_string": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "optional_non_blank_string": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/non_blank_string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "non_empty_string_array": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/non_blank_string"
+      }
+    },
+    "string_map": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/non_blank_string"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/non_blank_string"
+      }
+    },
+    "optional_string_map": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/non_blank_string"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/non_blank_string"
+      }
+    },
+    "functional_need": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outcome",
+        "inputs",
+        "output",
+        "constraints",
+        "success_signal"
+      ],
+      "properties": {
+        "outcome": {
+          "$ref": "#/$defs/non_blank_string"
+        },
+        "inputs": {
+          "$ref": "#/$defs/non_empty_string_array"
+        },
+        "output": {
+          "$ref": "#/$defs/non_blank_string"
+        },
+        "constraints": {
+          "$ref": "#/$defs/non_empty_string_array"
+        },
+        "success_signal": {
+          "$ref": "#/$defs/non_blank_string"
+        }
+      }
+    },
+    "emotional_need": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operator_anxiety",
+        "desired_confidence",
+        "tolerance"
+      ],
+      "properties": {
+        "operator_anxiety": {
+          "$ref": "#/$defs/non_blank_string"
+        },
+        "desired_confidence": {
+          "$ref": "#/$defs/non_blank_string"
+        },
+        "tolerance": {
+          "$ref": "#/$defs/non_blank_string"
+        }
+      }
+    },
+    "relational_need": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dependent_parties",
+        "trust_obligation",
+        "handoff_created"
+      ],
+      "properties": {
+        "dependent_parties": {
+          "$ref": "#/$defs/non_empty_string_array"
+        },
+        "trust_obligation": {
+          "$ref": "#/$defs/non_blank_string"
+        },
+        "handoff_created": {
+          "$ref": "#/$defs/non_blank_string"
+        }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requester",
+        "approvers",
+        "allowed_actions",
+        "forbidden_actions",
+        "approval_points",
+        "reversibility",
+        "expiry",
+        "audit_visibility"
+      ],
+      "properties": {
+        "requester": {
+          "$ref": "#/$defs/non_blank_string"
+        },
+        "approvers": {
+          "$ref": "#/$defs/non_empty_string_array"
+        },
+        "allowed_actions": {
+          "$ref": "#/$defs/non_empty_string_array"
+        },
+        "forbidden_actions": {
+          "$ref": "#/$defs/non_empty_string_array"
+        },
+        "approval_points": {
+          "$ref": "#/$defs/non_empty_string_array"
+        },
+        "reversibility": {
+          "enum": [
+            "reversible",
+            "partially_reversible",
+            "irreversible"
+          ]
+        },
+        "expiry": {
+          "$ref": "#/$defs/non_blank_string"
+        },
+        "audit_visibility": {
+          "$ref": "#/$defs/non_empty_string_array"
+        }
+      }
+    },
+    "evidence_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required_sources",
+        "disallowed_sources",
+        "confidence_floor",
+        "conflict_policy",
+        "sensitive_fields"
+      ],
+      "properties": {
+        "required_sources": {
+          "type": "array",
+          "minItems": 1,
+          "contains": {
+            "type": "object",
+            "required": [
+              "authority"
+            ],
+            "properties": {
+              "authority": {
+                "const": "primary"
+              }
+            }
+          },
+          "items": {
+            "$ref": "#/$defs/evidence_source"
+          }
+        },
+        "disallowed_sources": {
+          "$ref": "#/$defs/non_empty_string_array"
+        },
+        "confidence_floor": {
+          "$ref": "#/$defs/non_blank_string"
+        },
+        "conflict_policy": {
+          "enum": [
+            "stop",
+            "ask_operator",
+            "prefer_primary",
+            "run_adversarial_review"
+          ]
+        },
+        "sensitive_fields": {
+          "$ref": "#/$defs/non_empty_string_array"
+        }
+      }
+    },
+    "evidence_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "freshness",
+        "authority"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/non_blank_string"
+        },
+        "freshness": {
+          "$ref": "#/$defs/non_blank_string"
+        },
+        "authority": {
+          "enum": [
+            "primary",
+            "corroborating",
+            "advisory"
+          ]
+        }
+      }
+    },
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operator_view"
+      ],
+      "properties": {
+        "operator_view": {
+          "$ref": "#/$defs/non_blank_string"
+        },
+        "customer_or_partner_view": {
+          "$ref": "#/$defs/optional_non_blank_string"
+        }
+      }
+    }
+  }
+}

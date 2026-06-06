@@ -73,6 +73,7 @@
 //! was satisfied, blocked, exhausted, or invalid without selecting formations,
 //! recomputing authority, hosting specialists, or mutating app state.
 
+pub mod applet_manifest;
 pub mod codegen;
 pub mod compile;
 pub mod editor;
@@ -89,6 +90,13 @@ pub mod truth_package;
 pub mod truths;
 pub mod validation_view;
 
+pub use applet_manifest::{
+    APPLET_MANIFEST_JSON_SCHEMA, APPLET_MANIFEST_TYPESCRIPT_DECLARATIONS, APPLET_MANIFEST_VERSION,
+    AppletManifest, AppletManifestError, AppletProjection, AppletStatus, AuthorityEnvelope,
+    ConflictPolicy, EmotionalNeed, EvidenceAuthority, EvidenceContract, EvidenceSource,
+    FunctionalNeed, RelationalNeed, Reversibility, applet_manifest_json_schema,
+    parse_applet_manifest_json, parse_applet_manifest_value,
+};
 pub use gherkin::{
     GherkinValidator, InvariantClassTag, IssueCategory, ScenarioKind, ScenarioMeta, Severity,
     SpecGenerator, SpecValidation, ValidationConfig, ValidationIssue, extract_all_metas,
