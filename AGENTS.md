@@ -22,7 +22,7 @@ Specifications must be validated, simulated, and compiled BEFORE they reach Conv
 
 | Layer | Technology |
 |---|---|
-| Truth validation & codegen | Rust (Edition 2024, rust-version 1.94) |
+| Truth validation & codegen | Rust (Edition 2024, rust-version 1.96) |
 | Converge provider contract | `converge-provider` |
 | Backend selection | `converge-manifold-adapters` |
 | Runtime intent contract | `organism-pack` |
