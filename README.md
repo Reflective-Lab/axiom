@@ -30,6 +30,12 @@ Axiom turns human jobs and Gherkin-style `.truths` projections into auditable ru
 └─────────────────────────────────────────────┘
 ```
 
+## Boundary
+
+> Owns: JTBD/truth translation, verifier reports, calibration, intent compilation, applet manifest schema. Does NOT own: formation selection (→ Organism); promotion (→ Converge).
+
+— Canonical claim: [Axiom](https://github.com/Reflective-Lab/reflective/blob/main/KB/04-architecture/current-system-map.md#axiom) in the boundary registry. Update there first; this README quotes that source.
+
 ## Release Slice: Axiom Layer v0.15
 
 The releaseable Axiom layer is deliberately narrow:
