@@ -2,7 +2,7 @@
 name = "axiom-truth"
 version = "0.15.2"
 edition = "2024"
-rust-version = "1.94.0"
+rust-version = "1.96.0"
 license = "MIT"
 repository = "https://github.com/Reflective-Lab/axiom"
 description = "Axiom — the truth layer: JTBD decoding, truth packages, validation, verifier reports, and calibration"

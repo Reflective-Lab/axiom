@@ -12,7 +12,7 @@ Thanks for your interest in contributing to Axiom.
 
 ## Development
 
-- Rust edition 2024, minimum rust-version 1.94
+- Rust edition 2024, minimum rust-version 1.96.0
 - `unsafe` code is forbidden
 - Clippy pedantic is enforced
 
